@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lock Zone AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #556B2F 0%, #3D4F1F 100%); color: white; padding: 40px; text-align: center; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .upload-section { border: 2px dashed #556B2F; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 30px; }
+        .upload-section:hover { background: #f9f9f9; }
+        input[type="file"] { display: none; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; font-weight: bold; color: #556B2F; margin-bottom: 10px; }
+        input[type="text"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; }
+        .automation-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .checkbox-card { background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; text-align: center; }
+        .checkbox-card:hover { border-color: #556B2F; }
+        .checkbox-card.selected { background: #556B2F; color: white; }
+        .analyze-btn { width: 100%; padding: 18px; background: #556B2F; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-top: 20px; }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .loading.active { display: block; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #556B2F; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .results { display: none; margin-top: 30px; padding: 30px; background: #f9f9f9; border-radius: 10px; }
+        .results.active { display: block; }
+        .result-item { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+        .download-btn { display: inline-block; padding: 12px 25px; background: #556B2F; color: white; text-decoration: none; border-radius: 8px; margin: 10px 10px 0 0; }
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.active { display: block; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        .alert-success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 Lock Zone AI</h1>
+            <p>Floor Plan Analysis & Quote Generation</p>
+        </div>
+        <div class="content">
+            <div id="alertBox" class="alert"></div>
+            <form id="analysisForm" enctype="multipart/form-data">
+                <div class="upload-section" id="uploadSection">
+                    <div style="font-size: 3em;">📄</div>
+                    <h3>Drop PDF here or click to browse</h3>
+                    <input type="file" id="floorplan" name="floorplan" accept=".pdf" required>
+                </div>
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <input type="text" id="project_name" name="project_name" placeholder="Enter project name" required>
+                </div>
+                <div class="form-group">
+                    <label>Select Automation Types</label>
+                    <div class="automation-types">
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="lighting" id="lighting"><label for="lighting">💡 Lighting</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="shading" id="shading"><label for="shading">🪟 Shading</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security" id="security"><label for="security">🔒 Security</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="music" id="music"><label for="music">🔊 Music</label></div>
+                    </div>
+                </div>
+                <button type="submit" class="analyze-btn">Analyze & Generate Quote</button>
+            </form>
+            <div class="loading" id="loading"><div class="spinner"></div><h3>Analyzing...</h3></div>
+            <div class="results" id="results">
+                <h2>✅ Complete!</h2>
+                <div class="result-item">
+                    <h3>Project: <span id="resultProjectName"></span></h3>
+                    <p><strong>Rooms:</strong> <span id="resultRooms"></span></p>
+                    <p><strong>Points:</strong> <span id="resultPoints"></span></p>
+                    <p><strong>Cost:</strong> <span id="resultCost" style="color:#556B2F;font-size:1.3em;"></span></p>
+                    <a href="#" id="downloadAnnotated" class="download-btn">Download Floor Plan</a>
+                    <a href="#" id="downloadQuote" class="download-btn">Download Quote</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById("analysisForm");
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+        const alertBox = document.getElementById("alertBox");
+        document.getElementById("uploadSection").onclick = () => document.getElementById("floorplan").click();
+        document.querySelectorAll(".checkbox-card").forEach(c => c.onclick = e => {
+            if(e.target.type !== "checkbox") c.querySelector("input").checked = !c.querySelector("input").checked;
+            c.classList.toggle("selected", c.querySelector("input").checked);
+        });
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            if(!document.querySelectorAll("input[name=\"automation_types[]\"]:checked").length) {
+                alertBox.textContent = "Select at least one type";
+                alertBox.className = "alert alert-error active";
+                return;
+            }
+            loading.classList.add("active");
+            results.classList.remove("active");
+            try {
+                const r = await fetch("/api/analyze", {method: "POST", body: new FormData(form)});
+                const d = await r.json();
+                if(d.success) {
+                    document.getElementById("resultProjectName").textContent = d.project_name;
+                    document.getElementById("resultRooms").textContent = d.total_rooms;
+                    document.getElementById("resultPoints").textContent = d.total_automation_points;
+                    document.getElementById("resultCost").textContent = d.total_cost;
+                    document.getElementById("downloadAnnotated").href = "/api/download/" + d.annotated_pdf;
+                    document.getElementById("downloadQuote").href = "/api/download/" + d.quote_pdf;
+                    results.classList.add("active");
+                    alertBox.textContent = "Success!";
+                    alertBox.className = "alert alert-success active";
+                } else {
+                    alertBox.textContent = d.error || "Failed";
+                    alertBox.className = "alert alert-error active";
+                }
+            } catch(e) {
+                alertBox.textContent = "Error: " + e.message;
+                alertBox.className = "alert alert-error active";
+            }
+            loading.classList.remove("active");
+        };
+    </script>
+</body>
+</html>
