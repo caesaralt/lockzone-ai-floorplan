@@ -3,5 +3,5 @@ services:
     name: lockzone-ai-floorplan
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: "apt-get update && apt-get install -y poppler-utils libgl1-mesa-glx libglib2.0-0 && pip install --upgrade pip && pip install -r requirements.txt"
     startCommand: "gunicorn app:app"
