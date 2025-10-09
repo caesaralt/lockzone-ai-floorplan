@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lock Zone AI</title>
+    <title>Integratd</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -39,8 +39,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏠 Lock Zone AI</h1>
-            <p>Floor Plan Analysis & Quote Generation</p>
+            <h1>Integratd</h1>
+            <p>AI floor plan analysis quote calculator</p>
         </div>
         <div class="content">
             <div id="alertBox" class="alert"></div>
@@ -59,9 +59,11 @@
                     <div class="automation-types">
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="lighting" id="lighting"><label for="lighting">💡 Lighting</label></div>
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="shading" id="shading"><label for="shading">🪟 Shading</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security" id="security"><label for="security">🔒 Security</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="music" id="music"><label for="music">🔊 Music</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security_access" id="security_access"><label for="security_access">🔐 Security &amp; Access</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate Control</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="hvac_energy" id="hvac_energy"><label for="hvac_energy">⚡ HVAC &amp; Energy</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio" id="multiroom_audio"><label for="multiroom_audio">🎶 Multiroom Audio</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="wellness_garden" id="wellness_garden"><label for="wellness_garden">🌿 Wellness &amp; Garden</label></div>
                     </div>
                 </div>
                 <button type="submit" class="analyze-btn">Analyze & Generate Quote</button>
@@ -86,9 +88,19 @@
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
         document.getElementById("uploadSection").onclick = () => document.getElementById("floorplan").click();
-        document.querySelectorAll(".checkbox-card").forEach(c => c.onclick = e => {
-            if(e.target.type !== "checkbox") c.querySelector("input").checked = !c.querySelector("input").checked;
-            c.classList.toggle("selected", c.querySelector("input").checked);
+        document.querySelectorAll(".checkbox-card").forEach(card => {
+            const input = card.querySelector('input[type="checkbox"]');
+            const syncState = () => card.classList.toggle("selected", input.checked);
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== input) {
+                    input.checked = !input.checked;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+
+            input.addEventListener('change', syncState);
+            syncState();
         });
         form.onsubmit = async (e) => {
             e.preventDefault();
