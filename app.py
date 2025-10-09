@@ -3,6 +3,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
+import copy
 from datetime import datetime
 import cv2
 import numpy as np
@@ -34,23 +35,55 @@ DEFAULT_DATA = {
     "automation_types": {
         "lighting": {"name": "Lighting Control", "symbols": ["💡"], "base_cost_per_unit": 150.0, "labor_hours": 2.0},
         "shading": {"name": "Shading Control", "symbols": ["🪟"], "base_cost_per_unit": 300.0, "labor_hours": 3.0},
-        "security": {"name": "Security System", "symbols": ["🔒"], "base_cost_per_unit": 500.0, "labor_hours": 4.0},
+        "security_access": {"name": "Security & Access", "symbols": ["🔐"], "base_cost_per_unit": 500.0, "labor_hours": 4.5},
         "climate": {"name": "Climate Control", "symbols": ["🌡️"], "base_cost_per_unit": 400.0, "labor_hours": 5.0},
-        "music": {"name": "Audio System", "symbols": ["🔊"], "base_cost_per_unit": 350.0, "labor_hours": 3.5}
+        "hvac_energy": {"name": "HVAC & Energy", "symbols": ["⚡"], "base_cost_per_unit": 420.0, "labor_hours": 5.5},
+        "multiroom_audio": {"name": "Multiroom Audio", "symbols": ["🎶"], "base_cost_per_unit": 360.0, "labor_hours": 3.5},
+        "wellness_garden": {"name": "Wellness & Garden", "symbols": ["🌿"], "base_cost_per_unit": 280.0, "labor_hours": 3.0}
     },
     "labor_rate": 75.0,
     "markup_percentage": 20.0,
     "company_info": {"name": "Lock Zone Automation", "address": "", "phone": "", "email": ""}
 }
 
+def _merge_with_defaults(custom_data):
+    if not isinstance(custom_data, dict):
+        return copy.deepcopy(DEFAULT_DATA)
+
+    base = copy.deepcopy(DEFAULT_DATA)
+
+    def merge_dict(default, override):
+        for key, value in override.items():
+            if isinstance(value, dict) and isinstance(default.get(key), dict):
+                default[key] = merge_dict(default.get(key, {}), value)
+            else:
+                default[key] = value
+        return default
+
+    merged = merge_dict(base, custom_data)
+
+    automation = merged.setdefault('automation_types', {})
+    if 'security' in automation and 'security_access' not in automation:
+        automation['security_access'] = automation.pop('security')
+        automation['security_access']['name'] = 'Security & Access'
+    if 'music' in automation and 'multiroom_audio' not in automation:
+        automation['multiroom_audio'] = automation.pop('music')
+        automation['multiroom_audio']['name'] = 'Multiroom Audio'
+
+    for key, value in DEFAULT_DATA['automation_types'].items():
+        automation.setdefault(key, copy.deepcopy(value))
+
+    return merged
+
+
 def load_data():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return DEFAULT_DATA.copy()
-    return DEFAULT_DATA.copy()
+                return _merge_with_defaults(json.load(f))
+        except Exception:
+            return copy.deepcopy(DEFAULT_DATA)
+    return copy.deepcopy(DEFAULT_DATA)
 
 def save_data(data):
     with open(DATA_FILE, 'w') as f:
@@ -62,14 +95,30 @@ class FloorPlanAnalyzer:
     
     def analyze_pdf(self, pdf_path, automation_types):
         try:
-            images = convert_from_path(pdf_path, dpi=150)
+            reader = PdfReader(pdf_path)
+            total_pages = len(reader.pages)
             results = []
-            for page_num, img in enumerate(images):
+
+            for page_number in range(1, total_pages + 1):
+                images = convert_from_path(
+                    pdf_path,
+                    dpi=200,
+                    first_page=page_number,
+                    last_page=page_number,
+                    fmt="png",
+                    thread_count=1,
+                )
+
+                if not images:
+                    continue
+
+                img = images[0]
                 img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
                 analysis = self._analyze_image(img_cv, automation_types)
-                analysis['page_number'] = page_num + 1
+                analysis['page_number'] = page_number
                 analysis['image'] = img
                 results.append(analysis)
+
             return results
         except Exception as e:
             print(f"Error analyzing PDF: {e}")
@@ -77,23 +126,70 @@ class FloorPlanAnalyzer:
     
     def _analyze_image(self, image, automation_types):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150)
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        adaptive = cv2.adaptiveThreshold(
+            blurred,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            35,
+            5,
+        )
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        closed = cv2.morphologyEx(adaptive, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
         rooms = []
         for contour in contours:
             area = cv2.contourArea(contour)
-            if 1000 < area < 500000:
-                x, y, w, h = cv2.boundingRect(contour)
-                aspect_ratio = w / float(h) if h > 0 else 0
-                if 0.3 < aspect_ratio < 3.0:
-                    rooms.append({'x': int(x), 'y': int(y), 'width': int(w), 'height': int(h), 
-                                'area': float(area), 'center': (int(x + w/2), int(y + h/2))})
-        
+            if area < 1500:
+                continue
+
+            perimeter = cv2.arcLength(contour, True)
+            if perimeter == 0:
+                continue
+
+            approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+            if len(approx) < 4 or len(approx) > 12:
+                continue
+
+            x, y, w, h = cv2.boundingRect(approx)
+            if w < 40 or h < 40:
+                continue
+
+            aspect_ratio = w / float(h) if h > 0 else 0
+            if not (0.35 < aspect_ratio < 2.8):
+                continue
+
+            M = cv2.moments(approx)
+            if M["m00"] == 0:
+                continue
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+
+            rooms.append(
+                {
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h),
+                    'area': float(area),
+                    'center': (cx, cy),
+                }
+            )
+
         rooms.sort(key=lambda r: r['area'], reverse=True)
-        automation_points = self._generate_automation_points(rooms[:20], automation_types)
-        
-        return {'rooms': rooms[:20], 'room_count': len(rooms), 'automation_points': automation_points, 'image_shape': image.shape}
+        primary_rooms = rooms[:20]
+        automation_points = self._generate_automation_points(primary_rooms, automation_types)
+
+        return {
+            'rooms': primary_rooms,
+            'room_count': len(rooms),
+            'automation_points': automation_points,
+            'image_shape': image.shape,
+        }
     
     def _generate_automation_points(self, rooms, automation_types):
         points = []
@@ -168,11 +264,16 @@ def generate_quote_pdf(analysis_results, automation_types, project_name):
     total_rooms = sum(r['room_count'] for r in analysis_results)
     total_points = sum(len(r['automation_points']) for r in analysis_results)
     
+    system_names = []
+    for system_key in automation_types:
+        type_info = data['automation_types'].get(system_key, {})
+        system_names.append(type_info.get('name', system_key.replace('_', ' ').title()))
+
     summary_data = [
         ['Total Pages', str(len(analysis_results))],
         ['Detected Rooms', str(total_rooms)],
         ['Automation Points', str(total_points)],
-        ['Systems', ', '.join([t.title() for t in automation_types])]
+        ['Systems', ', '.join(system_names) if system_names else '—']
     ]
     
     summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
