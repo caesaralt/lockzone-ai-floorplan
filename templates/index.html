@@ -62,6 +62,7 @@
                 <div class="form-group">
                     <label>Select Automation Types</label>
                     <div class="automation-types">
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="lighting"><span>💡 Lighting</span></label>
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="shading"><span>🪟 Shading</span></label>
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="security_access"><span>🔐 Security &amp; Access</span></label>
@@ -69,6 +70,15 @@
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="hvac_energy"><span>⚡ HVAC &amp; Energy</span></label>
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio"><span>🎶 Multiroom Audio</span></label>
                         <label class="select-card"><input type="checkbox" name="automation_types[]" value="wellness_garden"><span>🌿 Wellness &amp; Garden</span></label>
+
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="lighting" id="lighting"><label for="lighting">💡 Lighting</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="shading" id="shading"><label for="shading">🪟 Shading</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security_access" id="security_access"><label for="security_access">🔐 Security &amp; Access</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate Control</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="hvac_energy" id="hvac_energy"><label for="hvac_energy">⚡ HVAC &amp; Energy</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio" id="multiroom_audio"><label for="multiroom_audio">🎶 Multiroom Audio</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="wellness_garden" id="wellness_garden"><label for="wellness_garden">🌿 Wellness &amp; Garden</label></div>
+ main
                     </div>
                 </div>
                 <div class="form-group">
@@ -107,6 +117,7 @@
         </div>
     </div>
     <script>
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
         const form = document.getElementById('analysisForm');
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
@@ -124,10 +135,24 @@
             const input = card.querySelector('input[type="checkbox"]');
             card.addEventListener('click', (event) => {
                 if (event.target !== input) {
+
+        const form = document.getElementById("analysisForm");
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+        const alertBox = document.getElementById("alertBox");
+        document.getElementById("uploadSection").onclick = () => document.getElementById("floorplan").click();
+        document.querySelectorAll(".checkbox-card").forEach(card => {
+            const input = card.querySelector('input[type="checkbox"]');
+            const syncState = () => card.classList.toggle("selected", input.checked);
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== input) {
+ main
                     input.checked = !input.checked;
                     input.dispatchEvent(new Event('change'));
                 }
             });
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
             input.addEventListener('change', () => syncSelectCard(card, input));
             syncSelectCard(card, input);
         });
@@ -148,6 +173,11 @@
                 }
             });
             input.addEventListener('change', syncTierCards);
+
+
+            input.addEventListener('change', syncState);
+            syncState();
+ main
         });
         syncTierCards();
 
