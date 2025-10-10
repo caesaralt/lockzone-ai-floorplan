@@ -47,10 +47,6 @@ DEFAULT_AUTOMATION_TIERS: Dict[str, Dict[str, object]] = {
     "deluxe": {"name": "Deluxe", "price_multiplier": 1.4},
 }
 
-DEFAULT_DATA: Dict[str, object] = {
-    "automation_types": DEFAULT_AUTOMATION_TYPES,
-    "automation_tiers": DEFAULT_AUTOMATION_TIERS,
-
 DEFAULT_DATA = {
     "automation_types": {
         "lighting": {
