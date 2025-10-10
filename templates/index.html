@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lock Zone AI</title>
+    <title>Integratd</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -17,10 +17,10 @@
         .form-group { margin-bottom: 25px; }
         label { display: block; font-weight: bold; color: #556B2F; margin-bottom: 10px; }
         input[type="text"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; }
-        .automation-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
-        .checkbox-card { background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; text-align: center; }
-        .checkbox-card:hover { border-color: #556B2F; }
-        .checkbox-card.selected { background: #556B2F; color: white; }
+        .automation-types, .automation-tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .checkbox-card, .radio-card { background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; text-align: center; transition: all 0.2s ease; }
+        .checkbox-card:hover, .radio-card:hover { border-color: #556B2F; }
+        .checkbox-card.selected, .radio-card.selected { background: #556B2F; color: white; border-color: #556B2F; }
         .analyze-btn { width: 100%; padding: 18px; background: #556B2F; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-top: 20px; }
         .loading { display: none; text-align: center; padding: 40px; }
         .loading.active { display: block; }
@@ -39,8 +39,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏠 Lock Zone AI</h1>
-            <p>Floor Plan Analysis & Quote Generation</p>
+            <h1>Integratd</h1>
+            <p>AI floor plan analysis quote calculator</p>
         </div>
         <div class="content">
             <div id="alertBox" class="alert"></div>
@@ -59,9 +59,19 @@
                     <div class="automation-types">
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="lighting" id="lighting"><label for="lighting">💡 Lighting</label></div>
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="shading" id="shading"><label for="shading">🪟 Shading</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security" id="security"><label for="security">🔒 Security</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="music" id="music"><label for="music">🔊 Music</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security_access" id="security_access"><label for="security_access">🔐 Security &amp; Access</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate Control</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="hvac_energy" id="hvac_energy"><label for="hvac_energy">⚡ HVAC &amp; Energy</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio" id="multiroom_audio"><label for="multiroom_audio">🎶 Multiroom Audio</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="wellness_garden" id="wellness_garden"><label for="wellness_garden">🌿 Wellness &amp; Garden</label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Select Automation Tier</label>
+                    <div class="automation-tiers">
+                        <div class="radio-card selected"><input type="radio" name="automation_tier" value="basic" id="tier_basic" checked><label for="tier_basic">Basic</label></div>
+                        <div class="radio-card"><input type="radio" name="automation_tier" value="premium" id="tier_premium"><label for="tier_premium">Premium</label></div>
+                        <div class="radio-card"><input type="radio" name="automation_tier" value="deluxe" id="tier_deluxe"><label for="tier_deluxe">Deluxe</label></div>
                     </div>
                 </div>
                 <button type="submit" class="analyze-btn">Analyze & Generate Quote</button>
@@ -73,7 +83,10 @@
                     <h3>Project: <span id="resultProjectName"></span></h3>
                     <p><strong>Rooms:</strong> <span id="resultRooms"></span></p>
                     <p><strong>Points:</strong> <span id="resultPoints"></span></p>
-                    <p><strong>Cost:</strong> <span id="resultCost" style="color:#556B2F;font-size:1.3em;"></span></p>
+                    <p><strong>Tier:</strong> <span id="resultTier"></span></p>
+                    <p><strong>Base Cost:</strong> <span id="resultBaseCost"></span></p>
+                    <p><strong>Tier Adjustment:</strong> <span id="resultTierAdjustment"></span></p>
+                    <p><strong>Final Cost:</strong> <span id="resultCost" style="color:#556B2F;font-size:1.3em;"></span></p>
                     <a href="#" id="downloadAnnotated" class="download-btn">Download Floor Plan</a>
                     <a href="#" id="downloadQuote" class="download-btn">Download Quote</a>
                 </div>
@@ -86,10 +99,37 @@
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
         document.getElementById("uploadSection").onclick = () => document.getElementById("floorplan").click();
-        document.querySelectorAll(".checkbox-card").forEach(c => c.onclick = e => {
-            if(e.target.type !== "checkbox") c.querySelector("input").checked = !c.querySelector("input").checked;
-            c.classList.toggle("selected", c.querySelector("input").checked);
+        document.querySelectorAll(".checkbox-card").forEach(card => {
+            const input = card.querySelector('input[type="checkbox"]');
+            const syncState = () => card.classList.toggle("selected", input.checked);
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== input) {
+                    input.checked = !input.checked;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+
+            input.addEventListener('change', syncState);
+            syncState();
         });
+        const syncTierCards = () => {
+            document.querySelectorAll('.radio-card').forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                card.classList.toggle('selected', radio.checked);
+            });
+        };
+        document.querySelectorAll('.radio-card').forEach(card => {
+            const input = card.querySelector('input[type="radio"]');
+            card.addEventListener('click', (e) => {
+                if (e.target !== input) {
+                    input.checked = true;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+            input.addEventListener('change', syncTierCards);
+        });
+        syncTierCards();
         form.onsubmit = async (e) => {
             e.preventDefault();
             if(!document.querySelectorAll("input[name=\"automation_types[]\"]:checked").length) {
@@ -99,21 +139,55 @@
             }
             loading.classList.add("active");
             results.classList.remove("active");
+            alertBox.textContent = "";
+            alertBox.className = "alert";
             try {
                 const r = await fetch("/api/analyze", {method: "POST", body: new FormData(form)});
-                const d = await r.json();
+                const responseText = await r.text();
+                let d = null;
+                if (responseText) {
+                    try {
+                        d = JSON.parse(responseText);
+                    } catch(parseError) {
+                        console.error("Response was not valid JSON", parseError, responseText);
+                    }
+                }
+                if(!r.ok) {
+                    const message = (d && d.error) || responseText || `Request failed with status ${r.status}`;
+                    throw new Error(message);
+                }
+                if(!d) {
+                    throw new Error("Received empty response from the server.");
+                }
                 if(d.success) {
                     document.getElementById("resultProjectName").textContent = d.project_name;
                     document.getElementById("resultRooms").textContent = d.total_rooms;
                     document.getElementById("resultPoints").textContent = d.total_automation_points;
+                    document.getElementById("resultTier").textContent = d.automation_tier;
+                    document.getElementById("resultBaseCost").textContent = d.base_cost;
+                    document.getElementById("resultTierAdjustment").textContent = d.tier_adjustment;
                     document.getElementById("resultCost").textContent = d.total_cost;
-                    document.getElementById("downloadAnnotated").href = "/api/download/" + d.annotated_pdf;
-                    document.getElementById("downloadQuote").href = "/api/download/" + d.quote_pdf;
+                    const annotatedLink = document.getElementById("downloadAnnotated");
+                    const quoteLink = document.getElementById("downloadQuote");
+                    if (d.annotated_pdf) {
+                        annotatedLink.href = "/api/download/" + d.annotated_pdf;
+                        annotatedLink.style.display = "inline-block";
+                    } else {
+                        annotatedLink.removeAttribute('href');
+                        annotatedLink.style.display = "none";
+                    }
+                    if (d.quote_pdf) {
+                        quoteLink.href = "/api/download/" + d.quote_pdf;
+                        quoteLink.style.display = "inline-block";
+                    } else {
+                        quoteLink.removeAttribute('href');
+                        quoteLink.style.display = "none";
+                    }
                     results.classList.add("active");
                     alertBox.textContent = "Success!";
                     alertBox.className = "alert alert-success active";
                 } else {
-                    alertBox.textContent = d.error || "Failed";
+                    alertBox.textContent = (d && d.error) || "Failed";
                     alertBox.className = "alert alert-error active";
                 }
             } catch(e) {

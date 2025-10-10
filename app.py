@@ -3,6 +3,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
+import copy
 from datetime import datetime
 import cv2
 import numpy as np
@@ -15,7 +16,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from pdf2image import convert_from_path
 from PIL import Image, ImageDraw, ImageFont
-import tempfile
+
+try:
+    import fitz  # PyMuPDF
+except ImportError:  # pragma: no cover - optional dependency for render environments
+    fitz = None
 
 app = Flask(__name__)
 CORS(app)
@@ -34,27 +39,73 @@ DEFAULT_DATA = {
     "automation_types": {
         "lighting": {"name": "Lighting Control", "symbols": ["💡"], "base_cost_per_unit": 150.0, "labor_hours": 2.0},
         "shading": {"name": "Shading Control", "symbols": ["🪟"], "base_cost_per_unit": 300.0, "labor_hours": 3.0},
-        "security": {"name": "Security System", "symbols": ["🔒"], "base_cost_per_unit": 500.0, "labor_hours": 4.0},
+        "security_access": {"name": "Security & Access", "symbols": ["🔐"], "base_cost_per_unit": 500.0, "labor_hours": 4.5},
         "climate": {"name": "Climate Control", "symbols": ["🌡️"], "base_cost_per_unit": 400.0, "labor_hours": 5.0},
-        "music": {"name": "Audio System", "symbols": ["🔊"], "base_cost_per_unit": 350.0, "labor_hours": 3.5}
+        "hvac_energy": {"name": "HVAC & Energy", "symbols": ["⚡"], "base_cost_per_unit": 420.0, "labor_hours": 5.5},
+        "multiroom_audio": {"name": "Multiroom Audio", "symbols": ["🎶"], "base_cost_per_unit": 360.0, "labor_hours": 3.5},
+        "wellness_garden": {"name": "Wellness & Garden", "symbols": ["🌿"], "base_cost_per_unit": 280.0, "labor_hours": 3.0}
+    },
+    "automation_tiers": {
+        "basic": {"name": "Basic", "price_multiplier": 1.0},
+        "premium": {"name": "Premium", "price_multiplier": 1.2},
+        "deluxe": {"name": "Deluxe", "price_multiplier": 1.4}
     },
     "labor_rate": 75.0,
     "markup_percentage": 20.0,
     "company_info": {"name": "Lock Zone Automation", "address": "", "phone": "", "email": ""}
 }
 
+def _merge_with_defaults(custom_data):
+    if not isinstance(custom_data, dict):
+        return copy.deepcopy(DEFAULT_DATA)
+
+    base = copy.deepcopy(DEFAULT_DATA)
+
+    def merge_dict(default, override):
+        for key, value in override.items():
+            if isinstance(value, dict) and isinstance(default.get(key), dict):
+                default[key] = merge_dict(default.get(key, {}), value)
+            else:
+                default[key] = value
+        return default
+
+    merged = merge_dict(base, custom_data)
+
+    automation = merged.setdefault('automation_types', {})
+    if 'security' in automation and 'security_access' not in automation:
+        automation['security_access'] = automation.pop('security')
+        automation['security_access']['name'] = 'Security & Access'
+    if 'music' in automation and 'multiroom_audio' not in automation:
+        automation['multiroom_audio'] = automation.pop('music')
+        automation['multiroom_audio']['name'] = 'Multiroom Audio'
+
+    for key, value in DEFAULT_DATA['automation_types'].items():
+        automation.setdefault(key, copy.deepcopy(value))
+
+    tiers = merged.setdefault('automation_tiers', {})
+    for key, value in DEFAULT_DATA['automation_tiers'].items():
+        tiers.setdefault(key, copy.deepcopy(value))
+
+    return merged
+
+
 def load_data():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return DEFAULT_DATA.copy()
-    return DEFAULT_DATA.copy()
+                return _merge_with_defaults(json.load(f))
+        except Exception:
+            return copy.deepcopy(DEFAULT_DATA)
+    return copy.deepcopy(DEFAULT_DATA)
 
 def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
+
+
+def error_response(message, status_code=400):
+    return jsonify({'success': False, 'error': message}), status_code
+
 
 class FloorPlanAnalyzer:
     def __init__(self):
@@ -62,14 +113,55 @@ class FloorPlanAnalyzer:
     
     def analyze_pdf(self, pdf_path, automation_types):
         try:
-            images = convert_from_path(pdf_path, dpi=150)
+            reader = PdfReader(pdf_path)
+            total_pages = len(reader.pages)
             results = []
-            for page_num, img in enumerate(images):
+            use_pdf2image = True
+            pymupdf_doc = None
+
+            for page_number in range(1, total_pages + 1):
+                img = None
+
+                if use_pdf2image:
+                    try:
+                        images = convert_from_path(
+                            pdf_path,
+                            dpi=200,
+                            first_page=page_number,
+                            last_page=page_number,
+                            fmt="png",
+                            thread_count=1,
+                        )
+                        if images:
+                            img = images[0]
+                    except Exception as e:
+                        use_pdf2image = False
+                        print("pdf2image conversion failed (falling back to PyMuPDF if available): {}".format(e))
+
+                if img is None and fitz is not None:
+                    try:
+                        if pymupdf_doc is None:
+                            pymupdf_doc = fitz.open(pdf_path)
+                        page = pymupdf_doc.load_page(page_number - 1)
+                        matrix = fitz.Matrix(2, 2)
+                        pix = page.get_pixmap(matrix=matrix, alpha=False)
+                        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    except Exception as e:
+                        print(f"PyMuPDF conversion failed on page {page_number}: {e}")
+
+                if img is None:
+                    print(f"Skipping page {page_number}: unable to render image")
+                    continue
+
                 img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
                 analysis = self._analyze_image(img_cv, automation_types)
-                analysis['page_number'] = page_num + 1
+                analysis['page_number'] = page_number
                 analysis['image'] = img
                 results.append(analysis)
+
+            if pymupdf_doc is not None:
+                pymupdf_doc.close()
+
             return results
         except Exception as e:
             print(f"Error analyzing PDF: {e}")
@@ -77,23 +169,70 @@ class FloorPlanAnalyzer:
     
     def _analyze_image(self, image, automation_types):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150)
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        adaptive = cv2.adaptiveThreshold(
+            blurred,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            35,
+            5,
+        )
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        closed = cv2.morphologyEx(adaptive, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
         rooms = []
         for contour in contours:
             area = cv2.contourArea(contour)
-            if 1000 < area < 500000:
-                x, y, w, h = cv2.boundingRect(contour)
-                aspect_ratio = w / float(h) if h > 0 else 0
-                if 0.3 < aspect_ratio < 3.0:
-                    rooms.append({'x': int(x), 'y': int(y), 'width': int(w), 'height': int(h), 
-                                'area': float(area), 'center': (int(x + w/2), int(y + h/2))})
-        
+            if area < 1500:
+                continue
+
+            perimeter = cv2.arcLength(contour, True)
+            if perimeter == 0:
+                continue
+
+            approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+            if len(approx) < 4 or len(approx) > 12:
+                continue
+
+            x, y, w, h = cv2.boundingRect(approx)
+            if w < 40 or h < 40:
+                continue
+
+            aspect_ratio = w / float(h) if h > 0 else 0
+            if not (0.35 < aspect_ratio < 2.8):
+                continue
+
+            M = cv2.moments(approx)
+            if M["m00"] == 0:
+                continue
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+
+            rooms.append(
+                {
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h),
+                    'area': float(area),
+                    'center': (cx, cy),
+                }
+            )
+
         rooms.sort(key=lambda r: r['area'], reverse=True)
-        automation_points = self._generate_automation_points(rooms[:20], automation_types)
-        
-        return {'rooms': rooms[:20], 'room_count': len(rooms), 'automation_points': automation_points, 'image_shape': image.shape}
+        primary_rooms = rooms[:20]
+        automation_points = self._generate_automation_points(primary_rooms, automation_types)
+
+        return {
+            'rooms': primary_rooms,
+            'room_count': len(rooms),
+            'automation_points': automation_points,
+            'image_shape': image.shape,
+        }
     
     def _generate_automation_points(self, rooms, automation_types):
         points = []
@@ -148,11 +287,11 @@ def create_annotated_pdf(original_pdf_path, analysis_results, project_name):
         print(f"Error creating annotated PDF: {e}")
         return None
 
-def generate_quote_pdf(analysis_results, automation_types, project_name):
+def generate_quote_pdf(analysis_results, automation_types, project_name, automation_tier_key):
     data = load_data()
-    output_path = os.path.join(app.config['OUTPUT_FOLDER'], 
+    output_path = os.path.join(app.config['OUTPUT_FOLDER'],
                                f"{project_name}_quote_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-    
+
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
@@ -167,12 +306,21 @@ def generate_quote_pdf(analysis_results, automation_types, project_name):
     
     total_rooms = sum(r['room_count'] for r in analysis_results)
     total_points = sum(len(r['automation_points']) for r in analysis_results)
-    
+    default_tier = DEFAULT_DATA.get('automation_tiers', {}).get('basic', {"name": "Basic", "price_multiplier": 1.0})
+    tier_info = data.get('automation_tiers', {}).get(automation_tier_key, default_tier)
+    tier_name = tier_info.get('name', automation_tier_key.title())
+
+    system_names = []
+    for system_key in automation_types:
+        type_info = data['automation_types'].get(system_key, {})
+        system_names.append(type_info.get('name', system_key.replace('_', ' ').title()))
+
     summary_data = [
         ['Total Pages', str(len(analysis_results))],
         ['Detected Rooms', str(total_rooms)],
         ['Automation Points', str(total_points)],
-        ['Systems', ', '.join([t.title() for t in automation_types])]
+        ['Systems', ', '.join(system_names) if system_names else '—'],
+        ['Automation Tier', tier_name]
     ]
     
     summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
@@ -210,11 +358,15 @@ def generate_quote_pdf(analysis_results, automation_types, project_name):
     story.append(Spacer(1, 20))
     
     markup = total_cost * (data['markup_percentage'] / 100)
-    final_total = total_cost + markup
-    
+    base_total = total_cost + markup
+    tier_multiplier = tier_info.get('price_multiplier', 1.0)
+    tier_adjustment = base_total * (tier_multiplier - 1)
+    final_total = base_total + tier_adjustment
+
     totals_data = [
         ['Subtotal', f"${total_cost:,.2f}"],
         ['Markup ({:.0f}%)'.format(data['markup_percentage']), f"${markup:,.2f}"],
+        [f"Tier Adjustment ({tier_name})", f"${tier_adjustment:,.2f}"],
         ['TOTAL', f"${final_total:,.2f}"]
     ]
     
@@ -238,18 +390,26 @@ def index():
 def analyze_floor_plan():
     try:
         if 'floorplan' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
-        
+            return error_response('No file uploaded')
+
         file = request.files['floorplan']
         if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
+            return error_response('No file selected')
+
         project_name = request.form.get('project_name', 'Untitled')
         automation_types = request.form.getlist('automation_types[]')
-        
+        automation_tier = request.form.get('automation_tier', 'basic')
+
         if not automation_types:
-            return jsonify({'error': 'No automation types selected'}), 400
-        
+            return error_response('No automation types selected')
+
+        data = load_data()
+        default_tier = DEFAULT_DATA.get('automation_tiers', {}).get('basic', {"name": "Basic", "price_multiplier": 1.0})
+        tier_key = automation_tier if automation_tier in data.get('automation_tiers', {}) else 'basic'
+        tier_info = data.get('automation_tiers', {}).get(tier_key, default_tier)
+        tier_multiplier = tier_info.get('price_multiplier', 1.0)
+        tier_name = tier_info.get('name', tier_key.title())
+
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{timestamp}_{filename}")
@@ -257,17 +417,16 @@ def analyze_floor_plan():
         
         analyzer = FloorPlanAnalyzer()
         analysis_results = analyzer.analyze_pdf(upload_path, automation_types)
-        
+
         if not analysis_results:
-            return jsonify({'error': 'Could not analyze floor plan'}), 400
+            return error_response('Could not analyze floor plan. Please verify the PDF quality and try again.')
         
         annotated_pdf = create_annotated_pdf(upload_path, analysis_results, project_name)
-        quote_pdf = generate_quote_pdf(analysis_results, automation_types, project_name)
-        
+        quote_pdf = generate_quote_pdf(analysis_results, automation_types, project_name, tier_key)
+
         total_rooms = sum(r['room_count'] for r in analysis_results)
         total_points = sum(len(r['automation_points']) for r in analysis_results)
-        
-        data = load_data()
+
         total_cost = 0
         for auto_type in automation_types:
             type_data = data['automation_types'].get(auto_type, {})
@@ -275,22 +434,27 @@ def analyze_floor_plan():
             cost_per_unit = type_data.get('base_cost_per_unit', 100)
             labor_hours = type_data.get('labor_hours', 1) * units
             total_cost += (cost_per_unit * units) + (labor_hours * data['labor_rate'])
-        
+
         markup = total_cost * (data['markup_percentage'] / 100)
-        final_total = total_cost + markup
-        
+        base_total = total_cost + markup
+        tier_adjustment = base_total * (tier_multiplier - 1)
+        final_total = base_total + tier_adjustment
+
         return jsonify({
             'success': True,
             'project_name': project_name,
             'total_rooms': total_rooms,
             'total_automation_points': total_points,
             'total_cost': f"${final_total:,.2f}",
+            'base_cost': f"${base_total:,.2f}",
+            'tier_adjustment': f"${tier_adjustment:,.2f}",
+            'automation_tier': tier_name,
             'annotated_pdf': os.path.basename(annotated_pdf) if annotated_pdf else None,
             'quote_pdf': os.path.basename(quote_pdf) if quote_pdf else None
         })
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return error_response('An unexpected error occurred while generating the quote. Please try again.', 500)
 
 @app.route('/api/download/<filename>')
 def download_file(filename):
@@ -298,9 +462,9 @@ def download_file(filename):
         file_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
         if os.path.exists(file_path):
             return send_file(file_path, as_attachment=True)
-        return jsonify({'error': 'File not found'}), 404
+        return error_response('File not found', 404)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return error_response('Failed to download the requested file.', 500)
 
 @app.route('/health')
 def health():
