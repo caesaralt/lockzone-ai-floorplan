@@ -3,33 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lock Zone AI</title>
+    <title>Integratd</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: linear-gradient(135deg, #556B2F 0%, #3D4F1F 100%); color: white; padding: 40px; text-align: center; }
-        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; }
+        .header p { font-size: 0.9em; letter-spacing: 1.5px; text-transform: uppercase; }
         .content { padding: 40px; }
-        .upload-section { border: 2px dashed #556B2F; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 30px; }
+        .upload-section { border: 2px dashed #556B2F; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 30px; transition: background 0.2s ease; }
         .upload-section:hover { background: #f9f9f9; }
         input[type="file"] { display: none; }
         .form-group { margin-bottom: 25px; }
         label { display: block; font-weight: bold; color: #556B2F; margin-bottom: 10px; }
         input[type="text"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; }
-        .automation-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
-        .checkbox-card { background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; text-align: center; }
-        .checkbox-card:hover { border-color: #556B2F; }
-        .checkbox-card.selected { background: #556B2F; color: white; }
-        .analyze-btn { width: 100%; padding: 18px; background: #556B2F; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-top: 20px; }
+        .automation-types, .automation-tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .select-card { background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; text-align: center; transition: all 0.2s ease; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .select-card input { display: none; }
+        .select-card span { display: block; margin-top: 8px; font-weight: 600; }
+        .select-card:hover { border-color: #556B2F; }
+        .select-card.selected { background: #556B2F; color: white; border-color: #556B2F; }
+        .analyze-btn { width: 100%; padding: 18px; background: #556B2F; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-top: 20px; transition: transform 0.15s ease; }
+        .analyze-btn:hover { transform: translateY(-1px); }
         .loading { display: none; text-align: center; padding: 40px; }
         .loading.active { display: block; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #556B2F; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #556B2F; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .results { display: none; margin-top: 30px; padding: 30px; background: #f9f9f9; border-radius: 10px; }
         .results.active { display: block; }
-        .result-item { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
-        .download-btn { display: inline-block; padding: 12px 25px; background: #556B2F; color: white; text-decoration: none; border-radius: 8px; margin: 10px 10px 0 0; }
+        .result-item { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .downloads { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .download-btn { flex: 0 0 auto; padding: 12px 25px; background: #556B2F; color: white; text-decoration: none; border-radius: 8px; }
         .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
         .alert.active { display: block; }
         .alert-error { background: #f8d7da; color: #721c24; }
@@ -39,8 +44,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏠 Lock Zone AI</h1>
-            <p>Floor Plan Analysis & Quote Generation</p>
+            <h1>Integratd</h1>
+            <p>AI floor plan analysis quote calculator</p>
         </div>
         <div class="content">
             <div id="alertBox" class="alert"></div>
@@ -51,77 +56,211 @@
                     <input type="file" id="floorplan" name="floorplan" accept=".pdf" required>
                 </div>
                 <div class="form-group">
-                    <label>Project Name</label>
+                    <label for="project_name">Project Name</label>
                     <input type="text" id="project_name" name="project_name" placeholder="Enter project name" required>
                 </div>
                 <div class="form-group">
                     <label>Select Automation Types</label>
                     <div class="automation-types">
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="lighting"><span>💡 Lighting</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="shading"><span>🪟 Shading</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="security_access"><span>🔐 Security &amp; Access</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="climate"><span>🌡️ Climate Control</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="hvac_energy"><span>⚡ HVAC &amp; Energy</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio"><span>🎶 Multiroom Audio</span></label>
+                        <label class="select-card"><input type="checkbox" name="automation_types[]" value="wellness_garden"><span>🌿 Wellness &amp; Garden</span></label>
+
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="lighting" id="lighting"><label for="lighting">💡 Lighting</label></div>
                         <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="shading" id="shading"><label for="shading">🪟 Shading</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security" id="security"><label for="security">🔒 Security</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate</label></div>
-                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="music" id="music"><label for="music">🔊 Music</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="security_access" id="security_access"><label for="security_access">🔐 Security &amp; Access</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="climate" id="climate"><label for="climate">🌡️ Climate Control</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="hvac_energy" id="hvac_energy"><label for="hvac_energy">⚡ HVAC &amp; Energy</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="multiroom_audio" id="multiroom_audio"><label for="multiroom_audio">🎶 Multiroom Audio</label></div>
+                        <div class="checkbox-card"><input type="checkbox" name="automation_types[]" value="wellness_garden" id="wellness_garden"><label for="wellness_garden">🌿 Wellness &amp; Garden</label></div>
+ main
                     </div>
                 </div>
-                <button type="submit" class="analyze-btn">Analyze & Generate Quote</button>
+                <div class="form-group">
+                    <label>Select Automation Tier</label>
+                    <div class="automation-tiers">
+                        <label class="select-card selected"><input type="radio" name="automation_tier" value="basic" checked><span>Basic</span></label>
+                        <label class="select-card"><input type="radio" name="automation_tier" value="premium"><span>Premium</span></label>
+                        <label class="select-card"><input type="radio" name="automation_tier" value="deluxe"><span>Deluxe</span></label>
+                    </div>
+                </div>
+                <button type="submit" class="analyze-btn">Analyze &amp; Generate Quote</button>
             </form>
-            <div class="loading" id="loading"><div class="spinner"></div><h3>Analyzing...</h3></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <h3>Analyzing...</h3>
+            </div>
             <div class="results" id="results">
                 <h2>✅ Complete!</h2>
                 <div class="result-item">
                     <h3>Project: <span id="resultProjectName"></span></h3>
                     <p><strong>Rooms:</strong> <span id="resultRooms"></span></p>
                     <p><strong>Points:</strong> <span id="resultPoints"></span></p>
-                    <p><strong>Cost:</strong> <span id="resultCost" style="color:#556B2F;font-size:1.3em;"></span></p>
-                    <a href="#" id="downloadAnnotated" class="download-btn">Download Floor Plan</a>
-                    <a href="#" id="downloadQuote" class="download-btn">Download Quote</a>
+                    <p><strong>Recognized Text:</strong> <span id="resultText"></span></p>
+                    <p><strong>Detected Lines:</strong> <span id="resultLines"></span></p>
+                    <p><strong>Room Detection Confidence:</strong> <span id="resultRoomScore"></span></p>
+                    <p><strong>Tier:</strong> <span id="resultTier"></span></p>
+                    <p><strong>Base Cost:</strong> <span id="resultBaseCost"></span></p>
+                    <p><strong>Tier Adjustment:</strong> <span id="resultTierAdjustment"></span></p>
+                    <p><strong>Final Cost:</strong> <span id="resultCost" style="color:#556B2F;font-size:1.3em;"></span></p>
+                    <div class="downloads">
+                        <a href="#" id="downloadAnnotated" class="download-btn" style="display:none;">Download Floor Plan</a>
+                        <a href="#" id="downloadQuote" class="download-btn" style="display:none;">Download Quote</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <script>
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
+        const form = document.getElementById('analysisForm');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const alertBox = document.getElementById('alertBox');
+        const uploadSection = document.getElementById('uploadSection');
+        const floorplanInput = document.getElementById('floorplan');
+
+        uploadSection.addEventListener('click', () => floorplanInput.click());
+
+        const syncSelectCard = (card, input) => {
+            card.classList.toggle('selected', input.checked);
+        };
+
+        document.querySelectorAll('.automation-types .select-card').forEach(card => {
+            const input = card.querySelector('input[type="checkbox"]');
+            card.addEventListener('click', (event) => {
+                if (event.target !== input) {
+
         const form = document.getElementById("analysisForm");
         const loading = document.getElementById("loading");
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
         document.getElementById("uploadSection").onclick = () => document.getElementById("floorplan").click();
-        document.querySelectorAll(".checkbox-card").forEach(c => c.onclick = e => {
-            if(e.target.type !== "checkbox") c.querySelector("input").checked = !c.querySelector("input").checked;
-            c.classList.toggle("selected", c.querySelector("input").checked);
+        document.querySelectorAll(".checkbox-card").forEach(card => {
+            const input = card.querySelector('input[type="checkbox"]');
+            const syncState = () => card.classList.toggle("selected", input.checked);
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== input) {
+ main
+                    input.checked = !input.checked;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+ codex/improve-floor-plan-analysis-accuracy-yrju1a
+            input.addEventListener('change', () => syncSelectCard(card, input));
+            syncSelectCard(card, input);
         });
-        form.onsubmit = async (e) => {
-            e.preventDefault();
-            if(!document.querySelectorAll("input[name=\"automation_types[]\"]:checked").length) {
-                alertBox.textContent = "Select at least one type";
-                alertBox.className = "alert alert-error active";
+
+        const syncTierCards = () => {
+            document.querySelectorAll('.automation-tiers .select-card').forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                card.classList.toggle('selected', radio.checked);
+            });
+        };
+
+        document.querySelectorAll('.automation-tiers .select-card').forEach(card => {
+            const input = card.querySelector('input[type="radio"]');
+            card.addEventListener('click', (event) => {
+                if (event.target !== input) {
+                    input.checked = true;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+            input.addEventListener('change', syncTierCards);
+
+
+            input.addEventListener('change', syncState);
+            syncState();
+ main
+        });
+        syncTierCards();
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!document.querySelectorAll('input[name="automation_types[]"]:checked').length) {
+                alertBox.textContent = 'Select at least one automation type before submitting.';
+                alertBox.className = 'alert alert-error active';
                 return;
             }
-            loading.classList.add("active");
-            results.classList.remove("active");
+
+            alertBox.textContent = '';
+            alertBox.className = 'alert';
+            loading.classList.add('active');
+            results.classList.remove('active');
+
             try {
-                const r = await fetch("/api/analyze", {method: "POST", body: new FormData(form)});
-                const d = await r.json();
-                if(d.success) {
-                    document.getElementById("resultProjectName").textContent = d.project_name;
-                    document.getElementById("resultRooms").textContent = d.total_rooms;
-                    document.getElementById("resultPoints").textContent = d.total_automation_points;
-                    document.getElementById("resultCost").textContent = d.total_cost;
-                    document.getElementById("downloadAnnotated").href = "/api/download/" + d.annotated_pdf;
-                    document.getElementById("downloadQuote").href = "/api/download/" + d.quote_pdf;
-                    results.classList.add("active");
-                    alertBox.textContent = "Success!";
-                    alertBox.className = "alert alert-success active";
-                } else {
-                    alertBox.textContent = d.error || "Failed";
-                    alertBox.className = "alert alert-error active";
+                const response = await fetch('/api/analyze', { method: 'POST', body: new FormData(form) });
+                const text = await response.text();
+
+                let data = null;
+                if (text) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        console.error('Response was not valid JSON', parseError, text);
+                    }
                 }
-            } catch(e) {
-                alertBox.textContent = "Error: " + e.message;
-                alertBox.className = "alert alert-error active";
+
+                if (!response.ok) {
+                    const message = (data && data.error) || text || `Request failed with status ${response.status}`;
+                    throw new Error(message);
+                }
+
+                if (!data) {
+                    throw new Error('Received empty response from the server.');
+                }
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to analyze the floor plan.');
+                }
+
+                document.getElementById('resultProjectName').textContent = data.project_name;
+                document.getElementById('resultRooms').textContent = data.total_rooms;
+                document.getElementById('resultPoints').textContent = data.total_automation_points;
+                document.getElementById('resultText').textContent = data.recognized_text_entries;
+                document.getElementById('resultLines').textContent = data.detected_structural_lines;
+                document.getElementById('resultRoomScore').textContent = data.room_detection_score?.toFixed?.(2) ?? data.room_detection_score ?? '0.00';
+                document.getElementById('resultTier').textContent = data.automation_tier;
+                document.getElementById('resultBaseCost').textContent = data.base_cost;
+                document.getElementById('resultTierAdjustment').textContent = data.tier_adjustment;
+                document.getElementById('resultCost').textContent = data.total_cost;
+
+                const annotatedLink = document.getElementById('downloadAnnotated');
+                const quoteLink = document.getElementById('downloadQuote');
+
+                if (data.annotated_pdf) {
+                    annotatedLink.href = `/api/download/${data.annotated_pdf}`;
+                    annotatedLink.style.display = 'inline-block';
+                } else {
+                    annotatedLink.removeAttribute('href');
+                    annotatedLink.style.display = 'none';
+                }
+
+                if (data.quote_pdf) {
+                    quoteLink.href = `/api/download/${data.quote_pdf}`;
+                    quoteLink.style.display = 'inline-block';
+                } else {
+                    quoteLink.removeAttribute('href');
+                    quoteLink.style.display = 'none';
+                }
+
+                alertBox.textContent = 'Success!';
+                alertBox.className = 'alert alert-success active';
+                results.classList.add('active');
+            } catch (error) {
+                alertBox.textContent = `Error: ${error.message}`;
+                alertBox.className = 'alert alert-error active';
+            } finally {
+                loading.classList.remove('active');
             }
-            loading.classList.remove("active");
-        };
+        });
     </script>
 </body>
 </html>
