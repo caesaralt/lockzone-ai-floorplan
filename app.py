@@ -31,7 +31,6 @@ for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'],
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 TRAINING_FILE = os.path.join(app.config['DATA_FOLDER'], 'training_data.json')
 
- codex/improve-floor-plan-analysis-accuracy-yrju1a
 DEFAULT_AUTOMATION_TYPES: Dict[str, Dict[str, object]] = {
     "lighting": {"name": "Lighting Control", "symbols": ["💡"], "base_cost_per_unit": 150.0, "labor_hours": 2.0},
     "shading": {"name": "Shading Control", "symbols": ["🪟"], "base_cost_per_unit": 300.0, "labor_hours": 3.0},
@@ -120,7 +119,6 @@ main
     }
 }
 
- codex/improve-floor-plan-analysis-accuracy-yrju1a
 LEGACY_TYPE_KEYS = {
     "security": "security_access",
     "music": "multiroom_audio",
@@ -190,7 +188,6 @@ def _merge_with_defaults(custom_data):
     return merged
 
 
- codex/improve-floor-plan-analysis-accuracy-yrju1a
 def load_data() -> Dict[str, object]:
     if os.path.exists(DATA_FILE):
         try:
