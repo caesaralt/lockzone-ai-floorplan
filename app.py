@@ -483,3 +483,61 @@ def health():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
+@app.route('/api/update-pricing', methods=['POST'])
+def update_pricing():
+    """Update pricing configuration"""
+    try:
+        new_data = request.json
+        current_data = load_data()
+        
+        # Update labor rate and markup
+        if 'labor_rate' in new_data:
+            current_data['labor_rate'] = new_data['labor_rate']
+        if 'markup_percentage' in new_data:
+            current_data['markup_percentage'] = new_data['markup_percentage']
+        
+        # Update automation type pricing
+        if 'automation_types' in new_data:
+            for auto_type, config in new_data['automation_types'].items():
+                if auto_type in current_data['automation_types']:
+                    if 'base_cost_per_unit' in config:
+                        current_data['automation_types'][auto_type]['base_cost_per_unit'].update(
+                            config['base_cost_per_unit']
+                        )
+        
+        save_data(current_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pricing updated successfully'
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/process-instructions', methods=['POST'])
+def process_instructions():
+    """Save natural language instructions for future AI improvements"""
+    try:
+        instructions = request.json.get('instructions', '')
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        instructions_file = os.path.join(app.config['LEARNING_FOLDER'], f'instructions_{timestamp}.json')
+        
+        data = {
+            'timestamp': timestamp,
+            'instructions': instructions,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        with open(instructions_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Instructions saved for future AI training'
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
