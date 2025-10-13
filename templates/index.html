@@ -11,15 +11,25 @@
         .header { background: linear-gradient(135deg, #556B2F 0%, #3D4F1F 100%); color: white; padding: 40px; text-align: center; }
         .header h1 { font-size: 2.5em; margin-bottom: 10px; }
         .header p { font-size: 1.2em; opacity: 0.9; }
-        .content { padding: 40px; }
+        
+        /* Tab Navigation */
+        .tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #ddd; }
+        .tab { flex: 1; padding: 20px; text-align: center; cursor: pointer; font-weight: 600; color: #666; transition: all 0.3s; border-bottom: 3px solid transparent; }
+        .tab:hover { background: #e9ecef; }
+        .tab.active { color: #556B2F; border-bottom-color: #556B2F; background: white; }
+        
+        .tab-content { display: none; padding: 40px; }
+        .tab-content.active { display: block; }
+        
         .upload-section { background: #f8f9fa; border-radius: 15px; padding: 40px; margin-bottom: 30px; border: 2px dashed #556B2F; cursor: pointer; transition: all 0.3s; text-align: center; }
         .upload-section:hover { background: #e9ecef; transform: translateY(-2px); }
         .upload-icon { font-size: 4em; margin-bottom: 20px; }
         input[type="file"] { display: none; }
         .form-group { margin-bottom: 25px; }
         label { display: block; font-weight: 600; color: #556B2F; margin-bottom: 10px; font-size: 1.1em; }
-        input[type="text"] { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 1em; transition: border 0.3s; }
-        input[type="text"]:focus { outline: none; border-color: #556B2F; }
+        input[type="text"], input[type="number"], textarea { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 1em; transition: border 0.3s; font-family: inherit; }
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: #556B2F; }
+        textarea { min-height: 120px; resize: vertical; }
         .tier-selection { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .tier-card { background: #f8f9fa; border: 2px solid #ddd; border-radius: 12px; padding: 20px; cursor: pointer; text-align: center; transition: all 0.3s; }
         .tier-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -30,9 +40,9 @@
         .checkbox-card.selected { background: #556B2F; color: white; border-color: #556B2F; }
         .checkbox-card .symbol { font-size: 2.5em; margin-bottom: 10px; }
         .checkbox-card .name { font-weight: 600; }
-        .analyze-btn { width: 100%; padding: 20px; background: linear-gradient(135deg, #556B2F 0%, #3D4F1F 100%); color: white; border: none; border-radius: 12px; font-size: 1.2em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(85, 107, 47, 0.3); }
-        .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-primary { width: 100%; padding: 20px; background: linear-gradient(135deg, #556B2F 0%, #3D4F1F 100%); color: white; border: none; border-radius: 12px; font-size: 1.2em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(85, 107, 47, 0.3); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .loading { display: none; text-align: center; padding: 40px; }
         .loading.active { display: block; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #556B2F; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
@@ -47,18 +57,41 @@
         .download-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px; }
         .download-btn { padding: 15px 25px; background: #556B2F; color: white; text-decoration: none; border-radius: 10px; text-align: center; font-weight: 600; transition: all 0.3s; display: block; }
         .download-btn:hover { background: #3D4F1F; transform: translateY(-2px); }
-        .error { display: none; padding: 20px; background: #fee; border: 1px solid #fcc; border-radius: 10px; color: #c33; margin-top: 20px; }
-        .error.active { display: block; }
+        .alert { padding: 20px; border-radius: 10px; margin: 20px 0; display: none; }
+        .alert.active { display: block; }
+        .alert-error { background: #fee; border: 1px solid #fcc; color: #c33; }
+        .alert-success { background: #efe; border: 1px solid #cfc; color: #363; }
+        .alert-info { background: #e7f3ff; border: 1px solid #b3d9ff; color: #004085; }
+        
+        .file-list { margin-top: 20px; }
+        .file-item { padding: 15px; margin: 10px 0; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .file-item .remove-btn { background: #c33; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
+        .file-item .remove-btn:hover { background: #a22; }
+        
+        .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box h3 { color: #2196F3; margin-bottom: 10px; }
+        .info-box ul { margin-left: 20px; line-height: 1.8; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        
+        .section-title { color: #556B2F; font-size: 1.5em; margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #556B2F; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🏠 Integratd living</h1>
-            <p>Automated Quoting Tool</p>
+            <p>AI-Powered Quoting & Learning System</p>
         </div>
 
-        <div class="content">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('quote')">📊 Generate Quote</div>
+            <div class="tab" onclick="switchTab('train')">🎓 Train & Configure AI</div>
+        </div>
+
+        <!-- QUOTE TAB -->
+        <div id="quote-tab" class="tab-content active">
             <div class="upload-section" onclick="document.getElementById('floorplan').click()">
                 <div class="upload-icon">📄</div>
                 <h2>Upload Floor Plan PDF</h2>
@@ -116,18 +149,15 @@
                 </div>
             </div>
 
-            <button class="analyze-btn" onclick="analyzeFloorplan()">
-                🚀 Analyze & Generate Quote
-            </button>
+            <button class="btn-primary" onclick="analyzeFloorplan()">🚀 Analyze & Generate Quote</button>
 
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <h3>Analyzing floor plan...</h3>
-                <p>This may take a moment</p>
+                <p>Reading text, detecting rooms, calculating costs...</p>
             </div>
 
-            <div class="error" id="error"></div>
-
+            <div class="alert alert-error" id="error"></div>
             <div class="results" id="results">
                 <h2>✅ Analysis Complete!</h2>
                 <div class="result-grid">
@@ -154,12 +184,108 @@
                 </div>
             </div>
         </div>
+
+        <!-- TRAIN & CONFIGURE TAB -->
+        <div id="train-tab" class="tab-content">
+            
+            <h2 class="section-title">📤 Upload Training Data</h2>
+            <div class="info-box">
+                <h3>🎯 Help AI Learn from Real Projects</h3>
+                <p>Upload floor plans, images, and add notes to continuously improve detection accuracy.</p>
+            </div>
+
+            <div class="upload-section" onclick="document.getElementById('learning-files').click()">
+                <div class="upload-icon">📚</div>
+                <h2>Upload Floor Plans & Images</h2>
+                <p>Select multiple PDFs and images</p>
+                <input type="file" id="learning-files" accept=".pdf,.png,.jpg,.jpeg" multiple onchange="handleLearningFiles(this)">
+            </div>
+
+            <div id="file-list" class="file-list" style="display: none;">
+                <h3 style="color: #556B2F; margin-bottom: 15px;">Selected Files:</h3>
+                <div id="file-items"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="learning-notes">Training Notes & Context</label>
+                <textarea id="learning-notes" placeholder="Example: 'These are 3-bedroom residential plans with open kitchens. Each bedroom has 2 windows. Total area ~150sqm.'"></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="uploadLearningData()">📤 Upload Training Data</button>
+
+            <div class="loading" id="learning-loading">
+                <div class="spinner"></div>
+                <h3>Uploading training data...</h3>
+            </div>
+
+            <div class="alert alert-error" id="learning-error"></div>
+            <div class="alert alert-success" id="learning-success"></div>
+
+            <h2 class="section-title">💰 Update Pricing & Configuration</h2>
+            
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="labor-rate">Labor Rate ($/hour)</label>
+                    <input type="number" id="labor-rate" value="75" step="5">
+                </div>
+                <div class="form-group">
+                    <label for="markup">Markup Percentage (%)</label>
+                    <input type="number" id="markup" value="20" step="5">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Lighting Control Prices</label>
+                <div class="grid-2">
+                    <input type="number" id="lighting-basic" placeholder="Basic $" value="150">
+                    <input type="number" id="lighting-premium" placeholder="Premium $" value="250">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Shading Control Prices</label>
+                <div class="grid-2">
+                    <input type="number" id="shading-basic" placeholder="Basic $" value="300">
+                    <input type="number" id="shading-premium" placeholder="Premium $" value="500">
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="updatePricing()">💾 Save Pricing</button>
+
+            <div class="alert alert-success" id="pricing-success"></div>
+            <div class="alert alert-error" id="pricing-error"></div>
+
+            <h2 class="section-title">💬 Natural Language Instructions</h2>
+            <div class="info-box">
+                <h3>🤖 Tell AI How to Improve</h3>
+                <p>Give instructions in plain English to adjust detection rules, pricing logic, or quote formatting.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="nl-instructions">Your Instructions</label>
+                <textarea id="nl-instructions" placeholder="Example: 'When you see "BR" in floor plan text, that means bedroom. Count those as rooms. Also, increase lighting prices by 10% for commercial projects.'"></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="submitInstructions()">🎯 Apply Instructions</button>
+
+            <div class="alert alert-success" id="instructions-success"></div>
+            <div class="alert alert-error" id="instructions-error"></div>
+
+        </div>
     </div>
 
     <script>
         let selectedFile = null;
         let selectedTier = 'basic';
         let selectedAutomation = new Set();
+        let learningFiles = [];
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
 
         function handleFileSelect(input) {
             selectedFile = input.files[0];
@@ -185,12 +311,11 @@
 
         async function analyzeFloorplan() {
             if (!selectedFile) {
-                showError('Please upload a floor plan PDF first');
+                showAlert('error', 'Please upload a floor plan PDF first');
                 return;
             }
-
             if (selectedAutomation.size === 0) {
-                showError('Please select at least one automation type');
+                showAlert('error', 'Please select at least one automation type');
                 return;
             }
 
@@ -202,15 +327,13 @@
 
             document.getElementById('loading').classList.add('active');
             document.getElementById('results').classList.remove('active');
-            document.getElementById('error').classList.remove('active');
-            document.querySelector('.analyze-btn').disabled = true;
+            hideAlert('error');
 
             try {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     body: formData
                 });
-
                 const data = await response.json();
 
                 if (data.success) {
@@ -218,26 +341,161 @@
                     document.getElementById('doors').textContent = data.analysis.doors_detected;
                     document.getElementById('windows').textContent = data.analysis.windows_detected;
                     document.getElementById('total').textContent = `$${data.costs.grand_total.toFixed(2)}`;
-                    
                     document.getElementById('download-annotated').href = data.files.annotated_pdf;
                     document.getElementById('download-quote').href = data.files.quote_pdf;
-
                     document.getElementById('results').classList.add('active');
                 } else {
-                    showError(data.error || 'Analysis failed');
+                    showAlert('error', data.error || 'Analysis failed');
                 }
             } catch (error) {
-                showError('Network error: ' + error.message);
+                showAlert('error', 'Error: ' + error.message);
             } finally {
                 document.getElementById('loading').classList.remove('active');
-                document.querySelector('.analyze-btn').disabled = false;
             }
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.classList.add('active');
+        function handleLearningFiles(input) {
+            learningFiles = Array.from(input.files);
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('file-list');
+            const fileItems = document.getElementById('file-items');
+            
+            if (learningFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            fileItems.innerHTML = '';
+
+            learningFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span>📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
+                    <button class="remove-btn" onclick="removeFile(${index})">Remove</button>
+                `;
+                fileItems.appendChild(item);
+            });
+        }
+
+        function removeFile(index) {
+            learningFiles.splice(index, 1);
+            displayFileList();
+        }
+
+        async function uploadLearningData() {
+            if (learningFiles.length === 0) {
+                showAlert('learning-error', 'Please select at least one file');
+                return;
+            }
+
+            const formData = new FormData();
+            learningFiles.forEach(file => formData.append('files[]', file));
+            formData.append('notes', document.getElementById('learning-notes').value);
+
+            document.getElementById('learning-loading').classList.add('active');
+            hideAlert('learning-error');
+            hideAlert('learning-success');
+
+            try {
+                const response = await fetch('/api/upload-learning-data', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('learning-success', `✅ Successfully uploaded ${learningFiles.length} files! Batch ID: ${data.batch_id}`);
+                    learningFiles = [];
+                    document.getElementById('learning-files').value = '';
+                    document.getElementById('learning-notes').value = '';
+                    displayFileList();
+                } else {
+                    showAlert('learning-error', data.error);
+                }
+            } catch (error) {
+                showAlert('learning-error', 'Error: ' + error.message);
+            } finally {
+                document.getElementById('learning-loading').classList.remove('active');
+            }
+        }
+
+        async function updatePricing() {
+            const data = {
+                labor_rate: parseFloat(document.getElementById('labor-rate').value),
+                markup_percentage: parseFloat(document.getElementById('markup').value),
+                automation_types: {
+                    lighting: {
+                        base_cost_per_unit: {
+                            basic: parseFloat(document.getElementById('lighting-basic').value),
+                            premium: parseFloat(document.getElementById('lighting-premium').value)
+                        }
+                    },
+                    shading: {
+                        base_cost_per_unit: {
+                            basic: parseFloat(document.getElementById('shading-basic').value),
+                            premium: parseFloat(document.getElementById('shading-premium').value)
+                        }
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch('/api/update-pricing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('pricing-success', '✅ Pricing updated successfully!');
+                } else {
+                    showAlert('pricing-error', result.error);
+                }
+            } catch (error) {
+                showAlert('pricing-error', 'Error: ' + error.message);
+            }
+        }
+
+        async function submitInstructions() {
+            const instructions = document.getElementById('nl-instructions').value.trim();
+            if (!instructions) {
+                showAlert('instructions-error', 'Please enter some instructions');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/process-instructions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({instructions})
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('instructions-success', '✅ Instructions saved! AI will apply these rules going forward.');
+                    document.getElementById('nl-instructions').value = '';
+                } else {
+                    showAlert('instructions-error', result.error);
+                }
+            } catch (error) {
+                showAlert('instructions-error', 'Error: ' + error.message);
+            }
+        }
+
+        function showAlert(id, message) {
+            const alert = document.getElementById(id);
+            alert.textContent = message;
+            alert.classList.add('active');
+        }
+
+        function hideAlert(id) {
+            document.getElementById(id).classList.remove('active');
         }
     </script>
 </body>
