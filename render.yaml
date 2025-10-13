@@ -3,5 +3,5 @@ services:
     name: lockzone-ai-floorplan
     env: python
     region: oregon
-    buildCommand: apt-get update && apt-get install -y poppler-utils libgl1-mesa-glx libglib2.0-0 && pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120

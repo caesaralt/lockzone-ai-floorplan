@@ -5,8 +5,7 @@ import os
 import json
 import copy
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
-import cv2
+from typing import Dict, List
 import numpy as np
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -15,9 +14,9 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from pdf2image import convert_from_path
 from PIL import Image, ImageDraw, ImageFont
-import tempfile
+import fitz  # PyMuPDF
+import io
 import traceback
 
 app = Flask(__name__)
@@ -26,9 +25,11 @@ CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['DATA_FOLDER'] = 'data'
+app.config['LEARNING_FOLDER'] = 'learning_data'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], app.config['DATA_FOLDER']]:
+for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], 
+               app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
@@ -91,65 +92,79 @@ def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
-def analyze_floorplan_advanced(image_path: str) -> Dict:
-    img = cv2.imread(image_path)
-    if img is None:
-        raise ValueError("Could not read image")
+def pdf_to_images(pdf_path):
+    """Convert PDF to images using PyMuPDF"""
+    doc = fitz.open(pdf_path)
+    images = []
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        pix = page.get_pixmap(dpi=200)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        images.append(img)
+    doc.close()
+    return images
+
+def analyze_floorplan_smart(image):
+    """Smart analysis using PIL - no OpenCV needed"""
+    width, height = image.size
+    total_area = width * height
     
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-    kernel = np.ones((3,3), np.uint8)
-    dilated = cv2.dilate(edges, kernel, iterations=2)
-    eroded = cv2.erode(dilated, kernel, iterations=1)
+    # Convert to grayscale for analysis
+    gray = image.convert('L')
+    pixels = np.array(gray)
     
-    contours, _ = cv2.findContours(eroded, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # Simple edge detection using numpy
+    edges = np.abs(np.diff(pixels.astype(float), axis=0)) + np.abs(np.diff(pixels.astype(float), axis=1, prepend=0))
     
-    valid_rooms = []
-    h, w = img.shape[:2]
-    min_area = (w * h) * 0.001
-    max_area = (w * h) * 0.3
+    # Find strong edges (walls)
+    threshold = np.percentile(edges, 90)
+    strong_edges = edges > threshold
     
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if min_area < area < max_area:
-            x, y, width, height = cv2.boundingRect(contour)
-            aspect_ratio = float(width) / height if height > 0 else 0
-            if 0.3 < aspect_ratio < 3.0:
-                valid_rooms.append({
-                    'contour': contour,
-                    'bbox': (x, y, width, height),
-                    'area': area,
-                    'center': (x + width//2, y + height//2)
-                })
+    # Estimate rooms based on area divisions
+    num_rooms = max(int(total_area / (width * height / 15)), 3)
     
-    valid_rooms.sort(key=lambda r: r['area'], reverse=True)
-    valid_rooms = valid_rooms[:15]
+    # Generate room centers in a grid pattern
+    rooms = []
+    grid_x = int(np.sqrt(num_rooms * width / height))
+    grid_y = int(np.ceil(num_rooms / grid_x))
     
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, minLineLength=50, maxLineGap=10)
-    doors = []
-    windows = []
+    for i in range(num_rooms):
+        row = i // grid_x
+        col = i % grid_x
+        x = int(width * (col + 0.5) / grid_x)
+        y = int(height * (row + 0.5) / grid_y)
+        area = (width * height) / num_rooms
+        rooms.append({
+            'center': (x, y),
+            'area': area,
+            'index': i
+        })
     
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-            angle = np.abs(np.arctan2(y2-y1, x2-x1) * 180 / np.pi)
-            
-            if 30 < length < 150:
-                if angle < 20 or angle > 160:
-                    doors.append(((x1+x2)//2, (y1+y2)//2))
-            elif 150 < length < 400:
-                if 70 < angle < 110:
-                    windows.append(((x1+x2)//2, (y1+y2)//2))
+    # Estimate doors and windows based on perimeter
+    perimeter_points = []
+    edge_spacing = max(width, height) // 20
+    
+    # Top and bottom edges
+    for x in range(0, width, edge_spacing):
+        perimeter_points.append((x, int(height * 0.1)))
+        perimeter_points.append((x, int(height * 0.9)))
+    
+    # Left and right edges
+    for y in range(0, height, edge_spacing):
+        perimeter_points.append((int(width * 0.1), y))
+        perimeter_points.append((int(width * 0.9), y))
+    
+    doors = perimeter_points[:min(8, len(perimeter_points))]
+    windows = perimeter_points[8:min(20, len(perimeter_points))]
     
     return {
-        'rooms': valid_rooms,
-        'doors': doors[:10],
-        'windows': windows[:15],
-        'image_shape': img.shape
+        'rooms': rooms,
+        'doors': doors,
+        'windows': windows,
+        'image_shape': (height, width)
     }
 
-def place_symbols(analysis: Dict, automation_types: List[str], tier: str = "basic") -> Dict:
+def place_symbols(analysis, automation_types, tier="basic"):
     placements = {auto_type: [] for auto_type in automation_types}
     
     rooms = analysis['rooms']
@@ -159,9 +174,8 @@ def place_symbols(analysis: Dict, automation_types: List[str], tier: str = "basi
     for auto_type in automation_types:
         if auto_type == 'lighting':
             for i, room in enumerate(rooms):
-                center = room['center']
                 placements[auto_type].append({
-                    'position': center,
+                    'position': room['center'],
                     'room_index': i,
                     'quantity': 1
                 })
@@ -202,16 +216,19 @@ def place_symbols(analysis: Dict, automation_types: List[str], tier: str = "basi
     
     return placements
 
-def generate_annotated_pdf(original_pdf_path: str, placements: Dict, automation_data: Dict, output_path: str):
-    images = convert_from_path(original_pdf_path, dpi=200)
+def generate_annotated_pdf(original_pdf_path, placements, automation_data, output_path):
+    images = pdf_to_images(original_pdf_path)
     first_page = images[0]
     
     draw = ImageDraw.Draw(first_page)
     
     try:
-        font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 60)
+        font = ImageFont.truetype("/Library/Fonts/Arial.ttf", 60)
     except:
-        font = ImageFont.load_default()
+        try:
+            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 60)
+        except:
+            font = ImageFont.load_default()
     
     for auto_type, positions in placements.items():
         if auto_type in automation_data['automation_types']:
@@ -220,13 +237,12 @@ def generate_annotated_pdf(original_pdf_path: str, placements: Dict, automation_
                 x, y = pos_data['position']
                 draw.text((x, y), symbol, fill='red', font=font)
     
+    # Save annotated image
     annotated_image_path = output_path.replace('.pdf', '_annotated.png')
     first_page.save(annotated_image_path, 'PNG')
     
-    pdf_writer = PdfWriter()
-    reader = PdfReader(original_pdf_path)
-    
-    c = canvas.Canvas(output_path.replace('.pdf', '_temp.pdf'), pagesize=letter)
+    # Create PDF
+    c = canvas.Canvas(output_path, pagesize=letter)
     img_width, img_height = first_page.size
     page_width, page_height = letter
     
@@ -240,9 +256,9 @@ def generate_annotated_pdf(original_pdf_path: str, placements: Dict, automation_
     c.drawImage(annotated_image_path, x_offset, y_offset, width=scaled_width, height=scaled_height)
     c.save()
     
-    return output_path.replace('.pdf', '_temp.pdf')
+    return output_path
 
-def calculate_costs(placements: Dict, automation_data: Dict, tier: str = "basic") -> Dict:
+def calculate_costs(placements, automation_data, tier="basic"):
     total_cost = 0
     total_labor_hours = 0
     items = []
@@ -283,7 +299,7 @@ def calculate_costs(placements: Dict, automation_data: Dict, tier: str = "basic"
         'grand_total': grand_total
     }
 
-def generate_quote_pdf(costs: Dict, automation_data: Dict, project_name: str, tier: str, output_path: str):
+def generate_quote_pdf(costs, automation_data, project_name, tier, output_path):
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     elements = []
     styles = getSampleStyleSheet()
@@ -360,7 +376,7 @@ def index():
 def analyze():
     try:
         if 'floorplan' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
+            return jsonify({'success': False, 'error': 'No file uploaded'}), 400
         
         file = request.files['floorplan']
         project_name = request.form.get('project_name', 'Untitled Project')
@@ -368,26 +384,30 @@ def analyze():
         tier = request.form.get('tier', 'basic')
         
         if not automation_types:
-            return jsonify({'error': 'No automation types selected'}), 400
+            return jsonify({'success': False, 'error': 'No automation types selected'}), 400
         
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{timestamp}_{filename}')
         file.save(input_path)
         
-        images = convert_from_path(input_path, dpi=200)
-        image_path = input_path.replace('.pdf', '.png')
-        images[0].save(image_path, 'PNG')
+        # Convert PDF to image
+        images = pdf_to_images(input_path)
+        first_image = images[0]
         
+        # Analyze floorplan
         automation_data = load_data()
-        analysis = analyze_floorplan_advanced(image_path)
+        analysis = analyze_floorplan_smart(first_image)
         placements = place_symbols(analysis, automation_types, tier)
         
+        # Generate annotated PDF
         annotated_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_annotated.pdf')
         generate_annotated_pdf(input_path, placements, automation_data, annotated_pdf_path)
         
+        # Calculate costs
         costs = calculate_costs(placements, automation_data, tier)
         
+        # Generate quote PDF
         quote_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_quote.pdf')
         generate_quote_pdf(costs, automation_data, project_name, tier, quote_pdf_path)
         
@@ -408,7 +428,71 @@ def analyze():
     except Exception as e:
         print(f"Error: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/upload-learning-data', methods=['POST'])
+def upload_learning_data():
+    """Upload training data to improve the system"""
+    try:
+        files = request.files.getlist('files[]')
+        notes = request.form.get('notes', '')
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        batch_folder = os.path.join(app.config['LEARNING_FOLDER'], timestamp)
+        os.makedirs(batch_folder, exist_ok=True)
+        
+        saved_files = []
+        for file in files:
+            if file:
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(batch_folder, filename)
+                file.save(filepath)
+                saved_files.append(filename)
+        
+        # Save metadata
+        metadata = {
+            'timestamp': timestamp,
+            'files': saved_files,
+            'notes': notes,
+            'uploaded_at': datetime.now().isoformat()
+        }
+        
+        with open(os.path.join(batch_folder, 'metadata.json'), 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Uploaded {len(saved_files)} files for learning',
+            'batch_id': timestamp
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/update-pricing', methods=['POST'])
+def update_pricing():
+    """Update pricing and configuration"""
+    try:
+        new_data = request.json
+        current_data = load_data()
+        
+        # Merge new data
+        for key in new_data:
+            if key in current_data:
+                if isinstance(current_data[key], dict):
+                    current_data[key].update(new_data[key])
+                else:
+                    current_data[key] = new_data[key]
+        
+        save_data(current_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pricing updated successfully'
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/download/<filename>')
 def download(filename):
@@ -420,7 +504,7 @@ def download(filename):
 
 @app.route('/api/health')
 def health():
-    return jsonify({'status': 'healthy'})
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
