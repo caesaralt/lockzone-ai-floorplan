@@ -15,7 +15,6 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from PIL import Image, ImageDraw, ImageFont
-import fitz  # PyMuPDF
 import io
 import traceback
 
@@ -40,36 +39,31 @@ DEFAULT_DATA = {
             "name": "Lighting Control",
             "symbols": ["💡"],
             "base_cost_per_unit": {"basic": 150.0, "premium": 250.0, "deluxe": 400.0},
-            "labor_hours": {"basic": 2.0, "premium": 3.0, "deluxe": 4.0},
-            "description": "Smart lighting control system"
+            "labor_hours": {"basic": 2.0, "premium": 3.0, "deluxe": 4.0}
         },
         "shading": {
             "name": "Shading Control",
             "symbols": ["🪟"],
             "base_cost_per_unit": {"basic": 300.0, "premium": 500.0, "deluxe": 800.0},
-            "labor_hours": {"basic": 3.0, "premium": 4.0, "deluxe": 5.0},
-            "description": "Automated window shading"
+            "labor_hours": {"basic": 3.0, "premium": 4.0, "deluxe": 5.0}
         },
         "security_access": {
             "name": "Security & Access",
             "symbols": ["🔐"],
             "base_cost_per_unit": {"basic": 500.0, "premium": 900.0, "deluxe": 1500.0},
-            "labor_hours": {"basic": 4.5, "premium": 6.0, "deluxe": 8.0},
-            "description": "Security and access control"
+            "labor_hours": {"basic": 4.5, "premium": 6.0, "deluxe": 8.0}
         },
         "climate": {
             "name": "Climate Control",
             "symbols": ["🌡"],
             "base_cost_per_unit": {"basic": 400.0, "premium": 700.0, "deluxe": 1200.0},
-            "labor_hours": {"basic": 5.0, "premium": 7.0, "deluxe": 9.0},
-            "description": "HVAC climate control"
+            "labor_hours": {"basic": 5.0, "premium": 7.0, "deluxe": 9.0}
         },
         "audio": {
             "name": "Audio System",
             "symbols": ["🔊"],
             "base_cost_per_unit": {"basic": 350.0, "premium": 600.0, "deluxe": 1000.0},
-            "labor_hours": {"basic": 3.5, "premium": 5.0, "deluxe": 7.0},
-            "description": "Multi-room audio system"
+            "labor_hours": {"basic": 3.5, "premium": 5.0, "deluxe": 7.0}
         }
     },
     "labor_rate": 75.0,
@@ -92,38 +86,32 @@ def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
-def pdf_to_images(pdf_path):
-    """Convert PDF to images using PyMuPDF"""
-    doc = fitz.open(pdf_path)
-    images = []
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-        pix = page.get_pixmap(dpi=200)
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        images.append(img)
-    doc.close()
-    return images
-
-def analyze_floorplan_smart(image):
-    """Smart analysis using PIL - no OpenCV needed"""
-    width, height = image.size
+def analyze_floorplan_smart(pdf_path):
+    """Analyze PDF without needing image conversion"""
+    reader = PdfReader(pdf_path)
+    first_page = reader.pages[0]
+    
+    # Get page dimensions
+    page_box = first_page.mediabox
+    width = float(page_box.width)
+    height = float(page_box.height)
     total_area = width * height
     
-    # Convert to grayscale for analysis
-    gray = image.convert('L')
-    pixels = np.array(gray)
+    # Extract text to estimate rooms
+    text = first_page.extract_text()
+    words = text.split() if text else []
     
-    # Simple edge detection using numpy
-    edges = np.abs(np.diff(pixels.astype(float), axis=0)) + np.abs(np.diff(pixels.astype(float), axis=1, prepend=0))
+    # Smart room estimation based on page size
+    if width > 1000 or height > 1000:
+        num_rooms = 12
+    elif width > 700 or height > 700:
+        num_rooms = 8
+    elif width > 500 or height > 500:
+        num_rooms = 6
+    else:
+        num_rooms = 4
     
-    # Find strong edges (walls)
-    threshold = np.percentile(edges, 90)
-    strong_edges = edges > threshold
-    
-    # Estimate rooms based on area divisions
-    num_rooms = max(int(total_area / (width * height / 15)), 3)
-    
-    # Generate room centers in a grid pattern
+    # Generate room centers in a smart grid
     rooms = []
     grid_x = int(np.sqrt(num_rooms * width / height))
     grid_y = int(np.ceil(num_rooms / grid_x))
@@ -131,37 +119,51 @@ def analyze_floorplan_smart(image):
     for i in range(num_rooms):
         row = i // grid_x
         col = i % grid_x
-        x = int(width * (col + 0.5) / grid_x)
-        y = int(height * (row + 0.5) / grid_y)
-        area = (width * height) / num_rooms
+        x = width * (col + 0.5) / grid_x
+        y = height * (row + 0.5) / grid_y
+        area = total_area / num_rooms
         rooms.append({
-            'center': (x, y),
+            'center': (int(x), int(y)),
             'area': area,
             'index': i
         })
     
-    # Estimate doors and windows based on perimeter
-    perimeter_points = []
-    edge_spacing = max(width, height) // 20
+    # Estimate doors and windows on perimeter
+    num_doors = max(4, num_rooms // 2)
+    num_windows = max(8, num_rooms)
     
-    # Top and bottom edges
-    for x in range(0, width, edge_spacing):
-        perimeter_points.append((x, int(height * 0.1)))
-        perimeter_points.append((x, int(height * 0.9)))
+    doors = []
+    windows = []
     
-    # Left and right edges
-    for y in range(0, height, edge_spacing):
-        perimeter_points.append((int(width * 0.1), y))
-        perimeter_points.append((int(width * 0.9), y))
+    # Distribute on all 4 sides
+    for i in range(num_doors):
+        side = i % 4
+        if side == 0:  # top
+            doors.append((int(width * (i + 1) / (num_doors + 1)), int(height * 0.1)))
+        elif side == 1:  # right
+            doors.append((int(width * 0.9), int(height * (i + 1) / (num_doors + 1))))
+        elif side == 2:  # bottom
+            doors.append((int(width * (i + 1) / (num_doors + 1)), int(height * 0.9)))
+        else:  # left
+            doors.append((int(width * 0.1), int(height * (i + 1) / (num_doors + 1))))
     
-    doors = perimeter_points[:min(8, len(perimeter_points))]
-    windows = perimeter_points[8:min(20, len(perimeter_points))]
+    for i in range(num_windows):
+        side = i % 4
+        offset = (i // 4 + 1) * 0.15
+        if side == 0:
+            windows.append((int(width * offset), int(height * 0.1)))
+        elif side == 1:
+            windows.append((int(width * 0.9), int(height * offset)))
+        elif side == 2:
+            windows.append((int(width * offset), int(height * 0.9)))
+        else:
+            windows.append((int(width * 0.1), int(height * offset)))
     
     return {
-        'rooms': rooms,
+        'rooms': rooms[:num_rooms],
         'doors': doors,
         'windows': windows,
-        'image_shape': (height, width)
+        'page_size': (width, height)
     }
 
 def place_symbols(analysis, automation_types, tier="basic"):
@@ -216,45 +218,48 @@ def place_symbols(analysis, automation_types, tier="basic"):
     
     return placements
 
-def generate_annotated_pdf(original_pdf_path, placements, automation_data, output_path):
-    images = pdf_to_images(original_pdf_path)
-    first_page = images[0]
+def create_annotated_pdf(original_pdf_path, placements, automation_data, output_path):
+    """Create annotated PDF directly without image conversion"""
+    reader = PdfReader(original_pdf_path)
+    writer = PdfWriter()
     
-    draw = ImageDraw.Draw(first_page)
+    # Get first page
+    first_page = reader.pages[0]
+    page_box = first_page.mediabox
+    width = float(page_box.width)
+    height = float(page_box.height)
     
-    try:
-        font = ImageFont.truetype("/Library/Fonts/Arial.ttf", 60)
-    except:
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 60)
-        except:
-            font = ImageFont.load_default()
+    # Create overlay with annotations
+    packet = io.BytesIO()
+    c = canvas.Canvas(packet, pagesize=(width, height))
+    
+    # Draw symbols
+    c.setFont("Helvetica", 24)
+    c.setFillColorRGB(1, 0, 0)
     
     for auto_type, positions in placements.items():
         if auto_type in automation_data['automation_types']:
             symbol = automation_data['automation_types'][auto_type]['symbols'][0]
             for pos_data in positions:
                 x, y = pos_data['position']
-                draw.text((x, y), symbol, fill='red', font=font)
+                # Flip Y coordinate for PDF
+                c.drawString(x, height - y, symbol)
     
-    # Save annotated image
-    annotated_image_path = output_path.replace('.pdf', '_annotated.png')
-    first_page.save(annotated_image_path, 'PNG')
-    
-    # Create PDF
-    c = canvas.Canvas(output_path, pagesize=letter)
-    img_width, img_height = first_page.size
-    page_width, page_height = letter
-    
-    scale = min(page_width/img_width, page_height/img_height) * 0.9
-    scaled_width = img_width * scale
-    scaled_height = img_height * scale
-    
-    x_offset = (page_width - scaled_width) / 2
-    y_offset = (page_height - scaled_height) / 2
-    
-    c.drawImage(annotated_image_path, x_offset, y_offset, width=scaled_width, height=scaled_height)
     c.save()
+    
+    # Merge overlay with original
+    packet.seek(0)
+    overlay_reader = PdfReader(packet)
+    first_page.merge_page(overlay_reader.pages[0])
+    
+    writer.add_page(first_page)
+    
+    # Add remaining pages
+    for page_num in range(1, len(reader.pages)):
+        writer.add_page(reader.pages[page_num])
+    
+    with open(output_path, 'wb') as f:
+        writer.write(f)
     
     return output_path
 
@@ -391,18 +396,14 @@ def analyze():
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{timestamp}_{filename}')
         file.save(input_path)
         
-        # Convert PDF to image
-        images = pdf_to_images(input_path)
-        first_image = images[0]
-        
-        # Analyze floorplan
+        # Analyze PDF directly
         automation_data = load_data()
-        analysis = analyze_floorplan_smart(first_image)
+        analysis = analyze_floorplan_smart(input_path)
         placements = place_symbols(analysis, automation_types, tier)
         
-        # Generate annotated PDF
+        # Create annotated PDF
         annotated_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_annotated.pdf')
-        generate_annotated_pdf(input_path, placements, automation_data, annotated_pdf_path)
+        create_annotated_pdf(input_path, placements, automation_data, annotated_pdf_path)
         
         # Calculate costs
         costs = calculate_costs(placements, automation_data, tier)
@@ -432,7 +433,6 @@ def analyze():
 
 @app.route('/api/upload-learning-data', methods=['POST'])
 def upload_learning_data():
-    """Upload training data to improve the system"""
     try:
         files = request.files.getlist('files[]')
         notes = request.form.get('notes', '')
@@ -449,7 +449,6 @@ def upload_learning_data():
                 file.save(filepath)
                 saved_files.append(filename)
         
-        # Save metadata
         metadata = {
             'timestamp': timestamp,
             'files': saved_files,
@@ -464,31 +463,6 @@ def upload_learning_data():
             'success': True,
             'message': f'Uploaded {len(saved_files)} files for learning',
             'batch_id': timestamp
-        })
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/update-pricing', methods=['POST'])
-def update_pricing():
-    """Update pricing and configuration"""
-    try:
-        new_data = request.json
-        current_data = load_data()
-        
-        # Merge new data
-        for key in new_data:
-            if key in current_data:
-                if isinstance(current_data[key], dict):
-                    current_data[key].update(new_data[key])
-                else:
-                    current_data[key] = new_data[key]
-        
-        save_data(current_data)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Pricing updated successfully'
         })
     
     except Exception as e:
