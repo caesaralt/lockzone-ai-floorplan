@@ -1,9 +1,11 @@
 Flask==3.0.0
 Flask-CORS==4.0.0
-gunicorn==21.2.0
 Werkzeug==3.0.1
-python-dotenv==1.0.0
-reportlab==4.0.7
-Pillow==10.4.0
+gunicorn==21.2.0
 pypdf==3.17.4
-numpy==1.26.2
+reportlab==4.0.7
+Pillow>=11.0.0
+PyMuPDF==1.24.0
+numpy>=2.0.0
+python-dotenv==1.0.0
+anthropic==0.39.0

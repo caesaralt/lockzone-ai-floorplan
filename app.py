@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
 import copy
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 import numpy as np
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -19,23 +19,37 @@ import fitz  # PyMuPDF
 import io
 import traceback
 import base64
-import anthropic
+import requests
+from requests_oauthlib import OAuth2Session
+from oauthlib.oauth2 import BackendApplicationClient
+
+# Try to import anthropic, but don't fail if not available
+try:
+    import anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    print("WARNING: anthropic package not installed. AI features will use fallback mode.")
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['DATA_FOLDER'] = 'data'
 app.config['LEARNING_FOLDER'] = 'learning_data'
+app.config['SIMPRO_CONFIG_FOLDER'] = 'simpro_config'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], 
-               app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER']]:
+               app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
+               app.config['SIMPRO_CONFIG_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 LEARNING_INDEX_FILE = os.path.join(app.config['LEARNING_FOLDER'], 'learning_index.json')
+SIMPRO_CONFIG_FILE = os.path.join(app.config['SIMPRO_CONFIG_FOLDER'], 'simpro_config.json')
 
 DEFAULT_DATA = {
     "automation_types": {
@@ -80,6 +94,10 @@ DEFAULT_DATA = {
     }
 }
 
+# ============================================================================
+# DATA MANAGEMENT FUNCTIONS
+# ============================================================================
+
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
@@ -117,6 +135,31 @@ def get_learning_context():
     
     return context
 
+def load_simpro_config():
+    """Load Simpro configuration"""
+    if os.path.exists(SIMPRO_CONFIG_FILE):
+        with open(SIMPRO_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        "connected": False,
+        "base_url": "",
+        "company_id": "0",
+        "client_id": "",
+        "client_secret": "",
+        "access_token": None,
+        "refresh_token": None,
+        "token_expires_at": None
+    }
+
+def save_simpro_config(config):
+    """Save Simpro configuration"""
+    with open(SIMPRO_CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+# ============================================================================
+# AI ANALYSIS FUNCTIONS
+# ============================================================================
+
 def pdf_to_image_base64(pdf_path, page_num=0):
     """Convert PDF page to base64 image for Claude Vision API"""
     doc = fitz.open(pdf_path)
@@ -138,7 +181,11 @@ def pdf_to_image_base64(pdf_path, page_num=0):
 def analyze_floorplan_with_ai(pdf_path):
     """Use Claude Vision API to intelligently analyze floor plans"""
     
-    # Check if API key is available
+    # Check if API key is available and anthropic is installed
+    if not ANTHROPIC_AVAILABLE:
+        print("Anthropic package not available, using fallback")
+        return analyze_floorplan_smart(pdf_path)
+    
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
         print("WARNING: No ANTHROPIC_API_KEY found, using fallback method")
@@ -411,6 +458,10 @@ def place_symbols_intelligently(analysis, automation_types, tier="basic"):
     
     return placements
 
+# ============================================================================
+# PDF AND QUOTE GENERATION
+# ============================================================================
+
 def create_annotated_pdf(original_pdf_path, placements, automation_data, output_path):
     """Create annotated PDF with symbols"""
     reader = PdfReader(original_pdf_path)
@@ -560,12 +611,52 @@ def generate_quote_pdf(costs, automation_data, project_name, tier, output_path):
     
     doc.build(elements)
 
+# ============================================================================
+# SIMPRO API INTEGRATION
+# ============================================================================
+
+def make_simpro_request(endpoint, method='GET', data=None, params=None):
+    """Make authenticated request to Simpro API"""
+    config = load_simpro_config()
+    
+    if not config.get('connected') or not config.get('access_token'):
+        return {'error': 'Not connected to Simpro'}
+    
+    headers = {
+        'Authorization': f"Bearer {config['access_token']}",
+        'Content-Type': 'application/json'
+    }
+    
+    url = f"{config['base_url']}/api/v1.0/companies/{config['company_id']}{endpoint}"
+    
+    try:
+        if method == 'GET':
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+        elif method == 'PUT':
+            response = requests.put(url, headers=headers, json=data, timeout=30)
+        else:
+            return {'error': f'Unsupported method: {method}'}
+        
+        response.raise_for_status()
+        return response.json()
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Simpro API error: {str(e)}")
+        return {'error': str(e)}
+
+# ============================================================================
+# FLASK ROUTES
+# ============================================================================
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
+    """Main analysis endpoint - uses AI if available"""
     try:
         if 'floorplan' not in request.files:
             return jsonify({'success': False, 'error': 'No file uploaded'}), 400
@@ -583,7 +674,7 @@ def analyze():
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{timestamp}_{filename}')
         file.save(input_path)
         
-        # Use AI analysis
+        # Use AI analysis (or fallback)
         automation_data = load_data()
         analysis = analyze_floorplan_with_ai(input_path)
         placements = place_symbols_intelligently(analysis, automation_types, tier)
@@ -638,6 +729,7 @@ def analyze():
 
 @app.route('/api/upload-learning-data', methods=['POST'])
 def upload_learning_data():
+    """Upload training data for learning system"""
     try:
         files = request.files.getlist('files[]')
         notes = request.form.get('notes', '')
@@ -677,8 +769,34 @@ def upload_learning_data():
         
         return jsonify({
             'success': True,
-            'message': f'Uploaded {len(saved_files)} files for learning - System will use this data in future analysis',
+            'message': f'Uploaded {len(saved_files)} files - System will use this data in future analysis',
             'batch_id': timestamp
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/process-instructions', methods=['POST'])
+def process_instructions():
+    """Save natural language instructions for learning"""
+    try:
+        instructions = request.json.get('instructions', '')
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Add to learning index
+        learning_index = load_learning_index()
+        learning_index['examples'].append({
+            'timestamp': timestamp,
+            'instructions': instructions,
+            'type': 'user_instruction',
+            'created_at': datetime.now().isoformat()
+        })
+        save_learning_index(learning_index)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Instructions saved and will be used in future AI analysis'
         })
     
     except Exception as e:
@@ -726,31 +844,176 @@ def update_pricing():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/process-instructions', methods=['POST'])
-def process_instructions():
-    """Save natural language instructions - these are now included in AI context"""
+# ============================================================================
+# SIMPRO INTEGRATION ROUTES
+# ============================================================================
+
+@app.route('/api/simpro/config', methods=['GET', 'POST'])
+def simpro_config():
+    """Get or update Simpro configuration"""
+    if request.method == 'GET':
+        config = load_simpro_config()
+        # Don't send sensitive data to frontend
+        safe_config = {
+            'connected': config.get('connected', False),
+            'base_url': config.get('base_url', ''),
+            'company_id': config.get('company_id', '0')
+        }
+        return jsonify(safe_config)
+    
+    else:  # POST
+        try:
+            data = request.json
+            config = load_simpro_config()
+            
+            config['base_url'] = data.get('base_url', '').rstrip('/')
+            config['company_id'] = data.get('company_id', '0')
+            config['client_id'] = data.get('client_id', '')
+            config['client_secret'] = data.get('client_secret', '')
+            config['connected'] = False  # Will be set to True after successful auth
+            
+            save_simpro_config(config)
+            
+            return jsonify({'success': True, 'message': 'Configuration saved'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/connect', methods=['POST'])
+def simpro_connect():
+    """Test connection and get access token"""
     try:
-        instructions = request.json.get('instructions', '')
+        config = load_simpro_config()
         
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # OAuth2 token request
+        token_url = f"{config['base_url']}/oauth/token"
         
-        # Add to learning index
-        learning_index = load_learning_index()
-        learning_index['examples'].append({
-            'timestamp': timestamp,
-            'instructions': instructions,
-            'type': 'user_instruction',
-            'created_at': datetime.now().isoformat()
-        })
-        save_learning_index(learning_index)
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': config['client_id'],
+            'client_secret': config['client_secret']
+        }
         
-        return jsonify({
-            'success': True,
-            'message': 'Instructions saved and will be used in future AI analysis'
-        })
+        response = requests.post(token_url, data=data, timeout=30)
+        response.raise_for_status()
+        
+        token_data = response.json()
+        
+        config['access_token'] = token_data.get('access_token')
+        config['refresh_token'] = token_data.get('refresh_token')
+        config['token_expires_at'] = datetime.now().timestamp() + token_data.get('expires_in', 3600)
+        config['connected'] = True
+        
+        save_simpro_config(config)
+        
+        return jsonify({'success': True, 'message': 'Successfully connected to Simpro'})
+    
+    except Exception as e:
+        print(f"Simpro connection error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/catalogs', methods=['GET'])
+def simpro_catalogs():
+    """Fetch catalog items from Simpro"""
+    try:
+        params = {
+            'pageSize': request.args.get('pageSize', 100),
+            'page': request.args.get('page', 1)
+        }
+        
+        result = make_simpro_request('/catalogs/', params=params)
+        
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']}), 400
+        
+        return jsonify({'success': True, 'data': result})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/labor-rates', methods=['GET'])
+def simpro_labor_rates():
+    """Fetch labor rates from Simpro"""
+    try:
+        result = make_simpro_request('/laborRates/')
+        
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']}), 400
+        
+        return jsonify({'success': True, 'data': result})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/jobs', methods=['GET'])
+def simpro_jobs():
+    """Fetch jobs from Simpro"""
+    try:
+        params = {
+            'pageSize': request.args.get('pageSize', 50),
+            'page': request.args.get('page', 1)
+        }
+        
+        result = make_simpro_request('/jobs/', params=params)
+        
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']}), 400
+        
+        return jsonify({'success': True, 'data': result})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/customers', methods=['GET'])
+def simpro_customers():
+    """Fetch customers from Simpro"""
+    try:
+        params = {
+            'pageSize': request.args.get('pageSize', 50),
+            'page': request.args.get('page', 1)
+        }
+        
+        result = make_simpro_request('/customers/', params=params)
+        
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']}), 400
+        
+        return jsonify({'success': True, 'data': result})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/quotes', methods=['GET', 'POST'])
+def simpro_quotes():
+    """Get or create quotes in Simpro"""
+    if request.method == 'GET':
+        try:
+            params = {
+                'pageSize': request.args.get('pageSize', 50),
+                'page': request.args.get('page', 1)
+            }
+            
+            result = make_simpro_request('/quotes/', params=params)
+            
+            if 'error' in result:
+                return jsonify({'success': False, 'error': result['error']}), 400
+            
+            return jsonify({'success': True, 'data': result})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    else:  # POST - Create new quote
+        try:
+            quote_data = request.json
+            result = make_simpro_request('/quotes/', method='POST', data=quote_data)
+            
+            if 'error' in result:
+                return jsonify({'success': False, 'error': result['error']}), 400
+            
+            return jsonify({'success': True, 'message': 'Quote created in Simpro', 'data': result})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
