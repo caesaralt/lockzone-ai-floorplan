@@ -471,6 +471,168 @@ def place_symbols_intelligently(analysis, automation_types, tier="basic"):
     
     return placements
 
+def place_symbols_with_ai(analysis, automation_types, tier="basic"):
+    """
+    Use Claude AI to intelligently place automation symbols based on floor plan analysis.
+    This function learns from past feedback to improve placement decisions.
+    """
+    
+    # Check if AI is available
+    if not ANTHROPIC_AVAILABLE:
+        print("⚠️  AI not available, using standard intelligent placement")
+        return place_symbols_intelligently(analysis, automation_types, tier)
+    
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        print("⚠️  No API key, using standard intelligent placement")
+        return place_symbols_intelligently(analysis, automation_types, tier)
+    
+    try:
+        print("🤖 Using AI to determine optimal symbol placement...")
+        
+        # Get learning context from past projects
+        learning_index = load_learning_index()
+        learning_context = ""
+        if learning_index.get('examples'):
+            learning_context = "\n\nLearning from past projects:\n"
+            for ex in learning_index.get('examples', [])[-5:]:  # Last 5 examples
+                if 'placement_feedback' in ex:
+                    learning_context += f"- {ex.get('placement_feedback')}\n"
+        
+        # Initialize Claude client
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        # Create detailed prompt for placement decision
+        prompt = f"""You are an expert home automation installer analyzing a floor plan to determine optimal placement of automation devices.
+
+Floor Plan Analysis:
+- Total Rooms: {len(analysis['rooms'])}
+- Room Details: {json.dumps([{{'type': r.get('type'), 'area': r.get('area'), 'center': r.get('center')}} for r in analysis['rooms']], indent=2)}
+- Doors: {len(analysis['doors'])} detected
+- Windows: {len(analysis['windows'])} detected
+
+Automation Types Requested:
+{', '.join(automation_types)}
+
+Pricing Tier: {tier}
+{learning_context}
+
+PLACEMENT RULES:
+1. **Lighting Control**: 
+   - Bedrooms: 2-3 lights (1 ceiling, 1-2 reading/bedside)
+   - Living rooms: 3-4 lights (ambient, task, accent)
+   - Kitchens: 3-4 lights (ceiling, under-cabinet, task)
+   - Bathrooms: 2 lights (ceiling, vanity)
+   - Hallways: 1 light per section
+   - Office: 2-3 lights (desk, ambient)
+
+2. **Shading Control**:
+   - One control per window
+   - Prioritize large windows and bedrooms
+
+3. **Security & Access**:
+   - Main entrance door: keypad/reader
+   - Bedroom doors: motion sensors (optional)
+   - Windows in bedrooms: contact sensors
+
+4. **Climate Control**:
+   - One thermostat per zone (typically 1-2 per floor plan)
+   - Bedrooms, living room, and office get priority
+
+5. **Audio System**:
+   - Living rooms and master bedrooms: full speakers
+   - Other bedrooms: optional single speaker
+   - Outdoor areas: optional weather-resistant speakers
+
+Based on the floor plan, determine the EXACT placement and quantity for each automation type.
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  "placements": {{
+    "lighting": [
+      {{"position": [x, y], "room_type": "bedroom", "quantity": 2, "reasoning": "explanation"}},
+      ...
+    ],
+    "shading": [
+      {{"position": [x, y], "window_index": 0, "quantity": 1, "reasoning": "explanation"}},
+      ...
+    ],
+    "security_access": [
+      {{"position": [x, y], "location": "main_entrance", "quantity": 1, "reasoning": "explanation"}},
+      ...
+    ],
+    "climate": [
+      {{"position": [x, y], "zone": "main_living", "quantity": 1, "reasoning": "explanation"}},
+      ...
+    ],
+    "audio": [
+      {{"position": [x, y], "room_type": "living_room", "quantity": 2, "reasoning": "explanation"}},
+      ...
+    ]
+  }},
+  "total_counts": {{
+    "lighting": 0,
+    "shading": 0,
+    "security_access": 0,
+    "climate": 0,
+    "audio": 0
+  }},
+  "overall_strategy": "Brief explanation of your placement strategy"
+}}
+
+Be conservative with quantities - match typical professional installation standards. Use room center coordinates from the analysis provided."""
+
+        # Call Claude AI
+        print("🔄 Asking Claude AI for optimal placement strategy...")
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+        
+        response_text = message.content[0].text
+        print("✅ Received AI placement strategy")
+        
+        # Clean up response
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+        
+        ai_placement = json.loads(response_text)
+        print(f"📊 AI Strategy: {ai_placement.get('overall_strategy', 'N/A')}")
+        
+        # Convert AI placement to our format
+        placements = {auto_type: [] for auto_type in automation_types}
+        
+        for auto_type in automation_types:
+            if auto_type in ai_placement.get('placements', {}):
+                for placement in ai_placement['placements'][auto_type]:
+                    placements[auto_type].append({
+                        'position': tuple(placement['position']),
+                        'quantity': placement.get('quantity', 1),
+                        'reasoning': placement.get('reasoning', ''),
+                        'confidence': 0.95,  # High confidence from AI
+                        'ai_generated': True
+                    })
+        
+        # Log total counts
+        for auto_type, items in placements.items():
+            print(f"  {auto_type}: {len(items)} items placed")
+        
+        return placements
+        
+    except Exception as e:
+        print(f"❌ AI placement failed: {str(e)}")
+        print("⚠️  Falling back to standard intelligent placement")
+        traceback.print_exc()
+        return place_symbols_intelligently(analysis, automation_types, tier)
+
 # ============================================================================
 # PDF AND QUOTE GENERATION
 # ============================================================================
@@ -703,7 +865,9 @@ def analyze():
         # Use AI analysis (or fallback)
         automation_data = load_data()
         analysis = analyze_floorplan_with_ai(input_path)
-        placements = place_symbols_intelligently(analysis, automation_types, tier)
+        
+        # Use AI-powered placement (with fallback to intelligent placement)
+        placements = place_symbols_with_ai(analysis, automation_types, tier)
         
         # Store analysis result in learning index
         learning_index = load_learning_index()
@@ -823,6 +987,40 @@ def process_instructions():
         return jsonify({
             'success': True,
             'message': 'Instructions saved and will be used in future AI analysis'
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/placement-feedback', methods=['POST'])
+def placement_feedback():
+    """
+    Save feedback about symbol placement to improve future AI decisions.
+    Example: "Add 2 more lights in bedrooms", "Remove security from interior doors"
+    """
+    try:
+        feedback = request.json.get('feedback', '')
+        project_name = request.json.get('project_name', 'Unknown')
+        timestamp = request.json.get('timestamp', datetime.now().strftime('%Y%m%d_%H%M%S'))
+        
+        if not feedback:
+            return jsonify({'success': False, 'error': 'No feedback provided'}), 400
+        
+        # Add to learning index
+        learning_index = load_learning_index()
+        learning_index['examples'].append({
+            'timestamp': timestamp,
+            'project_name': project_name,
+            'placement_feedback': feedback,
+            'type': 'placement_feedback',
+            'created_at': datetime.now().isoformat()
+        })
+        save_learning_index(learning_index)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Feedback saved! Future placements will reflect this guidance.',
+            'feedback': feedback
         })
     
     except Exception as e:
