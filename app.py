@@ -510,6 +510,10 @@ Floor Plan Analysis:
 - Room Details: {json.dumps([{{'type': r.get('type'), 'area': r.get('area'), 'center': r.get('center')}} for r in analysis['rooms']], indent=2)}
 - Doors: {len(analysis['doors'])} detected
 - Windows: {len(analysis['windows'])} detected
+- Image dimensions: {analysis.get('page_size', (1000, 1000))}
+
+IMPORTANT: The coordinates you provide will be automatically scaled to match the PDF dimensions.
+Use the room center coordinates from the analysis above as reference points.
 
 Automation Types Requested:
 {', '.join(automation_types)}
@@ -606,20 +610,38 @@ Be conservative with quantities - match typical professional installation standa
         
         ai_placement = json.loads(response_text)
         print(f"📊 AI Strategy: {ai_placement.get('overall_strategy', 'N/A')}")
+        print(f"📊 AI returned placements for: {list(ai_placement.get('placements', {}).keys())}")
         
         # Convert AI placement to our format
         placements = {auto_type: [] for auto_type in automation_types}
         
         for auto_type in automation_types:
+            print(f"🔄 Processing {auto_type}...")
             if auto_type in ai_placement.get('placements', {}):
-                for placement in ai_placement['placements'][auto_type]:
-                    placements[auto_type].append({
-                        'position': tuple(placement['position']),
-                        'quantity': placement.get('quantity', 1),
-                        'reasoning': placement.get('reasoning', ''),
-                        'confidence': 0.95,  # High confidence from AI
-                        'ai_generated': True
-                    })
+                placement_list = ai_placement['placements'][auto_type]
+                print(f"   Found {len(placement_list)} {auto_type} placements")
+                
+                for i, placement in enumerate(placement_list):
+                    try:
+                        # Ensure position is a list/tuple of numbers
+                        pos = placement.get('position', [0, 0])
+                        if isinstance(pos, (list, tuple)) and len(pos) == 2:
+                            position_tuple = (float(pos[0]), float(pos[1]))
+                        else:
+                            print(f"   ⚠️  Invalid position format for {auto_type}[{i}]: {pos}")
+                            continue
+                        
+                        placements[auto_type].append({
+                            'position': position_tuple,
+                            'quantity': int(placement.get('quantity', 1)),
+                            'reasoning': str(placement.get('reasoning', '')),
+                            'confidence': 0.95,
+                            'ai_generated': True
+                        })
+                    except Exception as item_error:
+                        print(f"   ❌ Error processing {auto_type}[{i}]: {str(item_error)}")
+                        print(f"   Item data: {placement}")
+                        continue
         
         # Log total counts
         for auto_type, items in placements.items():
