@@ -885,7 +885,7 @@ def simpro_connect():
         config = load_simpro_config()
         
         # OAuth2 token request
-        token_url = f"{config['base_url']}/oauth/token"
+        token_url = f"{config['base_url']}/oauth2/token"
         
         data = {
             'grant_type': 'client_credentials',
