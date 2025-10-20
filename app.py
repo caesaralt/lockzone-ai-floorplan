@@ -191,15 +191,21 @@ def analyze_floorplan_with_ai(pdf_path):
         print("WARNING: No ANTHROPIC_API_KEY found, using fallback method")
         return analyze_floorplan_smart(pdf_path)
     
+    print(f"✅ API key found: {api_key[:20]}...")
+    print(f"✅ API key length: {len(api_key)}")
+    
     try:
+        print("🔄 Converting PDF to image...")
         # Convert PDF to image
         image_base64 = pdf_to_image_base64(pdf_path)
+        print(f"✅ Image converted, base64 length: {len(image_base64)}")
         
         # Get learning context
         learning_context = get_learning_context()
         
         # Initialize Claude client
         client = anthropic.Anthropic(api_key=api_key)
+        print("✅ Claude client initialized")
         
         # Create vision prompt
         prompt = f"""{learning_context}
@@ -241,6 +247,7 @@ Be precise with coordinates. Identify all rooms, doors, and windows you can see.
 
 Respond ONLY with valid JSON, no other text."""
 
+        print("🔄 Calling Claude Vision API...")
         # Call Claude Vision API
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -265,9 +272,12 @@ Respond ONLY with valid JSON, no other text."""
                 }
             ]
         )
+        print("✅ API call successful!")
+        print(f"Response usage: {message.usage}")
         
         # Parse Claude's response
         response_text = message.content[0].text
+        print(f"✅ Got response, length: {len(response_text)}")
         
         # Clean up response (remove markdown code blocks if present)
         if "```json" in response_text:
@@ -303,8 +313,11 @@ Respond ONLY with valid JSON, no other text."""
         }
     
     except Exception as e:
-        print(f"AI analysis failed: {str(e)}, using fallback")
+        print(f"❌ AI analysis failed with error: {type(e).__name__}")
+        print(f"❌ Error message: {str(e)}")
+        print(f"❌ Full traceback:")
         traceback.print_exc()
+        print("⚠️  Falling back to Smart Grid analysis")
         return analyze_floorplan_smart(pdf_path)
 
 def analyze_floorplan_smart(pdf_path):
