@@ -663,7 +663,7 @@ def analyze():
         
         file = request.files['floorplan']
         project_name = request.form.get('project_name', 'Untitled Project')
-        automation_types = request.form.getlist('automation_types[]')
+        automation_types = request.form.getlist('automation_types')
         tier = request.form.get('tier', 'basic')
         
         if not automation_types:
