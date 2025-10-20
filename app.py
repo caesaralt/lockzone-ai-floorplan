@@ -640,11 +640,24 @@ def make_simpro_request(endpoint, method='GET', data=None, params=None):
             return {'error': f'Unsupported method: {method}'}
         
         response.raise_for_status()
-        return response.json()
+        
+        # Try to parse JSON, handle cases where response might not be JSON
+        try:
+            return response.json()
+        except ValueError:
+            return {'error': 'Invalid JSON response from Simpro', 'status_code': response.status_code, 'text': response.text[:200]}
     
     except requests.exceptions.RequestException as e:
         print(f"Simpro API error: {str(e)}")
-        return {'error': str(e)}
+        # Try to get more details from the response
+        error_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_details = e.response.json()
+                error_msg = f"{error_msg}: {error_details}"
+            except:
+                error_msg = f"{error_msg} (Status: {e.response.status_code})"
+        return {'error': error_msg}
 
 # ============================================================================
 # FLASK ROUTES
