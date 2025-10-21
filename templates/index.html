@@ -625,6 +625,15 @@
                     </div>
                     ${data.analysis.ai_notes ? `<div class="info-box" style="margin-top: 15px;"><strong>AI Notes:</strong> ${data.analysis.ai_notes}</div>` : ''}
                     
+                    ${data.files && data.files.floor_plan_preview ? `
+                        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                            <h3 style="color: #556B2F; margin-bottom: 15px;">📐 Annotated Floor Plan Preview</h3>
+                            <img src="${data.files.floor_plan_preview}" 
+                                 alt="Floor Plan Preview" 
+                                 style="max-width: 100%; border: 3px solid #556B2F; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); display: block; margin: 0 auto;">
+                        </div>
+                    ` : ''}
+                    
                     <h3 style="margin-top: 30px;">Cost Breakdown</h3>
                     ${data.costs.items.map(item => `
                         <div class="cost-item">
@@ -648,6 +657,7 @@
                     <div class="download-links">
                         <a href="${data.files.annotated_pdf}" class="download-link" download>📄 Download Annotated Floor Plan</a>
                         <a href="${data.files.quote_pdf}" class="download-link" download>💰 Download Quote PDF</a>
+                        ${data.editor_url ? `<a href="${data.editor_url}" class="download-link" style="background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);">🎨 Open in Interactive Editor</a>` : ''}
                     </div>
                 </div>
             `;
@@ -870,6 +880,180 @@
         window.addEventListener('load', () => {
             if (document.querySelector('.tab-content.active').id === 'tab-simpro') {
                 loadSimproConfig();
+            }
+        });
+    </script>
+
+    <!-- AI CHAT BUBBLE (Future Feature) -->
+    <div id="aiChatBubble" class="ai-chat-bubble" onclick="toggleAIChat()">
+        🧠
+    </div>
+
+    <div id="aiChatPanel" class="ai-chat-panel">
+        <div class="ai-chat-header">
+            <h3>🤖 AI Assistant</h3>
+            <button onclick="toggleAIChat()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">×</button>
+        </div>
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <div class="ai-message">
+                <strong>AI:</strong> Hi! I'm your AI assistant. In the future, I'll be able to help you:
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Modify symbol placements</li>
+                    <li>Adjust pricing</li>
+                    <li>Answer questions about your floor plan</li>
+                    <li>Execute actions on your behalf</li>
+                </ul>
+                <em style="color: #999;">This feature is coming soon!</em>
+            </div>
+        </div>
+        <div class="ai-chat-input">
+            <input type="text" id="aiChatInput" placeholder="Ask me anything... (coming soon)" disabled>
+            <button onclick="sendAIMessage()" disabled>Send</button>
+        </div>
+    </div>
+
+    <style>
+        .ai-chat-bubble {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(85, 107, 47, 0.5);
+            transition: all 0.3s;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }
+
+        .ai-chat-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(85, 107, 47, 0.7);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(85, 107, 47, 0.5);
+            }
+            50% {
+                box-shadow: 0 4px 30px rgba(85, 107, 47, 0.8);
+            }
+        }
+
+        .ai-chat-panel {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 400px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+        }
+
+        .ai-chat-panel.active {
+            display: flex;
+        }
+
+        .ai-chat-header {
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-chat-header h3 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+
+        .ai-chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .ai-message {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .user-message {
+            background: #556B2F;
+            color: white;
+            text-align: right;
+        }
+
+        .ai-chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .ai-chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px 0 0 8px;
+            font-size: 1em;
+        }
+
+        .ai-chat-input button {
+            padding: 10px 20px;
+            background: #556B2F;
+            color: white;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .ai-chat-input button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+
+    <script>
+        function toggleAIChat() {
+            const panel = document.getElementById('aiChatPanel');
+            panel.classList.toggle('active');
+        }
+
+        function sendAIMessage() {
+            // Future implementation
+            const input = document.getElementById('aiChatInput');
+            const messages = document.getElementById('aiChatMessages');
+            
+            if (input.value.trim()) {
+                // This will be implemented in the future
+                alert('AI Chat coming soon!');
+            }
+        }
+
+        // Close chat when clicking outside
+        document.addEventListener('click', function(event) {
+            const bubble = document.getElementById('aiChatBubble');
+            const panel = document.getElementById('aiChatPanel');
+            
+            if (!bubble.contains(event.target) && !panel.contains(event.target)) {
+                panel.classList.remove('active');
             }
         });
     </script>

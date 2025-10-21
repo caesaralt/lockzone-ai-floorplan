@@ -606,6 +606,57 @@ Use room_index to reference rooms from the list above."""
         if windows:
             print(f"   First window: {windows[0]}")
         
+        # CHECK IF COORDINATES ARE BAD (all rooms at same location)
+        page_width = analysis.get('page_size', (1000, 1000))[0]
+        page_height = analysis.get('page_size', (1000, 1000))[1]
+        
+        coords_are_bad = False
+        if len(rooms) > 1:
+            first_center = rooms[0].get('center', (0, 0))
+            same_coords_count = sum(1 for room in rooms if room.get('center') == first_center)
+            if same_coords_count >= len(rooms) * 0.8:  # 80% of rooms at same spot
+                coords_are_bad = True
+                print(f"⚠️  WARNING: Claude Vision returned bad coordinates!")
+                print(f"   {same_coords_count}/{len(rooms)} rooms at same location: {first_center}")
+                print(f"   🔄 Switching to intelligent grid distribution...")
+        
+        # If coordinates are bad, create a smart grid
+        if coords_are_bad and len(rooms) > 0:
+            # Distribute symbols across the floor plan in a grid
+            grid_cols = min(4, int(len(rooms) ** 0.5) + 1)
+            grid_rows = (len(rooms) + grid_cols - 1) // grid_cols
+            
+            # Use middle 60% of the page (avoid edges)
+            margin_x = page_width * 0.2
+            margin_y = page_height * 0.2
+            usable_width = page_width * 0.6
+            usable_height = page_height * 0.6
+            
+            cell_width = usable_width / grid_cols
+            cell_height = usable_height / grid_rows
+            
+            # Recalculate room centers in grid
+            for i, room in enumerate(rooms):
+                row = i // grid_cols
+                col = i % grid_cols
+                new_x = margin_x + (col + 0.5) * cell_width
+                new_y = margin_y + (row + 0.5) * cell_height
+                room['center'] = (new_x, new_y)
+                print(f"   📍 Room {i}: {room.get('type', 'unknown')} → ({new_x:.0f}, {new_y:.0f})")
+            
+            # Also distribute doors and windows in grid if they're bad too
+            if doors and len(set(doors)) < len(doors) * 0.3:  # Less than 30% unique
+                for i, _ in enumerate(doors):
+                    door_x = margin_x + (i % grid_cols) * cell_width + cell_width * 0.2
+                    door_y = margin_y + (i // grid_cols) * cell_height + cell_height * 0.8
+                    doors[i] = (door_x, door_y)
+            
+            if windows and len(set(windows)) < len(windows) * 0.3:
+                for i, _ in enumerate(windows):
+                    win_x = margin_x + (i % grid_cols) * cell_width + cell_width * 0.8
+                    win_y = margin_y + (i // grid_cols) * cell_height + cell_height * 0.2
+                    windows[i] = (win_x, win_y)
+        
         # Process each automation type
         for auto_type in automation_types:
             if auto_type not in ai_plan.get('placement_plan', {}):
