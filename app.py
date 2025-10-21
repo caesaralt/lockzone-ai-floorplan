@@ -595,6 +595,17 @@ Use room_index to reference rooms from the list above."""
         doors = analysis['doors']
         windows = analysis['windows']
         
+        print(f"🏠 Using room data from analysis:")
+        print(f"   Rooms: {len(rooms)}")
+        if rooms:
+            print(f"   First room center: {rooms[0].get('center')}")
+        print(f"   Doors: {len(doors)}")
+        if doors:
+            print(f"   First door: {doors[0]}")
+        print(f"   Windows: {len(windows)}")
+        if windows:
+            print(f"   First window: {windows[0]}")
+        
         # Process each automation type
         for auto_type in automation_types:
             if auto_type not in ai_plan.get('placement_plan', {}):
@@ -692,6 +703,8 @@ def create_annotated_pdf(original_pdf_path, placements, automation_data, output_
     pdf_width = float(page_box.width)
     pdf_height = float(page_box.height)
     
+    print(f"📐 PDF Dimensions: {pdf_width} x {pdf_height}")
+    
     packet = io.BytesIO()
     c = canvas.Canvas(packet, pagesize=(pdf_width, pdf_height))
     
@@ -702,6 +715,7 @@ def create_annotated_pdf(original_pdf_path, placements, automation_data, output_
     # We need to scale them down to PDF space
     SCALE_FACTOR = 0.5  # Because image was rendered at 2x zoom
     
+    symbol_count = 0
     for auto_type, positions in placements.items():
         if auto_type in automation_data['automation_types']:
             symbol = automation_data['automation_types'][auto_type]['symbols'][0]
@@ -716,7 +730,17 @@ def create_annotated_pdf(original_pdf_path, placements, automation_data, output_
                 # So we need to flip Y coordinate
                 y_pdf_flipped = pdf_height - y_pdf
                 
+                # DEBUG: Print first few coordinates
+                if symbol_count < 5:
+                    print(f"🔍 Symbol {symbol_count}: {symbol}")
+                    print(f"   Image coords: ({x_image}, {y_image})")
+                    print(f"   PDF coords: ({x_pdf}, {y_pdf})")
+                    print(f"   Flipped: ({x_pdf}, {y_pdf_flipped})")
+                symbol_count += 1
+                
                 c.drawString(x_pdf, y_pdf_flipped, symbol)
+    
+    print(f"📊 Total symbols placed: {symbol_count}")
     
     c.save()
     
