@@ -970,13 +970,25 @@ def analyze():
         })
         save_learning_index(learning_index)
         
-        # Calculate costs for display
+        # Create annotated PDF immediately
+        annotated_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_annotated.pdf')
+        create_annotated_pdf(input_path, placements, automation_data, annotated_pdf_path)
+        
+        # Calculate costs
         costs = calculate_costs(placements, automation_data, tier)
         
-        # Return redirect to editor
+        # Generate quote PDF
+        quote_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_quote.pdf')
+        generate_quote_pdf(costs, automation_data, project_name, tier, quote_pdf_path)
+        
+        # Generate floor plan preview image
+        preview_image_path = f'/api/floor-plan-image/{timestamp}'
+        
+        # Return BOTH files AND editor link
         return jsonify({
             'success': True,
-            'redirect': f'/editor/{timestamp}',
+            'project_id': timestamp,
+            'editor_url': f'/editor/{timestamp}',
             'analysis': {
                 'rooms_detected': len(analysis['rooms']),
                 'doors_detected': len(analysis['doors']),
@@ -984,7 +996,12 @@ def analyze():
                 'method': analysis.get('method', 'unknown'),
                 'ai_notes': analysis.get('ai_notes', '')
             },
-            'costs': costs
+            'costs': costs,
+            'files': {
+                'annotated_pdf': f'/download/{os.path.basename(annotated_pdf_path)}',
+                'quote_pdf': f'/download/{os.path.basename(quote_pdf_path)}',
+                'floor_plan_preview': preview_image_path
+            }
         })
     
     except Exception as e:
