@@ -683,27 +683,40 @@ Use room_index to reference rooms from the list above."""
 # ============================================================================
 
 def create_annotated_pdf(original_pdf_path, placements, automation_data, output_path):
-    """Create annotated PDF with symbols"""
+    """Create annotated PDF with symbols - coordinates are scaled correctly"""
     reader = PdfReader(original_pdf_path)
     writer = PdfWriter()
     
     first_page = reader.pages[0]
     page_box = first_page.mediabox
-    width = float(page_box.width)
-    height = float(page_box.height)
+    pdf_width = float(page_box.width)
+    pdf_height = float(page_box.height)
     
     packet = io.BytesIO()
-    c = canvas.Canvas(packet, pagesize=(width, height))
+    c = canvas.Canvas(packet, pagesize=(pdf_width, pdf_height))
     
     c.setFont("Helvetica", 24)
     c.setFillColorRGB(1, 0, 0)
+    
+    # CRITICAL: Coordinates from AI analysis are in image space (2x zoom)
+    # We need to scale them down to PDF space
+    SCALE_FACTOR = 0.5  # Because image was rendered at 2x zoom
     
     for auto_type, positions in placements.items():
         if auto_type in automation_data['automation_types']:
             symbol = automation_data['automation_types'][auto_type]['symbols'][0]
             for pos_data in positions:
-                x, y = pos_data['position']
-                c.drawString(x, height - y, symbol)
+                x_image, y_image = pos_data['position']
+                
+                # Convert image coordinates to PDF coordinates
+                x_pdf = x_image * SCALE_FACTOR
+                y_pdf = y_image * SCALE_FACTOR
+                
+                # PDF coordinate system: (0,0) is bottom-left, but image is top-left
+                # So we need to flip Y coordinate
+                y_pdf_flipped = pdf_height - y_pdf
+                
+                c.drawString(x_pdf, y_pdf_flipped, symbol)
     
     c.save()
     
