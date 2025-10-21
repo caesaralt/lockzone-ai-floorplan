@@ -951,35 +951,32 @@ def analyze():
         # Use AI-powered placement (with fallback to intelligent placement)
         placements = place_symbols_with_ai(analysis, automation_types, tier)
         
-        # Store analysis result in learning index
+        # Store analysis result and placements in learning index
         learning_index = load_learning_index()
         learning_index['examples'].append({
             'timestamp': timestamp,
             'project_name': project_name,
             'automation_types': automation_types,
             'tier': tier,
+            'pdf_path': input_path,
+            'placements': placements,
             'analysis_result': {
                 'rooms': len(analysis['rooms']),
                 'doors': len(analysis['doors']),
                 'windows': len(analysis['windows']),
-                'method': analysis.get('method', 'unknown')
+                'method': analysis.get('method', 'unknown'),
+                'ai_notes': analysis.get('ai_notes', '')
             }
         })
         save_learning_index(learning_index)
         
-        # Create annotated PDF
-        annotated_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_annotated.pdf')
-        create_annotated_pdf(input_path, placements, automation_data, annotated_pdf_path)
-        
-        # Calculate costs
+        # Calculate costs for display
         costs = calculate_costs(placements, automation_data, tier)
         
-        # Generate quote PDF
-        quote_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_quote.pdf')
-        generate_quote_pdf(costs, automation_data, project_name, tier, quote_pdf_path)
-        
+        # Return redirect to editor
         return jsonify({
             'success': True,
+            'redirect': f'/editor/{timestamp}',
             'analysis': {
                 'rooms_detected': len(analysis['rooms']),
                 'doors_detected': len(analysis['doors']),
@@ -987,11 +984,7 @@ def analyze():
                 'method': analysis.get('method', 'unknown'),
                 'ai_notes': analysis.get('ai_notes', '')
             },
-            'costs': costs,
-            'files': {
-                'annotated_pdf': f'/download/{os.path.basename(annotated_pdf_path)}',
-                'quote_pdf': f'/download/{os.path.basename(quote_pdf_path)}'
-            }
+            'costs': costs
         })
     
     except Exception as e:
@@ -1320,6 +1313,232 @@ def simpro_quotes():
         
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# INTERACTIVE EDITOR ROUTES
+# ============================================================================
+
+@app.route('/editor/<project_id>')
+def editor(project_id):
+    """Interactive floor plan editor"""
+    try:
+        # Load project data
+        learning_index = load_learning_index()
+        project = None
+        
+        for example in learning_index.get('examples', []):
+            if example.get('timestamp') == project_id:
+                project = example
+                break
+        
+        if not project:
+            return "Project not found", 404
+        
+        # Get initial symbol placement
+        placements = project.get('placements', {})
+        
+        # Convert placements to symbols array for editor
+        symbols = []
+        for auto_type, positions in placements.items():
+            for pos_data in positions:
+                symbols.append({
+                    'type': auto_type,
+                    'symbol': get_symbol_for_type(auto_type),
+                    'x': pos_data['position'][0],
+                    'y': pos_data['position'][1],
+                    'id': len(symbols)
+                })
+        
+        # Load floor plan image (base64)
+        pdf_path = project.get('pdf_path', '')
+        floor_plan_image = ''
+        if pdf_path and os.path.exists(pdf_path):
+            floor_plan_image = '/api/floor-plan-image/' + project_id
+        
+        # Load pricing config
+        automation_data = load_data()
+        pricing_dict = {}
+        for auto_type, data in automation_data['automation_types'].items():
+            pricing_dict[auto_type] = data['base_cost_per_unit']
+        
+        return render_template('editor.html',
+            project_id=project_id,
+            project_name=project.get('project_name', 'Unnamed Project'),
+            tier=project.get('tier', 'basic'),
+            initial_symbols=symbols,
+            floor_plan_image=floor_plan_image,
+            pricing=pricing_dict
+        )
+    
+    except Exception as e:
+        print(f"Editor error: {str(e)}")
+        traceback.print_exc()
+        return f"Error loading editor: {str(e)}", 500
+
+@app.route('/api/floor-plan-image/<project_id>')
+def floor_plan_image(project_id):
+    """Serve floor plan image for editor"""
+    try:
+        learning_index = load_learning_index()
+        project = None
+        
+        for example in learning_index.get('examples', []):
+            if example.get('timestamp') == project_id:
+                project = example
+                break
+        
+        if not project:
+            return "Project not found", 404
+        
+        pdf_path = project.get('pdf_path', '')
+        if not pdf_path or not os.path.exists(pdf_path):
+            return "Floor plan not found", 404
+        
+        # Convert PDF to PNG
+        image_base64 = pdf_to_image_base64(pdf_path)
+        import base64
+        image_bytes = base64.b64decode(image_base64)
+        
+        from io import BytesIO
+        return send_file(BytesIO(image_bytes), mimetype='image/png')
+    
+    except Exception as e:
+        print(f"Floor plan image error: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+@app.route('/api/generate-final-quote', methods=['POST'])
+def generate_final_quote():
+    """Generate final PDF with user-edited symbol placement"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        project_name = data.get('project_name', 'Project')
+        symbols = data.get('symbols', [])
+        tier = data.get('tier', 'basic')
+        
+        # Find original project
+        learning_index = load_learning_index()
+        project = None
+        
+        for example in learning_index.get('examples', []):
+            if example.get('timestamp') == project_id:
+                project = example
+                break
+        
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        original_pdf = project.get('pdf_path', '')
+        if not os.path.exists(original_pdf):
+            return jsonify({'success': False, 'error': 'Original PDF not found'}), 404
+        
+        # Convert symbols array to placements format
+        placements = {}
+        automation_data = load_data()
+        
+        for auto_type in automation_data['automation_types'].keys():
+            placements[auto_type] = []
+        
+        for sym in symbols:
+            auto_type = sym['type']
+            if auto_type in placements:
+                placements[auto_type].append({
+                    'position': (sym['x'], sym['y']),
+                    'quantity': 1,
+                    'confidence': 1.0,
+                    'user_placed': True
+                })
+        
+        # Generate annotated PDF
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_filename = f'{timestamp}_final_annotated.pdf'
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+        
+        create_annotated_pdf(original_pdf, placements, automation_data, output_path)
+        
+        # Generate quote PDF
+        costs = calculate_costs(placements, automation_data, tier)
+        quote_filename = f'{timestamp}_final_quote.pdf'
+        quote_path = os.path.join(app.config['OUTPUT_FOLDER'], quote_filename)
+        
+        create_quote_pdf(
+            project_name=project_name,
+            costs=costs,
+            placements=placements,
+            output_path=quote_path,
+            annotated_pdf_path=output_filename
+        )
+        
+        return jsonify({
+            'success': True,
+            'filename': quote_filename,
+            'annotated_filename': output_filename
+        })
+    
+    except Exception as e:
+        print(f"Generate final quote error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/upload-placement-knowledge', methods=['POST'])
+def upload_placement_knowledge():
+    """Upload corrected placement to AI knowledge base"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        project_name = data.get('project_name')
+        symbols = data.get('symbols', [])
+        feedback = data.get('feedback', '')
+        tier = data.get('tier', 'basic')
+        
+        # Save to learning index
+        learning_index = load_learning_index()
+        
+        # Convert symbols to placement format
+        placement_summary = {}
+        for sym in symbols:
+            auto_type = sym['type']
+            if auto_type not in placement_summary:
+                placement_summary[auto_type] = 0
+            placement_summary[auto_type] += 1
+        
+        learning_index['examples'].append({
+            'timestamp': datetime.now().strftime('%Y%m%d_%H%M%S'),
+            'project_id': project_id,
+            'project_name': project_name,
+            'type': 'user_corrected_placement',
+            'symbols': symbols,
+            'placement_summary': placement_summary,
+            'placement_feedback': feedback,
+            'tier': tier,
+            'created_at': datetime.now().isoformat()
+        })
+        
+        save_learning_index(learning_index)
+        
+        print(f"✅ Knowledge uploaded: {feedback}")
+        print(f"   Placement: {placement_summary}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Placement knowledge saved! AI will learn from this for future projects.'
+        })
+    
+    except Exception as e:
+        print(f"Upload knowledge error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def get_symbol_for_type(auto_type):
+    """Get emoji symbol for automation type"""
+    symbols = {
+        'lighting': '💡',
+        'shading': '🪟',
+        'security_access': '🔐',
+        'climate': '🌡',
+        'audio': '🔊'
+    }
+    return symbols.get(auto_type, '❓')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
