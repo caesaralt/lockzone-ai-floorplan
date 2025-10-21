@@ -474,7 +474,7 @@ def place_symbols_intelligently(analysis, automation_types, tier="basic"):
 def place_symbols_with_ai(analysis, automation_types, tier="basic"):
     """
     Use Claude AI to intelligently place automation symbols based on floor plan analysis.
-    This function learns from past feedback to improve placement decisions.
+    Uses the room coordinates from the AI vision analysis directly.
     """
     
     # Check if AI is available
@@ -502,101 +502,79 @@ def place_symbols_with_ai(analysis, automation_types, tier="basic"):
         # Initialize Claude client
         client = anthropic.Anthropic(api_key=api_key)
         
+        # Prepare room data
+        rooms_info = []
+        for i, room in enumerate(analysis['rooms']):
+            rooms_info.append({
+                'index': i,
+                'type': room.get('type', 'unknown'),
+                'area': room.get('area', 0),
+                'center': room.get('center', (0, 0))
+            })
+        
         # Create detailed prompt for placement decision
-        prompt = f"""You are an expert home automation installer analyzing a floor plan to determine optimal placement of automation devices.
+        prompt = f"""You are an expert home automation installer analyzing a floor plan to determine optimal placement quantities.
 
 Floor Plan Analysis:
 - Total Rooms: {len(analysis['rooms'])}
-- Room Details: {json.dumps([{{'type': r.get('type'), 'area': r.get('area'), 'center': r.get('center')}} for r in analysis['rooms']], indent=2)}
-- Doors: {len(analysis['doors'])} detected
-- Windows: {len(analysis['windows'])} detected
-- Image dimensions: {analysis.get('page_size', (1000, 1000))}
+- Rooms: {json.dumps(rooms_info, indent=2)}
+- Doors: {len(analysis['doors'])}
+- Windows: {len(analysis['windows'])}
 
-IMPORTANT: The coordinates you provide will be automatically scaled to match the PDF dimensions.
-Use the room center coordinates from the analysis above as reference points.
-
-Automation Types Requested:
-{', '.join(automation_types)}
-
+Automation Types Requested: {', '.join(automation_types)}
 Pricing Tier: {tier}
 {learning_context}
 
 PLACEMENT RULES:
 1. **Lighting Control**: 
-   - Bedrooms: 2-3 lights (1 ceiling, 1-2 reading/bedside)
-   - Living rooms: 3-4 lights (ambient, task, accent)
-   - Kitchens: 3-4 lights (ceiling, under-cabinet, task)
-   - Bathrooms: 2 lights (ceiling, vanity)
-   - Hallways: 1 light per section
-   - Office: 2-3 lights (desk, ambient)
+   - Master bedrooms: 3 lights
+   - Regular bedrooms: 2 lights
+   - Living rooms: 4 lights
+   - Kitchens: 4 lights
+   - Bathrooms: 2 lights
+   - Hallways/corridors: 1 light
+   - Office/study: 3 lights
 
-2. **Shading Control**:
-   - One control per window
-   - Prioritize large windows and bedrooms
+2. **Shading Control**: 1 per window
+3. **Security & Access**: 1 at main entrance + 1 per additional door
+4. **Climate Control**: 1-2 per floor (zones)
+5. **Audio System**: Living room + master bedroom
 
-3. **Security & Access**:
-   - Main entrance door: keypad/reader
-   - Bedroom doors: motion sensors (optional)
-   - Windows in bedrooms: contact sensors
+For each automation type requested, tell me:
+- Which rooms should get devices
+- How many devices per room
 
-4. **Climate Control**:
-   - One thermostat per zone (typically 1-2 per floor plan)
-   - Bedrooms, living room, and office get priority
-
-5. **Audio System**:
-   - Living rooms and master bedrooms: full speakers
-   - Other bedrooms: optional single speaker
-   - Outdoor areas: optional weather-resistant speakers
-
-Based on the floor plan, determine the EXACT placement and quantity for each automation type.
-
-Respond with ONLY valid JSON in this exact format:
+Respond with ONLY valid JSON:
 {{
-  "placements": {{
+  "placement_plan": {{
     "lighting": [
-      {{"position": [x, y], "room_type": "bedroom", "quantity": 2, "reasoning": "explanation"}},
+      {{"room_index": 0, "quantity": 3, "reason": "master bedroom"}},
+      {{"room_index": 1, "quantity": 2, "reason": "bedroom"}},
       ...
     ],
     "shading": [
-      {{"position": [x, y], "window_index": 0, "quantity": 1, "reasoning": "explanation"}},
-      ...
+      {{"quantity": {len(analysis['windows'])}, "reason": "one per window"}}
     ],
     "security_access": [
-      {{"position": [x, y], "location": "main_entrance", "quantity": 1, "reasoning": "explanation"}},
-      ...
+      {{"quantity": {max(1, len(analysis['doors']))}, "reason": "doors and entry points"}}
     ],
     "climate": [
-      {{"position": [x, y], "zone": "main_living", "quantity": 1, "reasoning": "explanation"}},
-      ...
+      {{"quantity": 1, "reason": "main zone control"}}
     ],
     "audio": [
-      {{"position": [x, y], "room_type": "living_room", "quantity": 2, "reasoning": "explanation"}},
-      ...
+      {{"room_index": 0, "quantity": 2, "reason": "living room speakers"}}
     ]
   }},
-  "total_counts": {{
-    "lighting": 0,
-    "shading": 0,
-    "security_access": 0,
-    "climate": 0,
-    "audio": 0
-  }},
-  "overall_strategy": "Brief explanation of your placement strategy"
+  "strategy": "Brief explanation"
 }}
 
-Be conservative with quantities - match typical professional installation standards. Use room center coordinates from the analysis provided."""
+Use room_index to reference rooms from the list above."""
 
-        # Call Claude AI
         print("🔄 Asking Claude AI for optimal placement strategy...")
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4000,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
         )
         
         response_text = message.content[0].text
@@ -608,44 +586,89 @@ Be conservative with quantities - match typical professional installation standa
         elif "```" in response_text:
             response_text = response_text.split("```")[1].split("```")[0].strip()
         
-        ai_placement = json.loads(response_text)
-        print(f"📊 AI Strategy: {ai_placement.get('overall_strategy', 'N/A')}")
-        print(f"📊 AI returned placements for: {list(ai_placement.get('placements', {}).keys())}")
+        ai_plan = json.loads(response_text)
+        print(f"📊 AI Strategy: {ai_plan.get('strategy', 'N/A')}")
         
-        # Convert AI placement to our format
+        # Convert AI plan to actual placements using room coordinates from analysis
         placements = {auto_type: [] for auto_type in automation_types}
+        rooms = analysis['rooms']
+        doors = analysis['doors']
+        windows = analysis['windows']
         
+        # Process each automation type
         for auto_type in automation_types:
-            print(f"🔄 Processing {auto_type}...")
-            if auto_type in ai_placement.get('placements', {}):
-                placement_list = ai_placement['placements'][auto_type]
-                print(f"   Found {len(placement_list)} {auto_type} placements")
+            if auto_type not in ai_plan.get('placement_plan', {}):
+                continue
                 
-                for i, placement in enumerate(placement_list):
-                    try:
-                        # Ensure position is a list/tuple of numbers
-                        pos = placement.get('position', [0, 0])
-                        if isinstance(pos, (list, tuple)) and len(pos) == 2:
-                            position_tuple = (float(pos[0]), float(pos[1]))
-                        else:
-                            print(f"   ⚠️  Invalid position format for {auto_type}[{i}]: {pos}")
-                            continue
+            plan_items = ai_plan['placement_plan'][auto_type]
+            
+            if auto_type == 'lighting':
+                # Place lights in specified rooms
+                for item in plan_items:
+                    room_idx = item.get('room_index')
+                    quantity = item.get('quantity', 1)
+                    if room_idx is not None and room_idx < len(rooms):
+                        room = rooms[room_idx]
+                        center = room.get('center', (0, 0))
                         
+                        # Add multiple lights for the same room with slight offset
+                        for q in range(quantity):
+                            offset_x = (q - quantity//2) * 30
+                            placements[auto_type].append({
+                                'position': (center[0] + offset_x, center[1]),
+                                'room_index': room_idx,
+                                'quantity': 1,
+                                'confidence': 0.95
+                            })
+            
+            elif auto_type == 'shading':
+                # Place at windows
+                for i, window_pos in enumerate(windows):
+                    placements[auto_type].append({
+                        'position': window_pos,
+                        'window_index': i,
+                        'quantity': 1,
+                        'confidence': 0.9
+                    })
+            
+            elif auto_type == 'security_access':
+                # Place at doors
+                for i, door_pos in enumerate(doors):
+                    placements[auto_type].append({
+                        'position': door_pos,
+                        'door_index': i,
+                        'quantity': 1,
+                        'confidence': 0.9
+                    })
+            
+            elif auto_type == 'climate':
+                # Place in first major room (usually living room)
+                if rooms:
+                    center = rooms[0].get('center', (0, 0))
+                    placements[auto_type].append({
+                        'position': (center[0] + 30, center[1] + 30),
+                        'room_index': 0,
+                        'quantity': 1,
+                        'confidence': 0.8
+                    })
+            
+            elif auto_type == 'audio':
+                # Place in living spaces
+                for item in plan_items:
+                    room_idx = item.get('room_index')
+                    if room_idx is not None and room_idx < len(rooms):
+                        room = rooms[room_idx]
+                        center = room.get('center', (0, 0))
                         placements[auto_type].append({
-                            'position': position_tuple,
-                            'quantity': int(placement.get('quantity', 1)),
-                            'reasoning': str(placement.get('reasoning', '')),
-                            'confidence': 0.95,
-                            'ai_generated': True
+                            'position': (center[0] - 30, center[1] - 30),
+                            'room_index': room_idx,
+                            'quantity': 1,
+                            'confidence': 0.8
                         })
-                    except Exception as item_error:
-                        print(f"   ❌ Error processing {auto_type}[{i}]: {str(item_error)}")
-                        print(f"   Item data: {placement}")
-                        continue
         
-        # Log total counts
+        # Log results
         for auto_type, items in placements.items():
-            print(f"  {auto_type}: {len(items)} items placed")
+            print(f"  ✅ {auto_type}: {len(items)} items placed")
         
         return placements
         
