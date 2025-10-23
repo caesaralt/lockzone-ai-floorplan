@@ -40,16 +40,28 @@ app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['DATA_FOLDER'] = 'data'
 app.config['LEARNING_FOLDER'] = 'learning_data'
 app.config['SIMPRO_CONFIG_FOLDER'] = 'simpro_config'
+app.config['CRM_DATA_FOLDER'] = 'crm_data'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], 
                app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
-               app.config['SIMPRO_CONFIG_FOLDER']]:
+               app.config['SIMPRO_CONFIG_FOLDER'], app.config['CRM_DATA_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 LEARNING_INDEX_FILE = os.path.join(app.config['LEARNING_FOLDER'], 'learning_index.json')
 SIMPRO_CONFIG_FILE = os.path.join(app.config['SIMPRO_CONFIG_FOLDER'], 'simpro_config.json')
+
+# CRM Data Files
+CUSTOMERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customers.json')
+PROJECTS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'projects.json')
+COMMUNICATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'communications.json')
+DOCUMENTS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'documents.json')
+CALENDAR_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'calendar.json')
+TECHNICIANS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'technicians.json')
+INVENTORY_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'inventory.json')
+SUPPLIERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'suppliers.json')
+INTEGRATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'integrations.json')
 
 DEFAULT_DATA = {
     "automation_types": {
@@ -973,6 +985,12 @@ def make_simpro_request(endpoint, method='GET', data=None, params=None):
 
 @app.route('/')
 def index():
+    """Serve unified platform interface"""
+    return render_template('unified.html')
+
+@app.route('/quotes')
+def quotes_page():
+    """Serve quotes tool"""
     return render_template('index.html')
 
 @app.route('/api/analyze', methods=['POST'])
@@ -1953,6 +1971,346 @@ def execute_agent_action(project_id, tool_name, tool_input, current_data):
                     'files': {
                         'annotated_pdf': f'/download/{os.path.basename(annotated_path)}',
                         'quote_pdf': f'/download/{os.path.basename(quote_path)}'
+
+# ============================================================================
+# CRM ROUTES
+# ============================================================================
+
+@app.route('/crm')
+def crm_dashboard():
+    """Serve CRM interface"""
+    return render_template('crm.html')
+
+# CUSTOMERS
+@app.route('/api/crm/customers', methods=['GET'])
+def get_customers():
+    try:
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        search = request.args.get('search', '').lower()
+        if search:
+            customers = [c for c in customers if search in c.get('name', '').lower() or
+                        search in c.get('email', '').lower()]
+        return jsonify({'success': True, 'customers': customers, 'total': len(customers)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/customers', methods=['POST'])
+def create_customer():
+    try:
+        data = request.json
+        if not data.get('name'):
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        customer = {
+            'id': str(uuid.uuid4()),
+            'name': data['name'],
+            'email': data.get('email', ''),
+            'phone': data.get('phone', ''),
+            'address': data.get('address', ''),
+            'company': data.get('company', ''),
+            'notes': data.get('notes', ''),
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat(),
+            'status': 'active',
+            'total_projects': 0,
+            'total_revenue': 0.0
+        }
+        customers.append(customer)
+        save_json_file(CUSTOMERS_FILE, customers)
+        return jsonify({'success': True, 'customer': customer})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/customers/<customer_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_customer(customer_id):
+    try:
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        idx = next((i for i, c in enumerate(customers) if c['id'] == customer_id), None)
+        
+        if request.method == 'GET':
+            if idx is None:
+                return jsonify({'success': False, 'error': 'Not found'}), 404
+            projects = load_json_file(PROJECTS_FILE, [])
+            customer_projects = [p for p in projects if p.get('customer_id') == customer_id]
+            comms = load_json_file(COMMUNICATIONS_FILE, [])
+            customer_comms = [c for c in comms if c.get('customer_id') == customer_id]
+            return jsonify({
+                'success': True,
+                'customer': customers[idx],
+                'projects': customer_projects,
+                'communications': customer_comms
+            })
+        
+        elif request.method == 'PUT':
+            if idx is None:
+                return jsonify({'success': False, 'error': 'Not found'}), 404
+            data = request.json
+            customer = customers[idx]
+            for field in ['name', 'email', 'phone', 'address', 'company', 'notes', 'status']:
+                if field in data:
+                    customer[field] = data[field]
+            customer['updated_at'] = datetime.now().isoformat()
+            customers[idx] = customer
+            save_json_file(CUSTOMERS_FILE, customers)
+            return jsonify({'success': True, 'customer': customer})
+        
+        elif request.method == 'DELETE':
+            customers = [c for c in customers if c['id'] != customer_id]
+            save_json_file(CUSTOMERS_FILE, customers)
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# PROJECTS
+@app.route('/api/crm/projects', methods=['GET'])
+def get_projects():
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        customer_id = request.args.get('customer_id')
+        if customer_id:
+            projects = [p for p in projects if p.get('customer_id') == customer_id]
+        return jsonify({'success': True, 'projects': projects})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects', methods=['POST'])
+def create_project():
+    try:
+        data = request.json
+        projects = load_json_file(PROJECTS_FILE, [])
+        project = {
+            'id': str(uuid.uuid4()),
+            'customer_id': data.get('customer_id'),
+            'title': data.get('title', ''),
+            'description': data.get('description', ''),
+            'status': data.get('status', 'pending'),
+            'priority': data.get('priority', 'medium'),
+            'quote_amount': data.get('quote_amount', 0.0),
+            'actual_amount': data.get('actual_amount', 0.0),
+            'due_date': data.get('due_date'),
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        projects.append(project)
+        save_json_file(PROJECTS_FILE, projects)
+        if project['customer_id']:
+            update_customer_stats(project['customer_id'])
+        return jsonify({'success': True, 'project': project})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>', methods=['PUT'])
+def update_project(project_id):
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        data = request.json
+        project = projects[idx]
+        for field in ['title', 'description', 'status', 'priority', 'quote_amount', 'actual_amount', 'due_date']:
+            if field in data:
+                project[field] = data[field]
+        project['updated_at'] = datetime.now().isoformat()
+        projects[idx] = project
+        save_json_file(PROJECTS_FILE, projects)
+        if project.get('customer_id'):
+            update_customer_stats(project['customer_id'])
+        return jsonify({'success': True, 'project': project})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# COMMUNICATIONS
+@app.route('/api/crm/communications', methods=['GET', 'POST'])
+def handle_communications():
+    try:
+        if request.method == 'GET':
+            comms = load_json_file(COMMUNICATIONS_FILE, [])
+            customer_id = request.args.get('customer_id')
+            if customer_id:
+                comms = [c for c in comms if c.get('customer_id') == customer_id]
+            return jsonify({'success': True, 'communications': comms})
+        else:
+            data = request.json
+            comms = load_json_file(COMMUNICATIONS_FILE, [])
+            comm = {
+                'id': str(uuid.uuid4()),
+                'customer_id': data.get('customer_id'),
+                'project_id': data.get('project_id'),
+                'type': data.get('type', 'note'),
+                'subject': data.get('subject', ''),
+                'content': data.get('content', ''),
+                'created_by': data.get('created_by', 'System'),
+                'created_at': datetime.now().isoformat()
+            }
+            comms.append(comm)
+            save_json_file(COMMUNICATIONS_FILE, comms)
+            return jsonify({'success': True, 'communication': comm})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# CALENDAR
+@app.route('/api/crm/calendar', methods=['GET', 'POST'])
+def handle_calendar():
+    try:
+        if request.method == 'GET':
+            events = load_json_file(CALENDAR_FILE, [])
+            return jsonify({'success': True, 'events': events})
+        else:
+            data = request.json
+            events = load_json_file(CALENDAR_FILE, [])
+            event = {
+                'id': str(uuid.uuid4()),
+                'title': data.get('title', ''),
+                'description': data.get('description', ''),
+                'date': data.get('date', ''),
+                'time': data.get('time', ''),
+                'type': data.get('type', 'appointment'),
+                'status': data.get('status', 'scheduled'),
+                'created_at': datetime.now().isoformat()
+            }
+            events.append(event)
+            save_json_file(CALENDAR_FILE, events)
+            return jsonify({'success': True, 'event': event})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# TECHNICIANS
+@app.route('/api/crm/technicians', methods=['GET', 'POST'])
+def handle_technicians():
+    try:
+        if request.method == 'GET':
+            techs = load_json_file(TECHNICIANS_FILE, [])
+            return jsonify({'success': True, 'technicians': techs})
+        else:
+            data = request.json
+            techs = load_json_file(TECHNICIANS_FILE, [])
+            tech = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', ''),
+                'email': data.get('email', ''),
+                'phone': data.get('phone', ''),
+                'skills': data.get('skills', []),
+                'status': data.get('status', 'available'),
+                'created_at': datetime.now().isoformat()
+            }
+            techs.append(tech)
+            save_json_file(TECHNICIANS_FILE, techs)
+            return jsonify({'success': True, 'technician': tech})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# INVENTORY
+@app.route('/api/crm/inventory', methods=['GET', 'POST'])
+def handle_inventory():
+    try:
+        if request.method == 'GET':
+            inventory = load_json_file(INVENTORY_FILE, [])
+            return jsonify({'success': True, 'inventory': inventory})
+        else:
+            data = request.json
+            inventory = load_json_file(INVENTORY_FILE, [])
+            item = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', ''),
+                'sku': data.get('sku', ''),
+                'category': data.get('category', ''),
+                'quantity': data.get('quantity', 0),
+                'unit_cost': data.get('unit_cost', 0.0),
+                'reorder_level': data.get('reorder_level', 10),
+                'created_at': datetime.now().isoformat()
+            }
+            inventory.append(item)
+            save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True, 'item': item})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# SUPPLIERS
+@app.route('/api/crm/suppliers', methods=['GET', 'POST'])
+def handle_suppliers():
+    try:
+        if request.method == 'GET':
+            suppliers = load_json_file(SUPPLIERS_FILE, [])
+            return jsonify({'success': True, 'suppliers': suppliers})
+        else:
+            data = request.json
+            suppliers = load_json_file(SUPPLIERS_FILE, [])
+            supplier = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', ''),
+                'email': data.get('email', ''),
+                'phone': data.get('phone', ''),
+                'website': data.get('website', ''),
+                'created_at': datetime.now().isoformat()
+            }
+            suppliers.append(supplier)
+            save_json_file(SUPPLIERS_FILE, suppliers)
+            return jsonify({'success': True, 'supplier': supplier})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# INTEGRATIONS
+@app.route('/api/crm/integrations', methods=['GET'])
+def get_integrations():
+    try:
+        integrations = load_json_file(INTEGRATIONS_FILE, {
+            'simpro': {'enabled': False, 'connected': False},
+            'google': {'enabled': False, 'connected': False},
+            'email': {'enabled': False, 'configured': False}
+        })
+        return jsonify({'success': True, 'integrations': integrations})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# STATS
+@app.route('/api/crm/stats', methods=['GET'])
+def get_crm_stats():
+    try:
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        projects = load_json_file(PROJECTS_FILE, [])
+        inventory = load_json_file(INVENTORY_FILE, [])
+        
+        total_customers = len(customers)
+        active_customers = len([c for c in customers if c.get('status') == 'active'])
+        total_projects = len(projects)
+        active_projects = len([p for p in projects if p.get('status') in ['pending', 'in_progress']])
+        completed_projects = len([p for p in projects if p.get('status') == 'completed'])
+        total_revenue = sum(p.get('actual_amount', 0) for p in projects if p.get('status') == 'completed')
+        pending_revenue = sum(p.get('quote_amount', 0) for p in projects if p.get('status') in ['pending', 'in_progress'])
+        total_inventory_value = sum(i.get('quantity', 0) * i.get('unit_cost', 0) for i in inventory)
+        low_stock_items = len([i for i in inventory if i.get('quantity', 0) <= i.get('reorder_level', 10)])
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'customers': {'total': total_customers, 'active': active_customers},
+                'projects': {'total': total_projects, 'active': active_projects, 'completed': completed_projects},
+                'revenue': {'total': total_revenue, 'pending': pending_revenue},
+                'inventory': {'total_value': total_inventory_value, 'low_stock': low_stock_items},
+                'calendar': {'today_events': 0}
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def update_customer_stats(customer_id):
+    """Update customer's project count and revenue"""
+    try:
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, c in enumerate(customers) if c['id'] == customer_id), None)
+        if idx is None:
+            return
+        customer_projects = [p for p in projects if p.get('customer_id') == customer_id]
+        completed = [p for p in customer_projects if p.get('status') == 'completed']
+        customers[idx]['total_projects'] = len(customer_projects)
+        customers[idx]['total_revenue'] = sum(p.get('actual_amount', 0) for p in completed)
+        customers[idx]['updated_at'] = datetime.now().isoformat()
+        save_json_file(CUSTOMERS_FILE, customers)
+    except:
+        pass
+
                     }
                 }
             
