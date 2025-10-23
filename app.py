@@ -1608,6 +1608,363 @@ def get_symbol_for_type(auto_type):
     }
     return symbols.get(auto_type, '❓')
 
+# ============================================================================
+# AI CHAT AGENT ENDPOINTS
+# ============================================================================
+
+@app.route('/api/ai-chat', methods=['POST'])
+def ai_chat():
+    """AI chat endpoint with reasoning and optional agentic capabilities"""
+    try:
+        data = request.json
+        message = data.get('message', '')
+        project_id = data.get('project_id')
+        agent_mode = data.get('agent_mode', False)
+        conversation_history = data.get('conversation_history', [])
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'No message provided'}), 400
+        
+        # Get API key
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({'success': False, 'error': 'API key not configured'}), 500
+        
+        # Load project context if available
+        context_info = ""
+        current_data = {}
+        
+        if project_id:
+            learning_index = load_learning_index()
+            project = None
+            
+            for example in learning_index.get('examples', []):
+                if example.get('timestamp') == project_id:
+                    project = example
+                    break
+            
+            if project:
+                current_data = {
+                    'project_name': project.get('project_name', 'Unknown'),
+                    'rooms': project.get('analysis_result', {}).get('rooms', 0),
+                    'doors': project.get('analysis_result', {}).get('doors', 0),
+                    'windows': project.get('analysis_result', {}).get('windows', 0),
+                    'placements': project.get('placements', {}),
+                    'tier': project.get('tier', 'basic'),
+                    'automation_types': project.get('automation_types', [])
+                }
+                
+                # Count symbols
+                symbol_counts = {}
+                for auto_type, positions in current_data['placements'].items():
+                    symbol_counts[auto_type] = len(positions)
+                
+                context_info = f"""
+Current Project: {current_data['project_name']}
+Analysis: {current_data['rooms']} rooms, {current_data['doors']} doors, {current_data['windows']} windows
+Pricing Tier: {current_data['tier']}
+Automation Types: {', '.join(current_data['automation_types'])}
+Symbol Counts: {', '.join([f'{k}: {v}' for k, v in symbol_counts.items()])}
+"""
+        
+        # Build system prompt
+        system_prompt = f"""You are an AI assistant for Integratd Living's floor plan automation quoting system.
+
+You help users understand their floor plan analysis, answer questions about automation systems, and explain pricing.
+
+{context_info if context_info else "No project currently loaded."}
+
+{"AGENT MODE ENABLED: You can execute actions on the floor plan. When the user asks you to do something, use the appropriate tool." if agent_mode else "AGENT MODE DISABLED: You can only provide information and answer questions. You cannot execute actions."}
+
+Be helpful, concise, and professional. Use emojis sparingly for clarity.
+"""
+        
+        # Prepare tools for agent mode
+        tools = []
+        if agent_mode:
+            tools = [
+                {
+                    "name": "add_symbol",
+                    "description": "Add a new automation symbol to the floor plan",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbol_type": {
+                                "type": "string",
+                                "enum": ["lighting", "shading", "security_access", "climate", "audio"],
+                                "description": "Type of automation symbol to add"
+                            },
+                            "quantity": {
+                                "type": "integer",
+                                "description": "Number of symbols to add"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Explanation for why this symbol is being added"
+                            }
+                        },
+                        "required": ["symbol_type", "quantity", "reason"]
+                    }
+                },
+                {
+                    "name": "remove_symbol",
+                    "description": "Remove automation symbols from the floor plan",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbol_type": {
+                                "type": "string",
+                                "enum": ["lighting", "shading", "security_access", "climate", "audio"],
+                                "description": "Type of automation symbol to remove"
+                            },
+                            "quantity": {
+                                "type": "integer",
+                                "description": "Number of symbols to remove"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Explanation for why this symbol is being removed"
+                            }
+                        },
+                        "required": ["symbol_type", "quantity", "reason"]
+                    }
+                },
+                {
+                    "name": "update_pricing_tier",
+                    "description": "Change the pricing tier for the project",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "new_tier": {
+                                "type": "string",
+                                "enum": ["basic", "premium", "deluxe"],
+                                "description": "New pricing tier"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Explanation for tier change"
+                            }
+                        },
+                        "required": ["new_tier", "reason"]
+                    }
+                },
+                {
+                    "name": "regenerate_quote",
+                    "description": "Regenerate the quote PDF with current settings",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {
+                                "type": "string",
+                                "description": "Reason for regenerating"
+                            }
+                        },
+                        "required": ["reason"]
+                    }
+                }
+            ]
+        
+        # Build messages array with conversation history
+        messages = []
+        for msg in conversation_history:
+            messages.append(msg)
+        
+        # Add current user message
+        messages.append({
+            "role": "user",
+            "content": message
+        })
+        
+        # Call Claude API
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        
+        response_params = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 2000,
+            "system": system_prompt,
+            "messages": messages
+        }
+        
+        if tools:
+            response_params["tools"] = tools
+        
+        response = client.messages.create(**response_params)
+        
+        # Process response
+        assistant_message = ""
+        tool_calls = []
+        actions_taken = []
+        
+        for content_block in response.content:
+            if content_block.type == "text":
+                assistant_message += content_block.text
+            elif content_block.type == "tool_use":
+                tool_calls.append(content_block)
+        
+        # Execute tool calls if agent mode is enabled
+        if agent_mode and tool_calls and project_id:
+            for tool_call in tool_calls:
+                tool_name = tool_call.name
+                tool_input = tool_call.input
+                
+                action_result = execute_agent_action(
+                    project_id=project_id,
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                    current_data=current_data
+                )
+                
+                actions_taken.append(action_result)
+        
+        return jsonify({
+            'success': True,
+            'response': assistant_message,
+            'actions_taken': actions_taken,
+            'has_tool_calls': len(tool_calls) > 0
+        })
+    
+    except Exception as e:
+        print(f"AI chat error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def execute_agent_action(project_id, tool_name, tool_input, current_data):
+    """Execute an agentic action on the floor plan"""
+    try:
+        learning_index = load_learning_index()
+        project = None
+        project_index = None
+        
+        # Find the project
+        for idx, example in enumerate(learning_index.get('examples', [])):
+            if example.get('timestamp') == project_id:
+                project = example
+                project_index = idx
+                break
+        
+        if not project:
+            return {'success': False, 'action': tool_name, 'error': 'Project not found'}
+        
+        automation_data = load_data()
+        
+        if tool_name == "add_symbol":
+            symbol_type = tool_input['symbol_type']
+            quantity = tool_input['quantity']
+            reason = tool_input['reason']
+            
+            # Add symbols to placements
+            if symbol_type not in project['placements']:
+                project['placements'][symbol_type] = []
+            
+            # Add new symbol positions (using grid distribution)
+            page_width = 2384  # Default A1 size
+            page_height = 1684
+            existing_count = len(project['placements'][symbol_type])
+            
+            for i in range(quantity):
+                # Simple distribution
+                x = 500 + (existing_count + i) * 100
+                y = 500 + (existing_count + i) * 50
+                
+                project['placements'][symbol_type].append({
+                    'position': (x, y),
+                    'quantity': 1,
+                    'confidence': 1.0,
+                    'agent_added': True
+                })
+            
+            # Save updated project
+            learning_index['examples'][project_index] = project
+            save_learning_index(learning_index)
+            
+            return {
+                'success': True,
+                'action': 'add_symbol',
+                'details': f'Added {quantity} {symbol_type} symbol(s)',
+                'reason': reason
+            }
+        
+        elif tool_name == "remove_symbol":
+            symbol_type = tool_input['symbol_type']
+            quantity = tool_input['quantity']
+            reason = tool_input['reason']
+            
+            if symbol_type in project['placements']:
+                current_count = len(project['placements'][symbol_type])
+                remove_count = min(quantity, current_count)
+                
+                # Remove symbols
+                project['placements'][symbol_type] = project['placements'][symbol_type][:-remove_count]
+                
+                # Save
+                learning_index['examples'][project_index] = project
+                save_learning_index(learning_index)
+                
+                return {
+                    'success': True,
+                    'action': 'remove_symbol',
+                    'details': f'Removed {remove_count} {symbol_type} symbol(s)',
+                    'reason': reason
+                }
+            
+            return {'success': False, 'action': 'remove_symbol', 'error': 'No symbols to remove'}
+        
+        elif tool_name == "update_pricing_tier":
+            new_tier = tool_input['new_tier']
+            reason = tool_input['reason']
+            
+            old_tier = project.get('tier', 'basic')
+            project['tier'] = new_tier
+            
+            # Save
+            learning_index['examples'][project_index] = project
+            save_learning_index(learning_index)
+            
+            return {
+                'success': True,
+                'action': 'update_pricing_tier',
+                'details': f'Changed tier from {old_tier} to {new_tier}',
+                'reason': reason
+            }
+        
+        elif tool_name == "regenerate_quote":
+            reason = tool_input['reason']
+            
+            # Regenerate PDFs with current settings
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            pdf_path = project.get('pdf_path', '')
+            
+            if pdf_path and os.path.exists(pdf_path):
+                # Generate new annotated PDF
+                annotated_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_regenerated_annotated.pdf')
+                create_annotated_pdf(pdf_path, project['placements'], automation_data, annotated_path)
+                
+                # Generate new quote
+                costs = calculate_costs(project['placements'], automation_data, project.get('tier', 'basic'))
+                quote_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{timestamp}_regenerated_quote.pdf')
+                generate_quote_pdf(costs, automation_data, project.get('project_name', 'Project'), project.get('tier', 'basic'), quote_path)
+                
+                return {
+                    'success': True,
+                    'action': 'regenerate_quote',
+                    'details': 'Quote regenerated successfully',
+                    'reason': reason,
+                    'files': {
+                        'annotated_pdf': f'/download/{os.path.basename(annotated_path)}',
+                        'quote_pdf': f'/download/{os.path.basename(quote_path)}'
+                    }
+                }
+            
+            return {'success': False, 'action': 'regenerate_quote', 'error': 'Original PDF not found'}
+        
+        return {'success': False, 'action': tool_name, 'error': 'Unknown action'}
+    
+    except Exception as e:
+        print(f"Agent action error: {str(e)}")
+        traceback.print_exc()
+        return {'success': False, 'action': tool_name, 'error': str(e)}
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

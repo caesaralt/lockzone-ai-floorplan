@@ -884,31 +884,44 @@
         });
     </script>
 
-    <!-- AI CHAT BUBBLE (Future Feature) -->
+    <!-- AI CHAT BUBBLE -->
     <div id="aiChatBubble" class="ai-chat-bubble" onclick="toggleAIChat()">
         🧠
     </div>
 
     <div id="aiChatPanel" class="ai-chat-panel">
         <div class="ai-chat-header">
-            <h3>🤖 AI Assistant</h3>
+            <div>
+                <h3>🤖 AI Assistant</h3>
+                <button id="agentModeToggle" onclick="toggleAgentMode()" style="
+                    background: #999;
+                    color: white;
+                    border: none;
+                    padding: 5px 10px;
+                    border-radius: 5px;
+                    font-size: 0.9em;
+                    cursor: pointer;
+                    margin-top: 5px;
+                ">🔒 Agent Mode: OFF</button>
+                <div id="agentModeStatus" style="font-size: 0.8em; color: #999; margin-top: 3px;">🔒 Agent can only answer questions</div>
+            </div>
             <button onclick="toggleAIChat()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">×</button>
         </div>
         <div class="ai-chat-messages" id="aiChatMessages">
             <div class="ai-message">
-                <strong>AI:</strong> Hi! I'm your AI assistant. In the future, I'll be able to help you:
+                <strong>🤖 AI:</strong> Hi! I'm your AI assistant for the floor plan analyzer. I can:
                 <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Modify symbol placements</li>
-                    <li>Adjust pricing</li>
                     <li>Answer questions about your floor plan</li>
-                    <li>Execute actions on your behalf</li>
+                    <li>Explain analysis results</li>
+                    <li>Discuss pricing and options</li>
+                    <li><strong>With Agent Mode ON:</strong> Execute actions (add/remove symbols, change pricing, regenerate quotes)</li>
                 </ul>
-                <em style="color: #999;">This feature is coming soon!</em>
+                <em style="color: #556B2F;">Try asking me something!</em>
             </div>
         </div>
         <div class="ai-chat-input">
-            <input type="text" id="aiChatInput" placeholder="Ask me anything... (coming soon)" disabled>
-            <button onclick="sendAIMessage()" disabled>Send</button>
+            <input type="text" id="aiChatInput" placeholder="Ask me anything...">
+            <button id="aiChatSendBtn" onclick="sendAIMessage()">Send</button>
         </div>
     </div>
 
@@ -998,6 +1011,29 @@
             background: #556B2F;
             color: white;
             text-align: right;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #c33;
+        }
+
+        .action-message {
+            background: #e3f2fd;
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #2196F3;
+            font-size: 0.9em;
         }
 
         .ai-chat-input {
@@ -1031,20 +1067,226 @@
     </style>
 
     <script>
+        // AI Chat functionality
+        let conversationHistory = [];
+        let currentProjectId = null;
+        let agentModeEnabled = false;
+
         function toggleAIChat() {
             const panel = document.getElementById('aiChatPanel');
             panel.classList.toggle('active');
         }
 
-        function sendAIMessage() {
-            // Future implementation
-            const input = document.getElementById('aiChatInput');
-            const messages = document.getElementById('aiChatMessages');
+        function toggleAgentMode() {
+            agentModeEnabled = !agentModeEnabled;
+            const toggle = document.getElementById('agentModeToggle');
+            const status = document.getElementById('agentModeStatus');
             
-            if (input.value.trim()) {
-                // This will be implemented in the future
-                alert('AI Chat coming soon!');
+            if (agentModeEnabled) {
+                toggle.textContent = '🤖 Agent Mode: ON';
+                toggle.style.background = '#4CAF50';
+                status.textContent = '✅ Agent can execute actions';
+                status.style.color = '#4CAF50';
+            } else {
+                toggle.textContent = '🔒 Agent Mode: OFF';
+                toggle.style.background = '#999';
+                status.textContent = '🔒 Agent can only answer questions';
+                status.style.color = '#999';
             }
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('aiChatInput');
+            const messagesDiv = document.getElementById('aiChatMessages');
+            const sendBtn = document.getElementById('aiChatSendBtn');
+            
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Add user message to UI
+            addMessageToChat('user', message);
+            input.value = '';
+            input.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Add to conversation history
+            conversationHistory.push({
+                role: 'user',
+                content: message
+            });
+            
+            try {
+                const response = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        project_id: currentProjectId,
+                        agent_mode: agentModeEnabled,
+                        conversation_history: conversationHistory.slice(0, -1) // Exclude current message
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add assistant response
+                    addMessageToChat('assistant', data.response);
+                    
+                    // Add to conversation history
+                    conversationHistory.push({
+                        role: 'assistant',
+                        content: data.response
+                    });
+                    
+                    // Show actions if any
+                    if (data.actions_taken && data.actions_taken.length > 0) {
+                        data.actions_taken.forEach(action => {
+                            addActionToChat(action);
+                        });
+                        
+                        // Refresh page data if actions were taken
+                        if (currentProjectId) {
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        }
+                    }
+                } else {
+                    addMessageToChat('error', 'Error: ' + data.error);
+                }
+            } catch (error) {
+                addMessageToChat('error', 'Error: ' + error.message);
+            } finally {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        function addMessageToChat(type, message) {
+            const messagesDiv = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'user' ? 'user-message' : 
+                                   type === 'error' ? 'error-message' : 'ai-message';
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `<strong>You:</strong> ${escapeHtml(message)}`;
+            } else if (type === 'error') {
+                messageDiv.innerHTML = `<strong>❌ Error:</strong> ${escapeHtml(message)}`;
+            } else {
+                messageDiv.innerHTML = `<strong>🤖 AI:</strong> ${escapeHtml(message)}`;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addActionToChat(action) {
+            const messagesDiv = document.getElementById('aiChatMessages');
+            const actionDiv = document.createElement('div');
+            actionDiv.className = 'action-message';
+            
+            if (action.success) {
+                actionDiv.innerHTML = `
+                    <strong>✅ Action Executed:</strong> ${escapeHtml(action.details)}<br>
+                    <em>Reason: ${escapeHtml(action.reason)}</em>
+                    ${action.files ? '<br><small>New files generated</small>' : ''}
+                `;
+            } else {
+                actionDiv.innerHTML = `
+                    <strong>❌ Action Failed:</strong> ${escapeHtml(action.error)}
+                `;
+            }
+            
+            messagesDiv.appendChild(actionDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Allow Enter key to send
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('aiChatInput');
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAIMessage();
+                    }
+                });
+            }
+        });
+
+        // Store project ID when results are displayed
+        function displayResults(data) {
+            currentProjectId = data.project_id || null;
+            
+            // ... (rest of displayResults function stays the same)
+            const html = `
+                <div class="results">
+                    <h3>Analysis Results</h3>
+                    <div class="cost-item">
+                        <span>Rooms Detected:</span>
+                        <span>${data.analysis.rooms_detected}</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Doors Detected:</span>
+                        <span>${data.analysis.doors_detected}</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Windows Detected:</span>
+                        <span>${data.analysis.windows_detected}</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Analysis Method:</span>
+                        <span>${data.analysis.method === 'ai_vision' ? '🤖 AI Vision' : '📐 Smart Grid'}</span>
+                    </div>
+                    ${data.analysis.ai_notes ? `<div class="info-box" style="margin-top: 15px;"><strong>AI Notes:</strong> ${data.analysis.ai_notes}</div>` : ''}
+                    
+                    ${data.files && data.files.floor_plan_preview ? `
+                        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                            <h3 style="color: #556B2F; margin-bottom: 15px;">📐 Annotated Floor Plan Preview</h3>
+                            <img src="${data.files.floor_plan_preview}" 
+                                 alt="Floor Plan Preview" 
+                                 style="max-width: 100%; border: 3px solid #556B2F; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); display: block; margin: 0 auto;">
+                        </div>
+                    ` : ''}
+                    
+                    <h3 style="margin-top: 30px;">Cost Breakdown</h3>
+                    ${data.costs.items.map(item => `
+                        <div class="cost-item">
+                            <span>${item.type} (${item.quantity}x)</span>
+                            <span>$${item.total.toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                    <div class="cost-item">
+                        <span>Subtotal:</span>
+                        <span>$${data.costs.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Markup:</span>
+                        <span>$${data.costs.markup.toFixed(2)}</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>GRAND TOTAL:</span>
+                        <span>$${data.costs.grand_total.toFixed(2)}</span>
+                    </div>
+
+                    <div class="download-links">
+                        <a href="${data.files.annotated_pdf}" class="download-link" download>📄 Download Annotated Floor Plan</a>
+                        <a href="${data.files.quote_pdf}" class="download-link" download>💰 Download Quote PDF</a>
+                        ${data.editor_url ? `<a href="${data.editor_url}" class="download-link" style="background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);">🎨 Open in Interactive Editor</a>` : ''}
+                    </div>
+                </div>
+            `;
+            document.getElementById('results').innerHTML = html;
         }
 
         // Close chat when clicking outside
