@@ -57,7 +57,6 @@ SIMPRO_CONFIG_FILE = os.path.join(app.config['SIMPRO_CONFIG_FOLDER'], 'simpro_co
 CUSTOMERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customers.json')
 PROJECTS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'projects.json')
 COMMUNICATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'communications.json')
-DOCUMENTS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'documents.json')
 CALENDAR_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'calendar.json')
 TECHNICIANS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'technicians.json')
 INVENTORY_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'inventory.json')
@@ -986,13 +985,19 @@ def make_simpro_request(endpoint, method='GET', data=None, params=None):
 
 @app.route('/')
 def index():
-    """Serve unified platform interface"""
+    """Serve unified landing page"""
     return render_template('unified.html')
 
 @app.route('/quotes')
 def quotes_page():
-    """Serve quotes tool"""
+    """Serve quote automation tool"""
     return render_template('index.html')
+
+@app.route('/crm')
+def crm_page():
+    """Serve CRM dashboard"""
+    return render_template('crm.html')
+
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
@@ -1986,50 +1991,41 @@ def execute_agent_action(project_id, tool_name, tool_input, current_data):
 
 
 # ============================================================================
-# CRM ROUTES
+# CRM API ROUTES
 # ============================================================================
 
-@app.route('/crm')
-def crm_dashboard():
-    """Serve CRM interface"""
-    return render_template('crm.html')
-
-@app.route('/api/crm/customers', methods=['GET'])
-def get_customers():
+@app.route('/api/crm/customers', methods=['GET', 'POST'])
+def handle_customers():
     try:
-        customers = load_json_file(CUSTOMERS_FILE, [])
-        search = request.args.get('search', '').lower()
-        if search:
-            customers = [c for c in customers if search in c.get('name', '').lower() or
-                        search in c.get('email', '').lower()]
-        return jsonify({'success': True, 'customers': customers, 'total': len(customers)})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/crm/customers', methods=['POST'])
-def create_customer():
-    try:
-        data = request.json
-        if not data.get('name'):
-            return jsonify({'success': False, 'error': 'Name required'}), 400
-        customers = load_json_file(CUSTOMERS_FILE, [])
-        customer = {
-            'id': str(uuid.uuid4()),
-            'name': data['name'],
-            'email': data.get('email', ''),
-            'phone': data.get('phone', ''),
-            'address': data.get('address', ''),
-            'company': data.get('company', ''),
-            'notes': data.get('notes', ''),
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat(),
-            'status': 'active',
-            'total_projects': 0,
-            'total_revenue': 0.0
-        }
-        customers.append(customer)
-        save_json_file(CUSTOMERS_FILE, customers)
-        return jsonify({'success': True, 'customer': customer})
+        if request.method == 'GET':
+            customers = load_json_file(CUSTOMERS_FILE, [])
+            search = request.args.get('search', '').lower()
+            if search:
+                customers = [c for c in customers if search in c.get('name', '').lower() or
+                            search in c.get('email', '').lower()]
+            return jsonify({'success': True, 'customers': customers, 'total': len(customers)})
+        else:
+            data = request.json
+            if not data.get('name'):
+                return jsonify({'success': False, 'error': 'Name required'}), 400
+            customers = load_json_file(CUSTOMERS_FILE, [])
+            customer = {
+                'id': str(uuid.uuid4()),
+                'name': data['name'],
+                'email': data.get('email', ''),
+                'phone': data.get('phone', ''),
+                'address': data.get('address', ''),
+                'company': data.get('company', ''),
+                'notes': data.get('notes', ''),
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat(),
+                'status': 'active',
+                'total_projects': 0,
+                'total_revenue': 0.0
+            }
+            customers.append(customer)
+            save_json_file(CUSTOMERS_FILE, customers)
+            return jsonify({'success': True, 'customer': customer})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -2237,7 +2233,7 @@ def handle_suppliers():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/crm/integrations', methods=['GET'])
-def get_integrations():
+def get_integrations_crm():
     try:
         integrations = load_json_file(INTEGRATIONS_FILE, {
             'simpro': {'enabled': False},

@@ -36,6 +36,10 @@
             font-size: 20px;
             font-weight: 700;
             color: #556B2F;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .nav-menu {
@@ -65,49 +69,68 @@
             color: white;
         }
 
-        /* CONTENT FRAME */
-        .content-frame {
-            width: 100%;
-            height: calc(100vh - 60px);
-            border: none;
+        /* WELCOME SCREEN */
+        .welcome-container {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 40px;
         }
 
-        /* LOADING */
-        .loading-screen {
-            display: none;
-            position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: white;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 999;
+        .welcome-header {
+            text-align: center;
+            margin-bottom: 60px;
         }
 
-        .loading-screen.active {
-            display: flex;
+        .welcome-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f5f5f7;
-            border-top-color: #556B2F;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            margin-top: 20px;
-            font-size: 16px;
+        .welcome-subtitle {
+            font-size: 20px;
             color: #666;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .module-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(85, 107, 47, 0.15);
+        }
+
+        .module-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .module-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .module-description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -116,66 +139,66 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <div class="logo">🏠 Integratd Living</div>
+            <a href="/" class="logo">🏠 Integratd Living</a>
             <ul class="nav-menu">
-                <li><a class="nav-item active" data-page="crm">CRM Dashboard</a></li>
-                <li><a class="nav-item" data-page="quotes">Quote Automation</a></li>
-                <li><a class="nav-item" data-page="editor">Floor Plan Canvas</a></li>
-                <li><a class="nav-item" data-page="learning">AI Learning</a></li>
-                <li><a class="nav-item" data-page="simpro">Simpro Integration</a></li>
+                <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
+                <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
+                <li><a href="/editor/latest" class="nav-item">Floor Plan Canvas</a></li>
+                <li><a href="/learning" class="nav-item">AI Learning</a></li>
+                <li><a href="/simpro" class="nav-item">Simpro Integration</a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- LOADING SCREEN -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="spinner"></div>
-        <div class="loading-text">Loading...</div>
+    <!-- WELCOME CONTENT -->
+    <div class="welcome-container">
+        <div class="welcome-header">
+            <h1 class="welcome-title">Welcome to Integratd Living</h1>
+            <p class="welcome-subtitle">Your complete business automation platform</p>
+        </div>
+
+        <div class="modules-grid">
+            <a href="/crm" class="module-card">
+                <div class="module-icon">📊</div>
+                <h2 class="module-title">CRM Dashboard</h2>
+                <p class="module-description">Manage customers, projects, scheduling, inventory, and more in one place.</p>
+            </a>
+
+            <a href="/quotes" class="module-card">
+                <div class="module-icon">💰</div>
+                <h2 class="module-title">Quote Automation</h2>
+                <p class="module-description">Upload floor plans and let AI generate accurate quotes automatically.</p>
+            </a>
+
+            <a href="/editor/latest" class="module-card">
+                <div class="module-icon">📐</div>
+                <h2 class="module-title">Floor Plan Canvas</h2>
+                <p class="module-description">Interactive editor for manual symbol placement and takeoffs.</p>
+            </a>
+
+            <a href="/learning" class="module-card">
+                <div class="module-icon">🧠</div>
+                <h2 class="module-title">AI Learning</h2>
+                <p class="module-description">Train the system with examples to improve accuracy over time.</p>
+            </a>
+
+            <a href="/simpro" class="module-card">
+                <div class="module-icon">🔗</div>
+                <h2 class="module-title">Simpro Integration</h2>
+                <p class="module-description">Connect your Simpro account for seamless data synchronization.</p>
+            </a>
+        </div>
     </div>
 
-    <!-- CONTENT FRAME -->
-    <iframe id="contentFrame" class="content-frame" src="/crm"></iframe>
-
     <script>
-        // Navigation
-        const routes = {
-            'crm': '/crm',
-            'quotes': '/',
-            'editor': '/editor/latest',
-            'learning': '/learning',
-            'simpro': '/simpro'
-        };
-
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const page = this.getAttribute('data-page');
-                loadPage(page);
+        // Highlight active nav item based on current URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.getAttribute('href') === currentPath) {
+                    item.classList.add('active');
+                }
             });
-        });
-
-        function loadPage(page) {
-            // Update active state
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.querySelector(`[data-page="${page}"]`).classList.add('active');
-            
-            // Show loading
-            document.getElementById('loadingScreen').classList.add('active');
-            
-            // Load page
-            const frame = document.getElementById('contentFrame');
-            frame.src = routes[page] || '/';
-            
-            // Hide loading when loaded
-            frame.onload = function() {
-                document.getElementById('loadingScreen').classList.remove('active');
-            };
-        }
-
-        // Handle iframe messages (for cross-frame communication)
-        window.addEventListener('message', function(e) {
-            if (e.data.type === 'navigate') {
-                loadPage(e.data.page);
-            }
         });
     </script>
 
