@@ -1410,6 +1410,20 @@ def simpro_quotes():
 # INTERACTIVE EDITOR ROUTES
 # ============================================================================
 
+@app.route('/canvas')
+def canvas_standalone():
+    """Standalone floor plan canvas - allows direct PDF upload"""
+    # Render editor with empty/default project
+    automation_data = load_data()
+    return render_template('canvas.html',
+                         project_id='new',
+                         project_name='New Floor Plan',
+                         symbols=[],
+                         floor_plan_image='',
+                         automation_data=automation_data,
+                         tier='basic')
+
+
 @app.route('/editor/<project_id>')
 def editor(project_id):
     """Interactive floor plan editor"""
