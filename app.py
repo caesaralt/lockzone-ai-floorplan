@@ -168,6 +168,29 @@ def save_simpro_config(config):
     with open(SIMPRO_CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
 
+def load_json_file(filepath, default=None):
+    """Load JSON file with default fallback"""
+    if default is None:
+        default = []
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading {filepath}: {str(e)}")
+            return default
+    return default
+
+def save_json_file(filepath, data):
+    """Save data to JSON file"""
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving {filepath}: {str(e)}")
+        return False
+
 # ============================================================================
 # AI ANALYSIS FUNCTIONS
 # ============================================================================
@@ -998,6 +1021,21 @@ def crm_page():
     """Serve CRM dashboard"""
     return render_template('crm.html')
 
+@app.route('/learning')
+def learning_page():
+    """Serve AI learning page"""
+    return render_template('learning.html')
+
+@app.route('/simpro')
+def simpro_page():
+    """Serve Simpro integration page"""
+    return render_template('simpro.html')
+
+@app.route('/editor/latest')
+def editor_latest():
+    """Redirect to canvas page for direct floor plan editing"""
+    return redirect(url_for('canvas_standalone'))
+
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
@@ -1415,12 +1453,19 @@ def canvas_standalone():
     """Standalone floor plan canvas - allows direct PDF upload"""
     # Render editor with empty/default project
     automation_data = load_data()
+    
+    # Load pricing config (same as editor route)
+    pricing_dict = {}
+    for auto_type, data in automation_data['automation_types'].items():
+        pricing_dict[auto_type] = data['base_cost_per_unit']
+    
     return render_template('canvas.html',
                          project_id='new',
                          project_name='New Floor Plan',
                          symbols=[],
                          floor_plan_image='',
                          automation_data=automation_data,
+                         pricing=pricing_dict,
                          tier='basic')
 
 

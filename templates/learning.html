@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Learning - Integratd Living</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid #d2d2d7;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            height: 60px;
+            gap: 40px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #556B2F;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+            flex: 1;
+        }
+
+        .nav-item {
+            color: #1d1d1f;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: rgba(85, 107, 47, 0.1);
+        }
+
+        .nav-item.active {
+            background: #556B2F;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+
+        .coming-soon {
+            font-size: 24px;
+            font-weight: 600;
+            color: #556B2F;
+            margin-bottom: 16px;
+        }
+
+        .description {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-container">
+            <a href="/" class="logo">🏠 Integratd Living</a>
+            <ul class="nav-menu">
+                <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
+                <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
+                <li><a href="/canvas" class="nav-item">Floor Plan Canvas</a></li>
+                <li><a href="/learning" class="nav-item active">AI Learning</a></li>
+                <li><a href="/simpro" class="nav-item">Simpro Integration</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>AI Learning</h1>
+            <p class="subtitle">Train the system to improve accuracy</p>
+        </div>
+
+        <div class="content-card">
+            <div class="icon">🧠</div>
+            <div class="coming-soon">Feature Coming Soon</div>
+            <p class="description">
+                The AI Learning module will allow you to train the system with examples 
+                to improve floor plan analysis accuracy over time. Upload your own floor 
+                plans with correct symbol placements to teach the AI your preferences and standards.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
