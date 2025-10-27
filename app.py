@@ -43,17 +43,19 @@ app.config['LEARNING_FOLDER'] = 'learning_data'
 app.config['SIMPRO_CONFIG_FOLDER'] = 'simpro_config'
 app.config['CRM_DATA_FOLDER'] = 'crm_data'
 app.config['AI_MAPPING_FOLDER'] = 'ai_mapping'
+app.config['MAPPING_LEARNING_FOLDER'] = 'mapping_learning'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], 
                app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
                app.config['SIMPRO_CONFIG_FOLDER'], app.config['CRM_DATA_FOLDER'],
-               app.config['AI_MAPPING_FOLDER']]:
+               app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 LEARNING_INDEX_FILE = os.path.join(app.config['LEARNING_FOLDER'], 'learning_index.json')
 SIMPRO_CONFIG_FILE = os.path.join(app.config['SIMPRO_CONFIG_FOLDER'], 'simpro_config.json')
+MAPPING_LEARNING_INDEX = os.path.join(app.config['MAPPING_LEARNING_FOLDER'], 'learning_index.json')
 
 # CRM Data Files
 CUSTOMERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customers.json')
@@ -149,6 +151,63 @@ def get_learning_context():
     
     return context
 
+def load_mapping_learning_index():
+    """Load mapping-specific learning index"""
+    if os.path.exists(MAPPING_LEARNING_INDEX):
+        with open(MAPPING_LEARNING_INDEX, 'r') as f:
+            return json.load(f)
+    return {
+        "examples": [],
+        "stats": {
+            "total_corrections": 0,
+            "avg_accuracy": 0,
+            "improvement_rate": 0
+        },
+        "last_updated": None
+    }
+
+def save_mapping_learning_index(index):
+    """Save mapping learning index"""
+    index['last_updated'] = datetime.now().isoformat()
+    with open(MAPPING_LEARNING_INDEX, 'w') as f:
+        json.dump(index, f, indent=2)
+
+def get_mapping_learning_context():
+    """Get mapping learning examples for AI context"""
+    index = load_mapping_learning_index()
+    examples = index.get('examples', [])
+    
+    # Get top rated examples (score >= 4)
+    top_examples = [e for e in examples if e.get('rating', 0) >= 4][-15:]
+    
+    if not top_examples:
+        return ""
+    
+    context = "\n\nLEARNING FROM PAST CORRECTIONS:\n"
+    context += "Use these verified examples to improve accuracy:\n\n"
+    
+    for ex in top_examples:
+        context += f"Example {ex.get('id', 'unknown')}:\n"
+        context += f"Original prediction accuracy: {ex.get('rating', 0)}/5\n"
+        
+        if 'corrections' in ex:
+            corrections = ex['corrections']
+            if corrections.get('components_added'):
+                context += f"- Missing components that should be detected: {len(corrections['components_added'])} items\n"
+                for comp in corrections['components_added'][:3]:
+                    context += f"  * {comp.get('type', 'unknown')} at {comp.get('room', 'unknown location')}\n"
+            
+            if corrections.get('connections_added'):
+                context += f"- Missing connections: {len(corrections['connections_added'])} connections\n"
+            
+            if corrections.get('feedback'):
+                context += f"- User feedback: {corrections['feedback']}\n"
+        
+        context += "\n"
+    
+    context += "Apply these learnings to the current analysis.\n\n"
+    return context
+
 def load_simpro_config():
     """Load Simpro configuration"""
     if os.path.exists(SIMPRO_CONFIG_FILE):
@@ -210,9 +269,8 @@ def image_to_base64(image_path):
         return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def analyze_floorplan_with_ai(pdf_path):
-    """Use Claude Vision API to intelligently analyze floor plans"""
+    """Enhanced AI analysis for quoting - uses learning from corrections"""
     
-    # Check if API key is available and anthropic is installed
     if not ANTHROPIC_AVAILABLE:
         return {
             "error": "Anthropic package not installed",
@@ -229,46 +287,44 @@ def analyze_floorplan_with_ai(pdf_path):
         }
     
     try:
-        # Convert PDF to base64 image
         img_base64 = pdf_to_image_base64(pdf_path)
-        
-        # Get learning context
         learning_context = get_learning_context()
-        
-        # Initialize Anthropic client
         client = anthropic.Anthropic(api_key=api_key)
         
-        # Create the prompt
-        prompt = f"""Analyze this electrical floor plan and identify all automation components.
+        prompt = f"""Analyze this floor plan EXTREMELY carefully. Study every detail, symbol, and marking.
 
 {learning_context}
 
-For each room, identify:
-1. Light fixtures and switches
-2. Windows/blinds for shading control
-3. Security devices (cameras, sensors, access points)
-4. Climate control units (thermostats, HVAC)
-5. Audio equipment (speakers, controls)
+CRITICAL: Be thorough and accurate. Count EVERY component you see:
+- Lights (ceiling, recessed, pendant, wall) 
+- Switches (count each position)
+- Windows/blinds for shading
+- Security (cameras, sensors, keypads, intercoms)
+- HVAC (thermostats, AC units, vents)
+- Audio (speakers, volume controls)
 
-Respond in JSON format:
+For each room, analyze the scale, symbols, and layout. Don't miss anything.
+
+JSON response:
 {{
     "rooms": [
         {{
-            "name": "room name",
-            "lighting": {{"count": X, "type": "basic/premium/deluxe"}},
-            "shading": {{"count": X, "type": "basic/premium/deluxe"}},
-            "security_access": {{"count": X, "type": "basic/premium/deluxe"}},
-            "climate": {{"count": X, "type": "basic/premium/deluxe"}},
-            "audio": {{"count": X, "type": "basic/premium/deluxe"}}
+            "name": "exact room name from plan",
+            "lighting": {{"count": total_count, "type": "basic|premium|deluxe"}},
+            "shading": {{"count": total_count, "type": "basic|premium|deluxe"}},
+            "security_access": {{"count": total_count, "type": "basic|premium|deluxe"}},
+            "climate": {{"count": total_count, "type": "basic|premium|deluxe"}},
+            "audio": {{"count": total_count, "type": "basic|premium|deluxe"}}
         }}
     ],
-    "notes": "Any additional observations"
-}}"""
+    "notes": "observations"
+}}
+
+BE PRECISE. Count everything."""
         
-        # Call Claude API
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4096,
+            max_tokens=2048,
             messages=[
                 {
                     "role": "user",
@@ -290,12 +346,9 @@ Respond in JSON format:
             ],
         )
         
-        # Extract response
         response_text = message.content[0].text
         
-        # Try to parse JSON from response
         try:
-            # Look for JSON in the response
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
             if start_idx != -1 and end_idx > start_idx:
@@ -311,11 +364,11 @@ Respond in JSON format:
         return {"error": str(e), "fallback": True}
 
 # ============================================================================
-# AI MAPPING FUNCTIONS
+# ENHANCED AI MAPPING WITH LEARNING
 # ============================================================================
 
 def ai_map_floorplan(file_path, is_pdf=True):
-    """Use AI to analyze floor plan and generate electrical mapping with connections"""
+    """Use AI to analyze floor plan with learning context"""
     
     if not ANTHROPIC_AVAILABLE:
         return {
@@ -339,65 +392,40 @@ def ai_map_floorplan(file_path, is_pdf=True):
             img_base64 = image_to_base64(file_path)
             media_type = "image/png"
         
-        # Initialize Anthropic client
+        # Get learning context from past corrections
+        learning_context = get_mapping_learning_context()
+        
         client = anthropic.Anthropic(api_key=api_key)
         
-        # Create comprehensive mapping prompt
-        prompt = """Analyze this electrical floor plan and provide a complete electrical mapping analysis like Vectorworks InVector does.
+        prompt = f"""Analyze electrical floor plan. Identify components & connections.
 
-Your task:
-1. Identify all electrical components (lights, switches, outlets, panels, junction boxes)
-2. Map the connections between components (which switch controls which lights, circuit paths)
-3. Create connection codes (e.g., L1, L2, S1, S2 for lights and switches)
-4. Identify circuit runs and conduit paths
-5. Label each component with a unique identifier
-6. Map the logical connections showing electrical flow
+{learning_context}
 
-Respond in JSON format:
-{
+Find:
+- Lights, switches, outlets, panels, junctions
+- Exact positions (x,y as 0.0-1.0)
+- Connections between components
+- Circuit labels
+
+JSON:
+{{
     "components": [
-        {
-            "id": "unique_id",
-            "type": "light/switch/outlet/panel/junction",
-            "location": {"x": approximate_x, "y": approximate_y},
-            "label": "L1/S1/etc",
-            "room": "room_name",
-            "description": "brief description"
-        }
+        {{"id": "L1", "type": "light|switch|outlet|panel|junction", "location": {{"x": 0.5, "y": 0.5}}, "label": "L1", "room": "Kitchen", "description": "LED light"}}
     ],
     "connections": [
-        {
-            "from": "component_id",
-            "to": "component_id",
-            "type": "power/control/data",
-            "circuit": "circuit_number",
-            "conduit_path": "description of path"
-        }
+        {{"from": "S1", "to": "L1", "type": "control|power", "circuit": "C1"}}
     ],
     "circuits": [
-        {
-            "id": "circuit_id",
-            "panel": "panel_name",
-            "components": ["list", "of", "component_ids"],
-            "amperage": estimated_amperage,
-            "notes": "any special notes"
-        }
+        {{"id": "C1", "panel": "Main", "components": ["S1", "L1"]}}
     ],
-    "markup_instructions": {
-        "legend": {
-            "symbols": ["description of symbols used"],
-            "colors": ["description of color coding"]
-        },
-        "notes": ["important installation notes"]
-    }
-}
-
-Be thorough and precise. This mapping will be used by electricians for installation."""
+    "markup_instructions": {{
+        "notes": ["installation notes"]
+    }}
+}}"""
         
-        # Call Claude API
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=8000,
+            max_tokens=4096,
             messages=[
                 {
                     "role": "user",
@@ -419,10 +447,8 @@ Be thorough and precise. This mapping will be used by electricians for installat
             ],
         )
         
-        # Extract response
         response_text = message.content[0].text
         
-        # Parse JSON
         try:
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
@@ -439,12 +465,10 @@ Be thorough and precise. This mapping will be used by electricians for installat
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 def generate_marked_up_image(original_image_path, mapping_data, output_path):
-    """Generate a marked-up floor plan image with electrical connections"""
+    """Generate marked-up floor plan with components and connections"""
     
     try:
-        # Open the original image
         if original_image_path.endswith('.pdf'):
-            # Convert PDF to image first
             doc = fitz.open(original_image_path)
             page = doc[0]
             mat = fitz.Matrix(2.0, 2.0)
@@ -454,10 +478,8 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
         else:
             img = Image.open(original_image_path)
         
-        # Create drawing context
         draw = ImageDraw.Draw(img)
         
-        # Try to load a font, fallback to default if not available
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
             small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
@@ -467,7 +489,6 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
         
         width, height = img.size
         
-        # Draw components
         components = mapping_data.get('components', [])
         component_positions = {}
         
@@ -476,13 +497,11 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
             label = comp.get('label', comp_id)
             location = comp.get('location', {})
             
-            # Convert relative coordinates to absolute
             x = int(location.get('x', 0.5) * width)
             y = int(location.get('y', 0.5) * height)
             
             component_positions[comp_id] = (x, y)
             
-            # Draw component marker
             comp_type = comp.get('type', 'unknown')
             if comp_type == 'light':
                 color = 'yellow'
@@ -500,14 +519,10 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
                 color = 'gray'
                 radius = 10
             
-            # Draw circle for component
             draw.ellipse([x-radius, y-radius, x+radius, y+radius], 
                         outline=color, fill=None, width=3)
-            
-            # Draw label
             draw.text((x+radius+5, y-radius), label, fill='red', font=font)
         
-        # Draw connections
         connections = mapping_data.get('connections', [])
         for conn in connections:
             from_id = conn.get('from')
@@ -528,17 +543,14 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
                     line_color = 'green'
                     width = 2
                 
-                # Draw connection line
                 draw.line([from_pos, to_pos], fill=line_color, width=width)
                 
-                # Draw circuit label at midpoint
                 mid_x = (from_pos[0] + to_pos[0]) // 2
                 mid_y = (from_pos[1] + to_pos[1]) // 2
                 circuit = conn.get('circuit', '')
                 if circuit:
                     draw.text((mid_x, mid_y), str(circuit), fill='purple', font=small_font)
         
-        # Save the marked-up image
         img.save(output_path, 'PNG')
         return True
         
@@ -548,51 +560,44 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
         return False
 
 # ============================================================================
-# ROUTES - HOME AND NAVIGATION
+# ROUTES
 # ============================================================================
 
 @app.route('/')
 def index():
-    """Render the unified welcome page"""
     return render_template('template_unified.html')
 
 @app.route('/crm')
 def crm_page():
-    """CRM Dashboard"""
     return render_template('template_crm.html')
 
 @app.route('/quotes')
 def quotes_page():
-    """Quote Automation"""
     return render_template('template_quotes.html')
 
 @app.route('/canvas')
 def canvas_page():
-    """Floor Plan Canvas"""
     return render_template('template_canvas.html')
 
 @app.route('/learning')
 def learning_page():
-    """AI Learning"""
     return render_template('template_learning.html')
 
 @app.route('/simpro')
 def simpro_page():
-    """Simpro Integration"""
     return render_template('template_simpro.html')
 
 @app.route('/ai-mapping')
 def ai_mapping_page():
-    """AI Electrical Mapping"""
     return render_template('template_ai_mapping.html')
 
 # ============================================================================
-# API ROUTES - AI MAPPING
+# API - AI MAPPING WITH LEARNING
 # ============================================================================
 
 @app.route('/api/ai-mapping/analyze', methods=['POST'])
 def ai_mapping_analyze():
-    """Analyze floor plan and generate electrical mapping"""
+    """Analyze floor plan with AI learning"""
     try:
         if 'floorplan' not in request.files:
             return jsonify({'success': False, 'error': 'No file uploaded'}), 400
@@ -601,17 +606,15 @@ def ai_mapping_analyze():
         if file.filename == '':
             return jsonify({'success': False, 'error': 'Empty filename'}), 400
         
-        # Save uploaded file
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         file_path = os.path.join(app.config['AI_MAPPING_FOLDER'], unique_filename)
         file.save(file_path)
         
-        # Determine file type
         is_pdf = filename.lower().endswith('.pdf')
         
-        # Analyze with AI
+        # Analyze with AI (includes learning context)
         mapping_result = ai_map_floorplan(file_path, is_pdf)
         
         if 'error' in mapping_result:
@@ -621,21 +624,18 @@ def ai_mapping_analyze():
         output_filename = f"marked_{timestamp}_{os.path.splitext(filename)[0]}.png"
         output_path = os.path.join(app.config['AI_MAPPING_FOLDER'], output_filename)
         
-        success = generate_marked_up_image(file_path, mapping_result, output_path)
+        generate_marked_up_image(file_path, mapping_result, output_path)
         
-        if not success:
-            return jsonify({
-                'success': True,
-                'mapping': mapping_result,
-                'warning': 'Could not generate marked-up image'
-            })
+        # Create analysis record
+        analysis_id = str(uuid.uuid4())
         
-        # Return results
         return jsonify({
             'success': True,
+            'analysis_id': analysis_id,
             'mapping': mapping_result,
             'original_file': unique_filename,
-            'marked_up_file': output_filename
+            'marked_up_file': output_filename,
+            'timestamp': timestamp
         })
         
     except Exception as e:
@@ -645,9 +645,68 @@ def ai_mapping_analyze():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/api/ai-mapping/save-correction', methods=['POST'])
+def save_correction():
+    """Save user corrections as learning data"""
+    try:
+        data = request.json
+        
+        learning_index = load_mapping_learning_index()
+        
+        correction_record = {
+            'id': str(uuid.uuid4()),
+            'timestamp': datetime.now().isoformat(),
+            'analysis_id': data.get('analysis_id'),
+            'original_file': data.get('original_file'),
+            'rating': data.get('rating', 0),
+            'corrections': {
+                'components_added': data.get('components_added', []),
+                'components_removed': data.get('components_removed', []),
+                'components_moved': data.get('components_moved', []),
+                'connections_added': data.get('connections_added', []),
+                'connections_removed': data.get('connections_removed', []),
+                'feedback': data.get('feedback', '')
+            },
+            'original_mapping': data.get('original_mapping', {}),
+            'corrected_mapping': data.get('corrected_mapping', {})
+        }
+        
+        learning_index['examples'].append(correction_record)
+        learning_index['stats']['total_corrections'] += 1
+        
+        # Calculate average accuracy
+        ratings = [e.get('rating', 0) for e in learning_index['examples']]
+        if ratings:
+            learning_index['stats']['avg_accuracy'] = sum(ratings) / len(ratings)
+        
+        save_mapping_learning_index(learning_index)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Correction saved successfully',
+            'total_examples': len(learning_index['examples'])
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ai-mapping/learning-stats', methods=['GET'])
+def get_learning_stats():
+    """Get learning statistics"""
+    try:
+        index = load_mapping_learning_index()
+        return jsonify({
+            'success': True,
+            'stats': index.get('stats', {}),
+            'total_examples': len(index.get('examples', [])),
+            'last_updated': index.get('last_updated')
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/ai-mapping/download/<filename>')
 def ai_mapping_download(filename):
-    """Download a marked-up floor plan"""
+    """Download marked-up floor plan"""
     try:
         file_path = os.path.join(app.config['AI_MAPPING_FOLDER'], filename)
         if os.path.exists(file_path):
@@ -659,13 +718,13 @@ def ai_mapping_download(filename):
 
 @app.route('/api/ai-mapping/history', methods=['GET'])
 def ai_mapping_history():
-    """Get history of AI mapping analyses"""
+    """Get analysis history"""
     try:
         files = os.listdir(app.config['AI_MAPPING_FOLDER'])
         marked_files = [f for f in files if f.startswith('marked_')]
         
         history = []
-        for f in sorted(marked_files, reverse=True)[:20]:  # Last 20
+        for f in sorted(marked_files, reverse=True)[:20]:
             history.append({
                 'filename': f,
                 'timestamp': f.split('_')[1] if '_' in f else 'unknown',
@@ -677,7 +736,7 @@ def ai_mapping_history():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
-# API ROUTES - QUOTE AUTOMATION (existing routes preserved)
+# EXISTING API ROUTES (preserved)
 # ============================================================================
 
 @app.route('/api/analyze', methods=['POST'])
@@ -852,10 +911,6 @@ def export_pdf():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# API ROUTES - CANVAS (existing routes preserved)
-# ============================================================================
-
 @app.route('/api/canvas/upload', methods=['POST'])
 def canvas_upload():
     try:
@@ -921,10 +976,6 @@ def canvas_export():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# API ROUTES - LEARNING (existing routes preserved)
-# ============================================================================
-
 @app.route('/api/learning/examples', methods=['GET'])
 def get_learning_examples():
     try:
@@ -970,10 +1021,6 @@ def upload_learning_example():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ============================================================================
-# API ROUTES - SIMPRO INTEGRATION (existing routes preserved)
-# ============================================================================
 
 @app.route('/api/simpro/config', methods=['GET', 'POST'])
 def simpro_config():
@@ -1055,10 +1102,6 @@ def simpro_sync():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ============================================================================
-# API ROUTES - CRM (existing routes preserved)
-# ============================================================================
 
 @app.route('/api/crm/customers', methods=['GET', 'POST'])
 def handle_customers():
