@@ -368,7 +368,7 @@ BE PRECISE. Count everything."""
 # ============================================================================
 
 def ai_map_floorplan(file_path, is_pdf=True):
-    """Use AI to analyze floor plan with learning context"""
+    """Enhanced AI with scale detection and accurate component mapping"""
     
     if not ANTHROPIC_AVAILABLE:
         return {
@@ -397,35 +397,90 @@ def ai_map_floorplan(file_path, is_pdf=True):
         
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""Analyze electrical floor plan. Identify components & connections.
+        prompt = f"""You are an expert electrical engineer analyzing a floor plan. Follow this process:
 
 {learning_context}
 
-Find:
-- Lights, switches, outlets, panels, junctions
-- Exact positions (x,y as 0.0-1.0)
-- Connections between components
-- Circuit labels
+STEP 1: UNDERSTAND THE PLAN
+- Look for scale bar (usually at bottom). Note the scale ratio.
+- Identify the title block with project info
+- Understand room layout and boundaries
+- Count total rooms and note their names
 
-JSON:
+STEP 2: IDENTIFY EVERY ELECTRICAL SYMBOL
+Look carefully at the floor plan and find ALL of these:
+- Small circles or dots = lights
+- Rectangles with lines = switches  
+- Circles with lines = outlets/power points
+- Large boxes = distribution boards/panels
+- Lines connecting symbols = circuits/wiring
+
+STEP 3: MAP EACH COMPONENT'S EXACT LOCATION
+For each symbol you see:
+- Measure its position from edges using the scale
+- Convert to coordinates (x: 0=left to 1=right, y: 0=top to 1=bottom)
+- Be PRECISE - look at the actual pixel location
+
+STEP 4: TRACE CIRCUIT CONNECTIONS
+Follow the red/colored lines connecting components:
+- Which distribution board does each circuit start from?
+- Which switch controls which lights?
+- What's the path of each circuit?
+
+Now analyze this floor plan and provide complete mapping:
+
 {{
+    "analysis": {{
+        "scale": "detected scale (e.g., 1:100)",
+        "total_rooms": count,
+        "plan_type": "residential/commercial",
+        "notes": "observations about the plan"
+    }},
     "components": [
-        {{"id": "L1", "type": "light|switch|outlet|panel|junction", "location": {{"x": 0.5, "y": 0.5}}, "label": "L1", "room": "Kitchen", "description": "LED light"}}
+        {{
+            "id": "unique_id (DB1, L1, S1, O1, etc)",
+            "type": "light|switch|outlet|panel|junction",
+            "location": {{
+                "x": precise_0_to_1_horizontal,
+                "y": precise_0_to_1_vertical
+            }},
+            "label": "label visible on plan or generated",
+            "room": "room name",
+            "description": "what you see (e.g., 'ceiling downlight', 'double switch')",
+            "circuit": "circuit it belongs to if visible"
+        }}
     ],
     "connections": [
-        {{"from": "S1", "to": "L1", "type": "control|power", "circuit": "C1"}}
+        {{
+            "from": "component_id",
+            "to": "component_id", 
+            "type": "power|control",
+            "circuit": "circuit_label",
+            "path": "description of wire path"
+        }}
     ],
     "circuits": [
-        {{"id": "C1", "panel": "Main", "components": ["S1", "L1"]}}
-    ],
-    "markup_instructions": {{
-        "notes": ["installation notes"]
-    }}
-}}"""
+        {{
+            "id": "circuit_id",
+            "panel": "distribution board name",
+            "components": ["list of component IDs on this circuit"]
+        }}
+    ]
+}}
+
+CRITICAL: 
+- Count EVERY visible symbol on the plan
+- Use the actual symbol positions you see
+- Don't guess - if you see 20 lights, map all 20
+- Coordinates must reflect real positions in the image"""
         
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4096,
+            max_tokens=8000,
+            thinking={
+                "type": "enabled",
+                "budget_tokens": 5000
+            },
             messages=[
                 {
                     "role": "user",
@@ -447,7 +502,15 @@ JSON:
             ],
         )
         
-        response_text = message.content[0].text
+        # Extract text response (skip thinking blocks)
+        response_text = ""
+        for block in message.content:
+            if hasattr(block, 'type') and block.type == "text":
+                response_text = block.text
+                break
+        
+        if not response_text:
+            return {"error": "No text response from AI"}
         
         try:
             start_idx = response_text.find('{')
