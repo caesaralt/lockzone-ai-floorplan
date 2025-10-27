@@ -569,23 +569,23 @@ def index():
 
 @app.route('/crm')
 def crm_page():
-    return render_template('template_crm.html')
+    return render_template('crm.html')
 
 @app.route('/quotes')
 def quotes_page():
-    return render_template('template_quotes.html')
+    return render_template('index.html')
 
 @app.route('/canvas')
 def canvas_page():
-    return render_template('template_canvas.html')
+    return render_template('canvas.html')
 
 @app.route('/learning')
 def learning_page():
-    return render_template('template_learning.html')
+    return render_template('learning.html')
 
 @app.route('/simpro')
 def simpro_page():
-    return render_template('template_simpro.html')
+    return render_template('simpro.html')
 
 @app.route('/ai-mapping')
 def ai_mapping_page():
