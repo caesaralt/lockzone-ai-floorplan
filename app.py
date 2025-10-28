@@ -249,18 +249,61 @@ def make_simpro_api_request(endpoint, method='GET', params=None, data=None):
     if not config.get('connected') or not config.get('access_token'):
         return {'error': 'Not connected to Simpro'}
     
+    # Build URL - ensure trailing slash for collections
+    if not endpoint.endswith('/') and method == 'GET':
+        endpoint = endpoint + '/'
+    
     url = f"{config['base_url']}/api/v1.0/companies/{config['company_id']}{endpoint}"
-    headers = {'Authorization': f"Bearer {config['access_token']}", 'Content-Type': 'application/json'}
+    headers = {
+        'Authorization': f"Bearer {config['access_token']}",
+        'Content-Type': 'application/json'
+    }
+    
+    print(f"  📡 {method} {url}")
+    if params:
+        print(f"     Params: {params}")
     
     try:
         if method == 'GET':
             response = requests.get(url, headers=headers, params=params, timeout=60)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=data, timeout=60)
         else:
             return {'error': f'Unsupported method: {method}'}
+        
+        # Log response status
+        print(f"  📥 Status: {response.status_code}")
+        
+        # Check for errors
+        if response.status_code == 404:
+            return {'error': f'404 Not Found - endpoint may not exist: {endpoint}'}
+        elif response.status_code == 422:
+            try:
+                error_data = response.json()
+                return {'error': f'422 Unprocessable - {error_data}'}
+            except:
+                return {'error': f'422 Unprocessable Entity - check parameters'}
+        elif response.status_code >= 400:
+            return {'error': f'{response.status_code} {response.reason}'}
+        
         response.raise_for_status()
-        return response.json()
+        
+        # Parse response
+        result = response.json()
+        return result
+    
+    except requests.exceptions.HTTPError as e:
+        error_msg = f'{e.response.status_code} {e.response.reason}'
+        try:
+            error_detail = e.response.json()
+            if 'errors' in error_detail:
+                error_msg += f": {error_detail['errors']}"
+        except:
+            pass
+        print(f"  ❌ HTTP Error: {error_msg}")
+        return {'error': error_msg}
     except Exception as e:
-        print(f"Simpro API Error: {str(e)}")
+        print(f"  ❌ Error: {str(e)}")
         return {'error': str(e)}
 
 def categorize_with_ai(item, item_type):
@@ -312,7 +355,7 @@ def categorize_with_ai(item, item_type):
         return {'automation_type': 'other', 'tier': 'basic', 'notes': 'Error'}
 
 def import_all_simpro_data():
-    """Import ALL Simpro data"""
+    """Import ALL Simpro data using CORRECT API endpoints"""
     config = load_simpro_config()
     if not config.get('connected'):
         return {'success': False, 'error': 'Not connected'}
@@ -320,31 +363,55 @@ def import_all_simpro_data():
     results = {'customers': [], 'jobs': [], 'quotes': [], 'catalog': [], 'staff': [], 'sites': []}
     errors = []
     
+    # Try to get actual company ID first
+    company_id = config.get('company_id', '0')
+    
+    # CORRECT Simpro API endpoints based on documentation
     endpoints = [
-        ('/customers/', 'customers', 500),
-        ('/jobs/', 'jobs', 500),
-        ('/quotes/', 'quotes', 500),
-        ('/catalogue/', 'catalog', 1000),
-        ('/employees/', 'staff', 200),
-        ('/sites/', 'sites', 500)
+        ('/customers/companies/', 'customers', 250, 'display=all'),  # Company customers
+        ('/jobs/', 'jobs', 250, 'display=all'),                      # Jobs
+        ('/quotes/', 'quotes', 250, 'display=all'),                  # Quotes
+        ('/catalogs/', 'catalog', 500, ''),                          # Catalog items (NOT catalogue)
+        ('/employees/', 'staff', 200, ''),                           # Staff
+        ('/sites/', 'sites', 250, '')                                # Sites
     ]
     
-    for endpoint, key, size in endpoints:
+    for endpoint, key, size, extra_params in endpoints:
         try:
             print(f"Fetching {key}...")
-            resp = make_simpro_api_request(endpoint, params={'pageSize': size})
-            if 'error' not in resp and resp.get('Results'):
-                results[key] = resp['Results']
+            params = {'pageSize': size}
+            if extra_params:
+                # Add display parameter
+                params['display'] = 'all'
+            
+            resp = make_simpro_api_request(endpoint, params=params)
+            if 'error' not in resp:
+                # Simpro returns Results array
+                if isinstance(resp, dict) and resp.get('Results'):
+                    results[key] = resp['Results']
+                    print(f"  ✓ Got {len(resp['Results'])} {key}")
+                elif isinstance(resp, list):
+                    results[key] = resp
+                    print(f"  ✓ Got {len(resp)} {key}")
+                else:
+                    print(f"  ⚠ No data for {key}: {str(resp)[:100]}")
             elif 'error' in resp:
-                errors.append(f"{key}: {resp['error']}")
+                error_msg = f"{key}: {resp['error']}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
         except Exception as e:
-            errors.append(f"{key}: {str(e)}")
+            error_msg = f"{key}: {str(e)}"
+            errors.append(error_msg)
+            print(f"  ✗ {error_msg}")
+    
+    total = sum(len(v) for v in results.values())
+    print(f"Total items fetched: {total}")
     
     return {
         'success': True,
         'data': results,
         'errors': errors,
-        'total_imported': sum(len(v) for v in results.values())
+        'total_imported': total
     }
 
 # ============================================================================
@@ -1242,8 +1309,66 @@ def simpro_connect():
         config['connected'] = True
         save_simpro_config(config)
         
+        # Try to get company info to verify
+        try:
+            headers = {'Authorization': f"Bearer {config['access_token']}"}
+            companies_url = f"{config['base_url']}/api/v1.0/companies/"
+            comp_resp = requests.get(companies_url, headers=headers, timeout=10)
+            if comp_resp.status_code == 200:
+                companies_data = comp_resp.json()
+                print(f"✓ Found companies: {companies_data}")
+        except Exception as e:
+            print(f"Could not fetch companies: {e}")
+        
         return jsonify({'success': True, 'message': 'Connected successfully'})
     
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/test-endpoints', methods=['POST'])
+def simpro_test_endpoints():
+    """Test different Simpro endpoints to find what works"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected'}), 400
+        
+        results = {}
+        headers = {'Authorization': f"Bearer {config['access_token']}"}
+        base = f"{config['base_url']}/api/v1.0/companies/{config['company_id']}"
+        
+        # Test different endpoints
+        test_endpoints = [
+            '/customers/companies/',
+            '/customers/',
+            '/jobs/',
+            '/quotes/',
+            '/catalogs/',
+            '/catalogue/',
+            '/employees/',
+            '/sites/'
+        ]
+        
+        for endpoint in test_endpoints:
+            try:
+                url = base + endpoint + '?pageSize=1'
+                resp = requests.get(url, headers=headers, timeout=10)
+                results[endpoint] = {
+                    'status': resp.status_code,
+                    'works': resp.status_code == 200,
+                    'message': resp.reason
+                }
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        if isinstance(data, dict) and 'Results' in data:
+                            results[endpoint]['count'] = len(data['Results'])
+                    except:
+                        pass
+            except Exception as e:
+                results[endpoint] = {'status': 'error', 'works': False, 'message': str(e)}
+        
+        return jsonify({'success': True, 'results': results})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

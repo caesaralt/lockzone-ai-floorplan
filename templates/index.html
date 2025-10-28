@@ -506,6 +506,7 @@
 
                     <button type="submit" class="btn btn-primary">Save Configuration</button>
                     <button type="button" class="btn btn-success" onclick="testSimproConnection()">Test Connection</button>
+                    <button type="button" class="btn btn-warning" onclick="testSimproEndpoints()" style="margin-left: 10px;">🔍 Test Which Endpoints Work</button>
                 </form>
             </div>
 
@@ -850,6 +851,35 @@
             } catch (error) {
                 alert('Connection error: ' + error.message);
                 updateConnectionStatus(false);
+            }
+        }
+
+        async function testSimproEndpoints() {
+            if (!confirm('This will test which Simpro API endpoints work with your account. Continue?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/simpro/test-endpoints', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = '🔍 ENDPOINT TEST RESULTS:\n\n';
+                    for (const [endpoint, result] of Object.entries(data.results)) {
+                        const status = result.works ? '✅' : '❌';
+                        const extra = result.count ? ` (${result.count} items)` : '';
+                        message += `${status} ${endpoint}: ${result.status}${extra}\n`;
+                    }
+                    message += '\n💡 Use the working endpoints for importing!';
+                    alert(message);
+                } else {
+                    alert('Test failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Test error: ' + error.message);
             }
         }
 
