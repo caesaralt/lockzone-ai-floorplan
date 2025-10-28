@@ -859,9 +859,17 @@ def quotes_page():
 @app.route('/canvas')
 def canvas_page():
     automation_data = load_data()
+    pricing = automation_data.get('pricing', {})
+    # Ensure pricing has all required fields
+    if not pricing:
+        pricing = {
+            'basic': 0,
+            'premium': 0,
+            'deluxe': 0
+        }
     return render_template('canvas.html',
-                         automation_data=automation_data,
-                         pricing=automation_data.get('pricing', {}),
+                         automation_data=json.dumps(automation_data),
+                         pricing=json.dumps(pricing),
                          tier='basic')
 
 @app.route('/learning')
@@ -1051,37 +1059,107 @@ def ai_mapping_history():
 def analyze_floorplan():
     try:
         if 'floorplan' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
-        
+            return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+
         file = request.files['floorplan']
         if file.filename == '':
-            return jsonify({'error': 'Empty filename'}), 400
-        
+            return jsonify({'success': False, 'error': 'Empty filename'}), 400
+
+        # Get form data
+        project_name = request.form.get('project_name', 'Untitled Project')
+        tier = request.form.get('tier', 'basic')
+        automation_types = request.form.getlist('automation_types') or request.form.getlist('automation_types[]')
+
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        
+
+        # Run AI analysis
         analysis_result = analyze_floorplan_with_ai(filepath)
-        
+
         if 'error' in analysis_result and analysis_result.get('fallback'):
             analysis_result = {
                 "rooms": [
                     {
                         "name": "Estimated Room",
-                        "lighting": {"count": 5, "type": "basic"},
-                        "shading": {"count": 2, "type": "basic"},
-                        "security_access": {"count": 1, "type": "basic"},
-                        "climate": {"count": 1, "type": "basic"},
-                        "audio": {"count": 0, "type": "basic"}
+                        "lighting": {"count": 5, "type": tier},
+                        "shading": {"count": 2, "type": tier},
+                        "security_access": {"count": 1, "type": tier},
+                        "climate": {"count": 1, "type": tier},
+                        "audio": {"count": 0, "type": tier}
                     }
                 ],
                 "notes": "Fallback estimation - AI analysis unavailable"
             }
-        
-        return jsonify({'success': True, 'analysis': analysis_result})
-    
+
+        # Calculate costs
+        data_config = load_data()
+        rooms = analysis_result.get('rooms', [])
+
+        total_rooms = len(rooms)
+        total_automation_points = 0
+        cost_items = []
+
+        for room in rooms:
+            for automation_key in ['lighting', 'shading', 'security_access', 'climate', 'audio']:
+                automation_data = room.get(automation_key, {})
+                count = automation_data.get('count', 0)
+                room_tier = automation_data.get('type', tier)
+
+                if count > 0 and automation_key in automation_types:
+                    total_automation_points += count
+                    automation_config = data_config['automation_types'].get(automation_key, {})
+                    unit_cost = automation_config.get('base_cost_per_unit', {}).get(room_tier, 0)
+                    labor_hours = automation_config.get('labor_hours', {}).get(room_tier, 0)
+                    labor_cost = labor_hours * data_config['labor_rate']
+                    total_cost = (unit_cost + labor_cost) * count
+
+                    cost_items.append({
+                        'type': automation_config.get('name', automation_key),
+                        'quantity': count,
+                        'unit_cost': unit_cost,
+                        'labor_cost': labor_cost,
+                        'total': total_cost
+                    })
+
+        subtotal = sum(item['total'] for item in cost_items)
+        markup = subtotal * (data_config['markup_percentage'] / 100)
+        grand_total = subtotal + markup
+
+        # Generate output filenames
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        annotated_filename = f"annotated_{timestamp}.pdf"
+        quote_filename = f"quote_{timestamp}.pdf"
+
+        # Note: Actual PDF generation would happen here
+        # For now, we'll just return the data
+
+        response = {
+            'success': True,
+            'project_name': project_name,
+            'total_rooms': total_rooms,
+            'total_automation_points': total_automation_points,
+            'confidence': '85%',  # Could be calculated from AI response
+            'total_cost': f'${grand_total:,.2f}',
+            'annotated_pdf': annotated_filename,
+            'quote_pdf': quote_filename,
+            'analysis': analysis_result,
+            'costs': {
+                'items': cost_items,
+                'subtotal': subtotal,
+                'markup': markup,
+                'grand_total': grand_total
+            },
+            'files': {
+                'annotated_pdf': f'/api/download/{annotated_filename}',
+                'quote_pdf': f'/api/download/{quote_filename}'
+            }
+        }
+
+        return jsonify(response)
+
     except Exception as e:
-        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 @app.route('/api/generate_quote', methods=['POST'])
 def generate_quote():
