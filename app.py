@@ -466,21 +466,46 @@ def analyze_floorplan_with_ai(pdf_path):
         learning_context = get_learning_context()
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""Analyze this floor plan EXTREMELY carefully. Study every detail, symbol, and marking.
+        prompt = f"""You are an expert home automation system designer analyzing a floor plan. Take your time to think through this carefully and systematically.
 
 {learning_context}
 
-CRITICAL: Be thorough and accurate. Count EVERY component you see:
-- Lights (ceiling, recessed, pendant, wall) 
-- Switches (count each position)
-- Windows/blinds for shading
-- Security (cameras, sensors, keypads, intercoms)
-- HVAC (thermostats, AC units, vents)
-- Audio (speakers, volume controls)
+ANALYSIS PROCESS:
 
-For each room, analyze the scale, symbols, and layout. Don't miss anything.
+STEP 1: UNDERSTAND THE FLOOR PLAN
+- First, identify the scale of the drawing (look for scale bars or measurements)
+- Count all rooms and identify their names/labels
+- Note the dimensions and layout of each space
+- Look for any legend or symbol key
 
-JSON response:
+STEP 2: IDENTIFY ALL ELECTRICAL SYMBOLS
+Carefully scan the ENTIRE floor plan and locate EVERY symbol:
+- 💡 LIGHTING: circles, dots, or light fixture symbols (recessed, pendant, ceiling, wall)
+- 🔘 SWITCHES: rectangles with lines, switch symbols (single, double, triple gang)
+- 🪟 WINDOWS/SHADING: window symbols, blind indicators, curtain markers
+- 🔐 SECURITY: camera symbols, sensor locations, keypad positions, intercom units
+- 🌡️ CLIMATE/HVAC: thermostat symbols, AC unit indicators, vent locations
+- 🔊 AUDIO: speaker symbols, volume control indicators, audio zones
+
+STEP 3: COUNT PRECISELY FOR EACH ROOM
+For each room, go through systematically:
+- Count EVERY light fixture you can see
+- Count EVERY switch (count each switch position - a 3-gang switch = 3 switches)
+- Count EVERY window that might need shading control
+- Count EVERY security device
+- Count EVERY climate control point
+- Count EVERY audio component
+
+STEP 4: ASSESS QUALITY TIER
+For each automation type, determine if it should be:
+- "basic": Standard, entry-level components
+- "premium": Mid-tier, enhanced features
+- "deluxe": High-end, top-quality components
+
+STEP 5: PROVIDE DETAILED ANALYSIS
+Return a complete JSON analysis with precise counts.
+
+JSON response format:
 {{
     "rooms": [
         {{
@@ -492,14 +517,24 @@ JSON response:
             "audio": {{"count": total_count, "type": "basic|premium|deluxe"}}
         }}
     ],
-    "notes": "observations"
+    "notes": "detailed observations about the floor plan, scale, and symbols identified"
 }}
 
-BE PRECISE. Count everything."""
+CRITICAL INSTRUCTIONS:
+- Take your time to analyze thoroughly
+- Count EVERY component you see - don't estimate
+- Use the scale to understand actual dimensions
+- Be methodical - scan each room systematically
+- Double-check your counts before finalizing
+- If you see 0 of a component type, use count: 0"""
         
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=2048,
+            max_tokens=4096,
+            thinking={
+                "type": "enabled",
+                "budget_tokens": 8000
+            },
             messages=[
                 {
                     "role": "user",
@@ -520,9 +555,17 @@ BE PRECISE. Count everything."""
                 }
             ],
         )
-        
-        response_text = message.content[0].text
-        
+
+        # Extract text response (skip thinking blocks)
+        response_text = ""
+        for block in message.content:
+            if hasattr(block, 'type') and block.type == "text":
+                response_text = block.text
+                break
+
+        if not response_text:
+            return {"error": "No text response from AI"}
+
         try:
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
@@ -955,6 +998,29 @@ def ai_mapping_download(filename):
             return send_file(file_path, as_attachment=True)
         else:
             return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/download/<filename>')
+def download_file(filename):
+    """General download endpoint for generated files"""
+    try:
+        # Check in outputs folder first
+        file_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True)
+
+        # Check in AI mapping folder
+        file_path = os.path.join(app.config['AI_MAPPING_FOLDER'], filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True)
+
+        # Check in uploads folder
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True)
+
+        return jsonify({'error': 'File not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
