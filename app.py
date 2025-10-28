@@ -748,7 +748,11 @@ def quotes_page():
 
 @app.route('/canvas')
 def canvas_page():
-    return render_template('canvas.html')
+    automation_data = load_data()
+    return render_template('canvas.html',
+                         automation_data=automation_data,
+                         pricing=automation_data.get('pricing', {}),
+                         tier='basic')
 
 @app.route('/learning')
 def learning_page():
@@ -1222,7 +1226,7 @@ def simpro_connect():
         if not all([config['base_url'], config['client_id'], config['client_secret']]):
             return jsonify({'success': False, 'error': 'Missing configuration'}), 400
         
-        token_url = f"{config['base_url']}/oauth/token"
+        token_url = f"{config['base_url']}/oauth2/token"
         client = BackendApplicationClient(client_id=config['client_id'])
         oauth = OAuth2Session(client=client)
         
