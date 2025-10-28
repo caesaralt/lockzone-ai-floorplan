@@ -544,6 +544,39 @@
                         <button class="btn btn-secondary" onclick="fetchSimproData('quotes')">Fetch Quotes</button>
                     </div>
                 </div>
+
+            <!-- IMPORT ALL DATA -->
+            <div style="margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; text-align: center; color: white;">
+                <h2 style="margin: 0 0 15px 0; font-size: 2em;">🚀 ONE-CLICK IMPORT</h2>
+                <p style="font-size: 1.2em; margin-bottom: 25px; opacity: 0.95;">
+                    Import ALL your Simpro data at once: Customers, Jobs, Quotes, Catalog, Staff, and Sites!<br>
+                    AI will automatically categorize and organize everything into your CRM.
+                </p>
+                <button id="importAllBtn" class="btn" onclick="importAllSimpro()" style="
+                    background: white; 
+                    color: #667eea; 
+                    font-size: 1.5em; 
+                    padding: 20px 50px; 
+                    border: none; 
+                    border-radius: 12px; 
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+                    transition: all 0.3s ease;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    🚀 IMPORT EVERYTHING FROM SIMPRO
+                </button>
+                
+                <div id="importProgress" style="display:none; margin-top:25px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 10px;">
+                    <div style="width: 100%; height: 30px; background: rgba(255,255,255,0.3); border-radius: 15px; overflow: hidden; margin-bottom: 15px;">
+                        <div id="progressBar" style="width: 0%; height: 100%; background: white; transition: width 0.5s ease;"></div>
+                    </div>
+                    <p id="importStatus" style="font-size: 1.1em; margin: 0;">Importing...</p>
+                </div>
+                
+                <div id="importResults" style="margin-top: 25px;"></div>
+            </div>
+
             </div>
 
             <!-- Data Display Area -->
@@ -1303,6 +1336,140 @@
                 panel.classList.remove('active');
             }
         });
+
+        // IMPORT ALL SIMPRO DATA FUNCTION
+        async function importAllSimpro() {
+            const btn = document.getElementById('importAllBtn');
+            const progress = document.getElementById('importProgress');
+            const results = document.getElementById('importResults');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('importStatus');
+            
+            // Disable button and show progress
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.textContent = '⏳ Importing...';
+            progress.style.display = 'block';
+            results.innerHTML = '';
+            
+            // Animate progress bar
+            let progressValue = 0;
+            const progressInterval = setInterval(() => {
+                progressValue += 2;
+                if (progressValue <= 90) {
+                    progressBar.style.width = progressValue + '%';
+                }
+            }, 200);
+            
+            try {
+                statusText.textContent = 'Connecting to Simpro API...';
+                
+                const res = await fetch('/api/simpro/import-all', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await res.json();
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                if (data.success) {
+                    statusText.textContent = 'Import Complete!';
+                    
+                    results.innerHTML = `
+                        <div style="background: rgba(255,255,255,0.95); padding: 25px; border-radius: 12px; text-align: left; color: #333; margin-top: 20px;">
+                            <h3 style="color: #10b981; margin: 0 0 20px 0; text-align: center;">
+                                ✅ Import Successful!
+                            </h3>
+                            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                <h4 style="margin: 0 0 15px 0; color: #065f46;">📊 Import Summary:</h4>
+                                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                                    <li><strong>👥 Customers:</strong> ${data.summary.customers} imported</li>
+                                    <li><strong>📋 Projects/Jobs:</strong> ${data.summary.projects} imported</li>
+                                    <li><strong>📦 Inventory Items:</strong> ${data.summary.inventory_items} imported</li>
+                                    <li><strong>🤖 AI Categorized:</strong> ${data.summary.inventory_categorized} items auto-categorized</li>
+                                    <li><strong>👷 Technicians/Staff:</strong> ${data.summary.technicians} imported</li>
+                                    <li><strong>💰 Quotes:</strong> ${data.summary.quotes} imported</li>
+                                    <li style="margin-top: 10px; font-size: 1.2em;"><strong>📊 TOTAL:</strong> ${data.summary.total} items</li>
+                                </ul>
+                            </div>
+                            ${data.errors && data.errors.length > 0 ? `
+                                <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #f59e0b;">
+                                    <strong>⚠️ Warnings:</strong>
+                                    <ul style="margin: 10px 0 0 20px; padding: 0;">
+                                        ${data.errors.map(err => '<li>' + err + '</li>').join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            <div style="margin-top: 25px; text-align: center;">
+                                <p style="font-size: 1.1em; color: #059669; margin-bottom: 15px;">
+                                    🎉 All data has been imported and organized in your CRM!
+                                </p>
+                                <button onclick="window.location.href='/crm'" style="
+                                    background: #10b981; 
+                                    color: white; 
+                                    padding: 15px 40px; 
+                                    border: none; 
+                                    border-radius: 8px; 
+                                    font-size: 1.1em; 
+                                    font-weight: bold; 
+                                    cursor: pointer;
+                                    margin-right: 10px;
+                                ">
+                                    📊 View in CRM
+                                </button>
+                                <button onclick="location.reload()" style="
+                                    background: #6366f1; 
+                                    color: white; 
+                                    padding: 15px 40px; 
+                                    border: none; 
+                                    border-radius: 8px; 
+                                    font-size: 1.1em; 
+                                    font-weight: bold; 
+                                    cursor: pointer;
+                                ">
+                                    🔄 Refresh Page
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        progress.style.display = 'none';
+                    }, 2000);
+                    
+                } else {
+                    statusText.textContent = 'Import Failed';
+                    results.innerHTML = `
+                        <div style="background: rgba(254, 226, 226, 0.95); padding: 25px; border-radius: 12px; color: #991b1b; border-left: 4px solid #dc2626;">
+                            <h3 style="margin: 0 0 15px 0;">❌ Import Failed</h3>
+                            <p style="margin: 0; font-size: 1.1em;"><strong>Error:</strong> ${data.error}</p>
+                            <p style="margin-top: 15px; font-size: 0.95em;">
+                                Please check your Simpro connection and try again.
+                            </p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                statusText.textContent = 'Error';
+                results.innerHTML = `
+                    <div style="background: rgba(254, 226, 226, 0.95); padding: 25px; border-radius: 12px; color: #991b1b; border-left: 4px solid #dc2626;">
+                        <h3 style="margin: 0 0 15px 0;">❌ Import Error</h3>
+                        <p style="margin: 0; font-size: 1.1em;"><strong>Error:</strong> ${error.message}</p>
+                        <p style="margin-top: 15px; font-size: 0.95em;">
+                            Please ensure you are connected to Simpro and try again.
+                        </p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = '🚀 IMPORT EVERYTHING FROM SIMPRO';
+            }
+        }
+
     </script>
 </body>
 </html>

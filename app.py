@@ -240,6 +240,110 @@ def save_json_file(filepath, data):
         json.dump(data, f, indent=2)
 
 # ============================================================================
+# SIMPRO API INTEGRATION FUNCTIONS
+# ============================================================================
+
+def make_simpro_api_request(endpoint, method='GET', params=None, data=None):
+    """Make authenticated Simpro API request"""
+    config = load_simpro_config()
+    
+    if not config.get('connected') or not config.get('access_token'):
+        return {'error': 'Not connected to Simpro'}
+    
+    url = f"{config['base_url']}/api/v1.0/companies/{config['company_id']}{endpoint}"
+    headers = {
+        'Authorization': f"Bearer {config['access_token']}",
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        if method == 'GET':
+            response = requests.get(url, headers=headers, params=params, timeout=60)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=data, timeout=60)
+        else:
+            return {'error': f'Unsupported method: {method}'}
+        
+        response.raise_for_status()
+        return response.json()
+    
+    except Exception as e:
+        print(f"Simpro API Error: {str(e)}")
+        return {'error': str(e)}
+
+def categorize_with_ai(item, item_type):
+    """Use Claude AI to categorize Simpro data"""
+    if not ANTHROPIC_AVAILABLE:
+        name = str(item.get('Name', '')).lower()
+        if any(w in name for w in ['light', 'lamp', 'led']):
+            return {'automation_type': 'lighting', 'tier': 'basic', 'notes': 'Keyword'}
+        return {'automation_type': 'other', 'tier': 'basic', 'notes': 'No AI'}
+    
+    try:
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return {'automation_type': 'other', 'tier': 'basic', 'notes': 'No key'}
+        
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        prompt = f"Categorize this item into: lighting, shading, security_access, climate, audio, networking, power, or other. Also set tier: basic/premium/deluxe. Item: {json.dumps(item, indent=2)[:500]}. Respond JSON only: {{\"automation_type\": \"x\", \"tier\": \"y\", \"notes\": \"z\"}}"
+        
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        text = message.content[0].text.strip()
+        if text.startswith('```'):
+            text = '\n'.join(line for line in text.split('\n') if not line.strip().startswith('```')).strip()
+        
+        result = json.loads(text)
+        
+        if result.get('automation_type') not in ['lighting', 'shading', 'security_access', 'climate', 'audio', 'networking', 'power', 'other']:
+            result['automation_type'] = 'other'
+        if result.get('tier') not in ['basic', 'premium', 'deluxe']:
+            result['tier'] = 'basic'
+        
+        return result
+    except:
+        return {'automation_type': 'other', 'tier': 'basic', 'notes': 'Error'}
+
+def import_all_simpro_data():
+    """Import ALL Simpro data"""
+    config = load_simpro_config()
+    if not config.get('connected'):
+        return {'success': False, 'error': 'Not connected'}
+    
+    results = {'customers': [], 'jobs': [], 'quotes': [], 'catalog': [], 'staff': [], 'sites': []}
+    errors = []
+    
+    for endpoint, key, pageSize in [
+        ('/customers/', 'customers', 500),
+        ('/jobs/', 'jobs', 500),
+        ('/quotes/', 'quotes', 500),
+        ('/catalogue/', 'catalog', 1000),
+        ('/employees/', 'staff', 200),
+        ('/sites/', 'sites', 500)
+    ]:
+        try:
+            print(f"Fetching {key}...")
+            resp = make_simpro_api_request(endpoint, params={'pageSize': pageSize})
+            if 'error' not in resp and resp.get('Results'):
+                results[key] = resp['Results']
+            elif 'error' in resp:
+                errors.append(f"{key}: {resp['error']}")
+        except Exception as e:
+            errors.append(f"{key}: {str(e)}")
+    
+    return {
+        'success': True,
+        'data': results,
+        'errors': errors,
+        'total_imported': sum(len(v) for v in results.values())
+    }
+
+# ============================================================================
 # AI ANALYSIS FUNCTIONS
 # ============================================================================
 
@@ -1436,6 +1540,190 @@ def get_crm_stats():
                 'calendar': {'today_events': 0}
             }
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/import-all', methods=['POST'])
+def simpro_import_all():
+    """MAIN IMPORT: Import ALL Simpro data and AI categorize"""
+    try:
+        print("="*60)
+        print("STARTING BULK SIMPRO IMPORT")
+        print("="*60)
+        
+        import_result = import_all_simpro_data()
+        if not import_result['success']:
+            return jsonify(import_result), 400
+        
+        data = import_result['data']
+        
+        # Import customers
+        existing_customers = load_json_file(CUSTOMERS_FILE, [])
+        customer_count = 0
+        for sc in data['customers']:
+            if any(c.get('simpro_id') == sc.get('ID') for c in existing_customers):
+                continue
+            existing_customers.append({
+                'id': str(uuid.uuid4()),
+                'simpro_id': sc.get('ID'),
+                'name': sc.get('CompanyName') or f"{sc.get('GivenName','')} {sc.get('FamilyName','')}".strip() or 'Unknown',
+                'email': sc.get('Email', ''),
+                'phone': sc.get('Mobile') or sc.get('Phone', ''),
+                'address': sc.get('PostalAddress', {}).get('Address', '') if isinstance(sc.get('PostalAddress'), dict) else '',
+                'status': 'active' if sc.get('Active') else 'inactive',
+                'created_at': sc.get('DateCreated', datetime.now().isoformat()),
+                'updated_at': datetime.now().isoformat(),
+                'source': 'simpro_import'
+            })
+            customer_count += 1
+        save_json_file(CUSTOMERS_FILE, existing_customers)
+        
+        # Import jobs as projects
+        existing_projects = load_json_file(PROJECTS_FILE, [])
+        customer_map = {c.get('simpro_id'): c['id'] for c in existing_customers if c.get('simpro_id')}
+        project_count = 0
+        for sj in data['jobs']:
+            if any(p.get('simpro_id') == sj.get('ID') for p in existing_projects):
+                continue
+            customer_id = customer_map.get(sj.get('Customer', {}).get('ID') if isinstance(sj.get('Customer'), dict) else None)
+            existing_projects.append({
+                'id': str(uuid.uuid4()),
+                'simpro_id': sj.get('ID'),
+                'customer_id': customer_id,
+                'title': sj.get('Name', 'Untitled'),
+                'description': sj.get('Description', ''),
+                'status': sj.get('Stage', 'pending').lower(),
+                'priority': 'medium',
+                'quote_amount': float(sj.get('TotalAmount', 0) or 0),
+                'actual_amount': float(sj.get('ActualAmount', 0) or 0),
+                'due_date': sj.get('DueDate'),
+                'created_at': sj.get('DateCreated', datetime.now().isoformat()),
+                'updated_at': datetime.now().isoformat(),
+                'source': 'simpro_import'
+            })
+            project_count += 1
+        save_json_file(PROJECTS_FILE, existing_projects)
+        
+        # Import and AI categorize catalog
+        existing_inventory = load_json_file(INVENTORY_FILE, [])
+        categorized_count = 0
+        inventory_count = 0
+        for idx, item in enumerate(data['catalog']):
+            if any(i.get('simpro_id') == item.get('ID') for i in existing_inventory):
+                continue
+            
+            category_info = categorize_with_ai(item, 'catalog_item')
+            base_cost = float(item.get('CostPrice', 0) or 0)
+            
+            existing_inventory.append({
+                'id': str(uuid.uuid4()),
+                'simpro_id': item.get('ID'),
+                'name': item.get('Name', 'Unknown'),
+                'description': item.get('Description', ''),
+                'sku': item.get('Code', ''),
+                'automation_type': category_info.get('automation_type', 'other'),
+                'tier': category_info.get('tier', 'basic'),
+                'price': {
+                    'basic': base_cost,
+                    'premium': base_cost * 1.5,
+                    'deluxe': base_cost * 2.5
+                },
+                'stock_quantity': int(item.get('Quantity', 0) or 0),
+                'supplier': item.get('Supplier', {}).get('Name', '') if isinstance(item.get('Supplier'), dict) else '',
+                'ai_notes': category_info.get('notes', ''),
+                'created_at': item.get('DateCreated', datetime.now().isoformat()),
+                'updated_at': datetime.now().isoformat(),
+                'source': 'simpro_import'
+            })
+            inventory_count += 1
+            if category_info.get('automation_type') != 'other':
+                categorized_count += 1
+            
+            if (idx + 1) % 50 == 0:
+                print(f"   Processed {idx+1}/{len(data['catalog'])} items...")
+        save_json_file(INVENTORY_FILE, existing_inventory)
+        
+        # Import staff
+        existing_technicians = load_json_file(TECHNICIANS_FILE, [])
+        tech_count = 0
+        for staff in data['staff']:
+            if any(t.get('simpro_id') == staff.get('ID') for t in existing_technicians):
+                continue
+            existing_technicians.append({
+                'id': str(uuid.uuid4()),
+                'simpro_id': staff.get('ID'),
+                'name': f"{staff.get('GivenName','')} {staff.get('FamilyName','')}".strip() or 'Unknown',
+                'email': staff.get('Email', ''),
+                'phone': staff.get('Mobile', ''),
+                'role': staff.get('EmployeeType', 'Technician'),
+                'status': 'active' if staff.get('Active') else 'inactive',
+                'created_at': datetime.now().isoformat(),
+                'source': 'simpro_import'
+            })
+            tech_count += 1
+        save_json_file(TECHNICIANS_FILE, existing_technicians)
+        
+        print("="*60)
+        print("IMPORT COMPLETE!")
+        print("="*60)
+        
+        return jsonify({
+            'success': True,
+            'message': 'All Simpro data imported successfully',
+            'summary': {
+                'customers': customer_count,
+                'projects': project_count,
+                'inventory_items': inventory_count,
+                'inventory_categorized': categorized_count,
+                'technicians': tech_count,
+                'quotes': len(data['quotes']),
+                'total': customer_count + project_count + inventory_count + tech_count
+            },
+            'errors': import_result['errors']
+        })
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/inventory', methods=['GET'])
+def get_inventory():
+    """Get inventory with filters"""
+    try:
+        inventory = load_json_file(INVENTORY_FILE, [])
+        automation_type = request.args.get('automation_type')
+        tier = request.args.get('tier')
+        
+        filtered = inventory
+        if automation_type:
+            filtered = [i for i in filtered if i.get('automation_type') == automation_type]
+        if tier:
+            filtered = [i for i in filtered if i.get('tier') == tier]
+        
+        return jsonify({'success': True, 'inventory': filtered, 'total': len(inventory)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/inventory/<item_id>', methods=['PUT', 'DELETE'])
+def handle_inventory_item(item_id):
+    """Update or delete inventory"""
+    try:
+        inventory = load_json_file(INVENTORY_FILE, [])
+        idx = next((i for i, item in enumerate(inventory) if item['id'] == item_id), None)
+        
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        
+        if request.method == 'DELETE':
+            inventory.pop(idx)
+            save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True})
+        else:
+            data = request.json
+            inventory[idx].update(data)
+            inventory[idx]['updated_at'] = datetime.now().isoformat()
+            save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True, 'item': inventory[idx]})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

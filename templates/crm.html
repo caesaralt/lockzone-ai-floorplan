@@ -469,6 +469,13 @@
         </div>
 
         <div class="nav-section">
+            <div class="nav-section-title">Inventory</div>
+            <div class="nav-item" data-section="inventory">
+                <span>📦</span> All Inventory
+            </div>
+        </div>
+
+        <div class="nav-section">
             <div class="nav-section-title">Scheduling</div>
             <div class="nav-item" data-section="calendar">
                 <span>📅</span> Calendar
@@ -601,6 +608,39 @@
                     <button class="btn btn-primary" onclick="openModal('eventModal')">+ Schedule Event</button>
                 </div>
                 <div id="calendarTable"></div>
+            </div>
+        </div>
+
+        <!-- INVENTORY -->
+        <div id="inventory" class="section">
+            <h1 class="page-title">Inventory Management</h1>
+            <p class="page-subtitle">Manage your products and stock</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Product Catalog</h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="inventoryTypeFilter" onchange="filterInventory()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Types</option>
+                            <option value="lighting">💡 Lighting</option>
+                            <option value="shading">🪟 Shading</option>
+                            <option value="security_access">🔐 Security</option>
+                            <option value="climate">🌡 Climate</option>
+                            <option value="audio">🔊 Audio</option>
+                            <option value="networking">🌐 Networking</option>
+                            <option value="power">⚡ Power</option>
+                            <option value="other">📦 Other</option>
+                        </select>
+                        <select id="inventoryTierFilter" onchange="filterInventory()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Tiers</option>
+                            <option value="basic">💡 Basic</option>
+                            <option value="premium">⭐ Premium</option>
+                            <option value="deluxe">👑 Deluxe</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="loadInventory()">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div id="inventoryTable"></div>
             </div>
         </div>
 
@@ -1975,6 +2015,104 @@
             });
         }
     });
+
+    // ========== INVENTORY MANAGEMENT ==========
+    let inventory = [];
+    let filteredInventory = [];
+
+    async function loadInventory() {
+        try {
+            const res = await fetch('/api/inventory');
+            const data = await res.json();
+            if (data.success) {
+                inventory = data.inventory;
+                filteredInventory = inventory;
+                renderInventory();
+            }
+        } catch (e) {
+            console.error('Inventory error:', e);
+        }
+    }
+
+    function filterInventory() {
+        const typeFilter = document.getElementById('inventoryTypeFilter').value;
+        const tierFilter = document.getElementById('inventoryTierFilter').value;
+        
+        filteredInventory = inventory.filter(item => {
+            const typeMatch = !typeFilter || item.automation_type === typeFilter;
+            const tierMatch = !tierFilter || item.tier === tierFilter;
+            return typeMatch && tierMatch;
+        });
+        
+        renderInventory();
+    }
+
+    function renderInventory() {
+        const container = document.getElementById('inventoryTable');
+        if (!filteredInventory || filteredInventory.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">No inventory items found. Import from Simpro to add products.</div>';
+            return;
+        }
+
+        const typeIcons = {
+            lighting: '💡', shading: '🪟', security_access: '🔐',
+            climate: '🌡', audio: '🔊', networking: '🌐',
+            power: '⚡', other: '📦'
+        };
+
+        container.innerHTML = `
+            <div style="overflow-x: auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead style="background:#f8f9fa;">
+                        <tr>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #dee2e6;">Item</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #dee2e6;">SKU</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #dee2e6;">Type</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #dee2e6;">Tier</th>
+                            <th style="padding:12px;text-align:right;border-bottom:2px solid #dee2e6;">Price</th>
+                            <th style="padding:12px;text-align:center;border-bottom:2px solid #dee2e6;">Stock</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #dee2e6;">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredInventory.map(item => {
+                            const price = item.price && item.price[item.tier] ? item.price[item.tier] : (item.price && item.price.basic ? item.price.basic : 0);
+                            return `
+                                <tr style="border-bottom:1px solid #e9ecef;">
+                                    <td style="padding:12px;">
+                                        <div style="font-weight:600;">${item.name || 'Unknown'}</div>
+                                        <div style="font-size:0.85em;color:#666;margin-top:4px;">${(item.description || '').substring(0, 60)}...</div>
+                                    </td>
+                                    <td style="padding:12px;">${item.sku || '-'}</td>
+                                    <td style="padding:12px;">${typeIcons[item.automation_type] || '📦'} ${item.automation_type || 'other'}</td>
+                                    <td style="padding:12px;">
+                                        <span style="padding:4px 12px;border-radius:12px;font-size:0.85em;font-weight:600;
+                                            ${item.tier === 'basic' ? 'background:#e3f2fd;color:#1976d2;' : 
+                                              item.tier === 'premium' ? 'background:#fff3e0;color:#f57c00;' : 
+                                              'background:#f3e5f5;color:#7b1fa2;'}">
+                                            ${item.tier || 'basic'}
+                                        </span>
+                                    </td>
+                                    <td style="padding:12px;text-align:right;font-weight:600;">$${price.toFixed(2)}</td>
+                                    <td style="padding:12px;text-align:center;">${item.stock_quantity || 0}</td>
+                                    <td style="padding:12px;">
+                                        <span style="padding:3px 8px;border-radius:6px;font-size:0.8em;background:#f5f5f5;color:#666;">
+                                            ${item.source || 'manual'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Load inventory when page loads
+    if (window.location.hash === '#inventory') {
+        loadInventory();
+    }
 </script>
 </body>
 </html>
