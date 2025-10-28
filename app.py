@@ -615,7 +615,7 @@ def ai_map_floorplan(file_path, is_pdf=True):
         
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert electrical engineer analyzing a floor plan. Follow this process:
+        prompt = f"""You are an expert electrical engineer analyzing a floor plan. This plan may already have automation symbols marked on it, or may be a raw electrical plan. Follow this process:
 
 {learning_context}
 
@@ -624,14 +624,19 @@ STEP 1: UNDERSTAND THE PLAN
 - Identify the title block with project info
 - Understand room layout and boundaries
 - Count total rooms and note their names
+- Note if the plan already has automation symbols (lights, switches, sensors, etc.) marked
 
-STEP 2: IDENTIFY EVERY ELECTRICAL SYMBOL
+STEP 2: IDENTIFY EVERY ELECTRICAL & AUTOMATION SYMBOL
 Look carefully at the floor plan and find ALL of these:
-- Small circles or dots = lights
-- Rectangles with lines = switches  
+- Small circles or dots = lights (may have icons for downlights, pendants, etc.)
+- Rectangles with lines = switches
 - Circles with lines = outlets/power points
 - Large boxes = distribution boards/panels
 - Lines connecting symbols = circuits/wiring
+- Security icons = cameras, sensors, keypads
+- Climate icons = thermostats, HVAC controls
+- Audio icons = speakers, volume controls
+- ANY other automation symbols already marked on the plan
 
 STEP 3: MAP EACH COMPONENT'S EXACT LOCATION
 For each symbol you see:
@@ -868,8 +873,9 @@ def canvas_page():
             'deluxe': 0
         }
     return render_template('canvas.html',
-                         automation_data=json.dumps(automation_data),
-                         pricing=json.dumps(pricing),
+                         automation_data=automation_data,
+                         pricing=pricing,
+                         initial_symbols=[],
                          tier='basic')
 
 @app.route('/learning')
@@ -1077,7 +1083,13 @@ def analyze_floorplan():
         # Run AI analysis
         analysis_result = analyze_floorplan_with_ai(filepath)
 
+        # Log AI analysis result for debugging
+        if 'error' in analysis_result:
+            print(f"AI Analysis Error: {analysis_result.get('error')}")
+            print(f"AI Analysis Message: {analysis_result.get('message', 'No message')}")
+
         if 'error' in analysis_result and analysis_result.get('fallback'):
+            print("Using fallback estimation mode")
             analysis_result = {
                 "rooms": [
                     {
@@ -1091,6 +1103,8 @@ def analyze_floorplan():
                 ],
                 "notes": "Fallback estimation - AI analysis unavailable"
             }
+        else:
+            print(f"AI Analysis successful: {len(analysis_result.get('rooms', []))} rooms detected")
 
         # Calculate costs
         data_config = load_data()
@@ -1130,9 +1144,68 @@ def analyze_floorplan():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         annotated_filename = f"annotated_{timestamp}.pdf"
         quote_filename = f"quote_{timestamp}.pdf"
+        annotated_path = os.path.join(app.config['OUTPUT_FOLDER'], annotated_filename)
+        quote_path = os.path.join(app.config['OUTPUT_FOLDER'], quote_filename)
 
-        # Note: Actual PDF generation would happen here
-        # For now, we'll just return the data
+        # Generate annotated PDF (copy original for now, could add symbols later)
+        try:
+            import shutil
+            shutil.copy(filepath, annotated_path)
+        except Exception as e:
+            print(f"Error creating annotated PDF: {e}")
+
+        # Generate quote PDF
+        try:
+            doc = SimpleDocTemplate(quote_path, pagesize=letter)
+            story = []
+            styles = getSampleStyleSheet()
+
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                textColor=colors.HexColor('#556B2F'),
+                spaceAfter=30,
+            )
+
+            company_info = data_config.get('company_info', {})
+            story.append(Paragraph(company_info.get('name', 'Integratd Living'), title_style))
+            story.append(Paragraph(f"Quote for: {project_name}", styles['Heading2']))
+            story.append(Spacer(1, 0.3*inch))
+            story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+            story.append(Spacer(1, 0.5*inch))
+
+            # Add cost breakdown table
+            table_data = [['Item', 'Quantity', 'Unit Cost', 'Labor', 'Total']]
+            for item in cost_items:
+                table_data.append([
+                    item['type'],
+                    str(item['quantity']),
+                    f"${item['unit_cost']:,.2f}",
+                    f"${item['labor_cost']:,.2f}",
+                    f"${item['total']:,.2f}"
+                ])
+
+            table_data.append(['', '', '', 'Subtotal:', f"${subtotal:,.2f}"])
+            table_data.append(['', '', '', f'Markup ({data_config["markup_percentage"]}%):', f"${markup:,.2f}"])
+            table_data.append(['', '', '', 'TOTAL:', f"${grand_total:,.2f}"])
+
+            t = Table(table_data, colWidths=[3*inch, 1*inch, 1*inch, 1*inch, 1.5*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#556B2F')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+
+            story.append(t)
+            doc.build(story)
+        except Exception as e:
+            print(f"Error creating quote PDF: {e}")
 
         response = {
             'success': True,
