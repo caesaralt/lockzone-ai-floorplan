@@ -138,17 +138,77 @@ def save_learning_index(index):
         json.dump(index, f, indent=2)
 
 def get_learning_context():
-    """Get accumulated learning examples to include in AI prompts"""
+    """Get accumulated learning examples to include in AI prompts - Enhanced for extended thinking"""
     index = load_learning_index()
-    context = "Previous learning examples:\n\n"
-    
-    for example in index.get('examples', [])[-10:]:  # Last 10 examples
-        context += f"Date: {example.get('timestamp')}\n"
-        context += f"Notes: {example.get('notes', 'N/A')}\n"
-        if 'analysis_result' in example:
-            context += f"Result: {example['analysis_result']}\n"
+    examples = index.get('examples', [])
+
+    if not examples:
+        return ""
+
+    context = "\n\n═══════════════════════════════════════════════════════════\n"
+    context += "LEARNING DATABASE - Apply These Verified Examples\n"
+    context += "═══════════════════════════════════════════════════════════\n\n"
+    context += "You have access to verified training examples. Use your extended thinking to:\n"
+    context += "1. Identify patterns across these examples\n"
+    context += "2. Apply learned symbol placements and standards\n"
+    context += "3. Follow custom markup requirements\n"
+    context += "4. Adapt counting methods based on past corrections\n\n"
+
+    # Group examples by type
+    symbol_examples = []
+    correction_examples = []
+    instruction_examples = []
+
+    for example in examples[-20:]:  # Last 20 examples
+        if example.get('type') == 'instruction':
+            instruction_examples.append(example)
+        elif example.get('corrections'):
+            correction_examples.append(example)
+        else:
+            symbol_examples.append(example)
+
+    # Add custom symbol standards
+    if symbol_examples:
+        context += "📐 CUSTOM SYMBOL STANDARDS:\n"
+        context += "─" * 60 + "\n"
+        for ex in symbol_examples[-5:]:  # Last 5 symbol examples
+            context += f"\n▸ Example from {ex.get('timestamp', 'N/A')[:10]}:\n"
+            if ex.get('notes'):
+                context += f"  Standard: {ex['notes']}\n"
+            if ex.get('symbol_definitions'):
+                context += f"  Symbols: {json.dumps(ex['symbol_definitions'], indent=4)}\n"
         context += "\n"
-    
+
+    # Add correction patterns
+    if correction_examples:
+        context += "🔧 CORRECTION PATTERNS:\n"
+        context += "─" * 60 + "\n"
+        for ex in correction_examples[-5:]:
+            context += f"\n▸ Correction from {ex.get('timestamp', 'N/A')[:10]}:\n"
+            if ex.get('notes'):
+                context += f"  Issue: {ex['notes']}\n"
+            corrections = ex.get('corrections', {})
+            if isinstance(corrections, dict):
+                if corrections.get('missed_components'):
+                    context += f"  ⚠ Commonly missed: {corrections['missed_components']}\n"
+                if corrections.get('incorrect_counts'):
+                    context += f"  ⚠ Count errors: {corrections['incorrect_counts']}\n"
+        context += "\n"
+
+    # Add natural language instructions
+    if instruction_examples:
+        context += "📝 CUSTOM INSTRUCTIONS:\n"
+        context += "─" * 60 + "\n"
+        for ex in instruction_examples[-10:]:  # Last 10 instructions
+            if ex.get('instruction'):
+                context += f"  • {ex['instruction']}\n"
+        context += "\n"
+
+    context += "═" * 60 + "\n"
+    context += "APPLY ALL LEARNINGS ABOVE TO YOUR ANALYSIS\n"
+    context += "Use your reasoning to understand patterns and apply them consistently.\n"
+    context += "═" * 60 + "\n\n"
+
     return context
 
 def load_mapping_learning_index():
@@ -1481,6 +1541,94 @@ def upload_learning_example():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/upload-learning-data', methods=['POST'])
+def upload_learning_data():
+    """Enhanced learning endpoint supporting multiple files and custom symbols"""
+    try:
+        files = request.files.getlist('files')
+        notes = request.form.get('notes', '')
+
+        if not files:
+            return jsonify({'success': False, 'error': 'No files uploaded'}), 400
+
+        index = load_learning_index()
+        if 'examples' not in index:
+            index['examples'] = []
+
+        uploaded_examples = []
+
+        for file in files:
+            if file.filename == '':
+                continue
+
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            unique_filename = f"learning_{timestamp}_{filename}"
+            filepath = os.path.join(app.config['LEARNING_FOLDER'], unique_filename)
+            file.save(filepath)
+
+            # Analyze the uploaded example with AI
+            analysis_result = None
+            if filename.lower().endswith('.pdf'):
+                analysis_result = analyze_floorplan_with_ai(filepath)
+
+            example = {
+                'id': str(uuid.uuid4()),
+                'timestamp': datetime.now().isoformat(),
+                'filename': unique_filename,
+                'notes': notes,
+                'type': 'upload',
+                'analysis_result': analysis_result
+            }
+
+            index['examples'].append(example)
+            uploaded_examples.append(example)
+
+        save_learning_index(index)
+
+        return jsonify({
+            'success': True,
+            'message': f'Successfully uploaded {len(uploaded_examples)} training example(s)',
+            'examples': uploaded_examples
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/process-instructions', methods=['POST'])
+def process_instructions():
+    """Save natural language instructions for AI to follow"""
+    try:
+        data = request.json
+        instructions = data.get('instructions', '')
+
+        if not instructions:
+            return jsonify({'success': False, 'error': 'No instructions provided'}), 400
+
+        index = load_learning_index()
+        if 'examples' not in index:
+            index['examples'] = []
+
+        instruction_entry = {
+            'id': str(uuid.uuid4()),
+            'timestamp': datetime.now().isoformat(),
+            'type': 'instruction',
+            'instruction': instructions,
+            'notes': f"User instruction: {instructions[:100]}..."
+        }
+
+        index['examples'].append(instruction_entry)
+        save_learning_index(index)
+
+        return jsonify({
+            'success': True,
+            'message': 'Instructions saved successfully. AI will apply these rules in future analyses.',
+            'instruction': instruction_entry
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/simpro/config', methods=['GET', 'POST'])
 def simpro_config():
     try:
@@ -2064,6 +2212,218 @@ def handle_inventory_item(item_id):
             return jsonify({'success': True, 'item': inventory[idx]})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# AI CHAT AGENT WITH EXTENDED THINKING
+# ============================================================================
+
+@app.route('/api/ai-chat', methods=['POST'])
+def ai_chat():
+    """
+    AI Chat Agent with extended thinking and action capabilities.
+    Can answer questions AND take actions when agent_mode is enabled.
+    """
+    try:
+        data = request.json
+        user_message = data.get('message', '')
+        agent_mode = data.get('agent_mode', False)
+        conversation_history = data.get('conversation_history', [])
+        project_id = data.get('project_id')
+        current_page = data.get('current_page', 'unknown')
+
+        if not user_message:
+            return jsonify({'success': False, 'error': 'No message provided'}), 400
+
+        if not ANTHROPIC_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'error': 'AI service not available',
+                'response': 'Sorry, the AI service is currently unavailable.'
+            }), 503
+
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'API key not configured',
+                'response': 'AI service is not configured properly.'
+            }), 503
+
+        # Build system context
+        system_context = build_agent_system_context(agent_mode, current_page)
+
+        # Build conversation messages
+        messages = []
+        for msg in conversation_history:
+            messages.append({
+                'role': msg.get('role', 'user'),
+                'content': msg.get('content', '')
+            })
+        messages.append({
+            'role': 'user',
+            'content': user_message
+        })
+
+        # Call Anthropic API with extended thinking
+        client = anthropic.Anthropic(api_key=api_key)
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            thinking={
+                "type": "enabled",
+                "budget_tokens": 10000  # High budget for smart reasoning
+            },
+            system=system_context,
+            messages=messages
+        )
+
+        # Extract response text (skip thinking blocks)
+        response_text = ""
+        for block in response.content:
+            if hasattr(block, 'type') and block.type == "text":
+                response_text = block.text
+                break
+
+        if not response_text:
+            return jsonify({
+                'success': False,
+                'error': 'No response from AI',
+                'response': 'I encountered an error processing your request.'
+            }), 500
+
+        # Parse actions if agent mode is enabled
+        actions_taken = []
+        if agent_mode:
+            actions_taken = parse_and_execute_actions(response_text, project_id, current_page)
+
+        return jsonify({
+            'success': True,
+            'response': response_text,
+            'actions_taken': actions_taken,
+            'agent_mode': agent_mode
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'response': f'I encountered an error: {str(e)}'
+        }), 500
+
+def build_agent_system_context(agent_mode, current_page):
+    """Build comprehensive system context for AI agent"""
+    context = """You are an intelligent AI assistant for the Integratd Living automation system.
+
+CURRENT CONTEXT: {page}
+
+Your capabilities:
+- Answer questions about floor plans, automation, pricing, and features
+- Explain analysis results and provide insights
+- Help users make decisions
+- Provide technical support
+
+""".format(page=current_page)
+
+    if agent_mode:
+        context += """AGENT MODE ENABLED - You can take actions using this format:
+
+```action
+{
+  "action": "ACTION_NAME",
+  "parameters": {"param": "value"},
+  "reason": "explanation"
+}
+```
+
+AVAILABLE ACTIONS:
+- ADD_INSTRUCTION: Add learning instruction
+- UPDATE_PRICING: Update pricing (tier, automation_type, cost)
+- UPDATE_LABOR_RATE: Update labor rate (rate)
+- UPDATE_MARKUP: Update markup percentage (markup)
+
+Always explain actions clearly before executing.
+"""
+    else:
+        context += "AGENT MODE DISABLED - You can only answer questions.\n"
+
+    context += "\nUse extended thinking for accurate, helpful responses."
+    return context
+
+def parse_and_execute_actions(response_text, project_id, current_page):
+    """Parse and execute action blocks from AI response"""
+    actions_taken = []
+    import re
+    action_pattern = r'```action\s*\n(.*?)\n```'
+    action_matches = re.findall(action_pattern, response_text, re.DOTALL)
+
+    for action_json in action_matches:
+        try:
+            action = json.loads(action_json)
+            result = execute_action(action.get('action'), action.get('parameters', {}), project_id)
+            actions_taken.append({
+                'success': result.get('success', False),
+                'action': action.get('action'),
+                'details': result.get('details', 'Action executed'),
+                'reason': action.get('reason', '')
+            })
+        except Exception as e:
+            actions_taken.append({
+                'success': False,
+                'details': f'Error: {str(e)}'
+            })
+    return actions_taken
+
+def execute_action(action_name, parameters, project_id):
+    """Execute a specific action"""
+    try:
+        if action_name == 'ADD_INSTRUCTION':
+            instruction = parameters.get('instruction', '')
+            if not instruction:
+                return {'success': False, 'details': 'No instruction provided'}
+
+            index = load_learning_index()
+            if 'examples' not in index:
+                index['examples'] = []
+
+            index['examples'].append({
+                'id': str(uuid.uuid4()),
+                'timestamp': datetime.now().isoformat(),
+                'type': 'instruction',
+                'instruction': instruction,
+                'notes': f'Agent: {instruction[:100]}'
+            })
+            save_learning_index(index)
+            return {'success': True, 'details': f'Added instruction: "{instruction}"'}
+
+        elif action_name == 'UPDATE_PRICING':
+            data_config = load_data()
+            tier = parameters.get('tier')
+            automation_type = parameters.get('automation_type')
+            cost = parameters.get('cost')
+
+            if automation_type in data_config['automation_types']:
+                data_config['automation_types'][automation_type]['base_cost_per_unit'][tier] = float(cost)
+                save_data(data_config)
+                return {'success': True, 'details': f'Updated {automation_type} {tier} to ${cost}'}
+            return {'success': False, 'details': f'Unknown automation type'}
+
+        elif action_name == 'UPDATE_LABOR_RATE':
+            data_config = load_data()
+            data_config['labor_rate'] = float(parameters.get('rate'))
+            save_data(data_config)
+            return {'success': True, 'details': f'Updated labor rate'}
+
+        elif action_name == 'UPDATE_MARKUP':
+            data_config = load_data()
+            data_config['markup_percentage'] = float(parameters.get('markup'))
+            save_data(data_config)
+            return {'success': True, 'details': f'Updated markup'}
+
+        return {'success': False, 'details': f'Unknown action: {action_name}'}
+
+    except Exception as e:
+        return {'success': False, 'details': f'Error: {str(e)}'}
 
 
 if __name__ == '__main__':
