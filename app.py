@@ -138,17 +138,77 @@ def save_learning_index(index):
         json.dump(index, f, indent=2)
 
 def get_learning_context():
-    """Get accumulated learning examples to include in AI prompts"""
+    """Get accumulated learning examples to include in AI prompts - Enhanced for extended thinking"""
     index = load_learning_index()
-    context = "Previous learning examples:\n\n"
-    
-    for example in index.get('examples', [])[-10:]:  # Last 10 examples
-        context += f"Date: {example.get('timestamp')}\n"
-        context += f"Notes: {example.get('notes', 'N/A')}\n"
-        if 'analysis_result' in example:
-            context += f"Result: {example['analysis_result']}\n"
+    examples = index.get('examples', [])
+
+    if not examples:
+        return ""
+
+    context = "\n\n═══════════════════════════════════════════════════════════\n"
+    context += "LEARNING DATABASE - Apply These Verified Examples\n"
+    context += "═══════════════════════════════════════════════════════════\n\n"
+    context += "You have access to verified training examples. Use your extended thinking to:\n"
+    context += "1. Identify patterns across these examples\n"
+    context += "2. Apply learned symbol placements and standards\n"
+    context += "3. Follow custom markup requirements\n"
+    context += "4. Adapt counting methods based on past corrections\n\n"
+
+    # Group examples by type
+    symbol_examples = []
+    correction_examples = []
+    instruction_examples = []
+
+    for example in examples[-20:]:  # Last 20 examples
+        if example.get('type') == 'instruction':
+            instruction_examples.append(example)
+        elif example.get('corrections'):
+            correction_examples.append(example)
+        else:
+            symbol_examples.append(example)
+
+    # Add custom symbol standards
+    if symbol_examples:
+        context += "📐 CUSTOM SYMBOL STANDARDS:\n"
+        context += "─" * 60 + "\n"
+        for ex in symbol_examples[-5:]:  # Last 5 symbol examples
+            context += f"\n▸ Example from {ex.get('timestamp', 'N/A')[:10]}:\n"
+            if ex.get('notes'):
+                context += f"  Standard: {ex['notes']}\n"
+            if ex.get('symbol_definitions'):
+                context += f"  Symbols: {json.dumps(ex['symbol_definitions'], indent=4)}\n"
         context += "\n"
-    
+
+    # Add correction patterns
+    if correction_examples:
+        context += "🔧 CORRECTION PATTERNS:\n"
+        context += "─" * 60 + "\n"
+        for ex in correction_examples[-5:]:
+            context += f"\n▸ Correction from {ex.get('timestamp', 'N/A')[:10]}:\n"
+            if ex.get('notes'):
+                context += f"  Issue: {ex['notes']}\n"
+            corrections = ex.get('corrections', {})
+            if isinstance(corrections, dict):
+                if corrections.get('missed_components'):
+                    context += f"  ⚠ Commonly missed: {corrections['missed_components']}\n"
+                if corrections.get('incorrect_counts'):
+                    context += f"  ⚠ Count errors: {corrections['incorrect_counts']}\n"
+        context += "\n"
+
+    # Add natural language instructions
+    if instruction_examples:
+        context += "📝 CUSTOM INSTRUCTIONS:\n"
+        context += "─" * 60 + "\n"
+        for ex in instruction_examples[-10:]:  # Last 10 instructions
+            if ex.get('instruction'):
+                context += f"  • {ex['instruction']}\n"
+        context += "\n"
+
+    context += "═" * 60 + "\n"
+    context += "APPLY ALL LEARNINGS ABOVE TO YOUR ANALYSIS\n"
+    context += "Use your reasoning to understand patterns and apply them consistently.\n"
+    context += "═" * 60 + "\n\n"
+
     return context
 
 def load_mapping_learning_index():
@@ -1478,6 +1538,94 @@ def upload_learning_example():
         
         return jsonify({'success': True, 'example': example})
     
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/upload-learning-data', methods=['POST'])
+def upload_learning_data():
+    """Enhanced learning endpoint supporting multiple files and custom symbols"""
+    try:
+        files = request.files.getlist('files')
+        notes = request.form.get('notes', '')
+
+        if not files:
+            return jsonify({'success': False, 'error': 'No files uploaded'}), 400
+
+        index = load_learning_index()
+        if 'examples' not in index:
+            index['examples'] = []
+
+        uploaded_examples = []
+
+        for file in files:
+            if file.filename == '':
+                continue
+
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            unique_filename = f"learning_{timestamp}_{filename}"
+            filepath = os.path.join(app.config['LEARNING_FOLDER'], unique_filename)
+            file.save(filepath)
+
+            # Analyze the uploaded example with AI
+            analysis_result = None
+            if filename.lower().endswith('.pdf'):
+                analysis_result = analyze_floorplan_with_ai(filepath)
+
+            example = {
+                'id': str(uuid.uuid4()),
+                'timestamp': datetime.now().isoformat(),
+                'filename': unique_filename,
+                'notes': notes,
+                'type': 'upload',
+                'analysis_result': analysis_result
+            }
+
+            index['examples'].append(example)
+            uploaded_examples.append(example)
+
+        save_learning_index(index)
+
+        return jsonify({
+            'success': True,
+            'message': f'Successfully uploaded {len(uploaded_examples)} training example(s)',
+            'examples': uploaded_examples
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/process-instructions', methods=['POST'])
+def process_instructions():
+    """Save natural language instructions for AI to follow"""
+    try:
+        data = request.json
+        instructions = data.get('instructions', '')
+
+        if not instructions:
+            return jsonify({'success': False, 'error': 'No instructions provided'}), 400
+
+        index = load_learning_index()
+        if 'examples' not in index:
+            index['examples'] = []
+
+        instruction_entry = {
+            'id': str(uuid.uuid4()),
+            'timestamp': datetime.now().isoformat(),
+            'type': 'instruction',
+            'instruction': instructions,
+            'notes': f"User instruction: {instructions[:100]}..."
+        }
+
+        index['examples'].append(instruction_entry)
+        save_learning_index(index)
+
+        return jsonify({
+            'success': True,
+            'message': 'Instructions saved successfully. AI will apply these rules in future analyses.',
+            'instruction': instruction_entry
+        })
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
