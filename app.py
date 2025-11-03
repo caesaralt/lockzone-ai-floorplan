@@ -2796,8 +2796,12 @@ def handle_inventory_item(item_id):
 @app.route('/api/ai-chat', methods=['POST'])
 def ai_chat():
     """
-    AI Chat Agent with extended thinking and action capabilities.
-    Can answer questions AND take actions when agent_mode is enabled.
+    AUTONOMOUS AI CHAT AGENT with:
+    - Vision capabilities (can analyze images)
+    - Web search (can look up real-time information)
+    - Extended thinking (deep reasoning)
+    - Agent mode (can take actions)
+    - Agentic loop (iterative research and reasoning)
     """
     try:
         data = request.json
@@ -2806,6 +2810,7 @@ def ai_chat():
         conversation_history = data.get('conversation_history', [])
         project_id = data.get('project_id')
         current_page = data.get('current_page', 'unknown')
+        images = data.get('images', [])  # NEW: Support image attachments
 
         if not user_message:
             return jsonify({'success': False, 'error': 'No message provided'}), 400
@@ -2828,59 +2833,147 @@ def ai_chat():
         # Build system context
         system_context = build_agent_system_context(agent_mode, current_page)
 
-        # Build conversation messages
+        # Build conversation messages with vision support
         messages = []
         for msg in conversation_history:
             messages.append({
                 'role': msg.get('role', 'user'),
                 'content': msg.get('content', '')
             })
+
+        # Build current message with optional images
+        current_message_content = []
+
+        # Add images if provided (vision)
+        if images and len(images) > 0:
+            for img_data in images:
+                current_message_content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": img_data.get("media_type", "image/png"),
+                        "data": img_data.get("data", "")
+                    }
+                })
+
+        # Add text message
+        current_message_content.append({
+            "type": "text",
+            "text": user_message
+        })
+
         messages.append({
             'role': 'user',
-            'content': user_message
+            'content': current_message_content if len(current_message_content) > 1 else user_message
         })
 
-        # Call Anthropic API with extended thinking
+        # AGENTIC LOOP - AI can search, think, search more, then respond
         client = anthropic.Anthropic(api_key=api_key)
-
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            thinking={
-                "type": "enabled",
-                "budget_tokens": 10000  # High budget for smart reasoning
-            },
-            system=system_context,
-            messages=messages
-        )
-
-        # Extract response text (skip thinking blocks)
-        response_text = ""
-        for block in response.content:
-            if hasattr(block, 'type') and block.type == "text":
-                response_text = block.text
-                break
-
-        if not response_text:
-            return jsonify({
-                'success': False,
-                'error': 'No response from AI',
-                'response': 'I encountered an error processing your request.'
-            }), 500
-
-        # Parse actions if agent mode is enabled
+        max_iterations = 8
+        iteration = 0
+        final_response_text = ""
         actions_taken = []
-        if agent_mode:
-            actions_taken = parse_and_execute_actions(response_text, project_id, current_page)
 
+        while iteration < max_iterations:
+            iteration += 1
+
+            # Call Anthropic with tool use capability
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 10000  # High budget for deep reasoning
+                },
+                system=system_context,
+                tools=[SEARCH_TOOL_SCHEMA],  # Give AI web search capability
+                messages=messages
+            )
+
+            # Check if AI wants to use tools (web search)
+            if response.stop_reason == "tool_use":
+                # AI wants to search for information
+                tool_uses = [block for block in response.content if hasattr(block, 'type') and block.type == "tool_use"]
+
+                # Add AI's message to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": response.content
+                })
+
+                # Execute all tool calls
+                tool_results = []
+                for tool_use in tool_uses:
+                    tool_name = tool_use.name
+                    tool_input = tool_use.input
+                    tool_id = tool_use.id
+
+                    print(f"🔍 AI Chat searching: {tool_input.get('query', 'unknown')} (page: {current_page})")
+
+                    result = execute_tool(tool_name, tool_input)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": result
+                    })
+
+                # Send tool results back to AI
+                messages.append({
+                    "role": "user",
+                    "content": tool_results
+                })
+
+                # AI will continue thinking with the new information
+                continue
+
+            elif response.stop_reason == "end_turn":
+                # AI is done - extract the final response
+                response_text = ""
+                for block in response.content:
+                    if hasattr(block, 'type') and block.type == "text":
+                        response_text = block.text
+                        break
+
+                if not response_text:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No response from AI',
+                        'response': 'I encountered an error processing your request.'
+                    }), 500
+
+                final_response_text = response_text
+
+                # Parse actions if agent mode is enabled
+                if agent_mode:
+                    actions_taken = parse_and_execute_actions(response_text, project_id, current_page)
+
+                # Success - return response
+                return jsonify({
+                    'success': True,
+                    'response': final_response_text,
+                    'actions_taken': actions_taken,
+                    'agent_mode': agent_mode,
+                    'searches_performed': iteration - 1  # How many searches AI did
+                })
+
+            else:
+                # Unexpected stop reason
+                return jsonify({
+                    'success': False,
+                    'error': f'Unexpected stop reason: {response.stop_reason}',
+                    'response': 'I encountered an unexpected error.'
+                }), 500
+
+        # Max iterations reached
         return jsonify({
-            'success': True,
-            'response': response_text,
-            'actions_taken': actions_taken,
-            'agent_mode': agent_mode
-        })
+            'success': False,
+            'error': 'Max iterations reached',
+            'response': 'I spent too much time researching. Please try a simpler question.'
+        }), 500
 
     except Exception as e:
+        print(f"AI Chat Error: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e),
@@ -2888,16 +2981,46 @@ def ai_chat():
         }), 500
 
 def build_agent_system_context(agent_mode, current_page):
-    """Build comprehensive system context for AI agent"""
-    context = """You are an intelligent AI assistant for the Integratd Living automation system.
+    """Build comprehensive system context for autonomous AI agent"""
+    context = """You are an autonomous AI agent for the Integratd Living automation system.
 
 CURRENT CONTEXT: {page}
 
-Your capabilities:
+🔍 YOU HAVE WEB SEARCH - USE IT ACTIVELY:
+You can search the web for real-time information about:
+- Building codes (NEC, local codes, international standards)
+- Professional installation practices and standards
+- Product specifications and compatibility
+- Industry best practices
+- Safety regulations and requirements
+- Technical documentation
+- Common sense knowledge and verification
+
+WHEN TO SEARCH:
+- When asked about codes, standards, or regulations
+- When you need to verify technical information
+- When discussing product specifications
+- When providing professional recommendations
+- Any time you're uncertain about current information
+- To provide the most accurate, up-to-date answers
+
+👁️ YOU HAVE VISION:
+If users attach images, you can:
+- Analyze floor plans and architectural drawings
+- Identify components and symbols
+- Assess layouts and spatial relationships
+- Detect scale and dimensions
+- Read diagrams and schematics
+- Understand visual context
+
+🧠 YOUR CAPABILITIES:
 - Answer questions about floor plans, automation, pricing, and features
+- Analyze images and provide visual insights
+- Search the web for current information
 - Explain analysis results and provide insights
-- Help users make decisions
-- Provide technical support
+- Help users make informed decisions
+- Provide professional technical support
+- Use extended thinking for complex reasoning
 
 """.format(page=current_page)
 
