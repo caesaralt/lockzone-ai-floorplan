@@ -1958,22 +1958,30 @@
         }
     }
 
+    let conversationHistory = [];
+
     async function sendAIMessage() {
         const input = document.getElementById('aiChatInput');
         const messages = document.getElementById('aiChatMessages');
         const sendBtn = document.getElementById('aiChatSendBtn');
         const question = input.value.trim();
-        
+
         if (!question) return;
-        
+
         // Add user message
         messages.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
         input.value = '';
         sendBtn.disabled = true;
-        
+
+        // Add to history
+        conversationHistory.push({
+            role: 'user',
+            content: question
+        });
+
         // Scroll to bottom
         messages.scrollTop = messages.scrollHeight;
-        
+
         try {
             const response = await fetch('/api/ai-chat', {
                 method: 'POST',
@@ -1981,25 +1989,35 @@
                 body: JSON.stringify({
                     message: question,
                     agent_mode: agentMode,
-                    context: {
-                        page: window.location.pathname
-                    }
+                    conversation_history: conversationHistory.slice(-10), // Keep last 10 messages
+                    current_page: 'crm'
                 })
             });
-            
+
             const data = await response.json();
-            
-            if (data.response) {
-                messages.innerHTML += `<div class="ai-message"><strong>🤖 AI:</strong> ${data.response}</div>`;
+
+            if (data.success && data.response) {
+                messages.innerHTML += `<div class="ai-message"><strong>🤖 AI:</strong> ${data.response.replace(/\n/g, '<br>')}</div>`;
+
+                // Add to history
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: data.response
+                });
             }
-            
-            if (data.action_taken) {
-                messages.innerHTML += `<div class="ai-message" style="background: #e8f5e9;"><strong>✅ Action:</strong> ${data.action_taken}</div>`;
+
+            if (data.actions_taken && data.actions_taken.length > 0) {
+                data.actions_taken.forEach(action => {
+                    messages.innerHTML += `<div class="ai-message" style="background: #e8f5e9;"><strong>✅ Action:</strong> ${action.description || action.action}</div>`;
+                });
+
+                // Reload data if actions were taken
+                loadAllData();
             }
         } catch (error) {
             messages.innerHTML += `<div class="ai-message" style="background: #fee;"><strong>❌ Error:</strong> ${error.message}</div>`;
         }
-        
+
         sendBtn.disabled = false;
         messages.scrollTop = messages.scrollHeight;
     }

@@ -3,147 +3,696 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Learning - Integratd Living</title>
+    <title>AI Learning System - Integratd Living</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
         }
 
-        .top-nav {
-            background: white;
-            border-bottom: 1px solid #d2d2d7;
-            padding: 0 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            height: 60px;
-            gap: 40px;
-        }
-
-        .logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: #556B2F;
-            text-decoration: none;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-            flex: 1;
-        }
-
-        .nav-item {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .nav-item:hover {
-            background: rgba(85, 107, 47, 0.1);
-        }
-
-        .nav-item.active {
-            background: #556B2F;
-            color: white;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 60px auto;
-            padding: 0 40px;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         .header {
             text-align: center;
-            margin-bottom: 60px;
+            color: white;
+            margin-bottom: 40px;
         }
 
-        h1 {
+        .header h1 {
             font-size: 48px;
-            font-weight: 700;
             margin-bottom: 16px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        .subtitle {
+        .header p {
             font-size: 20px;
-            color: #666;
+            opacity: 0.95;
         }
 
-        .content-card {
+        .nav-bar {
             background: white;
             border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            text-align: center;
+            padding: 16px 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-        .icon {
-            font-size: 64px;
-            margin-bottom: 24px;
-        }
-
-        .coming-soon {
-            font-size: 24px;
+        .nav-link {
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
             font-weight: 600;
-            color: #556B2F;
-            margin-bottom: 16px;
+            transition: all 0.2s;
+            background: #f5f5f7;
         }
 
-        .description {
-            font-size: 16px;
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+        }
+
+        .card-icon { font-size: 48px; margin-bottom: 16px; }
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        .card-description {
             color: #666;
             line-height: 1.6;
-            max-width: 600px;
-            margin: 0 auto;
+            margin-bottom: 20px;
         }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f7;
+            color: #333;
+        }
+
+        .btn-secondary:hover { background: #e8e8ed; }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 16px;
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-zone:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-zone.dragging {
+            background: #e6e9ff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        textarea {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 15px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status-message {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ai-capabilities {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .ai-capabilities h2 { font-size: 28px; margin-bottom: 20px; }
+        .ai-capabilities ul { list-style: none; padding: 0; }
+        .ai-capabilities li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .ai-capabilities li:last-child { border-bottom: none; }
+        .ai-capabilities li:before {
+            content: "✨ ";
+            margin-right: 8px;
+        }
+
+        .learning-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .learning-item {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .learning-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .learning-item-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .learning-item-date {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .learning-item-content {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge-upload { background: #e3f2fd; color: #1976d2; }
+        .badge-instruction { background: #fff3e0; color: #f57c00; }
+        .badge-correction { background: #f3e5f5; color: #7b1fa2; }
     </style>
 </head>
 <body>
-    <nav class="top-nav">
-        <div class="nav-container">
-            <a href="/" class="logo">🏠 Integratd Living</a>
-            <ul class="nav-menu">
-                <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
-                <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
-                <li><a href="/canvas" class="nav-item">Floor Plan Canvas</a></li>
-                <li><a href="/learning" class="nav-item active">AI Learning</a></li>
-                <li><a href="/simpro" class="nav-item">Simpro Integration</a></li>
-            </ul>
-        </div>
-    </nav>
-
     <div class="container">
         <div class="header">
-            <h1>AI Learning</h1>
-            <p class="subtitle">Train the system to improve accuracy</p>
+            <h1>🧠 AI Learning System</h1>
+            <p>Teach the AI and it will apply knowledge across your entire application</p>
         </div>
 
-        <div class="content-card">
-            <div class="icon">🧠</div>
-            <div class="coming-soon">Feature Coming Soon</div>
-            <p class="description">
-                The AI Learning module will allow you to train the system with examples 
-                to improve floor plan analysis accuracy over time. Upload your own floor 
-                plans with correct symbol placements to teach the AI your preferences and standards.
+        <div class="nav-bar">
+            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/quotes" class="nav-link">💡 Quote Tool</a>
+            <a href="/ai-mapping" class="nav-link">⚡ Electrical Mapping</a>
+            <a href="/canvas" class="nav-link">🎨 Canvas</a>
+            <a href="/crm" class="nav-link">👥 CRM</a>
+            <a href="/simpro" class="nav-link">🔗 Simpro</a>
+        </div>
+
+        <div class="ai-capabilities card">
+            <h2>🤖 What the AI Can Learn</h2>
+            <ul>
+                <li><strong>Custom Symbol Standards:</strong> Upload your own symbols and the AI will use them in floor plan analysis</li>
+                <li><strong>Counting Methods:</strong> Teach the AI how to count specific components correctly</li>
+                <li><strong>Pricing Rules:</strong> Set custom pricing logic that applies across all quotes</li>
+                <li><strong>Workflow Preferences:</strong> Define how you want the system to behave</li>
+                <li><strong>CRM Patterns:</strong> Show examples of how to handle customers and projects</li>
+                <li><strong>Error Corrections:</strong> When the AI makes mistakes, correct it and it will learn</li>
+            </ul>
+            <p style="margin-top: 20px; opacity: 0.9;">
+                The AI uses extended thinking to reason like a human, applying learned knowledge intelligently across Quote Automation, Electrical Mapping, Canvas, CRM, and all other modules.
             </p>
         </div>
+
+        <div class="grid">
+            <!-- Upload Training Files -->
+            <div class="card">
+                <div class="card-icon">📁</div>
+                <h2 class="card-title">Upload Training Files</h2>
+                <p class="card-description">
+                    Upload floor plans, symbol standards, or example documents. The AI will analyze and learn from them.
+                </p>
+
+                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📤</div>
+                    <p style="font-weight: 600; margin-bottom: 8px;">Click or drag files here</p>
+                    <p style="font-size: 14px; color: #666;">Supports PDF, PNG, JPG, and documents</p>
+                </div>
+                <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="display: none;" onchange="uploadFiles()">
+
+                <div style="margin-top: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 8px;">Notes about these files:</label>
+                    <textarea id="uploadNotes" placeholder="e.g., 'These are our standard symbols for security cameras'"></textarea>
+                </div>
+
+                <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="uploadFiles()">
+                    📤 Upload & Train AI
+                </button>
+
+                <div id="uploadStatus" class="status-message"></div>
+                <div id="uploadLoading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing and learning from files...</p>
+                </div>
+            </div>
+
+            <!-- Natural Language Instructions -->
+            <div class="card">
+                <div class="card-icon">💬</div>
+                <h2 class="card-title">Teach with Instructions</h2>
+                <p class="card-description">
+                    Tell the AI what to do in plain English. It will remember and apply these rules everywhere.
+                </p>
+
+                <textarea id="instructionText" placeholder="Examples:&#10;&#10;• Always place 2 downlights per bedroom&#10;• Use premium tier for kitchens and living rooms&#10;• Add 15% buffer to all material quotes&#10;• When analyzing security, include door sensors"></textarea>
+
+                <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="saveInstructions()">
+                    💾 Save Instructions
+                </button>
+
+                <div id="instructionStatus" class="status-message"></div>
+            </div>
+
+            <!-- AI Chat with Learning Mode -->
+            <div class="card">
+                <div class="card-icon">🤖</div>
+                <h2 class="card-title">AI Assistant with Learning</h2>
+                <p class="card-description">
+                    Chat with the AI, upload documents, and enable learning mode to let it modify the entire app.
+                </p>
+
+                <div style="background: #f8f9ff; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div>
+                            <button id="learningModeBtn" onclick="toggleLearningMode()" style="padding: 8px 16px; border: none; border-radius: 8px; background: #999; color: white; cursor: pointer; font-weight: 600;">
+                                🔒 Learning Mode: OFF
+                            </button>
+                            <div id="learningModeStatus" style="font-size: 12px; color: #999; margin-top: 8px;">AI can only answer questions</div>
+                        </div>
+                        <button onclick="document.getElementById('chatFileInput').click()" style="padding: 8px 16px; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-weight: 600;">
+                            📎 Upload Doc
+                        </button>
+                        <input type="file" id="chatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadChatFiles()">
+                    </div>
+
+                    <div id="chatMessages" style="max-height: 300px; overflow-y: auto; margin-bottom: 16px; padding: 16px; background: white; border-radius: 8px;">
+                        <div style="background: #f0f2ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                            <strong>🤖 AI:</strong> Hi! I'm your AI learning assistant. Upload documents or ask me questions. With Learning Mode ON, I can modify your entire application based on what you teach me.
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="chatInput" placeholder="Ask a question or give instructions..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" style="padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; font-weight: 600;">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Learning History -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div>
+                    <div class="card-icon" style="display: inline; margin-right: 12px;">📚</div>
+                    <h2 class="card-title" style="display: inline;">Learning History</h2>
+                </div>
+                <button class="btn btn-secondary" onclick="loadLearningHistory()">🔄 Refresh</button>
+            </div>
+
+            <div id="learningLoading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading learning history...</p>
+            </div>
+
+            <div class="learning-list" id="learningList">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
     </div>
+
+    <script>
+        let learningMode = false;
+        let chatHistory = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLearningHistory();
+            setupDragAndDrop();
+        });
+
+        // Drag and drop
+        function setupDragAndDrop() {
+            const zone = document.getElementById('uploadZone');
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragging');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragging');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragging');
+                const files = e.dataTransfer.files;
+                document.getElementById('fileInput').files = files;
+                uploadFiles();
+            });
+        }
+
+        // Upload training files
+        async function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const notes = document.getElementById('uploadNotes').value;
+            const status = document.getElementById('uploadStatus');
+            const loading = document.getElementById('uploadLoading');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showStatus(status, 'Please select files to upload', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+            formData.append('notes', notes);
+
+            try {
+                loading.style.display = 'block';
+                status.style.display = 'none';
+
+                const response = await fetch('/api/upload-learning-data', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(status, `✅ Successfully uploaded ${fileInput.files.length} file(s) and trained the AI!`, 'success');
+                    fileInput.value = '';
+                    document.getElementById('uploadNotes').value = '';
+                    loadLearningHistory();
+                } else {
+                    showStatus(status, `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(status, `Error: ${error.message}`, 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Save instructions
+        async function saveInstructions() {
+            const instructions = document.getElementById('instructionText').value.trim();
+            const status = document.getElementById('instructionStatus');
+
+            if (!instructions) {
+                showStatus(status, 'Please enter some instructions', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/process-instructions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ instructions })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(status, '✅ Instructions saved! The AI will now follow these rules.', 'success');
+                    document.getElementById('instructionText').value = '';
+                    loadLearningHistory();
+                } else {
+                    showStatus(status, `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(status, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Toggle learning mode
+        function toggleLearningMode() {
+            learningMode = !learningMode;
+            const btn = document.getElementById('learningModeBtn');
+            const statusText = document.getElementById('learningModeStatus');
+
+            if (learningMode) {
+                btn.textContent = '🔓 Learning Mode: ON';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                statusText.textContent = '🔓 AI can modify the entire application';
+                statusText.style.color = '#667eea';
+            } else {
+                btn.textContent = '🔒 Learning Mode: OFF';
+                btn.style.background = '#999';
+                statusText.textContent = '🔒 AI can only answer questions';
+                statusText.style.color = '#999';
+            }
+        }
+
+        // Upload chat files
+        async function uploadChatFiles() {
+            const fileInput = document.getElementById('chatFileInput');
+            const chatMessages = document.getElementById('chatMessages');
+
+            if (!fileInput.files || fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+            formData.append('notes', `Uploaded via chat on ${new Date().toLocaleString()}`);
+
+            try {
+                chatMessages.innerHTML += `<div style="text-align: center; padding: 12px; color: #999;">Uploading ${fileInput.files.length} file(s)...</div>`;
+
+                const response = await fetch('/api/upload-learning-data', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    chatMessages.innerHTML += `<div style="background: #d4edda; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>✅ System:</strong> Uploaded and analyzed ${fileInput.files.length} file(s) successfully!</div>`;
+                    fileInput.value = '';
+                    loadLearningHistory();
+                } else {
+                    chatMessages.innerHTML += `<div style="background: #f8d7da; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>❌ Error:</strong> ${data.error}</div>`;
+                }
+
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                chatMessages.innerHTML += `<div style="background: #f8d7da; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>❌ Error:</strong> ${error.message}</div>`;
+            }
+        }
+
+        // Send chat message
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message
+            chatMessages.innerHTML += `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; text-align: right;"><strong>You:</strong> ${message}</div>`;
+            input.value = '';
+
+            chatHistory.push({ role: 'user', content: message });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const response = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: message,
+                        agent_mode: learningMode,
+                        conversation_history: chatHistory.slice(-10),
+                        current_page: 'learning'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.response) {
+                    chatMessages.innerHTML += `<div style="background: #f0f2ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>🤖 AI:</strong> ${data.response.replace(/\n/g, '<br>')}</div>`;
+                    chatHistory.push({ role: 'assistant', content: data.response });
+                }
+
+                if (data.actions_taken && data.actions_taken.length > 0) {
+                    data.actions_taken.forEach(action => {
+                        chatMessages.innerHTML += `<div style="background: #d4edda; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>✅ Action:</strong> ${action.description || action.action}</div>`;
+                    });
+                }
+
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                chatMessages.innerHTML += `<div style="background: #f8d7da; padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>❌ Error:</strong> ${error.message}</div>`;
+            }
+        }
+
+        // Load learning history
+        async function loadLearningHistory() {
+            const loading = document.getElementById('learningLoading');
+            const list = document.getElementById('learningList');
+
+            try {
+                loading.style.display = 'block';
+
+                const response = await fetch('/api/learning/history');
+                const data = await response.json();
+
+                if (data.success && data.examples) {
+                    renderLearningHistory(data.examples);
+                } else {
+                    list.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No learning examples yet. Upload files or add instructions to get started!</div>';
+                }
+            } catch (error) {
+                list.innerHTML = `<div style="text-align: center; padding: 40px; color: #dc3545;">Error loading history: ${error.message}</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Render learning history
+        function renderLearningHistory(examples) {
+            const list = document.getElementById('learningList');
+
+            if (!examples || examples.length === 0) {
+                list.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No learning examples yet.</div>';
+                return;
+            }
+
+            const reversedExamples = [...examples].reverse();
+
+            list.innerHTML = reversedExamples.map(example => {
+                const date = new Date(example.timestamp).toLocaleString();
+                const type = example.type || 'upload';
+                let badgeClass = 'badge-upload';
+                let typeLabel = 'Upload';
+
+                if (type === 'instruction') {
+                    badgeClass = 'badge-instruction';
+                    typeLabel = 'Instruction';
+                } else if (example.corrections) {
+                    badgeClass = 'badge-correction';
+                    typeLabel = 'Correction';
+                }
+
+                return `
+                    <div class="learning-item">
+                        <div class="learning-item-header">
+                            <div>
+                                <span class="learning-item-title">${example.filename || example.instruction || 'Learning Example'}</span>
+                                <span class="badge ${badgeClass}">${typeLabel}</span>
+                            </div>
+                            <span class="learning-item-date">${date}</span>
+                        </div>
+                        <div class="learning-item-content">
+                            ${example.notes || example.instruction || 'No description'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Helper function
+        function showStatus(element, message, type) {
+            element.textContent = message;
+            element.className = `status-message status-${type}`;
+            element.style.display = 'block';
+
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
