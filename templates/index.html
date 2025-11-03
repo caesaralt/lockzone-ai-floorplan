@@ -959,32 +959,36 @@
 
     <div id="aiChatPanel" class="ai-chat-panel">
         <div class="ai-chat-header">
-            <div>
+            <div style="flex: 1;">
                 <h3>🤖 AI Assistant</h3>
-                <button id="agentModeToggle" onclick="toggleAgentMode()" style="
-                    background: #999;
-                    color: white;
-                    border: none;
-                    padding: 5px 10px;
-                    border-radius: 5px;
-                    font-size: 0.9em;
-                    cursor: pointer;
-                    margin-top: 5px;
-                ">🔒 Agent Mode: OFF</button>
-                <div id="agentModeStatus" style="font-size: 0.8em; color: #999; margin-top: 3px;">🔒 Agent can only answer questions</div>
+                <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                    <button id="agentModeToggle" onclick="toggleAgentMode()" style="
+                        background: #999;
+                        color: white;
+                        border: none;
+                        padding: 5px 12px;
+                        border-radius: 5px;
+                        font-size: 0.85em;
+                        cursor: pointer;
+                    ">🔒 Learning: OFF</button>
+                    <button onclick="document.getElementById('aiChatFileInput').click()" style="
+                        background: #556B2F;
+                        color: white;
+                        border: none;
+                        padding: 5px 12px;
+                        border-radius: 5px;
+                        font-size: 0.85em;
+                        cursor: pointer;
+                    ">📎 Upload</button>
+                    <input type="file" id="aiChatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadAIChatFiles()">
+                </div>
+                <div id="agentModeStatus" style="font-size: 0.75em; color: #999; margin-top: 5px;">🔒 Read-only mode</div>
             </div>
             <button onclick="toggleAIChat()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">×</button>
         </div>
         <div class="ai-chat-messages" id="aiChatMessages">
             <div class="ai-message">
-                <strong>🤖 AI:</strong> Hi! I'm your AI assistant for the floor plan analyzer. I can:
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Answer questions about your floor plan</li>
-                    <li>Explain analysis results</li>
-                    <li>Discuss pricing and options</li>
-                    <li><strong>With Agent Mode ON:</strong> Execute actions (add/remove symbols, change pricing, regenerate quotes)</li>
-                </ul>
-                <em style="color: #556B2F;">Try asking me something!</em>
+                <strong>🤖 AI:</strong> Hi! I'm your AI assistant for floor plan analysis. I can help with questions, and with Learning Mode ON, I can modify the app and learn from your documents. Use 📎 Upload to teach me with example floor plans or custom symbols!
             </div>
         </div>
         <div class="ai-chat-input">
@@ -1149,17 +1153,50 @@
             agentModeEnabled = !agentModeEnabled;
             const toggle = document.getElementById('agentModeToggle');
             const status = document.getElementById('agentModeStatus');
-            
+
             if (agentModeEnabled) {
-                toggle.textContent = '🤖 Agent Mode: ON';
-                toggle.style.background = '#4CAF50';
-                status.textContent = '✅ Agent can execute actions';
-                status.style.color = '#4CAF50';
+                toggle.textContent = '🔓 Learning: ON';
+                toggle.style.background = '#6B8E23';
+                status.textContent = '🔓 Can modify app & learn';
+                status.style.color = '#6B8E23';
             } else {
-                toggle.textContent = '🔒 Agent Mode: OFF';
+                toggle.textContent = '🔒 Learning: OFF';
                 toggle.style.background = '#999';
-                status.textContent = '🔒 Agent can only answer questions';
+                status.textContent = '🔒 Read-only mode';
                 status.style.color = '#999';
+            }
+        }
+
+        async function uploadAIChatFiles() {
+            const fileInput = document.getElementById('aiChatFileInput');
+            const messagesDiv = document.getElementById('aiChatMessages');
+
+            if (!fileInput.files || fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+            formData.append('notes', `Uploaded via Quote Tool chat on ${new Date().toLocaleString()}`);
+
+            try {
+                addMessageToChat('system', `Uploading ${fileInput.files.length} file(s)...`);
+
+                const response = await fetch('/api/upload-learning-data', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    addMessageToChat('system', `✅ Uploaded and learned from ${fileInput.files.length} file(s)!`);
+                    fileInput.value = '';
+                } else {
+                    addMessageToChat('system', `❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                addMessageToChat('system', `❌ Error: ${error.message}`);
             }
         }
 
@@ -1191,7 +1228,7 @@
                     },
                     body: JSON.stringify({
                         message: message,
-                        project_id: currentProjectId,
+                        current_page: 'quotes',
                         agent_mode: agentModeEnabled,
                         conversation_history: conversationHistory.slice(0, -1) // Exclude current message
                     })
