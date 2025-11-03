@@ -631,180 +631,166 @@ def analyze_floorplan_with_ai(pdf_path):
         learning_context = get_learning_context()
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an autonomous AI agent analyzing a floor plan for home automation. You have access to web search to look up ANY information you need in real-time.
+        prompt = f"""You are an AI with VISION analyzing a floor plan image. You can SEE the image - use your eyes!
 
 {learning_context}
 
-🔍 YOU HAVE WEB SEARCH - USE IT ACTIVELY:
-You can search for:
-- Building codes (NEC, local codes)
-- Professional installation standards
-- Typical room dimensions by building type
-- Component placement best practices
-- Electrical requirements
-- Safety regulations
-- Industry standards
-- Common sense knowledge about where things should go
+🔍 WEB SEARCH AVAILABLE - Use when you need to verify codes/standards
 
-WHEN TO SEARCH:
-- When you need to verify standard dimensions
-- When placing components that have code requirements (outlets, switches, etc.)
-- When you're unsure about professional practices
-- To look up symbols you don't recognize
-- To understand scale standards
-- To verify your reasoning against real-world standards
+👁️ CRITICAL: YOU ARE LOOKING AT AN IMAGE - USE YOUR VISION!
 
-EXAMPLE SEARCHES YOU SHOULD MAKE:
-- "NEC code outlet spacing requirements residential"
-- "professional security keypad placement standards"
-- "typical bedroom dimensions residential"
-- "light switch height building code"
-- "where to place motion sensors best practices"
-- "electrical symbol standards floor plans"
+STEP 1: LOOK AT THE IMAGE - VISUAL ANALYSIS FIRST
+================================================
 
-REFERENCE KNOWLEDGE (but VERIFY with search when needed):
+STOP and LOOK at what you're seeing:
 
-🔐 SECURITY & ACCESS CONTROL:
-- Security keypads: ALWAYS on walls adjacent to entry doors (within 1-2 feet of door frame)
-- Door sensors: On EVERY external door and ground-floor windows
-- Motion sensors: Corners of rooms for maximum coverage, typically 7-8 feet high
-- Cameras: Above doors (exterior), room corners (interior), covering entry points
-- Intercoms: At main entrance, near door at shoulder height (4.5-5 feet)
+1. Visually identify EVERY room by tracing walls with your eyes
+2. For each room, note its visual boundaries:
+   - Where are the walls? (dark lines)
+   - Where are the doors? (openings in walls)
+   - Where are the windows? (marked on walls)
+   - What's the room shape? (rectangular, L-shaped, etc.)
 
-💡 LIGHTING:
-- Ceiling lights: Center of rooms unless otherwise marked
-- Recessed lighting: Evenly spaced, typically 4-6 feet apart in grid pattern
-- Wall sconces: 5-6 feet from floor, flanking mirrors/art
-- Under-cabinet lights: Kitchen counters, workspaces
-- Outdoor lights: Above doors, along pathways, at building corners
+3. Measure each room's position in the IMAGE:
+   - Look at the leftmost wall of the room - what % across the image? (x_start)
+   - Look at the rightmost wall - what % across? (x_end)
+   - Look at the topmost wall - what % down? (y_start)
+   - Look at the bottommost wall - what % down? (y_end)
 
-🔘 SWITCHES & CONTROLS:
-- Light switches: On wall beside door opening, 3.5-4 feet from floor
-- Multi-gang switches: Near entry point of room they control
-- Dimmer switches: For dining rooms, bedrooms, living areas
-- Smart switches: Same positions as traditional switches
-- Never place switches behind doors or in inaccessible locations
+4. Calculate room center by LOOKING:
+   - Visual center x = (x_start + x_end) / 2
+   - Visual center y = (y_start + y_end) / 2
 
-🪟 SHADING & WINDOW AUTOMATION:
-- Window blind controls: Beside each window or group of windows
-- Motorized shades: Control keypads 3-4 feet from floor
-- Light sensors: Unobstructed locations near windows
+EXAMPLE - If you SEE a bedroom:
+- Left wall at 20% across image = x_start: 0.20
+- Right wall at 40% across image = x_end: 0.40
+- Top wall at 30% down image = y_start: 0.30
+- Bottom wall at 50% down image = y_end: 0.50
+- Center = x: 0.30, y: 0.40
 
-🌡️ CLIMATE CONTROL:
-- Thermostats: On interior walls, away from windows/doors, 5 feet from floor
-- Not in direct sunlight or near heat sources
-- Central location in zone being controlled
+STEP 2: IDENTIFY EXISTING SYMBOLS VISUALLY
+==========================================
 
-🔊 AUDIO SYSTEMS:
-- Ceiling speakers: Evenly distributed, matched to room shape
-- Volume controls: Near room entry, 4 feet from floor
-- In-wall speakers: Ear level when seated (living rooms) or standing (kitchens)
+LOOK at the floor plan image:
+- Do you SEE any symbols already placed? (dots, icons, markers)
+- Where exactly are they in the image?
+- Measure their pixel positions relative to image size
+- Note which room each symbol is IN
 
-CRITICAL ANALYSIS PROCESS:
+STEP 3: UNDERSTAND SCALE (if needed)
+====================================
 
-STEP 1: SCALE DETECTION & MEASUREMENT CALCULATION
-MANDATORY - You MUST detect and use the scale:
-1. Scan the ENTIRE image for a scale bar (check all corners and edges)
-2. Common locations: bottom-left, bottom-right, title block area
-3. Common scales: 1:50, 1:100, 1:200, 1/4"=1', 1/8"=1'
-4. If you find "1:100", this means 1cm on the plan = 100cm (1m) in reality
-5. Measure the scale bar length in pixels
-6. Calculate: pixels_per_meter = scale_bar_pixels / real_world_meters
-7. Use this to determine room dimensions in meters/feet
-8. If NO scale found: estimate based on typical room sizes (bedrooms ~3-4m, living rooms ~5-6m)
+- Look for scale bar (usually bottom corner)
+- Note scale ratio (e.g., "1:100")
+- Use this to understand real-world dimensions
+- Validate: Do room sizes make sense? (bedrooms 10-15', living rooms 15-20')
 
-STEP 2: ROOM LAYOUT ANALYSIS
-- Map EACH room's boundaries in image coordinates
-- Calculate each room's position: [x_start, x_end, y_start, y_end] in normalized 0-1 coordinates
-- Identify room centers: center_x = (x_start + x_end) / 2
-- Note doors, windows, walls - these affect symbol placement
+STEP 4: PLAN COMPONENT PLACEMENT VISUALLY
+=========================================
 
-STEP 3: SYMBOL IDENTIFICATION WITH EXACT POSITIONS
-For EVERY visible symbol on the plan:
-- Identify its type (light/switch/sensor/etc.)
-- Determine its ACTUAL pixel position in the image
-- Convert to normalized coordinates (x: 0.0-1.0, y: 0.0-1.0)
-- Verify: Is this position logical for this component type?
-- Cross-check with professional standards above
+For EACH room you identified visually:
 
-STEP 4: VALIDATE PLACEMENT LOGIC
-Before finalizing ANY coordinate:
-ASK YOURSELF:
-1. "Would a professional installer place this here?"
-2. "Is this accessible and functional?"
-3. "Does this follow building codes and common sense?"
-4. "Am I hallucinating or is this the ACTUAL position I see?"
+1. Look at the room's visual boundaries (x_start to x_end, y_start to y_end)
 
-If you cannot see a symbol clearly OR don't know where to place it:
-- DO NOT GUESS
-- DO NOT place at (0, 0) or corners
-- DO NOT hallucinate positions
-- INSTEAD: Use professional standards to suggest logical placement
+2. Plan where components should go INSIDE those boundaries:
+   - Ceiling light → room visual center (x_center, y_center)
+   - Switch → beside door opening (look for door location)
+   - Keypad → beside entry door (visually locate the door)
+   - Outlets → along walls (stay within room bounds)
 
-STEP 5: COMPONENT DISTRIBUTION CHECK
-- Count total components per room
-- Verify distribution makes sense (don't cluster everything in one spot)
-- Ensure even spacing for lights, adequate coverage for sensors
+3. When placing, ensure coordinates are INSIDE the room:
+   - x must be between x_start and x_end
+   - y must be between y_start and y_end
+   - DON'T place outside the room you're looking at!
 
-STEP 6: QUALITY ASSESSMENT
-Based on component density and types:
-- "basic": 1-2 lights per room, basic switches, minimal automation
-- "premium": 3-5 lights per room, some smart controls, selective automation
-- "deluxe": 6+ lights per room, full smart control, comprehensive automation
+EXAMPLE - Placing light in the bedroom from above:
+- Bedroom bounds: x: 0.20-0.40, y: 0.30-0.50
+- Light at center: x: 0.30, y: 0.40 ✓ (inside bounds)
+- NOT at x: 0.80, y: 0.20 ✗ (that's in a different room!)
 
-RESPONSE FORMAT (JSON):
+STEP 5: PLACEMENT RULES (USE YOUR EYES!)
+========================================
+
+🔐 SECURITY KEYPADS:
+- LOOK for the main entry door
+- Place keypad ON THE WALL next to it (within 1-2 feet)
+- If door is at x: 0.15, keypad goes at x: 0.17 (slightly to the side)
+
+💡 CEILING LIGHTS:
+- LOOK at the room shape
+- Place at visual center of the room
+- For L-shaped rooms, place in each section
+
+🔘 SWITCHES:
+- LOOK for door openings
+- Place on wall BESIDE the door (latch side)
+- Height: 3.5-4 feet (doesn't affect x,y coordinates)
+
+🪟 WINDOW CONTROLS:
+- LOOK for windows (marked on walls)
+- Place controls BESIDE each window
+
+STEP 6: GENERATE RESPONSE
+=========================
+
+Return JSON with:
+
 {{
     "scale_analysis": {{
-        "detected_scale": "exact scale found (e.g., '1:100') or 'none found'",
-        "scale_bar_location": "description of where found",
-        "image_dimensions": "width x height in pixels if determinable",
-        "calculated_building_size": "estimated real-world dimensions based on scale"
+        "detected_scale": "what scale you found visually",
+        "visual_validation": "do room sizes look realistic?"
     }},
     "rooms": [
         {{
-            "name": "exact room name from plan",
-            "boundaries": {{"x_start": 0.0, "x_end": 0.0, "y_start": 0.0, "y_end": 0.0}},
-            "center": {{"x": 0.0, "y": 0.0}},
-            "dimensions_estimated": "width x length in meters/feet",
-            "lighting": {{"count": total_count, "type": "basic|premium|deluxe"}},
-            "shading": {{"count": total_count, "type": "basic|premium|deluxe"}},
-            "security_access": {{"count": total_count, "type": "basic|premium|deluxe"}},
-            "climate": {{"count": total_count, "type": "basic|premium|deluxe"}},
-            "audio": {{"count": total_count, "type": "basic|premium|deluxe"}}
+            "name": "room name you read from image",
+            "visual_boundaries": {{
+                "x_start": 0.XX,
+                "x_end": 0.XX,
+                "y_start": 0.XX,
+                "y_end": 0.XX
+            }},
+            "center": {{"x": 0.XX, "y": 0.XX}},
+            "dimensions_estimated": "width x length based on scale",
+            "lighting": {{"count": X, "type": "basic|premium|deluxe"}},
+            "shading": {{"count": X, "type": "basic|premium|deluxe"}},
+            "security_access": {{"count": X, "type": "basic|premium|deluxe"}},
+            "climate": {{"count": X, "type": "basic|premium|deluxe"}},
+            "audio": {{"count": X, "type": "basic|premium|deluxe"}}
         }}
     ],
     "components": [
         {{
-            "id": "unique_id (L1, L2, S1, S2, etc.)",
+            "id": "L1",
             "type": "light|switch|shading|security|climate|audio",
             "location": {{
-                "x": precise_x_position_0_to_1,
-                "y": precise_y_position_0_to_1
+                "x": 0.XX,  // MUST be between room's x_start and x_end
+                "y": 0.XX   // MUST be between room's y_start and y_end
             }},
-            "room": "room name",
-            "description": "specific description (e.g., 'recessed ceiling downlight', '3-gang switch for kitchen lights', 'door sensor main entrance')",
-            "automation_category": "lighting|shading|security_access|climate|audio",
-            "placement_reasoning": "why this position (e.g., 'center of room for even coverage', 'beside door per code', 'on wall near window')"
+            "room": "which room this is IN (based on visual boundaries)",
+            "visual_placement": "describe WHERE in the room you placed this (center, near door, beside window, etc.)",
+            "placement_reasoning": "why this position makes sense"
         }}
     ],
-    "validation_notes": "Describe how you verified positions are realistic and not hallucinated. Mention scale usage, professional standards applied, and any assumptions made."
+    "visual_validation": "Confirm you LOOKED at the image, identified rooms visually, and placed components INSIDE the rooms you saw."
 }}
 
-ABSOLUTE REQUIREMENTS - FAILURE TO COMPLY MEANS INCORRECT ANALYSIS:
-✓ USE your extended thinking - reason through EVERY position
-✓ DETECT the scale - look for it systematically
-✓ FOLLOW professional standards listed above
-✓ PLACE components where they ACTUALLY are or where they SHOULD be per standards
-✓ NEVER cluster everything at (0,0) or corners
-✓ INCLUDE placement_reasoning for every component
-✓ VERIFY each position makes logical sense
-✗ DO NOT hallucinate positions
-✗ DO NOT guess wildly
-✗ DO NOT ignore professional placement standards
-✗ DO NOT place security keypads in room centers (they go by doors!)
-✗ DO NOT place switches in inaccessible locations
+CRITICAL REQUIREMENTS:
+======================
 
-Use your full reasoning capability. Think step-by-step. Search when needed. Double-check everything."""
+✓ USE YOUR VISION - Look at the image first!
+✓ IDENTIFY each room by visually tracing its walls
+✓ MEASURE room boundaries from what you SEE
+✓ PLACE components INSIDE the room boundaries
+✓ DON'T place components outside room bounds
+✓ DON'T cluster everything at (0,0) or corners
+✓ VALIDATE each position is inside the correct room
+
+✗ DON'T hallucinate room positions
+✗ DON'T ignore what you can SEE in the image
+✗ DON'T place symbols outside the rooms
+✗ DON'T guess - LOOK at the image!
+
+Use your VISION. Look at the image. See the rooms. Place components where you SEE them or where they SHOULD be based on what you SEE."""
 
         # AGENTIC LOOP - AI can search, think, search more, then respond
         messages = [
