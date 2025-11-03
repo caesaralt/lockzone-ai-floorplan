@@ -381,6 +381,12 @@
                 <button onclick="selectAll()">📋 Select All</button>
                 <button onclick="deselectAll()">✖️ Deselect</button>
                 <button onclick="deleteSelected()">🗑️ Delete Selected</button>
+                <button onclick="zoomIn()">🔍+ Zoom In</button>
+                <button onclick="zoomOut()">🔍- Zoom Out</button>
+                <button onclick="resetZoom()">↺ Reset Zoom</button>
+                <button id="editModeBtn" onclick="toggleEditMode()">✏️ Edit Automation</button>
+                <button onclick="downloadQuote()">📄 Download Quote</button>
+                <button onclick="downloadFloorplan()">🏠 Download Floorplan</button>
             </div>
             
             <div class="canvas-wrapper">
@@ -505,6 +511,16 @@
         let history = [];
         const MAX_HISTORY = 50;
 
+        // Zoom state
+        let zoomLevel = 1.0;
+        let zoomMin = 0.25;
+        let zoomMax = 3.0;
+        let panOffset = { x: 0, y: 0 };
+        let isPanning = false;
+
+        // Edit mode state
+        let isEditMode = false;
+
         // Initialize
         window.onload = function() {
             canvas = document.getElementById('floorplanCanvas');
@@ -537,7 +553,8 @@
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseup', handleMouseUp);
-            
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+
             // Keyboard shortcuts
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -1214,6 +1231,240 @@
             });
         }
     });
+
+    // ============================================================================
+    // ZOOM FUNCTIONALITY
+    // ============================================================================
+
+    function handleWheel(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.min(Math.max(zoomLevel * delta, zoomMin), zoomMax);
+
+        if (newZoom !== zoomLevel) {
+            zoomLevel = newZoom;
+            applyZoom();
+        }
+    }
+
+    function zoomIn() {
+        zoomLevel = Math.min(zoomLevel * 1.2, zoomMax);
+        applyZoom();
+    }
+
+    function zoomOut() {
+        zoomLevel = Math.max(zoomLevel * 0.8, zoomMin);
+        applyZoom();
+    }
+
+    function resetZoom() {
+        zoomLevel = 1.0;
+        panOffset = { x: 0, y: 0 };
+        applyZoom();
+    }
+
+    function applyZoom() {
+        const wrapper = document.querySelector('.canvas-wrapper');
+        canvas.style.transform = `scale(${zoomLevel})`;
+        canvas.style.transformOrigin = 'center center';
+        redrawCanvas();
+    }
+
+    // ============================================================================
+    // EDIT AUTOMATION MODE
+    // ============================================================================
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const btn = document.getElementById('editModeBtn');
+
+        if (isEditMode) {
+            btn.textContent = '✅ Exit Edit Mode';
+            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+            canvas.style.cursor = 'pointer';
+            alert('✏️ Edit Mode Active!\n\nClick on any symbol to:\n• Upload custom image\n• Add products and prices\n• Modify symbol properties\n\nClick "Exit Edit Mode" when done.');
+        } else {
+            btn.textContent = '✏️ Edit Automation';
+            btn.style.background = '';
+            canvas.style.cursor = 'crosshair';
+        }
+    }
+
+    // Override handleCanvasClick to support edit mode
+    const originalHandleCanvasClick = handleCanvasClick;
+    handleCanvasClick = function(e) {
+        if (isEditMode) {
+            handleEditModeClick(e);
+        } else {
+            originalHandleCanvasClick(e);
+        }
+    };
+
+    function handleEditModeClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top) / zoomLevel;
+
+        // Find clicked symbol
+        let clickedSymbol = null;
+        for (let i = symbols.length - 1; i >= 0; i--) {
+            const sym = symbols[i];
+            if (Math.abs(x - sym.x) < 20 && Math.abs(y - sym.y) < 20) {
+                clickedSymbol = sym;
+                break;
+            }
+        }
+
+        if (clickedSymbol) {
+            openEditDialog(clickedSymbol);
+        } else {
+            alert('Click on a symbol to edit it.');
+        }
+    }
+
+    function openEditDialog(symbol) {
+        const customImage = symbol.customImage || '';
+        const products = symbol.products || [];
+        const productsText = products.map(p => `${p.name} - $${p.price}`).join('\\n');
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; max-width: 500px; width: 90%;';
+
+        dialog.innerHTML = `
+            <h3 style="margin-top: 0; color: #333;">Edit ${symbol.symbol} ${symbol.type}</h3>
+
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555;">Custom Symbol Image:</label>
+                <input type="file" id="editSymbolImage" accept="image/*" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                ${customImage ? `<p style="font-size: 12px; color: #27ae60; margin-top: 5px;">✓ Custom image set</p>` : ''}
+            </div>
+
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555;">Products & Prices:</label>
+                <textarea id="editProductsList" placeholder="Enter one product per line:\\nProduct Name - $100\\nAnother Product - $200"
+                    style="width: 100%; height: 120px; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 13px;">${productsText}</textarea>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">Format: Product Name - $Price (one per line)</p>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px;">
+                <button onclick="closeEditDialog()" style="padding: 12px 24px; background: #95a5a6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
+                <button onclick="saveSymbolEdits('${symbol.id}')" style="padding: 12px 24px; background: #2ecc71; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Changes</button>
+            </div>
+        `;
+
+        dialog.id = 'editDialog';
+        document.body.appendChild(dialog);
+
+        // Handle custom image upload
+        document.getElementById('editSymbolImage').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    symbol.customImage = event.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+    }
+
+    function closeEditDialog() {
+        const dialog = document.getElementById('editDialog');
+        if (dialog) {
+            dialog.remove();
+        }
+    }
+
+    function saveSymbolEdits(symbolId) {
+        const productsText = document.getElementById('editProductsList').value;
+
+        // Parse products
+        const products = [];
+        if (productsText.trim()) {
+            const lines = productsText.split('\\n');
+            lines.forEach(line => {
+                const match = line.match(/(.+?)\\s*-\\s*\\$?([0-9.]+)/);
+                if (match) {
+                    products.push({
+                        name: match[1].trim(),
+                        price: parseFloat(match[2])
+                    });
+                }
+            });
+        }
+
+        // Update symbol
+        const symbol = symbols.find(s => s.id == symbolId);
+        if (symbol) {
+            symbol.products = products;
+            saveHistory();
+            updatePricing();
+            redrawCanvas();
+        }
+
+        closeEditDialog();
+        alert('✅ Symbol updated successfully!');
+    }
+
+    // ============================================================================
+    // DOWNLOAD FUNCTIONS
+    // ============================================================================
+
+    async function downloadQuote() {
+        document.getElementById('loadingOverlay').classList.add('show');
+
+        try {
+            const response = await fetch('/api/generate-quote-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: PROJECT_ID,
+                    project_name: PROJECT_NAME,
+                    symbols: symbols,
+                    tier: TIER
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '/download/' + data.filename;
+            } else {
+                alert('❌ Error generating quote: ' + data.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        } finally {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+    }
+
+    async function downloadFloorplan() {
+        document.getElementById('loadingOverlay').classList.add('show');
+
+        try {
+            // Generate annotated floorplan with current symbols
+            const response = await fetch('/api/generate-annotated-floorplan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: PROJECT_ID,
+                    symbols: symbols
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '/download/' + data.filename;
+            } else {
+                alert('❌ Error generating floorplan: ' + data.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        } finally {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+    }
 </script>
 </body>
 </html>
