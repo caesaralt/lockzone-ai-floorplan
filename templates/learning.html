@@ -9,7 +9,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -55,7 +55,7 @@
         }
 
         .nav-link:hover {
-            background: #667eea;
+            background: #556B2F;
             color: white;
             transform: translateY(-2px);
         }
@@ -85,7 +85,7 @@
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 12px;
-            color: #667eea;
+            color: #556B2F;
         }
 
         .card-description {
@@ -106,7 +106,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
             color: white;
         }
 
@@ -123,7 +123,7 @@
         .btn-secondary:hover { background: #e8e8ed; }
 
         .upload-zone {
-            border: 3px dashed #667eea;
+            border: 3px dashed #556B2F;
             border-radius: 16px;
             padding: 48px;
             text-align: center;
@@ -134,12 +134,12 @@
 
         .upload-zone:hover {
             background: #f0f2ff;
-            border-color: #764ba2;
+            border-color: #6B8E23;
         }
 
         .upload-zone.dragging {
             background: #e6e9ff;
-            border-color: #764ba2;
+            border-color: #6B8E23;
             transform: scale(1.02);
         }
 
@@ -157,7 +157,7 @@
 
         textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #556B2F;
         }
 
         .status-message {
@@ -189,7 +189,7 @@
             width: 40px;
             height: 40px;
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid #556B2F;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 16px;
@@ -201,7 +201,7 @@
         }
 
         .ai-capabilities {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
             color: white;
             border-radius: 20px;
             padding: 32px;
@@ -230,7 +230,7 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #556B2F;
         }
 
         .learning-item-header {
@@ -366,7 +366,7 @@
                             </button>
                             <div id="learningModeStatus" style="font-size: 12px; color: #999; margin-top: 8px;">AI can only answer questions</div>
                         </div>
-                        <button onclick="document.getElementById('chatFileInput').click()" style="padding: 8px 16px; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-weight: 600;">
+                        <button onclick="document.getElementById('chatFileInput').click()" style="padding: 8px 16px; border: none; border-radius: 8px; background: #556B2F; color: white; cursor: pointer; font-weight: 600;">
                             📎 Upload Doc
                         </button>
                         <input type="file" id="chatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadChatFiles()">
@@ -380,7 +380,7 @@
 
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="chatInput" placeholder="Ask a question or give instructions..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" onkeypress="if(event.key==='Enter') sendChatMessage()">
-                        <button onclick="sendChatMessage()" style="padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; font-weight: 600;">
+                        <button onclick="sendChatMessage()" style="padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%); color: white; cursor: pointer; font-weight: 600;">
                             Send
                         </button>
                     </div>
@@ -524,9 +524,9 @@
 
             if (learningMode) {
                 btn.textContent = '🔓 Learning Mode: ON';
-                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                btn.style.background = 'linear-gradient(135deg, #556B2F 0%, #6B8E23 100%)';
                 statusText.textContent = '🔓 AI can modify the entire application';
-                statusText.style.color = '#667eea';
+                statusText.style.color = '#556B2F';
             } else {
                 btn.textContent = '🔒 Learning Mode: OFF';
                 btn.style.background = '#999';
@@ -581,7 +581,7 @@
             if (!message) return;
 
             // Add user message
-            chatMessages.innerHTML += `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; text-align: right;"><strong>You:</strong> ${message}</div>`;
+            chatMessages.innerHTML += `<div style="background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%); color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; text-align: right;"><strong>You:</strong> ${message}</div>`;
             input.value = '';
 
             chatHistory.push({ role: 'user', content: message });
