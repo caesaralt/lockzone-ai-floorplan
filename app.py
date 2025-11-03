@@ -526,67 +526,114 @@ def analyze_floorplan_with_ai(pdf_path):
         learning_context = get_learning_context()
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert home automation system designer analyzing a floor plan. Take your time to think through this carefully and systematically. Use your extended thinking to reason about scale, measurements, and precise positioning.
+        prompt = f"""You are an expert home automation system designer and professional installer analyzing a floor plan. You MUST use your extended thinking capability to carefully reason about EVERY aspect of this analysis. This is critical for accurate installation.
 
 {learning_context}
 
-ANALYSIS PROCESS:
+PROFESSIONAL INSTALLATION STANDARDS - MEMORIZE THESE:
 
-STEP 1: DETECT SCALE AND MEASUREMENTS
-- CRITICAL: Look for a scale bar (usually at bottom or corner of the plan)
-- Common scales: 1:50, 1:100, 1:200
-- Note the scale ratio exactly as shown (e.g., "1:100" means 1cm = 100cm)
-- Identify any dimension annotations on the plan
-- Understand the image dimensions to convert positions accurately
+🔐 SECURITY & ACCESS CONTROL:
+- Security keypads: ALWAYS on walls adjacent to entry doors (within 1-2 feet of door frame)
+- Door sensors: On EVERY external door and ground-floor windows
+- Motion sensors: Corners of rooms for maximum coverage, typically 7-8 feet high
+- Cameras: Above doors (exterior), room corners (interior), covering entry points
+- Intercoms: At main entrance, near door at shoulder height (4.5-5 feet)
 
-STEP 2: UNDERSTAND THE FLOOR PLAN LAYOUT
-- Count all rooms and identify their names/labels
-- Note walls, doorways, windows
-- Identify the overall building orientation
-- Look for any legend or symbol key
+💡 LIGHTING:
+- Ceiling lights: Center of rooms unless otherwise marked
+- Recessed lighting: Evenly spaced, typically 4-6 feet apart in grid pattern
+- Wall sconces: 5-6 feet from floor, flanking mirrors/art
+- Under-cabinet lights: Kitchen counters, workspaces
+- Outdoor lights: Above doors, along pathways, at building corners
 
-STEP 3: IDENTIFY ALL ELECTRICAL & AUTOMATION SYMBOLS
-Carefully scan the ENTIRE floor plan and locate EVERY symbol with its EXACT POSITION:
-- 💡 LIGHTING: circles, dots, or light fixture symbols (recessed, pendant, ceiling, wall)
-- 🔘 SWITCHES: rectangles with lines, switch symbols (single, double, triple gang)
-- 🪟 WINDOWS/SHADING: window symbols, blind indicators, curtain markers
-- 🔐 SECURITY: camera symbols, sensor locations, keypad positions, intercom units
-- 🌡️ CLIMATE/HVAC: thermostat symbols, AC unit indicators, vent locations
-- 🔊 AUDIO: speaker symbols, volume control indicators, audio zones
+🔘 SWITCHES & CONTROLS:
+- Light switches: On wall beside door opening, 3.5-4 feet from floor
+- Multi-gang switches: Near entry point of room they control
+- Dimmer switches: For dining rooms, bedrooms, living areas
+- Smart switches: Same positions as traditional switches
+- Never place switches behind doors or in inaccessible locations
 
-STEP 4: MAP EACH COMPONENT'S EXACT LOCATION
-For EVERY symbol you identified:
-- Look at where it's actually placed in the room (center, corner, near wall, etc.)
-- Measure its position from the edges of the IMAGE (not the building)
-- Convert to normalized coordinates where:
-  * x: 0.0 = far left edge of image, 1.0 = far right edge of image
-  * y: 0.0 = top edge of image, 1.0 = bottom edge of image
-- BE PRECISE: If a light is in the center of a room, it should be around x:0.5, y:0.5 relative to that room's position
-- DO NOT place all symbols at corners (0,0) - use their ACTUAL visual position
+🪟 SHADING & WINDOW AUTOMATION:
+- Window blind controls: Beside each window or group of windows
+- Motorized shades: Control keypads 3-4 feet from floor
+- Light sensors: Unobstructed locations near windows
 
-STEP 5: COUNT PRECISELY FOR EACH ROOM
-For each room, count:
-- Total light fixtures
-- Total switches (count each position - a 3-gang switch = 3 switches)
-- Total windows needing shading control
-- Total security devices
-- Total climate control points
-- Total audio components
+🌡️ CLIMATE CONTROL:
+- Thermostats: On interior walls, away from windows/doors, 5 feet from floor
+- Not in direct sunlight or near heat sources
+- Central location in zone being controlled
 
-STEP 6: ASSESS QUALITY TIER
-For each automation type, determine:
-- "basic": Standard, entry-level components
-- "premium": Mid-tier, enhanced features
-- "deluxe": High-end, top-quality components
+🔊 AUDIO SYSTEMS:
+- Ceiling speakers: Evenly distributed, matched to room shape
+- Volume controls: Near room entry, 4 feet from floor
+- In-wall speakers: Ear level when seated (living rooms) or standing (kitchens)
 
-STEP 7: PROVIDE DETAILED ANALYSIS WITH COORDINATES
+CRITICAL ANALYSIS PROCESS:
 
-JSON response format:
+STEP 1: SCALE DETECTION & MEASUREMENT CALCULATION
+MANDATORY - You MUST detect and use the scale:
+1. Scan the ENTIRE image for a scale bar (check all corners and edges)
+2. Common locations: bottom-left, bottom-right, title block area
+3. Common scales: 1:50, 1:100, 1:200, 1/4"=1', 1/8"=1'
+4. If you find "1:100", this means 1cm on the plan = 100cm (1m) in reality
+5. Measure the scale bar length in pixels
+6. Calculate: pixels_per_meter = scale_bar_pixels / real_world_meters
+7. Use this to determine room dimensions in meters/feet
+8. If NO scale found: estimate based on typical room sizes (bedrooms ~3-4m, living rooms ~5-6m)
+
+STEP 2: ROOM LAYOUT ANALYSIS
+- Map EACH room's boundaries in image coordinates
+- Calculate each room's position: [x_start, x_end, y_start, y_end] in normalized 0-1 coordinates
+- Identify room centers: center_x = (x_start + x_end) / 2
+- Note doors, windows, walls - these affect symbol placement
+
+STEP 3: SYMBOL IDENTIFICATION WITH EXACT POSITIONS
+For EVERY visible symbol on the plan:
+- Identify its type (light/switch/sensor/etc.)
+- Determine its ACTUAL pixel position in the image
+- Convert to normalized coordinates (x: 0.0-1.0, y: 0.0-1.0)
+- Verify: Is this position logical for this component type?
+- Cross-check with professional standards above
+
+STEP 4: VALIDATE PLACEMENT LOGIC
+Before finalizing ANY coordinate:
+ASK YOURSELF:
+1. "Would a professional installer place this here?"
+2. "Is this accessible and functional?"
+3. "Does this follow building codes and common sense?"
+4. "Am I hallucinating or is this the ACTUAL position I see?"
+
+If you cannot see a symbol clearly OR don't know where to place it:
+- DO NOT GUESS
+- DO NOT place at (0, 0) or corners
+- DO NOT hallucinate positions
+- INSTEAD: Use professional standards to suggest logical placement
+
+STEP 5: COMPONENT DISTRIBUTION CHECK
+- Count total components per room
+- Verify distribution makes sense (don't cluster everything in one spot)
+- Ensure even spacing for lights, adequate coverage for sensors
+
+STEP 6: QUALITY ASSESSMENT
+Based on component density and types:
+- "basic": 1-2 lights per room, basic switches, minimal automation
+- "premium": 3-5 lights per room, some smart controls, selective automation
+- "deluxe": 6+ lights per room, full smart control, comprehensive automation
+
+RESPONSE FORMAT (JSON):
 {{
-    "scale": "detected scale from plan (e.g., '1:100') or 'not found'",
+    "scale_analysis": {{
+        "detected_scale": "exact scale found (e.g., '1:100') or 'none found'",
+        "scale_bar_location": "description of where found",
+        "image_dimensions": "width x height in pixels if determinable",
+        "calculated_building_size": "estimated real-world dimensions based on scale"
+    }},
     "rooms": [
         {{
             "name": "exact room name from plan",
+            "boundaries": {{"x_start": 0.0, "x_end": 0.0, "y_start": 0.0, "y_end": 0.0}},
+            "center": {{"x": 0.0, "y": 0.0}},
+            "dimensions_estimated": "width x length in meters/feet",
             "lighting": {{"count": total_count, "type": "basic|premium|deluxe"}},
             "shading": {{"count": total_count, "type": "basic|premium|deluxe"}},
             "security_access": {{"count": total_count, "type": "basic|premium|deluxe"}},
@@ -599,26 +646,33 @@ JSON response format:
             "id": "unique_id (L1, L2, S1, S2, etc.)",
             "type": "light|switch|shading|security|climate|audio",
             "location": {{
-                "x": precise_normalized_x_position,
-                "y": precise_normalized_y_position
+                "x": precise_x_position_0_to_1,
+                "y": precise_y_position_0_to_1
             }},
-            "room": "room name this component belongs to",
-            "description": "brief description (e.g., 'ceiling downlight', 'double switch', 'window blind control')",
-            "automation_category": "lighting|shading|security_access|climate|audio"
+            "room": "room name",
+            "description": "specific description (e.g., 'recessed ceiling downlight', '3-gang switch for kitchen lights', 'door sensor main entrance')",
+            "automation_category": "lighting|shading|security_access|climate|audio",
+            "placement_reasoning": "why this position (e.g., 'center of room for even coverage', 'beside door per code', 'on wall near window')"
         }}
     ],
-    "notes": "detailed observations about the floor plan, scale detected, and symbol placement accuracy"
+    "validation_notes": "Describe how you verified positions are realistic and not hallucinated. Mention scale usage, professional standards applied, and any assumptions made."
 }}
 
-CRITICAL POSITIONING INSTRUCTIONS:
-- NEVER place all symbols at (0, 0) or corners unless they're actually there
-- Look at each symbol's actual visual position in the image
-- A symbol in the center of the image should be near x:0.5, y:0.5
-- A symbol in top-left quadrant: x:0.0-0.5, y:0.0-0.5
-- A symbol in bottom-right quadrant: x:0.5-1.0, y:0.5-1.0
-- If a room spans x:0.3-0.6, y:0.2-0.5, place symbols within those bounds
-- Use your extended thinking to reason about realistic positions
-- Count EVERY component and map EVERY position accurately"""
+ABSOLUTE REQUIREMENTS - FAILURE TO COMPLY MEANS INCORRECT ANALYSIS:
+✓ USE your extended thinking - reason through EVERY position
+✓ DETECT the scale - look for it systematically
+✓ FOLLOW professional standards listed above
+✓ PLACE components where they ACTUALLY are or where they SHOULD be per standards
+✓ NEVER cluster everything at (0,0) or corners
+✓ INCLUDE placement_reasoning for every component
+✓ VERIFY each position makes logical sense
+✗ DO NOT hallucinate positions
+✗ DO NOT guess wildly
+✗ DO NOT ignore professional placement standards
+✗ DO NOT place security keypads in room centers (they go by doors!)
+✗ DO NOT place switches in inaccessible locations
+
+Use your full reasoning capability. Think step-by-step. Double-check everything."""
 
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -707,94 +761,193 @@ def ai_map_floorplan(file_path, is_pdf=True):
         
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert electrical engineer analyzing a floor plan. This plan may already have automation symbols marked on it, or may be a raw electrical plan. Use your extended thinking to carefully reason about scale, measurements, and precise positioning.
+        prompt = f"""You are a licensed professional electrician and electrical engineer analyzing a floor plan for installation. This must meet professional electrician standards and building codes. You MUST use your extended thinking to reason through EVERY detail carefully.
 
 {learning_context}
 
-STEP 1: DETECT SCALE AND UNDERSTAND THE PLAN
-- CRITICAL: Look for a scale bar (usually at bottom or corner)
-- Common scales: 1:50, 1:100, 1:200
-- Note the exact scale ratio shown (e.g., "1:100" means 1cm = 100cm)
-- Identify the title block with project info
-- Understand room layout and boundaries
-- Count total rooms and note their names
-- Note if the plan already has automation symbols marked
+PROFESSIONAL ELECTRICAL INSTALLATION STANDARDS:
 
-STEP 2: IDENTIFY EVERY ELECTRICAL & AUTOMATION SYMBOL
-Look carefully at the floor plan and find ALL of these at their EXACT positions:
-- Small circles or dots = lights (may have icons for downlights, pendants, etc.)
-- Rectangles with lines = switches
-- Circles with lines = outlets/power points
-- Large boxes = distribution boards/panels
-- Lines connecting symbols = circuits/wiring
-- Security icons = cameras, sensors, keypads
-- Climate icons = thermostats, HVAC controls
-- Audio icons = speakers, volume controls
-- ANY other automation symbols already marked on the plan
+⚡ ELECTRICAL PANELS & DISTRIBUTION:
+- Main distribution board: Near main entry, easily accessible, not in bathrooms/closets
+- Sub-panels: Central to areas they serve, 30" clear working space in front
+- Service entrance: Typically at one edge of building
+- Never obstruct panels with furniture or in tight spaces
 
-STEP 3: MAP EACH COMPONENT'S EXACT LOCATION
-For EVERY symbol you see:
-- Look at where it's ACTUALLY placed in the image (not corners, but real positions)
-- Measure its position from the edges of the IMAGE (not the building)
-- Convert to normalized coordinates where:
-  * x: 0.0 = far left edge of image, 1.0 = far right edge of image
-  * y: 0.0 = top edge of image, 1.0 = bottom edge of image
-- BE PRECISE: Use the actual visual position you see
-- DO NOT default to corners (0,0) - look at where symbols actually are
-- If a component is in the center of a room, it should be around x:0.5, y:0.5 relative to that room's location in the image
+💡 LIGHTING PLACEMENT:
+- Ceiling lights: Center of rooms for general illumination
+- Recessed lights: 4-6 feet apart in grid pattern, 2-3 feet from walls
+- Pendant lights: Over islands, tables, workspaces at 28-34" above surface
+- Task lighting: Under cabinets, over sinks, workbenches
+- Outdoor lights: All entry doors, pathways, building perimeter
+- Emergency/egress lighting: Exit paths, stairwells (commercial)
 
-STEP 4: TRACE CIRCUIT CONNECTIONS
-Follow the red/colored lines connecting components:
-- Which distribution board does each circuit start from?
-- Which switch controls which lights?
-- What's the path of each circuit?
+🔘 SWITCH LOCATIONS (CRITICAL FOR CODE COMPLIANCE):
+- Height: 42-48 inches from finished floor (ADA: 48" max)
+- Position: On latch side of door, 4-6" from door frame
+- Multi-way switches: At each entry point for rooms with multiple doors
+- 3-way/4-way: Stairs (top and bottom), long hallways, large rooms
+- NEVER behind doors or in inaccessible locations
+- NEVER in closets controlling closet lights (fire code)
 
-Now analyze this floor plan and provide complete mapping:
+🔌 OUTLET REQUIREMENTS (NEC CODE):
+- Spacing: Max 12 feet apart on walls, no point more than 6 feet from outlet
+- Kitchen counters: Every 4 feet, GFCI protected within 6 feet of sink
+- Bathrooms: GFCI protected, at least one per sink
+- Outdoor: GFCI protected, weatherproof covers
+- Height: 12-18" above finished floor (standard), 15" min (ADA)
+- Dedicated circuits: Refrigerator, dishwasher, garbage disposal, microwave
 
+🏗️ SPECIAL LOCATIONS:
+- Wet areas (bathroom/kitchen): GFCI protection mandatory
+- Garage: GFCI outlets, overhead lighting
+- Basement/unfinished areas: GFCI, appropriate for environment
+- Laundry: 240V outlet for dryer, dedicated 20A circuit for washer
+- HVAC: Dedicated circuits, disconnect switches
+
+📋 CIRCUIT ORGANIZATION:
+- Lighting circuits: Typically 15A, multiple rooms per circuit
+- Outlet circuits: 15A or 20A, room-based or area-based
+- Kitchen: Multiple 20A circuits for appliances
+- Dedicated circuits: A/C, heat pump, water heater, range
+- Load balancing: Distribute across phases evenly
+
+ANALYSIS PROCESS:
+
+STEP 1: SCALE DETECTION & MEASUREMENT
+MANDATORY - Professional plans always have scale:
+1. Look for scale bar in: title block, bottom-left, bottom-right corners
+2. Standard architectural scales: 1:50, 1:100, 1:200, 1/4"=1'-0", 1/8"=1'-0"
+3. Electrical plan scales often match architectural plans
+4. Measure scale bar length in pixels and calculate pixels per unit
+5. Use scale to determine room dimensions and component spacing
+6. Verify dimensions make sense (bedrooms 10-15', living rooms 15-20', etc.)
+
+STEP 2: IDENTIFY PLAN TYPE & SYMBOLS
+Determine what you're looking at:
+- Existing electrical plan with symbols already placed? → Map what you see
+- Architectural plan without electrical? → Suggest proper electrical placement
+- Note symbol legend if present (plans use different symbol standards)
+
+Standard electrical symbols:
+- ⊕ or ● = Ceiling light fixture
+- ◐ = Wall-mounted light
+- $ = Switch (single)
+- $$ = Double switch, $$$ = Triple switch
+- S₃ = 3-way switch, S₄ = 4-way switch
+- ⊗ or ▢ = Outlet/receptacle (duplex)
+- ⊗GFCI = GFCI outlet
+- □ = Junction box
+- ■ = Distribution board/panel
+- ━━ = Circuit/wire run
+
+STEP 3: MAP EVERY COMPONENT WITH EXACT COORDINATES
+For EVERY symbol on the plan:
+1. Identify component type and specifications
+2. Note its ACTUAL position in the image
+3. Measure from image edges, convert to normalized 0-1 coordinates
+4. Verify the position makes professional sense:
+   - Switches near doors (not behind them)
+   - Outlets spaced per code (not clustered)
+   - Lights centered or properly distributed
+   - Panels accessible with clearance
+
+VALIDATION QUESTIONS (Ask yourself for EACH component):
+- "Is this where a professional electrician would place this?"
+- "Does this meet electrical code requirements?"
+- "Is this position accessible and functional?"
+- "Am I seeing this symbol in the image, or am I guessing?"
+- "Would an inspector approve this placement?"
+
+STEP 4: TRACE CIRCUIT PATHS
+- Follow circuit lines from panels to components
+- Identify which breaker/circuit each component belongs to
+- Map 3-way switch pairs (they control same lights)
+- Note home runs (circuits going back to panel)
+- Identify junction boxes where circuits split
+
+STEP 5: VERIFY CODE COMPLIANCE
+- Kitchen: Sufficient counter outlets (every 4'), GFCI near sink
+- Bathroom: GFCI outlets, proper lighting, ventilation switch
+- Bedrooms: Adequate outlets (12' spacing), switched lighting
+- Hallways: Lighting with 3-way switches if long
+- Outdoor: GFCI outlets, entry lighting
+- Safety: Arc-fault protection (bedrooms), proper grounding
+
+RESPONSE FORMAT (JSON):
 {{
     "analysis": {{
-        "scale": "detected scale (e.g., 1:100)",
+        "scale": "detected scale with confidence (e.g., '1:100 - found in title block')",
+        "scale_bar_location": "where scale was found",
         "total_rooms": count,
-        "plan_type": "residential/commercial",
-        "notes": "observations about the plan"
+        "plan_type": "residential|commercial|industrial",
+        "existing_electrical": true|false,
+        "building_dimensions": "estimated size based on scale",
+        "notes": "Professional observations about the plan and electrical system"
     }},
     "components": [
         {{
-            "id": "unique_id (DB1, L1, S1, O1, etc)",
-            "type": "light|switch|outlet|panel|junction",
+            "id": "unique_id (DB1, L1, S1, O1, J1, etc)",
+            "type": "light|switch|outlet|panel|junction|gfci|other",
             "location": {{
-                "x": precise_0_to_1_horizontal,
-                "y": precise_0_to_1_vertical
+                "x": precise_x_0_to_1,
+                "y": precise_y_0_to_1
             }},
-            "label": "label visible on plan or generated",
+            "label": "label from plan or generated (e.g., 'S1', 'DB-MAIN')",
             "room": "room name",
-            "description": "what you see (e.g., 'ceiling downlight', 'double switch')",
-            "circuit": "circuit it belongs to if visible"
+            "description": "detailed description (e.g., 'recessed LED ceiling fixture 6-inch', 'single-pole switch 15A', 'GFCI duplex outlet 20A')",
+            "circuit": "circuit ID if visible or determinable",
+            "specifications": "voltage, amperage, special requirements",
+            "placement_reasoning": "why this position meets code/standards (e.g., 'beside door per NEC', 'within 6 feet of sink - GFCI required', 'centered for even light distribution')",
+            "code_compliant": "yes|no|uncertain - with brief explanation"
         }}
     ],
     "connections": [
         {{
             "from": "component_id",
-            "to": "component_id", 
-            "type": "power|control",
+            "to": "component_id",
+            "type": "power|control|3-way|4-way|data",
             "circuit": "circuit_label",
-            "path": "description of wire path"
+            "path": "description of wire path and routing",
+            "wire_type": "cable type if visible (e.g., '14/2 NM-B', '12/3 NM-B')"
         }}
     ],
     "circuits": [
         {{
-            "id": "circuit_id",
-            "panel": "distribution board name",
-            "components": ["list of component IDs on this circuit"]
+            "id": "circuit_id (e.g., 'A1', 'B3', 'Circuit-1')",
+            "panel": "distribution board ID",
+            "breaker_size": "amperage (e.g., '15A', '20A')",
+            "components": ["component_id_1", "component_id_2"],
+            "load_estimate": "estimated load in watts/amps",
+            "circuit_type": "lighting|outlet|dedicated|HVAC|appliance"
         }}
-    ]
+    ],
+    "code_compliance": {{
+        "kitchen": "compliance notes for kitchen electrical",
+        "bathrooms": "compliance notes for bathrooms",
+        "bedrooms": "compliance notes for bedrooms",
+        "outdoor": "compliance notes for outdoor electrical",
+        "overall": "general code compliance assessment"
+    }},
+    "validation_notes": "Explain how you verified each position is accurate (from plan or per professional standards). Note any assumptions. Confirm you used extended thinking to validate placement logic."
 }}
 
-CRITICAL: 
-- Count EVERY visible symbol on the plan
-- Use the actual symbol positions you see
-- Don't guess - if you see 20 lights, map all 20
-- Coordinates must reflect real positions in the image"""
+ABSOLUTE REQUIREMENTS:
+✓ USE extended thinking to reason through every component position
+✓ DETECT and USE the scale for accurate measurements
+✓ MAP components where they ACTUALLY are on the plan
+✓ If no electrical symbols exist, SUGGEST proper placement per NEC/professional standards
+✓ FOLLOW electrical code requirements (NEC)
+✓ INCLUDE placement_reasoning for every component
+✓ VERIFY outlet spacing, switch heights, GFCI requirements
+✓ ENSURE clearances around panels and equipment
+✗ DO NOT hallucinate component positions
+✗ DO NOT cluster everything at (0,0) or image corners
+✗ DO NOT place switches behind doors
+✗ DO NOT violate code requirements (outlet spacing, GFCI locations, etc.)
+✗ DO NOT guess randomly - use professional judgment
+✗ DO NOT ignore scale information
+
+This electrical plan will be used for actual installation. Accuracy is critical. Think like a professional electrician who takes pride in code-compliant, safe, functional installations."""
         
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -2580,6 +2733,181 @@ def execute_action(action_name, parameters, project_id):
 
     except Exception as e:
         return {'success': False, 'details': f'Error: {str(e)}'}
+
+
+@app.route('/api/generate-final-quote', methods=['POST'])
+def generate_final_quote():
+    """Generate final PDF quote from canvas symbols"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        project_name = data.get('project_name', 'Project')
+        symbols = data.get('symbols', [])
+        tier = data.get('tier', 'premium')
+
+        # Count symbols by type
+        counts = {}
+        for sym in symbols:
+            sym_type = sym.get('type')
+            counts[sym_type] = counts.get(sym_type, 0) + 1
+
+        # Load pricing
+        data_config = load_data()
+
+        # Generate quote
+        line_items = []
+        for automation_type, count in counts.items():
+            if count > 0:
+                automation_config = data_config['automation_types'].get(automation_type, {})
+                unit_cost = automation_config.get('base_cost_per_unit', {}).get(tier, 0)
+                labor_hours = automation_config.get('labor_hours', {}).get(tier, 0)
+                labor_cost = labor_hours * data_config['labor_rate']
+                total_cost = (unit_cost + labor_cost) * count
+
+                line_items.append({
+                    'category': automation_config.get('name', automation_type),
+                    'quantity': count,
+                    'tier': tier,
+                    'unit_cost': unit_cost,
+                    'labor_hours': labor_hours,
+                    'labor_cost': labor_cost,
+                    'total': total_cost
+                })
+
+        subtotal = sum(item['total'] for item in line_items)
+        markup = subtotal * (data_config['markup_percentage'] / 100)
+        total = subtotal + markup
+
+        # Generate PDF
+        output_filename = f"quote_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+
+        doc = SimpleDocTemplate(output_path, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#556B2F'),
+            spaceAfter=30,
+        )
+
+        company_info = data_config.get('company_info', {})
+        story.append(Paragraph(company_info.get('name', 'Company Name'), title_style))
+        story.append(Paragraph(f"Project: {project_name}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+
+        story.append(Paragraph(f"Quote Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 0.5*inch))
+
+        table_data = [['Category', 'Qty', 'Tier', 'Unit Cost', 'Labor', 'Total']]
+
+        for item in line_items:
+            table_data.append([
+                item['category'],
+                str(item['quantity']),
+                item['tier'].capitalize(),
+                f"${item['unit_cost']:.2f}",
+                f"${item['labor_cost']:.2f}",
+                f"${item['total']:.2f}"
+            ])
+
+        table = Table(table_data, colWidths=[2*inch, 0.8*inch, 0.8*inch, 1*inch, 1*inch, 1*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#556B2F')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        story.append(table)
+        story.append(Spacer(1, 0.5*inch))
+
+        story.append(Paragraph(f"Subtotal: ${subtotal:.2f}", styles['Normal']))
+        story.append(Paragraph(f"Markup ({data_config['markup_percentage']}%): ${markup:.2f}", styles['Normal']))
+        story.append(Paragraph(f"<b>Total: ${total:.2f}</b>", styles['Heading2']))
+
+        doc.build(story)
+
+        return jsonify({'success': True, 'filename': output_filename})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/generate-quote-pdf', methods=['POST'])
+def generate_quote_pdf():
+    """Generate quote PDF with current progress"""
+    return generate_final_quote()
+
+
+@app.route('/api/generate-annotated-floorplan', methods=['POST'])
+def generate_annotated_floorplan():
+    """Generate annotated floorplan PDF with symbols marked"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        symbols = data.get('symbols', [])
+
+        # Get the original floor plan
+        project_dir = os.path.join(app.config['UPLOAD_FOLDER'], project_id)
+        files = os.listdir(project_dir)
+        floor_plan_file = next((f for f in files if f.startswith('floor_plan')), None)
+
+        if not floor_plan_file:
+            return jsonify({'success': False, 'error': 'Floor plan not found'}), 404
+
+        floor_plan_path = os.path.join(project_dir, floor_plan_file)
+
+        # Generate marked-up image
+        output_filename = f"annotated_floorplan_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+
+        # Open floor plan image
+        if floor_plan_path.endswith('.pdf'):
+            doc = fitz.open(floor_plan_path)
+            page = doc[0]
+            mat = fitz.Matrix(2.0, 2.0)
+            pix = page.get_pixmap(matrix=mat)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            doc.close()
+        else:
+            img = Image.open(floor_plan_path)
+
+        # Draw symbols on image
+        draw = ImageDraw.Draw(img)
+
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        except:
+            font = ImageFont.load_default()
+
+        # Draw each symbol
+        for sym in symbols:
+            x = sym.get('x', 0)
+            y = sym.get('y', 0)
+            symbol = sym.get('symbol', '❓')
+
+            # Draw circle background
+            draw.ellipse([x-20, y-20, x+20, y+20], fill='rgba(46, 204, 113, 128)', outline='#2ecc71', width=3)
+
+            # Draw symbol
+            draw.text((x-10, y-15), symbol, fill='black', font=font)
+
+        # Save as PDF
+        img_rgb = img.convert('RGB')
+        img_rgb.save(output_path, 'PDF', resolution=100.0)
+
+        return jsonify({'success': True, 'filename': output_filename})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
 if __name__ == '__main__':
