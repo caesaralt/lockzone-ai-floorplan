@@ -622,10 +622,10 @@ CRITICAL POSITIONING INSTRUCTIONS:
 
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=8000,  # Increased for detailed component mapping
+            max_tokens=16000,  # Must be greater than thinking budget
             thinking={
                 "type": "enabled",
-                "budget_tokens": 12000  # Increased for spatial reasoning
+                "budget_tokens": 8000  # Budget for extended thinking
             },
             messages=[
                 {
@@ -798,10 +798,10 @@ CRITICAL:
         
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=8000,
+            max_tokens=16000,  # Must be greater than thinking budget
             thinking={
                 "type": "enabled",
-                "budget_tokens": 12000  # Increased for better spatial reasoning
+                "budget_tokens": 8000  # Budget for extended thinking
             },
             messages=[
                 {
