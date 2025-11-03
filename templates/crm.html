@@ -1795,25 +1795,36 @@
 
 <div id="aiChatPanel" class="ai-chat-panel">
     <div class="ai-chat-header">
-        <div>
+        <div style="flex: 1;">
             <h3>🤖 AI Assistant</h3>
-            <button id="agentModeToggle" onclick="toggleAgentMode()" style="
-                background: #999;
-                color: white;
-                border: none;
-                padding: 5px 10px;
-                border-radius: 5px;
-                font-size: 0.9em;
-                cursor: pointer;
-                margin-top: 5px;
-            ">🔒 Agent Mode: OFF</button>
-            <div id="agentModeStatus" style="font-size: 0.8em; color: #999; margin-top: 3px;">🔒 Agent can only answer questions</div>
+            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                <button id="agentModeToggle" onclick="toggleAgentMode()" style="
+                    background: #999;
+                    color: white;
+                    border: none;
+                    padding: 5px 12px;
+                    border-radius: 5px;
+                    font-size: 0.85em;
+                    cursor: pointer;
+                ">🔒 Learning: OFF</button>
+                <button onclick="document.getElementById('aiChatFileInput').click()" style="
+                    background: #556B2F;
+                    color: white;
+                    border: none;
+                    padding: 5px 12px;
+                    border-radius: 5px;
+                    font-size: 0.85em;
+                    cursor: pointer;
+                ">📎 Upload</button>
+                <input type="file" id="aiChatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadAIChatFiles()">
+            </div>
+            <div id="agentModeStatus" style="font-size: 0.75em; color: #999; margin-top: 5px;">🔒 Read-only mode</div>
         </div>
         <button onclick="toggleAIChat()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">×</button>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
         <div class="ai-message">
-            <strong>🤖 AI:</strong> Hi! I'm your AI assistant. I can help you with questions and, with Agent Mode ON, take actions on your behalf.
+            <strong>🤖 AI:</strong> Hi! I can help with CRM questions and tasks. Use 📎 Upload to teach me with documents. Toggle Learning Mode ON to let me modify the app and learn from you.
         </div>
     </div>
     <div class="ai-chat-input">
@@ -1946,34 +1957,79 @@
         const btn = document.getElementById('agentModeToggle');
         const status = document.getElementById('agentModeStatus');
         if (agentMode) {
-            btn.textContent = '🔓 Agent Mode: ON';
+            btn.textContent = '🔓 Learning: ON';
             btn.style.background = '#6B8E23';
-            status.textContent = '🔓 Agent can take actions';
+            status.textContent = '🔓 Can modify app & learn';
             status.style.color = '#6B8E23';
         } else {
-            btn.textContent = '🔒 Agent Mode: OFF';
+            btn.textContent = '🔒 Learning: OFF';
             btn.style.background = '#999';
-            status.textContent = '🔒 Agent can only answer questions';
+            status.textContent = '🔒 Read-only mode';
             status.style.color = '#999';
         }
     }
+
+    async function uploadAIChatFiles() {
+        const fileInput = document.getElementById('aiChatFileInput');
+        const messages = document.getElementById('aiChatMessages');
+
+        if (!fileInput.files || fileInput.files.length === 0) return;
+
+        const formData = new FormData();
+        for (let file of fileInput.files) {
+            formData.append('files', file);
+        }
+        formData.append('notes', `Uploaded via CRM chat on ${new Date().toLocaleString()}`);
+
+        try {
+            messages.innerHTML += `<div style="text-align: center; padding: 8px; color: #999; font-size: 0.9em;">Uploading ${fileInput.files.length} file(s)...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            const response = await fetch('/api/upload-learning-data', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                messages.innerHTML += `<div class="ai-message" style="background: #d4edda;"><strong>✅ System:</strong> Uploaded and learned from ${fileInput.files.length} file(s)!</div>`;
+                fileInput.value = '';
+            } else {
+                messages.innerHTML += `<div class="ai-message" style="background: #f8d7da;"><strong>❌ Error:</strong> ${data.error}</div>`;
+            }
+
+            messages.scrollTop = messages.scrollHeight;
+        } catch (error) {
+            messages.innerHTML += `<div class="ai-message" style="background: #f8d7da;"><strong>❌ Error:</strong> ${error.message}</div>`;
+            messages.scrollTop = messages.scrollHeight;
+        }
+    }
+
+    let conversationHistory = [];
 
     async function sendAIMessage() {
         const input = document.getElementById('aiChatInput');
         const messages = document.getElementById('aiChatMessages');
         const sendBtn = document.getElementById('aiChatSendBtn');
         const question = input.value.trim();
-        
+
         if (!question) return;
-        
+
         // Add user message
         messages.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
         input.value = '';
         sendBtn.disabled = true;
-        
+
+        // Add to history
+        conversationHistory.push({
+            role: 'user',
+            content: question
+        });
+
         // Scroll to bottom
         messages.scrollTop = messages.scrollHeight;
-        
+
         try {
             const response = await fetch('/api/ai-chat', {
                 method: 'POST',
@@ -1981,25 +2037,35 @@
                 body: JSON.stringify({
                     message: question,
                     agent_mode: agentMode,
-                    context: {
-                        page: window.location.pathname
-                    }
+                    conversation_history: conversationHistory.slice(-10), // Keep last 10 messages
+                    current_page: 'crm'
                 })
             });
-            
+
             const data = await response.json();
-            
-            if (data.response) {
-                messages.innerHTML += `<div class="ai-message"><strong>🤖 AI:</strong> ${data.response}</div>`;
+
+            if (data.success && data.response) {
+                messages.innerHTML += `<div class="ai-message"><strong>🤖 AI:</strong> ${data.response.replace(/\n/g, '<br>')}</div>`;
+
+                // Add to history
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: data.response
+                });
             }
-            
-            if (data.action_taken) {
-                messages.innerHTML += `<div class="ai-message" style="background: #e8f5e9;"><strong>✅ Action:</strong> ${data.action_taken}</div>`;
+
+            if (data.actions_taken && data.actions_taken.length > 0) {
+                data.actions_taken.forEach(action => {
+                    messages.innerHTML += `<div class="ai-message" style="background: #e8f5e9;"><strong>✅ Action:</strong> ${action.description || action.action}</div>`;
+                });
+
+                // Reload data if actions were taken
+                loadAllData();
             }
         } catch (error) {
             messages.innerHTML += `<div class="ai-message" style="background: #fee;"><strong>❌ Error:</strong> ${error.message}</div>`;
         }
-        
+
         sendBtn.disabled = false;
         messages.scrollTop = messages.scrollHeight;
     }

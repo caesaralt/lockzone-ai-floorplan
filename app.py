@@ -1771,6 +1771,20 @@ def process_instructions():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/learning/history', methods=['GET'])
+def learning_history():
+    """Get learning history for the learning page"""
+    try:
+        index = load_learning_index()
+        examples = index.get('examples', [])
+
+        return jsonify({
+            'success': True,
+            'examples': examples
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/simpro/config', methods=['GET', 'POST'])
 def simpro_config():
     try:
