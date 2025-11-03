@@ -526,20 +526,27 @@ def analyze_floorplan_with_ai(pdf_path):
         learning_context = get_learning_context()
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert home automation system designer analyzing a floor plan. Take your time to think through this carefully and systematically.
+        prompt = f"""You are an expert home automation system designer analyzing a floor plan. Take your time to think through this carefully and systematically. Use your extended thinking to reason about scale, measurements, and precise positioning.
 
 {learning_context}
 
 ANALYSIS PROCESS:
 
-STEP 1: UNDERSTAND THE FLOOR PLAN
-- First, identify the scale of the drawing (look for scale bars or measurements)
+STEP 1: DETECT SCALE AND MEASUREMENTS
+- CRITICAL: Look for a scale bar (usually at bottom or corner of the plan)
+- Common scales: 1:50, 1:100, 1:200
+- Note the scale ratio exactly as shown (e.g., "1:100" means 1cm = 100cm)
+- Identify any dimension annotations on the plan
+- Understand the image dimensions to convert positions accurately
+
+STEP 2: UNDERSTAND THE FLOOR PLAN LAYOUT
 - Count all rooms and identify their names/labels
-- Note the dimensions and layout of each space
+- Note walls, doorways, windows
+- Identify the overall building orientation
 - Look for any legend or symbol key
 
-STEP 2: IDENTIFY ALL ELECTRICAL SYMBOLS
-Carefully scan the ENTIRE floor plan and locate EVERY symbol:
+STEP 3: IDENTIFY ALL ELECTRICAL & AUTOMATION SYMBOLS
+Carefully scan the ENTIRE floor plan and locate EVERY symbol with its EXACT POSITION:
 - 💡 LIGHTING: circles, dots, or light fixture symbols (recessed, pendant, ceiling, wall)
 - 🔘 SWITCHES: rectangles with lines, switch symbols (single, double, triple gang)
 - 🪟 WINDOWS/SHADING: window symbols, blind indicators, curtain markers
@@ -547,26 +554,36 @@ Carefully scan the ENTIRE floor plan and locate EVERY symbol:
 - 🌡️ CLIMATE/HVAC: thermostat symbols, AC unit indicators, vent locations
 - 🔊 AUDIO: speaker symbols, volume control indicators, audio zones
 
-STEP 3: COUNT PRECISELY FOR EACH ROOM
-For each room, go through systematically:
-- Count EVERY light fixture you can see
-- Count EVERY switch (count each switch position - a 3-gang switch = 3 switches)
-- Count EVERY window that might need shading control
-- Count EVERY security device
-- Count EVERY climate control point
-- Count EVERY audio component
+STEP 4: MAP EACH COMPONENT'S EXACT LOCATION
+For EVERY symbol you identified:
+- Look at where it's actually placed in the room (center, corner, near wall, etc.)
+- Measure its position from the edges of the IMAGE (not the building)
+- Convert to normalized coordinates where:
+  * x: 0.0 = far left edge of image, 1.0 = far right edge of image
+  * y: 0.0 = top edge of image, 1.0 = bottom edge of image
+- BE PRECISE: If a light is in the center of a room, it should be around x:0.5, y:0.5 relative to that room's position
+- DO NOT place all symbols at corners (0,0) - use their ACTUAL visual position
 
-STEP 4: ASSESS QUALITY TIER
-For each automation type, determine if it should be:
+STEP 5: COUNT PRECISELY FOR EACH ROOM
+For each room, count:
+- Total light fixtures
+- Total switches (count each position - a 3-gang switch = 3 switches)
+- Total windows needing shading control
+- Total security devices
+- Total climate control points
+- Total audio components
+
+STEP 6: ASSESS QUALITY TIER
+For each automation type, determine:
 - "basic": Standard, entry-level components
 - "premium": Mid-tier, enhanced features
 - "deluxe": High-end, top-quality components
 
-STEP 5: PROVIDE DETAILED ANALYSIS
-Return a complete JSON analysis with precise counts.
+STEP 7: PROVIDE DETAILED ANALYSIS WITH COORDINATES
 
 JSON response format:
 {{
+    "scale": "detected scale from plan (e.g., '1:100') or 'not found'",
     "rooms": [
         {{
             "name": "exact room name from plan",
@@ -577,23 +594,38 @@ JSON response format:
             "audio": {{"count": total_count, "type": "basic|premium|deluxe"}}
         }}
     ],
-    "notes": "detailed observations about the floor plan, scale, and symbols identified"
+    "components": [
+        {{
+            "id": "unique_id (L1, L2, S1, S2, etc.)",
+            "type": "light|switch|shading|security|climate|audio",
+            "location": {{
+                "x": precise_normalized_x_position,
+                "y": precise_normalized_y_position
+            }},
+            "room": "room name this component belongs to",
+            "description": "brief description (e.g., 'ceiling downlight', 'double switch', 'window blind control')",
+            "automation_category": "lighting|shading|security_access|climate|audio"
+        }}
+    ],
+    "notes": "detailed observations about the floor plan, scale detected, and symbol placement accuracy"
 }}
 
-CRITICAL INSTRUCTIONS:
-- Take your time to analyze thoroughly
-- Count EVERY component you see - don't estimate
-- Use the scale to understand actual dimensions
-- Be methodical - scan each room systematically
-- Double-check your counts before finalizing
-- If you see 0 of a component type, use count: 0"""
+CRITICAL POSITIONING INSTRUCTIONS:
+- NEVER place all symbols at (0, 0) or corners unless they're actually there
+- Look at each symbol's actual visual position in the image
+- A symbol in the center of the image should be near x:0.5, y:0.5
+- A symbol in top-left quadrant: x:0.0-0.5, y:0.0-0.5
+- A symbol in bottom-right quadrant: x:0.5-1.0, y:0.5-1.0
+- If a room spans x:0.3-0.6, y:0.2-0.5, place symbols within those bounds
+- Use your extended thinking to reason about realistic positions
+- Count EVERY component and map EVERY position accurately
         
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4096,
+            max_tokens=8000,  # Increased for detailed component mapping
             thinking={
                 "type": "enabled",
-                "budget_tokens": 8000
+                "budget_tokens": 12000  # Increased for spatial reasoning
             },
             messages=[
                 {
@@ -675,19 +707,21 @@ def ai_map_floorplan(file_path, is_pdf=True):
         
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert electrical engineer analyzing a floor plan. This plan may already have automation symbols marked on it, or may be a raw electrical plan. Follow this process:
+        prompt = f"""You are an expert electrical engineer analyzing a floor plan. This plan may already have automation symbols marked on it, or may be a raw electrical plan. Use your extended thinking to carefully reason about scale, measurements, and precise positioning.
 
 {learning_context}
 
-STEP 1: UNDERSTAND THE PLAN
-- Look for scale bar (usually at bottom). Note the scale ratio.
+STEP 1: DETECT SCALE AND UNDERSTAND THE PLAN
+- CRITICAL: Look for a scale bar (usually at bottom or corner)
+- Common scales: 1:50, 1:100, 1:200
+- Note the exact scale ratio shown (e.g., "1:100" means 1cm = 100cm)
 - Identify the title block with project info
 - Understand room layout and boundaries
 - Count total rooms and note their names
-- Note if the plan already has automation symbols (lights, switches, sensors, etc.) marked
+- Note if the plan already has automation symbols marked
 
 STEP 2: IDENTIFY EVERY ELECTRICAL & AUTOMATION SYMBOL
-Look carefully at the floor plan and find ALL of these:
+Look carefully at the floor plan and find ALL of these at their EXACT positions:
 - Small circles or dots = lights (may have icons for downlights, pendants, etc.)
 - Rectangles with lines = switches
 - Circles with lines = outlets/power points
@@ -699,10 +733,15 @@ Look carefully at the floor plan and find ALL of these:
 - ANY other automation symbols already marked on the plan
 
 STEP 3: MAP EACH COMPONENT'S EXACT LOCATION
-For each symbol you see:
-- Measure its position from edges using the scale
-- Convert to coordinates (x: 0=left to 1=right, y: 0=top to 1=bottom)
-- Be PRECISE - look at the actual pixel location
+For EVERY symbol you see:
+- Look at where it's ACTUALLY placed in the image (not corners, but real positions)
+- Measure its position from the edges of the IMAGE (not the building)
+- Convert to normalized coordinates where:
+  * x: 0.0 = far left edge of image, 1.0 = far right edge of image
+  * y: 0.0 = top edge of image, 1.0 = bottom edge of image
+- BE PRECISE: Use the actual visual position you see
+- DO NOT default to corners (0,0) - look at where symbols actually are
+- If a component is in the center of a room, it should be around x:0.5, y:0.5 relative to that room's location in the image
 
 STEP 4: TRACE CIRCUIT CONNECTIONS
 Follow the red/colored lines connecting components:
@@ -762,7 +801,7 @@ CRITICAL:
             max_tokens=8000,
             thinking={
                 "type": "enabled",
-                "budget_tokens": 5000
+                "budget_tokens": 12000  # Increased for better spatial reasoning
             },
             messages=[
                 {
@@ -849,25 +888,53 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
             component_positions[comp_id] = (x, y)
             
             comp_type = comp.get('type', 'unknown')
-            if comp_type == 'light':
-                color = 'yellow'
+            automation_category = comp.get('automation_category', comp_type)
+
+            # Map automation categories to visual styles
+            if comp_type == 'light' or automation_category == 'lighting':
+                color = '#FFD700'  # Gold for lighting
                 radius = 15
+                symbol = '💡'
             elif comp_type == 'switch':
-                color = 'blue'
+                color = '#4169E1'  # Royal blue for switches
                 radius = 12
+                symbol = '🔘'
+            elif automation_category == 'shading':
+                color = '#8B4513'  # Saddle brown for shading
+                radius = 14
+                symbol = '🪟'
+            elif automation_category == 'security_access' or automation_category == 'security':
+                color = '#DC143C'  # Crimson for security
+                radius = 16
+                symbol = '🔐'
+            elif automation_category == 'climate':
+                color = '#00CED1'  # Dark turquoise for climate
+                radius = 14
+                symbol = '🌡️'
+            elif automation_category == 'audio':
+                color = '#9370DB'  # Medium purple for audio
+                radius = 14
+                symbol = '🔊'
             elif comp_type == 'outlet':
-                color = 'green'
+                color = '#32CD32'  # Lime green for outlets
                 radius = 12
+                symbol = '⚡'
             elif comp_type == 'panel':
-                color = 'red'
+                color = '#FF4500'  # Orange red for panels
                 radius = 20
+                symbol = '⚙️'
             else:
-                color = 'gray'
+                color = '#808080'  # Gray for unknown
                 radius = 10
+                symbol = '•'
             
-            draw.ellipse([x-radius, y-radius, x+radius, y+radius], 
+            # Draw circle with color
+            draw.ellipse([x-radius, y-radius, x+radius, y+radius],
                         outline=color, fill=None, width=3)
-            draw.text((x+radius+5, y-radius), label, fill='red', font=font)
+
+            # Draw label with emoji for clarity
+            label_text = f"{label}"
+            draw.text((x+radius+5, y-radius), label_text, fill=color, font=font)
         
         connections = mapping_data.get('connections', [])
         for conn in connections:
@@ -896,7 +963,33 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
                 circuit = conn.get('circuit', '')
                 if circuit:
                     draw.text((mid_x, mid_y), str(circuit), fill='purple', font=small_font)
-        
+
+        # Add legend and scale information at bottom for clarity
+        legend_y = height - 140
+        legend_items = [
+            ('💡 Lighting', '#FFD700'),
+            ('🔘 Switch', '#4169E1'),
+            ('🪟 Shading', '#8B4513'),
+            ('🔐 Security', '#DC143C'),
+            ('🌡️ Climate', '#00CED1'),
+            ('🔊 Audio', '#9370DB'),
+        ]
+
+        # Draw semi-transparent background for legend
+        draw.rectangle([10, legend_y-10, 300, height-10], fill='white', outline='black', width=2)
+
+        # Add scale information at top of legend if available
+        scale_info = mapping_data.get('analysis', {}).get('scale', 'not detected')
+        if scale_info and scale_info != 'not detected':
+            draw.text((20, legend_y-5), f"Scale: {scale_info}", fill='black', font=font)
+            legend_y += 20
+
+        # Draw legend items
+        for idx, (text, color) in enumerate(legend_items):
+            y_pos = legend_y + (idx * 18)
+            draw.ellipse([20, y_pos, 30, y_pos+10], outline=color, fill=None, width=2)
+            draw.text((40, y_pos-2), text, fill='black', font=small_font)
+
         img.save(output_path, 'PNG')
         return True
         
@@ -1202,17 +1295,66 @@ def analyze_floorplan():
 
         # Generate output filenames
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        annotated_filename = f"annotated_{timestamp}.pdf"
+        annotated_filename = f"annotated_{timestamp}.png"  # PNG for marked-up floor plan
         quote_filename = f"quote_{timestamp}.pdf"
         annotated_path = os.path.join(app.config['OUTPUT_FOLDER'], annotated_filename)
         quote_path = os.path.join(app.config['OUTPUT_FOLDER'], quote_filename)
 
-        # Generate annotated PDF (copy original for now, could add symbols later)
+        # Generate annotated floor plan with symbol markings
         try:
-            import shutil
-            shutil.copy(filepath, annotated_path)
+            # Prepare mapping data from analysis result for generate_marked_up_image
+            components = analysis_result.get('components', [])
+
+            if components:
+                # Convert quote analysis format to mapping format
+                mapping_data = {
+                    'components': components,
+                    'analysis': {
+                        'scale': analysis_result.get('scale', 'not detected'),
+                        'total_rooms': total_rooms,
+                        'notes': analysis_result.get('notes', '')
+                    }
+                }
+
+                # Generate marked-up image with symbols at precise coordinates
+                success = generate_marked_up_image(filepath, mapping_data, annotated_path)
+
+                if success:
+                    print(f"✓ Generated annotated floor plan with {len(components)} symbols marked")
+                else:
+                    print("⚠ Failed to generate marked-up image, using copy instead")
+                    import shutil
+                    # Fallback: convert PDF to PNG without markings
+                    if filepath.endswith('.pdf'):
+                        doc = fitz.open(filepath)
+                        page = doc[0]
+                        mat = fitz.Matrix(2.0, 2.0)
+                        pix = page.get_pixmap(matrix=mat)
+                        pix.save(annotated_path)
+                        doc.close()
+                    else:
+                        from PIL import Image
+                        img = Image.open(filepath)
+                        img.save(annotated_path, 'PNG')
+            else:
+                print("⚠ No component coordinates in analysis, creating unmarked copy")
+                import shutil
+                # No coordinates available, just convert to PNG
+                if filepath.endswith('.pdf'):
+                    doc = fitz.open(filepath)
+                    page = doc[0]
+                    mat = fitz.Matrix(2.0, 2.0)
+                    pix = page.get_pixmap(matrix=mat)
+                    pix.save(annotated_path)
+                    doc.close()
+                else:
+                    from PIL import Image
+                    img = Image.open(filepath)
+                    img.save(annotated_path, 'PNG')
+
         except Exception as e:
-            print(f"Error creating annotated PDF: {e}")
+            print(f"Error creating annotated floor plan: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
 
         # Generate quote PDF
         try:
