@@ -32,6 +32,14 @@ except ImportError:
     ANTHROPIC_AVAILABLE = False
     print("WARNING: anthropic package not installed. AI features will use fallback mode.")
 
+# Try to import tavily for web search
+try:
+    from tavily import TavilyClient
+    TAVILY_AVAILABLE = True
+except ImportError:
+    TAVILY_AVAILABLE = False
+    print("WARNING: tavily-python package not installed. Web search features will be limited.")
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
@@ -503,6 +511,103 @@ def image_to_base64(image_path):
         img.save(buffered, format="PNG")
         return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
+# ============================================================================
+# WEB SEARCH TOOLS FOR AI AGENTS
+# ============================================================================
+
+def web_search(query, max_results=5):
+    """
+    Perform web search using Tavily API to get real-time knowledge.
+    AI agents use this to look up professional standards, codes, best practices.
+    """
+    if not TAVILY_AVAILABLE:
+        return {
+            "error": "Tavily not available",
+            "results": [],
+            "message": "Install tavily-python for web search capabilities"
+        }
+
+    tavily_api_key = os.environ.get('TAVILY_API_KEY')
+    if not tavily_api_key:
+        return {
+            "error": "No Tavily API key",
+            "results": [],
+            "message": "Set TAVILY_API_KEY environment variable"
+        }
+
+    try:
+        client = TavilyClient(api_key=tavily_api_key)
+        response = client.search(
+            query=query,
+            max_results=max_results,
+            search_depth="advanced",  # More thorough search
+            include_answer=True,  # Get AI-generated answer
+            include_raw_content=False  # Don't need full HTML
+        )
+
+        return {
+            "success": True,
+            "query": query,
+            "answer": response.get("answer", ""),
+            "results": [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "content": r.get("content", ""),
+                    "score": r.get("score", 0)
+                }
+                for r in response.get("results", [])
+            ]
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "results": [],
+            "message": "Web search failed"
+        }
+
+# Tool schema for Anthropic's tool use
+SEARCH_TOOL_SCHEMA = {
+    "name": "web_search",
+    "description": "Search the web for real-time information about professional standards, building codes, electrical requirements, installation best practices, and any other knowledge needed for accurate analysis. Use this tool whenever you need to verify information, look up codes, or understand professional requirements.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query. Be specific about what you're looking for (e.g., 'NEC code kitchen outlet spacing requirements', 'professional security keypad placement residential', 'typical room dimensions residential architecture')"
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum number of search results to return (default: 5)",
+                "default": 5
+            }
+        },
+        "required": ["query"]
+    }
+}
+
+def execute_tool(tool_name, tool_input):
+    """Execute a tool based on tool name and input"""
+    if tool_name == "web_search":
+        query = tool_input.get("query", "")
+        max_results = tool_input.get("max_results", 5)
+        result = web_search(query, max_results)
+
+        if result.get("success"):
+            # Format results for AI consumption
+            formatted = f"Search Query: {result['query']}\n\n"
+            if result.get('answer'):
+                formatted += f"Summary Answer: {result['answer']}\n\n"
+            formatted += "Search Results:\n"
+            for i, r in enumerate(result['results'], 1):
+                formatted += f"{i}. {r['title']}\n   {r['content'][:300]}...\n   Source: {r['url']}\n\n"
+            return formatted
+        else:
+            return f"Search failed: {result.get('error', 'Unknown error')}"
+
+    return f"Unknown tool: {tool_name}"
+
 def analyze_floorplan_with_ai(pdf_path):
     """Enhanced AI analysis for quoting - uses learning from corrections"""
     
@@ -526,11 +631,38 @@ def analyze_floorplan_with_ai(pdf_path):
         learning_context = get_learning_context()
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are an expert home automation system designer and professional installer analyzing a floor plan. You MUST use your extended thinking capability to carefully reason about EVERY aspect of this analysis. This is critical for accurate installation.
+        prompt = f"""You are an autonomous AI agent analyzing a floor plan for home automation. You have access to web search to look up ANY information you need in real-time.
 
 {learning_context}
 
-PROFESSIONAL INSTALLATION STANDARDS - MEMORIZE THESE:
+🔍 YOU HAVE WEB SEARCH - USE IT ACTIVELY:
+You can search for:
+- Building codes (NEC, local codes)
+- Professional installation standards
+- Typical room dimensions by building type
+- Component placement best practices
+- Electrical requirements
+- Safety regulations
+- Industry standards
+- Common sense knowledge about where things should go
+
+WHEN TO SEARCH:
+- When you need to verify standard dimensions
+- When placing components that have code requirements (outlets, switches, etc.)
+- When you're unsure about professional practices
+- To look up symbols you don't recognize
+- To understand scale standards
+- To verify your reasoning against real-world standards
+
+EXAMPLE SEARCHES YOU SHOULD MAKE:
+- "NEC code outlet spacing requirements residential"
+- "professional security keypad placement standards"
+- "typical bedroom dimensions residential"
+- "light switch height building code"
+- "where to place motion sensors best practices"
+- "electrical symbol standards floor plans"
+
+REFERENCE KNOWLEDGE (but VERIFY with search when needed):
 
 🔐 SECURITY & ACCESS CONTROL:
 - Security keypads: ALWAYS on walls adjacent to entry doors (within 1-2 feet of door frame)
@@ -672,57 +804,110 @@ ABSOLUTE REQUIREMENTS - FAILURE TO COMPLY MEANS INCORRECT ANALYSIS:
 ✗ DO NOT place security keypads in room centers (they go by doors!)
 ✗ DO NOT place switches in inaccessible locations
 
-Use your full reasoning capability. Think step-by-step. Double-check everything."""
+Use your full reasoning capability. Think step-by-step. Search when needed. Double-check everything."""
 
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=16000,  # Must be greater than thinking budget
-            thinking={
-                "type": "enabled",
-                "budget_tokens": 8000  # Budget for extended thinking
-            },
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/png",
-                                "data": img_base64,
-                            },
+        # AGENTIC LOOP - AI can search, think, search more, then respond
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": img_base64,
                         },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
-                }
-            ],
-        )
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ],
+            }
+        ]
 
-        # Extract text response (skip thinking blocks)
-        response_text = ""
-        for block in message.content:
-            if hasattr(block, 'type') and block.type == "text":
-                response_text = block.text
-                break
+        max_iterations = 10  # Prevent infinite loops
+        iteration = 0
 
-        if not response_text:
-            return {"error": "No text response from AI"}
+        while iteration < max_iterations:
+            iteration += 1
 
-        try:
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = response_text[start_idx:end_idx]
-                result = json.loads(json_str)
-                return result
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=16000,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 8000
+                },
+                tools=[SEARCH_TOOL_SCHEMA],  # Give AI access to web search
+                messages=messages
+            )
+
+            # Check if AI wants to use tools
+            if message.stop_reason == "tool_use":
+                # AI wants to search for information
+                tool_uses = [block for block in message.content if hasattr(block, 'type') and block.type == "tool_use"]
+
+                # Add AI's message to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": message.content
+                })
+
+                # Execute all tool calls
+                tool_results = []
+                for tool_use in tool_uses:
+                    tool_name = tool_use.name
+                    tool_input = tool_use.input
+                    tool_id = tool_use.id
+
+                    print(f"🔍 AI searching: {tool_input.get('query', 'unknown')}")
+
+                    result = execute_tool(tool_name, tool_input)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": result
+                    })
+
+                # Send tool results back to AI
+                messages.append({
+                    "role": "user",
+                    "content": tool_results
+                })
+
+                # AI will continue thinking with the new information
+                continue
+
+            elif message.stop_reason == "end_turn":
+                # AI is done - extract the final response
+                response_text = ""
+                for block in message.content:
+                    if hasattr(block, 'type') and block.type == "text":
+                        response_text = block.text
+                        break
+
+                if not response_text:
+                    return {"error": "No text response from AI after tool use"}
+
+                try:
+                    start_idx = response_text.find('{')
+                    end_idx = response_text.rfind('}') + 1
+                    if start_idx != -1 and end_idx > start_idx:
+                        json_str = response_text[start_idx:end_idx]
+                        result = json.loads(json_str)
+                        return result
+                    else:
+                        return {"error": "No JSON found in response", "raw_response": response_text}
+                except json.JSONDecodeError as e:
+                    return {"error": f"JSON parse error: {str(e)}", "raw_response": response_text}
+
             else:
-                return {"error": "No JSON found in response", "raw_response": response_text}
-        except json.JSONDecodeError as e:
-            return {"error": f"JSON parse error: {str(e)}", "raw_response": response_text}
+                # Unexpected stop reason
+                return {"error": f"Unexpected stop reason: {message.stop_reason}"}
+
+        return {"error": "Max iterations reached in agentic loop"}
             
     except Exception as e:
         return {"error": str(e), "fallback": True}
@@ -761,11 +946,40 @@ def ai_map_floorplan(file_path, is_pdf=True):
         
         client = anthropic.Anthropic(api_key=api_key)
         
-        prompt = f"""You are a licensed professional electrician and electrical engineer analyzing a floor plan for installation. This must meet professional electrician standards and building codes. You MUST use your extended thinking to reason through EVERY detail carefully.
+        prompt = f"""You are an autonomous AI agent acting as a licensed professional electrician analyzing a floor plan. You have access to web search to look up ANY codes, standards, or professional knowledge you need in real-time.
 
 {learning_context}
 
-PROFESSIONAL ELECTRICAL INSTALLATION STANDARDS:
+🔍 YOU HAVE WEB SEARCH - USE IT ACTIVELY:
+Search for:
+- NEC electrical code requirements (specific articles)
+- Local building codes and regulations
+- Professional electrical installation standards
+- Outlet spacing, switch placement codes
+- GFCI requirements and locations
+- Arc-fault breaker requirements
+- Circuit load calculations
+- Electrical symbol standards
+- Common sense electrician practices
+
+WHEN TO SEARCH:
+- Before placing any component that has code requirements
+- When determining outlet spacing (search "NEC outlet spacing")
+- When unsure about GFCI requirements (search "NEC GFCI requirements")
+- To verify switch heights and positions
+- To check circuit breaker sizing
+- To understand electrical symbols on the plan
+- Any time you need professional electrician knowledge
+
+EXAMPLE SEARCHES:
+- "NEC code 210.52 outlet spacing requirements"
+- "NEC GFCI requirements kitchen bathroom"
+- "electrical switch height ADA code"
+- "arc fault breaker requirements 2023 NEC"
+- "electrical panel clearance requirements"
+- "typical residential circuit breaker sizes"
+
+REFERENCE KNOWLEDGE (but VERIFY with search when placing components):
 
 ⚡ ELECTRICAL PANELS & DISTRIBUTION:
 - Main distribution board: Near main entry, easily accessible, not in bathrooms/closets
@@ -947,57 +1161,110 @@ ABSOLUTE REQUIREMENTS:
 ✗ DO NOT guess randomly - use professional judgment
 ✗ DO NOT ignore scale information
 
-This electrical plan will be used for actual installation. Accuracy is critical. Think like a professional electrician who takes pride in code-compliant, safe, functional installations."""
-        
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=16000,  # Must be greater than thinking budget
-            thinking={
-                "type": "enabled",
-                "budget_tokens": 8000  # Budget for extended thinking
-            },
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": img_base64,
-                            },
+This electrical plan will be used for actual installation. Accuracy is critical. Search for codes. Think. Verify. Be precise."""
+
+        # AGENTIC LOOP - AI can search codes, verify standards, then analyze
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": img_base64,
                         },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
-                }
-            ],
-        )
-        
-        # Extract text response (skip thinking blocks)
-        response_text = ""
-        for block in message.content:
-            if hasattr(block, 'type') and block.type == "text":
-                response_text = block.text
-                break
-        
-        if not response_text:
-            return {"error": "No text response from AI"}
-        
-        try:
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = response_text[start_idx:end_idx]
-                result = json.loads(json_str)
-                return result
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ],
+            }
+        ]
+
+        max_iterations = 10
+        iteration = 0
+
+        while iteration < max_iterations:
+            iteration += 1
+
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=16000,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 8000
+                },
+                tools=[SEARCH_TOOL_SCHEMA],  # Give AI access to web search
+                messages=messages
+            )
+
+            # Check if AI wants to use tools
+            if message.stop_reason == "tool_use":
+                # AI wants to search for codes/standards
+                tool_uses = [block for block in message.content if hasattr(block, 'type') and block.type == "tool_use"]
+
+                # Add AI's message to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": message.content
+                })
+
+                # Execute all tool calls
+                tool_results = []
+                for tool_use in tool_uses:
+                    tool_name = tool_use.name
+                    tool_input = tool_use.input
+                    tool_id = tool_use.id
+
+                    print(f"🔍 AI searching electrical codes: {tool_input.get('query', 'unknown')}")
+
+                    result = execute_tool(tool_name, tool_input)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": result
+                    })
+
+                # Send tool results back to AI
+                messages.append({
+                    "role": "user",
+                    "content": tool_results
+                })
+
+                # AI will continue with the new knowledge
+                continue
+
+            elif message.stop_reason == "end_turn":
+                # AI is done - extract final response
+                response_text = ""
+                for block in message.content:
+                    if hasattr(block, 'type') and block.type == "text":
+                        response_text = block.text
+                        break
+
+                if not response_text:
+                    return {"error": "No text response from AI after tool use"}
+
+                try:
+                    start_idx = response_text.find('{')
+                    end_idx = response_text.rfind('}') + 1
+                    if start_idx != -1 and end_idx > start_idx:
+                        json_str = response_text[start_idx:end_idx]
+                        result = json.loads(json_str)
+                        return result
+                    else:
+                        return {"error": "No JSON found in response", "raw_response": response_text}
+                except json.JSONDecodeError as e:
+                    return {"error": f"JSON parse error: {str(e)}", "raw_response": response_text}
+
             else:
-                return {"error": "No JSON found in response", "raw_response": response_text}
-        except json.JSONDecodeError as e:
-            return {"error": f"JSON parse error: {str(e)}", "raw_response": response_text}
+                # Unexpected stop reason
+                return {"error": f"Unexpected stop reason: {message.stop_reason}"}
+
+        return {"error": "Max iterations reached in agentic loop"}
             
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
@@ -2529,8 +2796,12 @@ def handle_inventory_item(item_id):
 @app.route('/api/ai-chat', methods=['POST'])
 def ai_chat():
     """
-    AI Chat Agent with extended thinking and action capabilities.
-    Can answer questions AND take actions when agent_mode is enabled.
+    AUTONOMOUS AI CHAT AGENT with:
+    - Vision capabilities (can analyze images)
+    - Web search (can look up real-time information)
+    - Extended thinking (deep reasoning)
+    - Agent mode (can take actions)
+    - Agentic loop (iterative research and reasoning)
     """
     try:
         data = request.json
@@ -2539,6 +2810,7 @@ def ai_chat():
         conversation_history = data.get('conversation_history', [])
         project_id = data.get('project_id')
         current_page = data.get('current_page', 'unknown')
+        images = data.get('images', [])  # NEW: Support image attachments
 
         if not user_message:
             return jsonify({'success': False, 'error': 'No message provided'}), 400
@@ -2561,59 +2833,147 @@ def ai_chat():
         # Build system context
         system_context = build_agent_system_context(agent_mode, current_page)
 
-        # Build conversation messages
+        # Build conversation messages with vision support
         messages = []
         for msg in conversation_history:
             messages.append({
                 'role': msg.get('role', 'user'),
                 'content': msg.get('content', '')
             })
+
+        # Build current message with optional images
+        current_message_content = []
+
+        # Add images if provided (vision)
+        if images and len(images) > 0:
+            for img_data in images:
+                current_message_content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": img_data.get("media_type", "image/png"),
+                        "data": img_data.get("data", "")
+                    }
+                })
+
+        # Add text message
+        current_message_content.append({
+            "type": "text",
+            "text": user_message
+        })
+
         messages.append({
             'role': 'user',
-            'content': user_message
+            'content': current_message_content if len(current_message_content) > 1 else user_message
         })
 
-        # Call Anthropic API with extended thinking
+        # AGENTIC LOOP - AI can search, think, search more, then respond
         client = anthropic.Anthropic(api_key=api_key)
-
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            thinking={
-                "type": "enabled",
-                "budget_tokens": 10000  # High budget for smart reasoning
-            },
-            system=system_context,
-            messages=messages
-        )
-
-        # Extract response text (skip thinking blocks)
-        response_text = ""
-        for block in response.content:
-            if hasattr(block, 'type') and block.type == "text":
-                response_text = block.text
-                break
-
-        if not response_text:
-            return jsonify({
-                'success': False,
-                'error': 'No response from AI',
-                'response': 'I encountered an error processing your request.'
-            }), 500
-
-        # Parse actions if agent mode is enabled
+        max_iterations = 8
+        iteration = 0
+        final_response_text = ""
         actions_taken = []
-        if agent_mode:
-            actions_taken = parse_and_execute_actions(response_text, project_id, current_page)
 
+        while iteration < max_iterations:
+            iteration += 1
+
+            # Call Anthropic with tool use capability
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 10000  # High budget for deep reasoning
+                },
+                system=system_context,
+                tools=[SEARCH_TOOL_SCHEMA],  # Give AI web search capability
+                messages=messages
+            )
+
+            # Check if AI wants to use tools (web search)
+            if response.stop_reason == "tool_use":
+                # AI wants to search for information
+                tool_uses = [block for block in response.content if hasattr(block, 'type') and block.type == "tool_use"]
+
+                # Add AI's message to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": response.content
+                })
+
+                # Execute all tool calls
+                tool_results = []
+                for tool_use in tool_uses:
+                    tool_name = tool_use.name
+                    tool_input = tool_use.input
+                    tool_id = tool_use.id
+
+                    print(f"🔍 AI Chat searching: {tool_input.get('query', 'unknown')} (page: {current_page})")
+
+                    result = execute_tool(tool_name, tool_input)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": result
+                    })
+
+                # Send tool results back to AI
+                messages.append({
+                    "role": "user",
+                    "content": tool_results
+                })
+
+                # AI will continue thinking with the new information
+                continue
+
+            elif response.stop_reason == "end_turn":
+                # AI is done - extract the final response
+                response_text = ""
+                for block in response.content:
+                    if hasattr(block, 'type') and block.type == "text":
+                        response_text = block.text
+                        break
+
+                if not response_text:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No response from AI',
+                        'response': 'I encountered an error processing your request.'
+                    }), 500
+
+                final_response_text = response_text
+
+                # Parse actions if agent mode is enabled
+                if agent_mode:
+                    actions_taken = parse_and_execute_actions(response_text, project_id, current_page)
+
+                # Success - return response
+                return jsonify({
+                    'success': True,
+                    'response': final_response_text,
+                    'actions_taken': actions_taken,
+                    'agent_mode': agent_mode,
+                    'searches_performed': iteration - 1  # How many searches AI did
+                })
+
+            else:
+                # Unexpected stop reason
+                return jsonify({
+                    'success': False,
+                    'error': f'Unexpected stop reason: {response.stop_reason}',
+                    'response': 'I encountered an unexpected error.'
+                }), 500
+
+        # Max iterations reached
         return jsonify({
-            'success': True,
-            'response': response_text,
-            'actions_taken': actions_taken,
-            'agent_mode': agent_mode
-        })
+            'success': False,
+            'error': 'Max iterations reached',
+            'response': 'I spent too much time researching. Please try a simpler question.'
+        }), 500
 
     except Exception as e:
+        print(f"AI Chat Error: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e),
@@ -2621,16 +2981,46 @@ def ai_chat():
         }), 500
 
 def build_agent_system_context(agent_mode, current_page):
-    """Build comprehensive system context for AI agent"""
-    context = """You are an intelligent AI assistant for the Integratd Living automation system.
+    """Build comprehensive system context for autonomous AI agent"""
+    context = """You are an autonomous AI agent for the Integratd Living automation system.
 
 CURRENT CONTEXT: {page}
 
-Your capabilities:
+🔍 YOU HAVE WEB SEARCH - USE IT ACTIVELY:
+You can search the web for real-time information about:
+- Building codes (NEC, local codes, international standards)
+- Professional installation practices and standards
+- Product specifications and compatibility
+- Industry best practices
+- Safety regulations and requirements
+- Technical documentation
+- Common sense knowledge and verification
+
+WHEN TO SEARCH:
+- When asked about codes, standards, or regulations
+- When you need to verify technical information
+- When discussing product specifications
+- When providing professional recommendations
+- Any time you're uncertain about current information
+- To provide the most accurate, up-to-date answers
+
+👁️ YOU HAVE VISION:
+If users attach images, you can:
+- Analyze floor plans and architectural drawings
+- Identify components and symbols
+- Assess layouts and spatial relationships
+- Detect scale and dimensions
+- Read diagrams and schematics
+- Understand visual context
+
+🧠 YOUR CAPABILITIES:
 - Answer questions about floor plans, automation, pricing, and features
+- Analyze images and provide visual insights
+- Search the web for current information
 - Explain analysis results and provide insights
-- Help users make decisions
-- Provide technical support
+- Help users make informed decisions
+- Provide professional technical support
+- Use extended thinking for complex reasoning
 
 """.format(page=current_page)
 
