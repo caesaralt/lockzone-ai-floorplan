@@ -618,8 +618,8 @@ CRITICAL POSITIONING INSTRUCTIONS:
 - A symbol in bottom-right quadrant: x:0.5-1.0, y:0.5-1.0
 - If a room spans x:0.3-0.6, y:0.2-0.5, place symbols within those bounds
 - Use your extended thinking to reason about realistic positions
-- Count EVERY component and map EVERY position accurately
-        
+- Count EVERY component and map EVERY position accurately"""
+
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=8000,  # Increased for detailed component mapping
