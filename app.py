@@ -52,12 +52,14 @@ app.config['SIMPRO_CONFIG_FOLDER'] = 'simpro_config'
 app.config['CRM_DATA_FOLDER'] = 'crm_data'
 app.config['AI_MAPPING_FOLDER'] = 'ai_mapping'
 app.config['MAPPING_LEARNING_FOLDER'] = 'mapping_learning'
+app.config['SESSION_DATA_FOLDER'] = 'session_data'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], 
+for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'],
                app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
                app.config['SIMPRO_CONFIG_FOLDER'], app.config['CRM_DATA_FOLDER'],
-               app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER']]:
+               app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER'],
+               app.config['SESSION_DATA_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
@@ -607,6 +609,33 @@ def execute_tool(tool_name, tool_input):
             return f"Search failed: {result.get('error', 'Unknown error')}"
 
     return f"Unknown tool: {tool_name}"
+
+# ============================================================================
+# SESSION MANAGEMENT FOR WORKFLOW
+# ============================================================================
+
+def save_session_data(session_id, data):
+    """Save analysis session data for takeoffs editor"""
+    session_file = os.path.join(app.config['SESSION_DATA_FOLDER'], f'{session_id}.json')
+    with open(session_file, 'w') as f:
+        json.dump(data, f, indent=2)
+    return session_file
+
+def load_session_data(session_id):
+    """Load analysis session data"""
+    session_file = os.path.join(app.config['SESSION_DATA_FOLDER'], f'{session_id}.json')
+    if os.path.exists(session_file):
+        with open(session_file, 'r') as f:
+            return json.load(f)
+    return None
+
+def get_session_id():
+    """Generate unique session ID"""
+    return str(uuid.uuid4())
+
+# ============================================================================
+# AI ANALYSIS WITH VISION
+# ============================================================================
 
 def analyze_floorplan_with_ai(pdf_path):
     """Enhanced AI analysis for quoting - uses learning from corrections"""
@@ -1449,6 +1478,55 @@ def simpro_page():
 def ai_mapping_page():
     return render_template('template_ai_mapping.html')
 
+@app.route('/takeoffs/<session_id>')
+def takeoffs_page(session_id):
+    """Interactive Bluebeam-style takeoffs editor"""
+    session_data = load_session_data(session_id)
+    if not session_data:
+        return "Session not found", 404
+
+    # Load automation data for symbol editing
+    automation_data = load_data()
+
+    # Prepare symbols from analysis result
+    analysis_result = session_data.get('analysis_result', {})
+    components = analysis_result.get('components', [])
+
+    # Convert components to symbols for the editor
+    symbols = []
+    for comp in components:
+        symbols.append({
+            'id': comp.get('id', ''),
+            'type': comp.get('type', 'unknown'),
+            'x': comp.get('location', {}).get('x', 0.5),
+            'y': comp.get('location', {}).get('y', 0.5),
+            'room': comp.get('room', ''),
+            'automation_category': comp.get('automation_category', comp.get('type', 'unknown')),
+            'label': comp.get('id', ''),
+            'items': [],  # Will be populated by user
+            'custom_image': None  # Will be populated by user
+        })
+
+    return render_template('takeoffs.html',
+                         session_data=session_data,
+                         automation_data=automation_data,
+                         initial_symbols=symbols,
+                         project_name=session_data.get('project_name', 'Untitled'),
+                         tier=session_data.get('tier', 'basic'))
+
+@app.route('/mapping')
+def mapping_page():
+    """Vectorworks-style mapping tool"""
+    session_id = request.args.get('session')
+    project_name = 'New Mapping Project'
+
+    if session_id:
+        session_data = load_session_data(session_id)
+        if session_data:
+            project_name = session_data.get('project_name', 'Mapping Project')
+
+    return render_template('mapping.html', project_name=project_name)
+
 # ============================================================================
 # API - AI MAPPING WITH LEARNING
 # ============================================================================
@@ -1815,8 +1893,31 @@ def analyze_floorplan():
         except Exception as e:
             print(f"Error creating quote PDF: {e}")
 
+        # Save session data for takeoffs editor
+        session_id = get_session_id()
+        session_data = {
+            'session_id': session_id,
+            'project_name': project_name,
+            'tier': tier,
+            'automation_types': automation_types,
+            'analysis_result': analysis_result,
+            'floorplan_image': annotated_filename,
+            'original_pdf': filename,
+            'total_rooms': total_rooms,
+            'total_automation_points': total_automation_points,
+            'costs': {
+                'items': cost_items,
+                'subtotal': subtotal,
+                'markup': markup,
+                'grand_total': grand_total
+            },
+            'timestamp': datetime.now().isoformat()
+        }
+        save_session_data(session_id, session_data)
+
         response = {
             'success': True,
+            'session_id': session_id,
             'project_name': project_name,
             'total_rooms': total_rooms,
             'total_automation_points': total_automation_points,
@@ -1834,7 +1935,8 @@ def analyze_floorplan():
             'files': {
                 'annotated_pdf': f'/api/download/{annotated_filename}',
                 'quote_pdf': f'/api/download/{quote_filename}'
-            }
+            },
+            'takeoffs_url': f'/takeoffs/{session_id}'
         }
 
         return jsonify(response)
@@ -1977,6 +2079,202 @@ def export_pdf():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/takeoffs/export', methods=['POST'])
+def takeoffs_export():
+    """Export takeoffs data with updated symbols and generate final quote"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        symbols = data.get('symbols', [])
+        project_name = data.get('project_name', 'Untitled Project')
+        tier = data.get('tier', 'basic')
+
+        # Update session data with edited symbols
+        session_data = load_session_data(session_id)
+        if session_data:
+            session_data['symbols'] = symbols
+            save_session_data(session_id, session_data)
+
+        # Load automation data for pricing
+        data_config = load_data()
+
+        # Calculate costs from edited symbols
+        cost_items = []
+        total_automation_points = len(symbols)
+
+        for symbol in symbols:
+            automation_key = symbol.get('automation_category') or symbol.get('type')
+            if automation_key in data_config['automation_types']:
+                automation_config = data_config['automation_types'][automation_key]
+                unit_cost = automation_config.get('base_cost_per_unit', {}).get(tier, 0)
+                labor_hours = automation_config.get('labor_hours', {}).get(tier, 0)
+                labor_cost = labor_hours * data_config['labor_rate']
+
+                cost_items.append({
+                    'type': automation_config.get('name', automation_key),
+                    'quantity': 1,
+                    'unit_cost': unit_cost,
+                    'labor_cost': labor_cost,
+                    'total': unit_cost + labor_cost,
+                    'room': symbol.get('room', 'Unassigned')
+                })
+
+            # Add custom items
+            if symbol.get('items'):
+                for item in symbol['items']:
+                    cost_items.append({
+                        'type': item.get('name', 'Custom Item'),
+                        'quantity': 1,
+                        'unit_cost': item.get('price', 0),
+                        'labor_cost': 0,
+                        'total': item.get('price', 0),
+                        'room': symbol.get('room', 'Unassigned')
+                    })
+
+        subtotal = sum(item['total'] for item in cost_items)
+        markup = subtotal * (data_config['markup_percentage'] / 100)
+        grand_total = subtotal + markup
+
+        # Generate annotated floor plan with updated symbols
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        annotated_filename = f"takeoffs_{timestamp}.png"
+        quote_filename = f"quote_{timestamp}.pdf"
+        annotated_path = os.path.join(app.config['OUTPUT_FOLDER'], annotated_filename)
+        quote_path = os.path.join(app.config['OUTPUT_FOLDER'], quote_filename)
+
+        # Get original floor plan
+        original_pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], session_data.get('original_pdf', ''))
+
+        # Generate marked-up image with edited symbols
+        mapping_data = {
+            'components': symbols,
+            'analysis': {
+                'scale': session_data.get('analysis_result', {}).get('scale', 'not detected'),
+                'total_rooms': session_data.get('total_rooms', 0),
+                'notes': 'Edited in Takeoffs'
+            }
+        }
+
+        if os.path.exists(original_pdf_path):
+            generate_marked_up_image(original_pdf_path, mapping_data, annotated_path)
+        else:
+            # Fallback: use existing annotated image
+            import shutil
+            existing_annotated = os.path.join(app.config['OUTPUT_FOLDER'], session_data.get('floorplan_image', ''))
+            if os.path.exists(existing_annotated):
+                shutil.copy(existing_annotated, annotated_path)
+
+        # Generate quote PDF
+        try:
+            doc = SimpleDocTemplate(quote_path, pagesize=letter)
+            story = []
+            styles = getSampleStyleSheet()
+
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                textColor=colors.HexColor('#556B2F'),
+                spaceAfter=30,
+            )
+
+            company_info = data_config.get('company_info', {})
+            story.append(Paragraph(company_info.get('name', 'Integratd Living'), title_style))
+            story.append(Paragraph(f"Final Quote for: {project_name}", styles['Heading2']))
+            story.append(Spacer(1, 0.3*inch))
+            story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+            story.append(Paragraph(f"Tier: {tier.capitalize()}", styles['Normal']))
+            story.append(Spacer(1, 0.5*inch))
+
+            # Add cost breakdown table
+            table_data = [['Item', 'Room', 'Quantity', 'Unit Cost', 'Labor', 'Total']]
+            for item in cost_items:
+                table_data.append([
+                    item['type'],
+                    item['room'],
+                    str(item['quantity']),
+                    f"${item['unit_cost']:,.2f}",
+                    f"${item['labor_cost']:,.2f}",
+                    f"${item['total']:,.2f}"
+                ])
+
+            table_data.append(['', '', '', '', 'Subtotal:', f"${subtotal:,.2f}"])
+            table_data.append(['', '', '', '', f'Markup ({data_config["markup_percentage"]}%):', f"${markup:,.2f}"])
+            table_data.append(['', '', '', '', 'TOTAL:', f"${grand_total:,.2f}"])
+
+            t = Table(table_data, colWidths=[2*inch, 1.5*inch, 0.8*inch, 1*inch, 1*inch, 1.2*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#556B2F')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+
+            story.append(t)
+            doc.build(story)
+        except Exception as e:
+            print(f"Error creating quote PDF: {e}")
+
+        return jsonify({
+            'success': True,
+            'annotated_pdf': f'/api/download/{annotated_filename}',
+            'quote_pdf': f'/api/download/{quote_filename}',
+            'total': grand_total
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+@app.route('/api/session/<session_id>', methods=['GET'])
+def get_session(session_id):
+    """Get session data for workflow integration"""
+    try:
+        session_data = load_session_data(session_id)
+        if session_data:
+            return jsonify(session_data)
+        else:
+            return jsonify({'error': 'Session not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mapping/export', methods=['POST'])
+def mapping_export():
+    """Export electrical mapping with wiring and circuits"""
+    try:
+        data = request.json
+        components = data.get('components', [])
+        wires = data.get('wires', [])
+        circuits = data.get('circuits', [])
+
+        # Generate output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"electrical_mapping_{timestamp}.json"
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+
+        # Save mapping data
+        mapping_data = {
+            'components': components,
+            'wires': wires,
+            'circuits': circuits,
+            'exported_at': datetime.now().isoformat()
+        }
+
+        with open(output_path, 'w') as f:
+            json.dump(mapping_data, f, indent=2)
+
+        return jsonify({
+            'success': True,
+            'file': f'/api/download/{output_filename}',
+            'message': f'Exported {len(components)} components, {len(wires)} wires, {len(circuits)} circuits'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 @app.route('/api/canvas/upload', methods=['POST'])
 def canvas_upload():

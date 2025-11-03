@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electrical Mapping - {{ project_name | default('New Project') }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e14;
+            overflow: hidden;
+            color: #ecf0f1;
+        }
+
+        .top-toolbar {
+            background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
+            padding: 10px 20px;
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .project-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .toolbar-btn:hover {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+            border-color: #3498db;
+        }
+
+        .toolbar-btn.success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .app-container {
+            display: flex;
+            height: calc(100vh - 52px);
+        }
+
+        .left-panel {
+            width: 280px;
+            background: #16213e;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 2px solid #2c3e50;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .layer-item,
+        .component-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            background: #2c3e50;
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s;
+        }
+
+        .layer-item:hover,
+        .component-btn:hover {
+            background: #34495e;
+            border-color: #3498db;
+        }
+
+        .layer-item.active,
+        .component-btn.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #2ecc71;
+        }
+
+        .layer-checkbox {
+            margin-right: 8px;
+        }
+
+        .canvas-area {
+            flex: 1;
+            background: #0f1419;
+            position: relative;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: #1a1a2e;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            border: 2px solid #2c3e50;
+        }
+
+        #mappingCanvas {
+            display: block;
+            cursor: crosshair;
+            background: white;
+        }
+
+        .right-panel {
+            width: 320px;
+            background: #16213e;
+            padding: 15px;
+            overflow-y: auto;
+            border-left: 2px solid #2c3e50;
+        }
+
+        .properties-panel {
+            background: #1a252f;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .properties-panel h3 {
+            color: #3498db;
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+
+        .prop-group {
+            margin-bottom: 12px;
+        }
+
+        .prop-group label {
+            display: block;
+            margin-bottom: 4px;
+            color: #95a5a6;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .prop-group input,
+        .prop-group select {
+            width: 100%;
+            padding: 8px;
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.85em;
+        }
+
+        .prop-group input:focus,
+        .prop-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .circuit-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .circuit-item {
+            background: #2c3e50;
+            padding: 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .circuit-name {
+            font-weight: 700;
+            color: #f39c12;
+            font-size: 0.9em;
+        }
+
+        .circuit-info {
+            color: #95a5a6;
+            font-size: 0.8em;
+            margin-top: 4px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+        }
+
+        .action-btn.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .action-btn.danger:hover {
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+        }
+
+        .context-menu {
+            position: absolute;
+            background: #2c3e50;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            padding: 6px 0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            display: none;
+            z-index: 1000;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: white;
+            font-size: 0.85em;
+        }
+
+        .context-menu-item:hover {
+            background: #34495e;
+        }
+
+        .wire-type-legend {
+            background: #1a252f;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 3px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-toolbar">
+        <div class="toolbar-left">
+            <div class="project-title">⚡ {{ project_name | default('Electrical Mapping') }}</div>
+        </div>
+        <div>
+            <button class="toolbar-btn" onclick="window.location.href='/quotes'">← Back to Quotes</button>
+            <button class="toolbar-btn" onclick="importFromTakeoffs()">📥 Import from Takeoffs</button>
+            <button class="toolbar-btn success" onclick="exportMapping()">💾 Export Mapping</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- LEFT PANEL: Layers & Components -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <h3>📁 Layers</h3>
+                <div class="layer-item active">
+                    <span><input type="checkbox" class="layer-checkbox" checked> Floor Plan</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" class="layer-checkbox" checked> Components</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" class="layer-checkbox" checked> Wiring</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" class="layer-checkbox" checked> Circuits</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" class="layer-checkbox" checked> Annotations</span>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>🔧 Components</h3>
+                <button class="component-btn" onclick="selectComponent('light')">
+                    💡 Light Fixture
+                </button>
+                <button class="component-btn" onclick="selectComponent('switch')">
+                    🔘 Switch
+                </button>
+                <button class="component-btn" onclick="selectComponent('outlet')">
+                    ⚡ Outlet
+                </button>
+                <button class="component-btn" onclick="selectComponent('panel')">
+                    ⚙️ Electrical Panel
+                </button>
+                <button class="component-btn" onclick="selectComponent('junction')">
+                    📦 Junction Box
+                </button>
+                <button class="component-btn" onclick="selectComponent('sensor')">
+                    📡 Sensor
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <h3>🛠️ Tools</h3>
+                <button class="component-btn active" onclick="setTool('select')">
+                    🖱️ Select
+                </button>
+                <button class="component-btn" onclick="setTool('wire')">
+                    🔌 Draw Wire
+                </button>
+                <button class="component-btn" onclick="setTool('measure')">
+                    📏 Measure
+                </button>
+                <button class="component-btn" onclick="setTool('annotate')">
+                    📝 Annotate
+                </button>
+            </div>
+        </div>
+
+        <!-- CENTER: Canvas -->
+        <div class="canvas-area">
+            <div class="canvas-wrapper">
+                <canvas id="mappingCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Properties & Circuits -->
+        <div class="right-panel">
+            <div class="properties-panel">
+                <h3>⚙️ Properties</h3>
+                <div id="propertiesContent">
+                    <p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>
+                </div>
+            </div>
+
+            <div class="properties-panel">
+                <h3>🔌 Circuits</h3>
+                <div class="circuit-list" id="circuitList">
+                    <!-- Dynamic circuits -->
+                </div>
+                <button class="action-btn" onclick="addCircuit()">+ Add Circuit</button>
+            </div>
+
+            <div class="wire-type-legend">
+                <h3 style="color: #3498db; margin-bottom: 10px; font-size: 0.9em;">Wire Types</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Power (120V)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9b59b6;"></div>
+                    <span>Power (240V)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Control/Data</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2ecc71;"></div>
+                    <span>Low Voltage</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editComponent()">✏️ Edit</div>
+        <div class="context-menu-item" onclick="duplicateComponent()">📋 Duplicate</div>
+        <div class="context-menu-item" onclick="assignCircuit()">🔌 Assign Circuit</div>
+        <div class="context-menu-item" onclick="deleteComponent()">🗑️ Delete</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mappingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Initialize with default size
+        canvas.width = 1200;
+        canvas.height = 800;
+
+        // State
+        let floorplanImage = null;
+        let components = [];
+        let wires = [];
+        let circuits = [];
+        let selectedComponent = null;
+        let currentTool = 'select';
+        let wireStart = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Component types configuration
+        const componentConfig = {
+            light: { symbol: '💡', color: '#FFD700', size: 20 },
+            switch: { symbol: '🔘', color: '#4169E1', size: 16 },
+            outlet: { symbol: '⚡', color: '#32CD32', size: 16 },
+            panel: { symbol: '⚙️', color: '#FF4500', size: 28 },
+            junction: { symbol: '📦', color: '#FFA500', size: 18 },
+            sensor: { symbol: '📡', color: '#9370DB', size: 18 }
+        };
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw floor plan if loaded
+            if (floorplanImage) {
+                ctx.drawImage(floorplanImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw wires
+            wires.forEach(wire => {
+                ctx.strokeStyle = wire.type === 'power120' ? '#e74c3c' :
+                                 wire.type === 'power240' ? '#9b59b6' :
+                                 wire.type === 'control' ? '#3498db' : '#2ecc71';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(wire.from.x, wire.from.y);
+                ctx.lineTo(wire.to.x, wire.to.y);
+                ctx.stroke();
+
+                // Draw circuit label
+                if (wire.circuit) {
+                    const midX = (wire.from.x + wire.to.x) / 2;
+                    const midY = (wire.from.y + wire.to.y) / 2;
+                    ctx.font = 'bold 11px Arial';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(wire.circuit, midX, midY);
+                    ctx.fillText(wire.circuit, midX, midY);
+                }
+            });
+
+            // Draw components
+            components.forEach(comp => {
+                const config = componentConfig[comp.type];
+                const isSelected = selectedComponent === comp;
+
+                // Draw circle
+                ctx.beginPath();
+                ctx.arc(comp.x, comp.y, isSelected ? config.size + 5 : config.size, 0, 2 * Math.PI);
+                ctx.strokeStyle = config.color;
+                ctx.lineWidth = isSelected ? 4 : 3;
+                ctx.stroke();
+
+                if (isSelected) {
+                    ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+                    ctx.fill();
+                }
+
+                // Draw symbol
+                ctx.font = '24px Arial';
+                ctx.fillText(config.symbol, comp.x - 12, comp.y + 8);
+
+                // Draw label
+                ctx.font = 'bold 12px Arial';
+                ctx.fillStyle = config.color;
+                ctx.fillText(comp.label || comp.type, comp.x + config.size + 5, comp.y - 10);
+
+                // Draw circuit assignment
+                if (comp.circuit) {
+                    ctx.font = '10px Arial';
+                    ctx.fillStyle = '#f39c12';
+                    ctx.fillText(`C${comp.circuit}`, comp.x - 10, comp.y + config.size + 15);
+                }
+            });
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.component-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            if (tool === 'wire') {
+                wireStart = null;
+            }
+        }
+
+        let pendingComponentType = null;
+
+        function selectComponent(type) {
+            pendingComponentType = type;
+            currentTool = 'place';
+            canvas.style.cursor = 'crosshair';
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (currentTool === 'select') {
+                // Check if clicking on component
+                let clickedComp = null;
+                components.forEach(comp => {
+                    const dx = comp.x - x;
+                    const dy = comp.y - y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < componentConfig[comp.type].size + 5) {
+                        clickedComp = comp;
+                    }
+                });
+
+                if (clickedComp) {
+                    selectedComponent = clickedComp;
+                    isDragging = true;
+                    dragOffset = { x: x - clickedComp.x, y: y - clickedComp.y };
+                    updatePropertiesPanel();
+                } else {
+                    selectedComponent = null;
+                    updatePropertiesPanel();
+                }
+                render();
+            } else if (currentTool === 'place' && pendingComponentType) {
+                // Place new component
+                const newComp = {
+                    id: Date.now(),
+                    type: pendingComponentType,
+                    x: x,
+                    y: y,
+                    label: `${pendingComponentType.toUpperCase()}_${components.length + 1}`,
+                    circuit: null,
+                    properties: {}
+                };
+                components.push(newComp);
+                render();
+                updateCircuitList();
+            } else if (currentTool === 'wire') {
+                // Draw wire
+                if (!wireStart) {
+                    // Check if clicking on component
+                    components.forEach(comp => {
+                        const dx = comp.x - x;
+                        const dy = comp.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < componentConfig[comp.type].size + 5) {
+                            wireStart = comp;
+                        }
+                    });
+                } else {
+                    // Complete wire
+                    components.forEach(comp => {
+                        const dx = comp.x - x;
+                        const dy = comp.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < componentConfig[comp.type].size + 5 && comp !== wireStart) {
+                            const wireType = prompt('Wire type (power120/power240/control/lowvoltage):', 'power120');
+                            const circuit = prompt('Circuit number (optional):');
+
+                            wires.push({
+                                id: Date.now(),
+                                from: { x: wireStart.x, y: wireStart.y },
+                                to: { x: comp.x, y: comp.y },
+                                type: wireType,
+                                circuit: circuit,
+                                fromComp: wireStart.id,
+                                toComp: comp.id
+                            });
+                            render();
+                        }
+                    });
+                    wireStart = null;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isDragging && selectedComponent) {
+                selectedComponent.x = x - dragOffset.x;
+                selectedComponent.y = y - dragOffset.y;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+        });
+
+        function updatePropertiesPanel() {
+            const panel = document.getElementById('propertiesContent');
+
+            if (!selectedComponent) {
+                panel.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>';
+                return;
+            }
+
+            panel.innerHTML = `
+                <div class="prop-group">
+                    <label>Label</label>
+                    <input type="text" value="${selectedComponent.label}" onchange="updateComponentLabel(this.value)">
+                </div>
+                <div class="prop-group">
+                    <label>Type</label>
+                    <select onchange="updateComponentType(this.value)">
+                        ${Object.keys(componentConfig).map(type =>
+                            `<option value="${type}" ${selectedComponent.type === type ? 'selected' : ''}>${type}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="prop-group">
+                    <label>Circuit</label>
+                    <input type="text" value="${selectedComponent.circuit || ''}" onchange="updateComponentCircuit(this.value)">
+                </div>
+                <button class="action-btn danger" onclick="deleteComponent()">🗑️ Delete Component</button>
+            `;
+        }
+
+        function updateComponentLabel(value) {
+            if (selectedComponent) {
+                selectedComponent.label = value;
+                render();
+            }
+        }
+
+        function updateComponentType(value) {
+            if (selectedComponent) {
+                selectedComponent.type = value;
+                render();
+            }
+        }
+
+        function updateComponentCircuit(value) {
+            if (selectedComponent) {
+                selectedComponent.circuit = value || null;
+                render();
+                updateCircuitList();
+            }
+        }
+
+        function deleteComponent() {
+            if (selectedComponent) {
+                components = components.filter(c => c !== selectedComponent);
+                wires = wires.filter(w => w.fromComp !== selectedComponent.id && w.toComp !== selectedComponent.id);
+                selectedComponent = null;
+                render();
+                updatePropertiesPanel();
+                updateCircuitList();
+            }
+        }
+
+        function duplicateComponent() {
+            if (selectedComponent) {
+                const newComp = { ...selectedComponent };
+                newComp.id = Date.now();
+                newComp.x += 30;
+                newComp.y += 30;
+                newComp.label = selectedComponent.label + '_copy';
+                components.push(newComp);
+                render();
+            }
+        }
+
+        function editComponent() {
+            updatePropertiesPanel();
+        }
+
+        function assignCircuit() {
+            if (selectedComponent) {
+                const circuit = prompt('Enter circuit number:');
+                if (circuit) {
+                    selectedComponent.circuit = circuit;
+                    render();
+                    updateCircuitList();
+                }
+            }
+        }
+
+        function addCircuit() {
+            const name = prompt('Circuit name:');
+            if (!name) return;
+            const voltage = prompt('Voltage (120/240):');
+            const amperage = prompt('Amperage:');
+
+            circuits.push({
+                id: Date.now(),
+                name: name,
+                voltage: voltage,
+                amperage: amperage,
+                components: []
+            });
+
+            updateCircuitList();
+        }
+
+        function updateCircuitList() {
+            const list = document.getElementById('circuitList');
+
+            // Group components by circuit
+            const circuitMap = {};
+            components.forEach(comp => {
+                if (comp.circuit) {
+                    if (!circuitMap[comp.circuit]) {
+                        circuitMap[comp.circuit] = [];
+                    }
+                    circuitMap[comp.circuit].push(comp);
+                }
+            });
+
+            list.innerHTML = '';
+
+            Object.keys(circuitMap).forEach(circuitNum => {
+                const div = document.createElement('div');
+                div.className = 'circuit-item';
+                div.innerHTML = `
+                    <div class="circuit-name">Circuit ${circuitNum}</div>
+                    <div class="circuit-info">${circuitMap[circuitNum].length} component(s)</div>
+                `;
+                list.appendChild(div);
+            });
+
+            if (Object.keys(circuitMap).length === 0) {
+                list.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">No circuits assigned yet</p>';
+            }
+        }
+
+        function importFromTakeoffs() {
+            const sessionId = new URLSearchParams(window.location.search).get('session');
+            if (sessionId) {
+                fetch('/api/session/' + sessionId)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.symbols) {
+                            components = data.symbols.map((sym, i) => ({
+                                id: i + 1,
+                                type: sym.automation_category || sym.type || 'light',
+                                x: sym.x * canvas.width,
+                                y: sym.y * canvas.height,
+                                label: sym.id || sym.label,
+                                circuit: null,
+                                properties: {}
+                            }));
+                            render();
+                            updateCircuitList();
+                            alert('✅ Imported ' + components.length + ' components from takeoffs!');
+                        }
+                    })
+                    .catch(err => alert('❌ Import failed: ' + err.message));
+            } else {
+                alert('ℹ️ No session ID found. Use "Export to Mapping" from Takeoffs editor.');
+            }
+        }
+
+        function exportMapping() {
+            const exportData = {
+                components: components,
+                wires: wires,
+                circuits: circuits
+            };
+
+            fetch('/api/mapping/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exportData)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Mapping exported successfully!');
+                    if (data.file) {
+                        window.open(data.file, '_blank');
+                    }
+                } else {
+                    alert('❌ Export failed: ' + data.error);
+                }
+            })
+            .catch(err => alert('❌ Export failed: ' + err.message));
+        }
+
+        // Initialize
+        render();
+        updateCircuitList();
+
+        // Try to import from takeoffs on load
+        const sessionId = new URLSearchParams(window.location.search).get('session');
+        if (sessionId) {
+            setTimeout(() => {
+                if (confirm('Import components from takeoffs?')) {
+                    importFromTakeoffs();
+                }
+            }, 500);
+        }
+    </script>
+</body>
+</html>
