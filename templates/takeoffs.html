@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Takeoffs - {{ project_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+            color: white;
+        }
+
+        .top-toolbar {
+            background: linear-gradient(135deg, #16213e 0%, #0f1419 100%);
+            padding: 12px 20px;
+            border-bottom: 2px solid #e74c3c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .project-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #e74c3c;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .toolbar-btn:hover {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+
+        .toolbar-btn.primary {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .toolbar-btn.primary:hover {
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+            border-color: #f39c12;
+        }
+
+        .editor-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .left-sidebar {
+            width: 320px;
+            background: #16213e;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section h3 {
+            color: #e74c3c;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 6px;
+        }
+
+        .tool-button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tool-button:hover {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border-color: #3498db;
+            transform: translateX(4px);
+        }
+
+        .tool-button.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #2ecc71;
+        }
+
+        .tool-button .emoji {
+            font-size: 1.3em;
+            margin-right: 10px;
+        }
+
+        .canvas-area {
+            flex: 1;
+            background: #0f1419;
+            position: relative;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #floorplanCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .right-sidebar {
+            width: 380px;
+            background: #16213e;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 2px solid #2c3e50;
+        }
+
+        .price-summary {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        .price-summary h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.95em;
+        }
+
+        .price-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.3em;
+            padding-top: 15px;
+            border-top: 2px solid white;
+        }
+
+        .symbol-list {
+            background: #1a252f;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .symbol-item {
+            background: #2c3e50;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .symbol-item:hover {
+            background: #34495e;
+            border-color: #3498db;
+            transform: translateX(4px);
+        }
+
+        .symbol-item.selected {
+            border-color: #2ecc71;
+            background: #1abc9c;
+        }
+
+        .symbol-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .symbol-id {
+            font-weight: 700;
+            color: #f39c12;
+        }
+
+        .symbol-type {
+            color: #95a5a6;
+            font-size: 0.85em;
+        }
+
+        .symbol-room {
+            color: #3498db;
+            font-size: 0.9em;
+        }
+
+        .edit-panel {
+            background: #1a252f;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 2px solid #e74c3c;
+            display: none;
+        }
+
+        .edit-panel.active {
+            display: block;
+        }
+
+        .edit-panel h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.95em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .item-list {
+            margin-top: 10px;
+        }
+
+        .item-entry {
+            background: #34495e;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #ecf0f1;
+        }
+
+        .item-price {
+            color: #2ecc71;
+            font-size: 0.9em;
+        }
+
+        .delete-item-btn {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .delete-item-btn:hover {
+            background: #c0392b;
+        }
+
+        .add-item-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .add-item-btn:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+        }
+
+        .save-symbol-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1em;
+            margin-top: 15px;
+        }
+
+        .save-symbol-btn:hover {
+            background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #3498db;
+            background: rgba(52, 152, 219, 0.2);
+            pointer-events: none;
+            display: none;
+        }
+
+        .context-menu {
+            position: absolute;
+            background: #2c3e50;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 8px 0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: white;
+            font-size: 0.95em;
+        }
+
+        .context-menu-item:hover {
+            background: #34495e;
+        }
+
+        .measurement-display {
+            position: absolute;
+            background: rgba(44, 62, 80, 0.95);
+            color: #f39c12;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 600;
+            pointer-events: none;
+            display: none;
+        }
+
+        .annotation {
+            position: absolute;
+            background: rgba(231, 76, 60, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            cursor: move;
+            border: 2px solid #c0392b;
+        }
+
+        @media (max-width: 1400px) {
+            .left-sidebar,
+            .right-sidebar {
+                width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-toolbar">
+        <div class="toolbar-left">
+            <div class="project-title">🎨 {{ project_name }} - Interactive Takeoffs</div>
+        </div>
+        <div class="toolbar-actions">
+            <button class="toolbar-btn" onclick="window.location.href='/quotes'">← Back to Quotes</button>
+            <button class="toolbar-btn" onclick="saveToMapping()">Export to Mapping Tool →</button>
+            <button class="toolbar-btn primary" onclick="exportResults()">💾 Export & Generate Quote</button>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <!-- LEFT SIDEBAR: Tools -->
+        <div class="left-sidebar">
+            <div class="sidebar-section">
+                <h3>🛠️ Tools</h3>
+                <button class="tool-button active" id="selectTool" onclick="setTool('select')">
+                    <span class="emoji">🖱️</span> Select & Move
+                </button>
+                <button class="tool-button" id="placeTool" onclick="setTool('place')">
+                    <span class="emoji">📍</span> Place Symbol
+                </button>
+                <button class="tool-button" id="measureTool" onclick="setTool('measure')">
+                    <span class="emoji">📏</span> Measure
+                </button>
+                <button class="tool-button" id="annotateTool" onclick="setTool('annotate')">
+                    <span class="emoji">📝</span> Annotate
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>➕ Add Symbols</h3>
+                {% for key, automation in automation_data.automation_types.items() %}
+                <button class="tool-button" onclick="selectSymbolType('{{ key }}', '{{ automation.name }}')">
+                    <span class="emoji">{{ automation.symbols[0] }}</span> {{ automation.name }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="sidebar-section">
+                <h3>⚙️ Actions</h3>
+                <button class="tool-button" onclick="deleteSelected()">
+                    <span class="emoji">🗑️</span> Delete Selected
+                </button>
+                <button class="tool-button" onclick="duplicateSelected()">
+                    <span class="emoji">📋</span> Duplicate Selected
+                </button>
+                <button class="tool-button" onclick="selectAll()">
+                    <span class="emoji">☑️</span> Select All
+                </button>
+                <button class="tool-button" onclick="clearSelection()">
+                    <span class="emoji">✖️</span> Clear Selection
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>💡 Instructions</h3>
+                <div style="font-size: 0.85em; color: #95a5a6; line-height: 1.5;">
+                    <strong>AI placed symbols automatically!</strong><br><br>
+                    • <strong>Click</strong> symbol to edit items & pricing<br>
+                    • <strong>Drag</strong> to move symbols<br>
+                    • <strong>Shift+Click</strong> to multi-select<br>
+                    • <strong>Drag area</strong> to select multiple<br>
+                    • <strong>Right-click</strong> for more options<br>
+                    • <strong>Delete key</strong> to remove selected
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER: Canvas -->
+        <div class="canvas-area">
+            <div class="canvas-wrapper">
+                <canvas id="floorplanCanvas"></canvas>
+                <div class="selection-box" id="selectionBox"></div>
+                <div class="measurement-display" id="measurementDisplay"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR: Properties & Pricing -->
+        <div class="right-sidebar">
+            <div class="price-summary">
+                <h3>💰 Total Pricing</h3>
+                <div class="price-item">
+                    <span>Subtotal:</span>
+                    <span id="priceSubtotal">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>Markup:</span>
+                    <span id="priceMarkup">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>TOTAL:</span>
+                    <span id="priceTotal">$0.00</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>📋 Symbols on Plan</h3>
+                <div class="symbol-list" id="symbolList">
+                    <!-- Dynamic symbol list -->
+                </div>
+            </div>
+
+            <!-- Edit Panel -->
+            <div class="edit-panel" id="editPanel">
+                <h3>✏️ Edit Symbol: <span id="editSymbolId"></span></h3>
+
+                <div class="form-group">
+                    <label>Symbol Type</label>
+                    <select id="editSymbolType">
+                        {% for key, automation in automation_data.automation_types.items() %}
+                        <option value="{{ key }}">{{ automation.symbols[0] }} {{ automation.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Custom Image (Optional)</label>
+                    <input type="file" id="editSymbolImage" accept="image/*" onchange="uploadCustomImage()">
+                </div>
+
+                <div class="form-group">
+                    <label>Room/Location</label>
+                    <input type="text" id="editSymbolRoom" placeholder="e.g., Living Room">
+                </div>
+
+                <div class="form-group">
+                    <label>Products & Items</label>
+                    <div class="item-list" id="itemList">
+                        <!-- Dynamic items -->
+                    </div>
+                    <button class="add-item-btn" onclick="showAddItemDialog()">+ Add Product/Item</button>
+                </div>
+
+                <button class="save-symbol-btn" onclick="saveSymbolChanges()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editSymbolFromContext()">✏️ Edit Symbol</div>
+        <div class="context-menu-item" onclick="duplicateFromContext()">📋 Duplicate</div>
+        <div class="context-menu-item" onclick="deleteFromContext()">🗑️ Delete</div>
+    </div>
+
+    <script>
+        // Session data from server
+        const sessionData = {{ session_data | tojson }};
+        const automationData = {{ automation_data | tojson }};
+        let symbols = {{ initial_symbols | tojson }};
+
+        // Canvas setup
+        const canvas = document.getElementById('floorplanCanvas');
+        const ctx = canvas.getContext('2d');
+        let floorplanImage = new Image();
+
+        // State
+        let currentTool = 'select';
+        let selectedSymbols = new Set();
+        let editingSymbol = null;
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let dragOffset = { x: 0, y: 0 };
+        let isSelectionDrag = false;
+        let measurementStart = null;
+        let annotations = [];
+
+        // Load floor plan image
+        const floorplanFilename = sessionData.floorplan_image;
+        floorplanImage.onload = function() {
+            canvas.width = floorplanImage.width;
+            canvas.height = floorplanImage.height;
+            render();
+            updateSymbolList();
+            updatePricing();
+        };
+        floorplanImage.src = `/api/download/${floorplanFilename}`;
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw floor plan
+            ctx.drawImage(floorplanImage, 0, 0);
+
+            // Draw symbols
+            symbols.forEach(symbol => {
+                const x = symbol.x * canvas.width;
+                const y = symbol.y * canvas.height;
+
+                const isSelected = selectedSymbols.has(symbol.id);
+
+                // Draw symbol based on type
+                const automationType = symbol.automation_category || symbol.type;
+                let color, emoji;
+
+                switch(automationType) {
+                    case 'lighting': color = '#FFD700'; emoji = '💡'; break;
+                    case 'shading': color = '#8B4513'; emoji = '🪟'; break;
+                    case 'security_access': case 'security': color = '#DC143C'; emoji = '🔐'; break;
+                    case 'climate': color = '#00CED1'; emoji = '🌡️'; break;
+                    case 'audio': color = '#9370DB'; emoji = '🔊'; break;
+                    default: color = '#808080'; emoji = '•'; break;
+                }
+
+                // Draw circle
+                ctx.beginPath();
+                ctx.arc(x, y, isSelected ? 20 : 15, 0, 2 * Math.PI);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = isSelected ? 4 : 3;
+                ctx.stroke();
+
+                if (isSelected) {
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+                    ctx.fill();
+                }
+
+                // Draw label
+                ctx.font = 'bold 12px Arial';
+                ctx.fillStyle = color;
+                ctx.fillText(symbol.id || symbol.label, x + 25, y - 10);
+
+                // Draw emoji
+                ctx.font = '20px Arial';
+                ctx.fillText(emoji, x - 10, y + 8);
+            });
+        }
+
+        function updateSymbolList() {
+            const list = document.getElementById('symbolList');
+            list.innerHTML = '';
+
+            symbols.forEach(symbol => {
+                const div = document.createElement('div');
+                div.className = 'symbol-item' + (selectedSymbols.has(symbol.id) ? ' selected' : '');
+                div.onclick = () => selectSymbol(symbol.id, true);
+                div.ondblclick = () => editSymbol(symbol.id);
+
+                div.innerHTML = `
+                    <div class="symbol-item-header">
+                        <span class="symbol-id">${symbol.id}</span>
+                        <span class="symbol-type">${symbol.automation_category || symbol.type}</span>
+                    </div>
+                    <div class="symbol-room">${symbol.room || 'Unassigned'}</div>
+                `;
+
+                list.appendChild(div);
+            });
+        }
+
+        function updatePricing() {
+            let subtotal = 0;
+
+            symbols.forEach(symbol => {
+                const automationType = symbol.automation_category || symbol.type;
+                const tier = sessionData.tier || 'basic';
+
+                if (automationData.automation_types[automationType]) {
+                    const config = automationData.automation_types[automationType];
+                    const unitCost = config.base_cost_per_unit[tier] || 0;
+                    const laborHours = config.labor_hours[tier] || 0;
+                    const laborCost = laborHours * automationData.labor_rate;
+
+                    subtotal += unitCost + laborCost;
+                }
+
+                // Add custom items
+                if (symbol.items && symbol.items.length > 0) {
+                    symbol.items.forEach(item => {
+                        subtotal += parseFloat(item.price) || 0;
+                    });
+                }
+            });
+
+            const markup = subtotal * (automationData.markup_percentage / 100);
+            const total = subtotal + markup;
+
+            document.getElementById('priceSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('priceMarkup').textContent = `$${markup.toFixed(2)}`;
+            document.getElementById('priceTotal').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(tool + 'Tool').classList.add('active');
+
+            // Update cursor
+            if (tool === 'select') canvas.style.cursor = 'default';
+            else if (tool === 'place') canvas.style.cursor = 'crosshair';
+            else if (tool === 'measure') canvas.style.cursor = 'crosshair';
+            else if (tool === 'annotate') canvas.style.cursor = 'text';
+        }
+
+        function selectSymbolType(type, name) {
+            currentTool = 'place';
+            setTool('place');
+            canvas.dataset.placeType = type;
+            alert(`Click on the floor plan to place: ${name}`);
+        }
+
+        function selectSymbol(symbolId, scroll = false) {
+            if (selectedSymbols.has(symbolId)) {
+                selectedSymbols.delete(symbolId);
+            } else {
+                selectedSymbols.add(symbolId);
+            }
+            render();
+            updateSymbolList();
+        }
+
+        function editSymbol(symbolId) {
+            const symbol = symbols.find(s => s.id === symbolId);
+            if (!symbol) return;
+
+            editingSymbol = symbol;
+            const panel = document.getElementById('editPanel');
+            panel.classList.add('active');
+
+            document.getElementById('editSymbolId').textContent = symbol.id;
+            document.getElementById('editSymbolType').value = symbol.automation_category || symbol.type;
+            document.getElementById('editSymbolRoom').value = symbol.room || '';
+
+            // Populate items
+            const itemList = document.getElementById('itemList');
+            itemList.innerHTML = '';
+
+            if (symbol.items && symbol.items.length > 0) {
+                symbol.items.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'item-entry';
+                    div.innerHTML = `
+                        <div class="item-info">
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-price">$${item.price}</div>
+                        </div>
+                        <button class="delete-item-btn" onclick="deleteItem(${index})">Delete</button>
+                    `;
+                    itemList.appendChild(div);
+                });
+            }
+        }
+
+        function saveSymbolChanges() {
+            if (!editingSymbol) return;
+
+            editingSymbol.automation_category = document.getElementById('editSymbolType').value;
+            editingSymbol.room = document.getElementById('editSymbolRoom').value;
+
+            render();
+            updateSymbolList();
+            updatePricing();
+
+            document.getElementById('editPanel').classList.remove('active');
+            editingSymbol = null;
+
+            alert('✅ Symbol updated successfully!');
+        }
+
+        function showAddItemDialog() {
+            const name = prompt('Enter product/item name:');
+            if (!name) return;
+
+            const price = prompt('Enter price:');
+            if (!price) return;
+
+            if (!editingSymbol.items) editingSymbol.items = [];
+            editingSymbol.items.push({ name, price: parseFloat(price) });
+
+            editSymbol(editingSymbol.id);
+            updatePricing();
+        }
+
+        function deleteItem(index) {
+            if (!editingSymbol || !editingSymbol.items) return;
+            editingSymbol.items.splice(index, 1);
+            editSymbol(editingSymbol.id);
+            updatePricing();
+        }
+
+        function deleteSelected() {
+            if (selectedSymbols.size === 0) {
+                alert('No symbols selected');
+                return;
+            }
+
+            if (confirm(`Delete ${selectedSymbols.size} selected symbol(s)?`)) {
+                symbols = symbols.filter(s => !selectedSymbols.has(s.id));
+                selectedSymbols.clear();
+                render();
+                updateSymbolList();
+                updatePricing();
+            }
+        }
+
+        function duplicateSelected() {
+            if (selectedSymbols.size === 0) {
+                alert('No symbols selected');
+                return;
+            }
+
+            selectedSymbols.forEach(id => {
+                const symbol = symbols.find(s => s.id === id);
+                if (symbol) {
+                    const newSymbol = { ...symbol };
+                    newSymbol.id = symbol.id + '_copy_' + Date.now();
+                    newSymbol.x += 0.05;
+                    newSymbol.y += 0.05;
+                    symbols.push(newSymbol);
+                }
+            });
+
+            render();
+            updateSymbolList();
+            updatePricing();
+        }
+
+        function selectAll() {
+            selectedSymbols.clear();
+            symbols.forEach(s => selectedSymbols.add(s.id));
+            render();
+            updateSymbolList();
+        }
+
+        function clearSelection() {
+            selectedSymbols.clear();
+            render();
+            updateSymbolList();
+        }
+
+        // Canvas interactions
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / canvas.width;
+            const y = (e.clientY - rect.top) / canvas.height;
+
+            if (currentTool === 'select') {
+                // Check if clicking on symbol
+                let clickedSymbol = null;
+                symbols.forEach(symbol => {
+                    const dx = (symbol.x - x) * canvas.width;
+                    const dy = (symbol.y - y) * canvas.height;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 20) {
+                        clickedSymbol = symbol;
+                    }
+                });
+
+                if (clickedSymbol) {
+                    if (e.shiftKey) {
+                        selectSymbol(clickedSymbol.id);
+                    } else {
+                        if (!selectedSymbols.has(clickedSymbol.id)) {
+                            selectedSymbols.clear();
+                            selectedSymbols.add(clickedSymbol.id);
+                            render();
+                            updateSymbolList();
+                        }
+                        isDragging = true;
+                        dragOffset = { x: x - clickedSymbol.x, y: y - clickedSymbol.y };
+                    }
+                } else {
+                    // Start selection box
+                    if (!e.shiftKey) selectedSymbols.clear();
+                    isSelectionDrag = true;
+                    dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                }
+            } else if (currentTool === 'place') {
+                // Place new symbol
+                const type = canvas.dataset.placeType;
+                if (type) {
+                    const newSymbol = {
+                        id: type.toUpperCase()[0] + (symbols.length + 1),
+                        type: type,
+                        automation_category: type,
+                        x: x,
+                        y: y,
+                        room: '',
+                        items: []
+                    };
+                    symbols.push(newSymbol);
+                    render();
+                    updateSymbolList();
+                    updatePricing();
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / canvas.width;
+            const y = (e.clientY - rect.top) / canvas.height;
+
+            if (isDragging && selectedSymbols.size > 0) {
+                selectedSymbols.forEach(id => {
+                    const symbol = symbols.find(s => s.id === id);
+                    if (symbol) {
+                        symbol.x = Math.max(0, Math.min(1, x - dragOffset.x));
+                        symbol.y = Math.max(0, Math.min(1, y - dragOffset.y));
+                    }
+                });
+                render();
+            } else if (isSelectionDrag) {
+                const box = document.getElementById('selectionBox');
+                box.style.display = 'block';
+                const left = Math.min(dragStart.x, e.clientX - rect.left);
+                const top = Math.min(dragStart.y, e.clientY - rect.top);
+                const width = Math.abs(e.clientX - rect.left - dragStart.x);
+                const height = Math.abs(e.clientY - rect.top - dragStart.y);
+                box.style.left = left + 'px';
+                box.style.top = top + 'px';
+                box.style.width = width + 'px';
+                box.style.height = height + 'px';
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (isSelectionDrag) {
+                const rect = canvas.getBoundingClientRect();
+                const x1 = Math.min(dragStart.x, e.clientX - rect.left) / canvas.width;
+                const y1 = Math.min(dragStart.y, e.clientY - rect.top) / canvas.height;
+                const x2 = Math.max(dragStart.x, e.clientX - rect.left) / canvas.width;
+                const y2 = Math.max(dragStart.y, e.clientY - rect.top) / canvas.height;
+
+                symbols.forEach(symbol => {
+                    if (symbol.x >= x1 && symbol.x <= x2 && symbol.y >= y1 && symbol.y <= y2) {
+                        selectedSymbols.add(symbol.id);
+                    }
+                });
+
+                document.getElementById('selectionBox').style.display = 'none';
+                render();
+                updateSymbolList();
+            }
+
+            isDragging = false;
+            isSelectionDrag = false;
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / canvas.width;
+            const y = (e.clientY - rect.top) / canvas.height;
+
+            symbols.forEach(symbol => {
+                const dx = (symbol.x - x) * canvas.width;
+                const dy = (symbol.y - y) * canvas.height;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 20) {
+                    editSymbol(symbol.id);
+                }
+            });
+        });
+
+        // Context menu
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    deleteSelected();
+                }
+            } else if (e.key === 'Escape') {
+                clearSelection();
+            } else if (e.ctrlKey && e.key === 'a') {
+                e.preventDefault();
+                selectAll();
+            } else if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                duplicateSelected();
+            }
+        });
+
+        function saveToMapping() {
+            // Save current state to session
+            const exportData = {
+                session_id: sessionData.session_id,
+                symbols: symbols,
+                project_name: sessionData.project_name,
+                tier: sessionData.tier
+            };
+
+            fetch('/api/takeoffs/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exportData)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to mapping tool with session
+                    window.location.href = '/mapping?session=' + sessionData.session_id;
+                } else {
+                    alert('❌ Failed to save: ' + data.error);
+                }
+            })
+            .catch(err => {
+                alert('❌ Error: ' + err.message);
+            });
+        }
+
+        async function exportResults() {
+            if (confirm('Export final results and generate quote?')) {
+                const exportData = {
+                    session_id: sessionData.session_id,
+                    symbols: symbols,
+                    project_name: sessionData.project_name,
+                    tier: sessionData.tier
+                };
+
+                try {
+                    const response = await fetch('/api/takeoffs/export', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(exportData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ Export successful! Downloading files...');
+                        // Download files
+                        if (data.annotated_pdf) {
+                            window.open(data.annotated_pdf, '_blank');
+                        }
+                        if (data.quote_pdf) {
+                            window.open(data.quote_pdf, '_blank');
+                        }
+                    } else {
+                        alert('❌ Export failed: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('❌ Export failed: ' + error.message);
+                }
+            }
+        }
+
+        function uploadCustomImage() {
+            const file = document.getElementById('editSymbolImage').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (editingSymbol) {
+                    editingSymbol.custom_image = e.target.result;
+                    alert('✅ Custom image uploaded!');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function editSymbolFromContext() {
+            if (selectedSymbols.size > 0) {
+                editSymbol(Array.from(selectedSymbols)[0]);
+            }
+        }
+
+        function duplicateFromContext() {
+            duplicateSelected();
+        }
+
+        function deleteFromContext() {
+            deleteSelected();
+        }
+    </script>
+</body>
+</html>
