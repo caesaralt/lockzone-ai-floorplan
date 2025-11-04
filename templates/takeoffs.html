@@ -633,26 +633,49 @@
                     default: color = '#808080'; emoji = '•'; break;
                 }
 
-                // Draw circle
-                ctx.beginPath();
-                ctx.arc(x, y, isSelected ? 20 : 15, 0, 2 * Math.PI);
-                ctx.strokeStyle = color;
-                ctx.lineWidth = isSelected ? 4 : 3;
-                ctx.stroke();
+                // Check if symbol has custom image
+                if (symbol.custom_image_data) {
+                    // Draw custom image
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(x, y, isSelected ? 25 : 20, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(img, x - (isSelected ? 25 : 20), y - (isSelected ? 25 : 20), (isSelected ? 50 : 40), (isSelected ? 50 : 40));
+                        ctx.restore();
 
-                if (isSelected) {
-                    ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
-                    ctx.fill();
+                        if (isSelected) {
+                            ctx.beginPath();
+                            ctx.arc(x, y, 25, 0, 2 * Math.PI);
+                            ctx.strokeStyle = '#2ecc71';
+                            ctx.lineWidth = 4;
+                            ctx.stroke();
+                        }
+                    };
+                    img.src = symbol.custom_image_data;
+                } else {
+                    // Draw default circle and emoji
+                    ctx.beginPath();
+                    ctx.arc(x, y, isSelected ? 20 : 15, 0, 2 * Math.PI);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = isSelected ? 4 : 3;
+                    ctx.stroke();
+
+                    if (isSelected) {
+                        ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+                        ctx.fill();
+                    }
+
+                    // Draw emoji
+                    ctx.font = '20px Arial';
+                    ctx.fillText(emoji, x - 10, y + 8);
                 }
 
                 // Draw label
                 ctx.font = 'bold 12px Arial';
                 ctx.fillStyle = color;
                 ctx.fillText(symbol.id || symbol.label, x + 25, y - 10);
-
-                // Draw emoji
-                ctx.font = '20px Arial';
-                ctx.fillText(emoji, x - 10, y + 8);
             });
         }
 
@@ -697,7 +720,9 @@
                 // Add custom items
                 if (symbol.items && symbol.items.length > 0) {
                     symbol.items.forEach(item => {
-                        subtotal += parseFloat(item.price) || 0;
+                        const price = parseFloat(item.price) || 0;
+                        const quantity = parseInt(item.quantity) || 1;
+                        subtotal += price * quantity;
                     });
                 }
             });
@@ -761,10 +786,13 @@
                 symbol.items.forEach((item, index) => {
                     const div = document.createElement('div');
                     div.className = 'item-entry';
+                    const quantity = item.quantity || 1;
+                    const price = parseFloat(item.price) || 0;
+                    const total = quantity * price;
                     div.innerHTML = `
                         <div class="item-info">
                             <div class="item-name">${item.name}</div>
-                            <div class="item-price">$${item.price}</div>
+                            <div class="item-price">$${price.toFixed(2)} × ${quantity} = $${total.toFixed(2)}</div>
                         </div>
                         <button class="delete-item-btn" onclick="deleteItem(${index})">Delete</button>
                     `;
@@ -793,11 +821,18 @@
             const name = prompt('Enter product/item name:');
             if (!name) return;
 
-            const price = prompt('Enter price:');
+            const price = prompt('Enter price per unit:');
             if (!price) return;
 
+            const quantity = prompt('Enter quantity:', '1');
+            if (!quantity) return;
+
             if (!editingSymbol.items) editingSymbol.items = [];
-            editingSymbol.items.push({ name, price: parseFloat(price) });
+            editingSymbol.items.push({
+                name: name,
+                price: parseFloat(price),
+                quantity: parseInt(quantity) || 1
+            });
 
             editSymbol(editingSymbol.id);
             updatePricing();
@@ -1088,8 +1123,9 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 if (editingSymbol) {
-                    editingSymbol.custom_image = e.target.result;
-                    alert('✅ Custom image uploaded!');
+                    editingSymbol.custom_image_data = e.target.result;
+                    render();
+                    alert('✅ Custom image uploaded to THIS symbol only!');
                 }
             };
             reader.readAsDataURL(file);

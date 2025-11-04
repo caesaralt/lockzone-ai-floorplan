@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Floor Plan Editor - {{ project_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .editor-container {
+            display: flex;
+            height: 100vh;
+            max-width: 100vw;
+        }
+
+        .canvas-area {
+            flex: 1;
+            background: #1a1a2e;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: white;
+            border-radius: 8px;
+            overflow: auto;
+            max-width: 95%;
+            max-height: 95vh;
+        }
+
+        #floorplanCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #3498db;
+            background: rgba(52, 152, 219, 0.2);
+            pointer-events: none;
+            display: none;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: #16213e;
+            color: white;
+            padding: 25px;
+            overflow-y: auto;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.3);
+        }
+
+        .sidebar h2 {
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            color: #3498db;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .symbol-palette {
+            margin-bottom: 30px;
+        }
+
+        .symbol-palette h3 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #e74c3c;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 8px;
+        }
+
+        .symbol-button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .symbol-button:hover {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+        }
+
+        .symbol-button.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #2ecc71;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.6);
+        }
+
+        .symbol-button .emoji {
+            font-size: 1.5em;
+            margin-right: 12px;
+        }
+
+        .price-display {
+            background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 2px solid #2ecc71;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        .price-display h3 {
+            color: #2ecc71;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #34495e;
+            font-size: 0.95em;
+        }
+
+        .price-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.4em;
+            color: #2ecc71;
+            padding-top: 20px;
+            margin-top: 15px;
+            border-top: 3px solid #2ecc71;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .instructions strong {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #ecf0f1;
+        }
+
+        .placed-symbols-list {
+            max-height: 350px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+            border: 2px solid #3498db;
+        }
+
+        .placed-symbols-list h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .symbol-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(52, 73, 94, 0.6);
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .symbol-item:hover {
+            background: #3498db;
+            transform: translateX(5px);
+        }
+
+        .symbol-item.selected {
+            background: #2ecc71;
+            border: 2px solid #27ae60;
+        }
+
+        .delete-symbol {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .delete-symbol:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .selection-info {
+            background: #f39c12;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .selection-info.show {
+            display: block;
+        }
+
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .toolbar button {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a252f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3498db;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2980b9;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Processing...</h3>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <div class="canvas-area">
+            <div class="toolbar">
+                <button onclick="selectAll()">📋 Select All</button>
+                <button onclick="deselectAll()">✖️ Deselect</button>
+                <button onclick="deleteSelected()">🗑️ Delete Selected</button>
+                <button onclick="zoomIn()">🔍+ Zoom In</button>
+                <button onclick="zoomOut()">🔍- Zoom Out</button>
+                <button onclick="resetZoom()">↺ Reset Zoom</button>
+                <button id="editModeBtn" onclick="toggleEditMode()">✏️ Edit Automation</button>
+                <button onclick="downloadQuote()">📄 Download Quote</button>
+                <button onclick="downloadFloorplan()">🏠 Download Floorplan</button>
+            </div>
+            
+            <div class="canvas-wrapper">
+                <canvas id="floorplanCanvas"></canvas>
+                <div class="selection-box" id="selectionBox"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"><h2 style="margin: 0;">🎨 Floor Plan Editor</h2><a href="/" style="background: #556B2F; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px;">🏠 Home</a></div>
+
+            <div class="selection-info" id="selectionInfo">
+                0 symbols selected
+            </div>
+
+            <div class="instructions">
+                <strong>📖 Quick Guide:</strong>
+                • Click symbol type, then click floor plan to place<br>
+                • Click symbol to select it<br>
+                • Shift+Click to select multiple<br>
+                • Drag to move symbols<br>
+                • Drag empty area for selection box<br>
+                • Selected symbols move together!
+            </div>
+
+            <div class="price-display">
+                <h3>💰 Live Quote</h3>
+                <div class="price-item">
+                    <span>💡 Lighting (<span id="lightingCount">0</span>):</span>
+                    <span id="lightingCost">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>🪟 Shading (<span id="shadingCount">0</span>):</span>
+                    <span id="shadingCost">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>🔐 Security (<span id="securityCount">0</span>):</span>
+                    <span id="securityCost">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>🌡 Climate (<span id="climateCount">0</span>):</span>
+                    <span id="climateCost">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>🔊 Audio (<span id="audioCount">0</span>):</span>
+                    <span id="audioCost">$0.00</span>
+                </div>
+                <div class="price-item">
+                    <span>TOTAL:</span>
+                    <span id="totalCost">$0.00</span>
+                </div>
+            </div>
+
+            <div class="symbol-palette">
+                <h3>➕ Add Symbols</h3>
+                <button class="symbol-button" data-type="lighting" data-symbol="💡">
+                    <span class="emoji">💡</span>
+                    <span>Add Lighting Control</span>
+                </button>
+                <button class="symbol-button" data-type="shading" data-symbol="🪟">
+                    <span class="emoji">🪟</span>
+                    <span>Add Shading Control</span>
+                </button>
+                <button class="symbol-button" data-type="security_access" data-symbol="🔐">
+                    <span class="emoji">🔐</span>
+                    <span>Add Security & Access</span>
+                </button>
+                <button class="symbol-button" data-type="climate" data-symbol="🌡">
+                    <span class="emoji">🌡</span>
+                    <span>Add Climate Control</span>
+                </button>
+                <button class="symbol-button" data-type="audio" data-symbol="🔊">
+                    <span class="emoji">🔊</span>
+                    <span>Add Audio System</span>
+                </button>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="approveAndGeneratePDF()">
+                    ✅ Approve & Generate PDF
+                </button>
+                <button class="btn btn-warning" onclick="uploadToKnowledge()">
+                    🧠 Upload Mapping to AI Knowledge
+                </button>
+                <button class="btn btn-secondary" onclick="undo()">
+                    ↩️ Undo Last Action
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    🗑️ Clear All Symbols
+                </button>
+            </div>
+
+            <div class="placed-symbols-list">
+                <h3>📍 Placed Symbols (<span id="totalSymbolCount">0</span>)</h3>
+                <div id="symbolsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const PROJECT_ID = "{{ project_id }}";
+        const PROJECT_NAME = "{{ project_name }}";
+        const TIER = "{{ tier }}";
+        
+        // Pricing data
+        const pricing = {{ pricing | tojson }};
+        const markup = 0.20;
+
+        // State
+        let floorplanImage = new Image();
+        let symbols = {{ initial_symbols | tojson }};
+        let selectedSymbolType = null;
+        let selectedSymbol = null;
+        let selectedSymbols = new Set();
+        let isDragging = false;
+        let isSelectionDrag = false;
+        let dragStart = { x: 0, y: 0 };
+        let dragOffset = { x: 0, y: 0 };
+        let canvas = null;
+        let ctx = null;
+        let history = [];
+        const MAX_HISTORY = 50;
+
+        // Zoom state
+        let zoomLevel = 1.0;
+        let zoomMin = 0.25;
+        let zoomMax = 3.0;
+        let panOffset = { x: 0, y: 0 };
+        let isPanning = false;
+
+        // Edit mode state
+        let isEditMode = false;
+
+        // Initialize
+        window.onload = function() {
+            canvas = document.getElementById('floorplanCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Load floor plan image
+            floorplanImage.onload = function() {
+                canvas.width = floorplanImage.width;
+                canvas.height = floorplanImage.height;
+                redrawCanvas();
+                updatePricing();
+                updateSymbolsList();
+            };
+            
+            floorplanImage.src = "{{ floor_plan_image }}";
+
+            // Symbol button clicks
+            document.querySelectorAll('.symbol-button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.symbol-button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedSymbolType = this.dataset.type;
+                    selectedSymbol = this.dataset.symbol;
+                    deselectAll();
+                });
+            });
+
+            // Canvas events
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    deleteSelected();
+                }
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                }
+                if (e.ctrlKey && e.key === 'a') {
+                    e.preventDefault();
+                    selectAll();
+                }
+            });
+
+            saveHistory();
+        };
+
+        function handleCanvasClick(e) {
+            if (isDragging || isSelectionDrag) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Check if clicking on existing symbol
+            let clickedSymbol = null;
+            for (let i = symbols.length - 1; i >= 0; i--) {
+                const sym = symbols[i];
+                if (Math.abs(x - sym.x) < 20 && Math.abs(y - sym.y) < 20) {
+                    clickedSymbol = sym;
+                    break;
+                }
+            }
+
+            if (clickedSymbol) {
+                // Select/deselect symbol
+                if (e.shiftKey) {
+                    if (selectedSymbols.has(clickedSymbol.id)) {
+                        selectedSymbols.delete(clickedSymbol.id);
+                    } else {
+                        selectedSymbols.add(clickedSymbol.id);
+                    }
+                } else {
+                    selectedSymbols.clear();
+                    selectedSymbols.add(clickedSymbol.id);
+                }
+                updateSelectionInfo();
+                redrawCanvas();
+            } else if (selectedSymbolType) {
+                // Place new symbol
+                saveHistory();
+                symbols.push({
+                    type: selectedSymbolType,
+                    symbol: selectedSymbol,
+                    x: x,
+                    y: y,
+                    id: Date.now() + Math.random()
+                });
+                redrawCanvas();
+                updatePricing();
+                updateSymbolsList();
+            }
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Check if clicking on selected symbol
+            for (let sym of symbols) {
+                if (selectedSymbols.has(sym.id)) {
+                    if (Math.abs(x - sym.x) < 20 && Math.abs(y - sym.y) < 20) {
+                        isDragging = true;
+                        dragOffset = { x: x - sym.x, y: y - sym.y };
+                        canvas.style.cursor = 'grabbing';
+                        return;
+                    }
+                }
+            }
+
+            // Start selection box
+            if (!selectedSymbolType && selectedSymbols.size === 0) {
+                isSelectionDrag = true;
+                dragStart = { x, y };
+                document.getElementById('selectionBox').style.display = 'block';
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isDragging) {
+                // Move all selected symbols
+                const dx = x - dragOffset.x;
+                const dy = y - dragOffset.y;
+                
+                symbols.forEach(sym => {
+                    if (selectedSymbols.has(sym.id)) {
+                        sym.x = dx;
+                        sym.y = dy;
+                    }
+                });
+                
+                dragOffset = { x: dx, y: dy };
+                redrawCanvas();
+            } else if (isSelectionDrag) {
+                // Update selection box
+                const box = document.getElementById('selectionBox');
+                const left = Math.min(dragStart.x, x);
+                const top = Math.min(dragStart.y, y);
+                const width = Math.abs(x - dragStart.x);
+                const height = Math.abs(y - dragStart.y);
+                
+                box.style.left = (rect.left + left) + 'px';
+                box.style.top = (rect.top + top) + 'px';
+                box.style.width = width + 'px';
+                box.style.height = height + 'px';
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (isDragging) {
+                saveHistory();
+                isDragging = false;
+                canvas.style.cursor = 'crosshair';
+            }
+            
+            if (isSelectionDrag) {
+                // Select symbols in box
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const left = Math.min(dragStart.x, x);
+                const top = Math.min(dragStart.y, y);
+                const right = Math.max(dragStart.x, x);
+                const bottom = Math.max(dragStart.y, y);
+                
+                selectedSymbols.clear();
+                symbols.forEach(sym => {
+                    if (sym.x >= left && sym.x <= right && sym.y >= top && sym.y <= bottom) {
+                        selectedSymbols.add(sym.id);
+                    }
+                });
+                
+                document.getElementById('selectionBox').style.display = 'none';
+                isSelectionDrag = false;
+                updateSelectionInfo();
+                redrawCanvas();
+            }
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(floorplanImage, 0, 0);
+
+            ctx.font = '28px Arial';
+            symbols.forEach(sym => {
+                if (selectedSymbols.has(sym.id)) {
+                    // Draw selection highlight
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(sym.x, sym.y, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2ecc71';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                // Draw symbol
+                ctx.fillText(sym.symbol, sym.x - 14, sym.y + 10);
+            });
+        }
+
+        function updatePricing() {
+            const counts = {
+                lighting: 0,
+                shading: 0,
+                security_access: 0,
+                climate: 0,
+                audio: 0
+            };
+
+            symbols.forEach(sym => counts[sym.type]++);
+
+            let total = 0;
+            for (let type in counts) {
+                const count = counts[type];
+                const cost = count * pricing[type][TIER];
+                total += cost;
+                
+                const displayType = type.replace('_', '');
+                document.getElementById(displayType + 'Count').textContent = count;
+                document.getElementById(displayType + 'Cost').textContent = '$' + cost.toFixed(2);
+            }
+
+            const grandTotal = total * (1 + markup);
+            document.getElementById('totalCost').textContent = '$' + grandTotal.toFixed(2);
+            document.getElementById('totalSymbolCount').textContent = symbols.length;
+        }
+
+        function updateSymbolsList() {
+            const list = document.getElementById('symbolsList');
+            list.innerHTML = '';
+            symbols.forEach((sym, idx) => {
+                const item = document.createElement('div');
+                item.className = 'symbol-item' + (selectedSymbols.has(sym.id) ? ' selected' : '');
+                item.innerHTML = `
+                    <span>${sym.symbol} ${sym.type.replace('_', ' ')}</span>
+                    <button class="delete-symbol" onclick="deleteSymbol(${idx})">✖</button>
+                `;
+                item.onclick = function(e) {
+                    if (e.target.tagName !== 'BUTTON') {
+                        if (e.shiftKey) {
+                            if (selectedSymbols.has(sym.id)) {
+                                selectedSymbols.delete(sym.id);
+                            } else {
+                                selectedSymbols.add(sym.id);
+                            }
+                        } else {
+                            selectedSymbols.clear();
+                            selectedSymbols.add(sym.id);
+                        }
+                        updateSelectionInfo();
+                        updateSymbolsList();
+                        redrawCanvas();
+                    }
+                };
+                list.appendChild(item);
+            });
+        }
+
+        function updateSelectionInfo() {
+            const info = document.getElementById('selectionInfo');
+            if (selectedSymbols.size > 0) {
+                info.textContent = `${selectedSymbols.size} symbol${selectedSymbols.size > 1 ? 's' : ''} selected`;
+                info.classList.add('show');
+            } else {
+                info.classList.remove('show');
+            }
+        }
+
+        function deleteSymbol(idx) {
+            saveHistory();
+            const sym = symbols[idx];
+            selectedSymbols.delete(sym.id);
+            symbols.splice(idx, 1);
+            redrawCanvas();
+            updatePricing();
+            updateSymbolsList();
+            updateSelectionInfo();
+        }
+
+        function deleteSelected() {
+            if (selectedSymbols.size === 0) {
+                alert('No symbols selected');
+                return;
+            }
+            
+            if (confirm(`Delete ${selectedSymbols.size} selected symbol(s)?`)) {
+                saveHistory();
+                symbols = symbols.filter(sym => !selectedSymbols.has(sym.id));
+                selectedSymbols.clear();
+                redrawCanvas();
+                updatePricing();
+                updateSymbolsList();
+                updateSelectionInfo();
+            }
+        }
+
+        function selectAll() {
+            selectedSymbols.clear();
+            symbols.forEach(sym => selectedSymbols.add(sym.id));
+            updateSelectionInfo();
+            updateSymbolsList();
+            redrawCanvas();
+        }
+
+        function deselectAll() {
+            selectedSymbols.clear();
+            updateSelectionInfo();
+            updateSymbolsList();
+            redrawCanvas();
+        }
+
+        function clearAll() {
+            if (confirm('Clear all symbols?')) {
+                saveHistory();
+                symbols = [];
+                selectedSymbols.clear();
+                redrawCanvas();
+                updatePricing();
+                updateSymbolsList();
+                updateSelectionInfo();
+            }
+        }
+
+        function saveHistory() {
+            history.push(JSON.parse(JSON.stringify(symbols)));
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+            }
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                symbols = history.pop();
+                selectedSymbols.clear();
+                redrawCanvas();
+                updatePricing();
+                updateSymbolsList();
+                updateSelectionInfo();
+            }
+        }
+
+        async function approveAndGeneratePDF() {
+            document.getElementById('loadingOverlay').classList.add('show');
+            
+            try {
+                const response = await fetch('/api/generate-final-quote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_id: PROJECT_ID,
+                        project_name: PROJECT_NAME,
+                        symbols: symbols,
+                        tier: TIER
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Quote generated successfully!');
+                    window.location.href = '/download/' + data.filename;
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error);
+            } finally {
+                document.getElementById('loadingOverlay').classList.remove('show');
+            }
+        }
+
+        async function uploadToKnowledge() {
+            if (symbols.length === 0) {
+                alert('⚠️ No symbols to upload!');
+                return;
+            }
+
+            const feedback = prompt(
+                '🧠 Describe what you corrected or what the AI should learn from this placement:\n\n' +
+                'Example: "Add 3 lights per bedroom, 4 in living room, shading only on north-facing windows"'
+            );
+
+            if (!feedback) return;
+
+            document.getElementById('loadingOverlay').classList.add('show');
+
+            try {
+                const response = await fetch('/api/upload-placement-knowledge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_id: PROJECT_ID,
+                        project_name: PROJECT_NAME,
+                        symbols: symbols,
+                        feedback: feedback,
+                        tier: TIER
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Knowledge uploaded! Future placements will be smarter!');
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error);
+            } finally {
+                document.getElementById('loadingOverlay').classList.remove('show');
+            }
+        }
+    </script>
+<!-- AI Chat Bubble & Panel - Add this before </body> -->
+<div id="aiChatBubble" class="ai-chat-bubble" onclick="toggleAIChat()">
+    🧠
+</div>
+
+<div id="aiChatPanel" class="ai-chat-panel">
+    <div class="ai-chat-header">
+        <div style="flex: 1;">
+            <h3>🤖 AI Assistant</h3>
+            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                <button id="agentModeToggle" onclick="toggleAgentMode()" style="
+                    background: #999;
+                    color: white;
+                    border: none;
+                    padding: 5px 12px;
+                    border-radius: 5px;
+                    font-size: 0.85em;
+                    cursor: pointer;
+                ">🔒 Learning: OFF</button>
+                <button onclick="document.getElementById('aiChatFileInput').click()" style="
+                    background: #556B2F;
+                    color: white;
+                    border: none;
+                    padding: 5px 12px;
+                    border-radius: 5px;
+                    font-size: 0.85em;
+                    cursor: pointer;
+                ">📎 Upload</button>
+                <input type="file" id="aiChatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadAIChatFiles()">
+            </div>
+            <div id="agentModeStatus" style="font-size: 0.75em; color: #999; margin-top: 5px;">🔒 Read-only mode</div>
+        </div>
+        <button onclick="toggleAIChat()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">×</button>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+        <div class="ai-message">
+            <strong>🤖 AI:</strong> Hi! I can help with canvas questions. Use 📎 Upload to teach me with documents. Toggle Learning Mode ON to let me modify the app and learn from you.
+        </div>
+    </div>
+    <div class="ai-chat-input">
+        <input type="text" id="aiChatInput" placeholder="Ask me anything...">
+        <button id="aiChatSendBtn" onclick="sendAIMessage()">Send</button>
+    </div>
+</div>
+
+<style>
+    .ai-chat-bubble {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(85, 107, 47, 0.4);
+        z-index: 9998;
+        transition: all 0.3s;
+    }
+
+    .ai-chat-bubble:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(85, 107, 47, 0.6);
+    }
+
+    .ai-chat-panel {
+        position: fixed;
+        bottom: 100px;
+        right: 30px;
+        width: 400px;
+        height: 500px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        display: none;
+        flex-direction: column;
+        z-index: 9999;
+    }
+
+    .ai-chat-panel.active {
+        display: flex;
+    }
+
+    .ai-chat-header {
+        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 16px 16px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .ai-chat-header h3 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .ai-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f8f8;
+    }
+
+    .ai-message {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .user-message {
+        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        text-align: right;
+    }
+
+    .ai-chat-input {
+        padding: 15px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        gap: 10px;
+    }
+
+    .ai-chat-input input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .ai-chat-input button {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .ai-chat-input button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
+<script>
+    let agentMode = false;
+    let conversationHistory = [];
+
+    function toggleAIChat() {
+        document.getElementById('aiChatPanel').classList.toggle('active');
+    }
+
+    function toggleAgentMode() {
+        agentMode = !agentMode;
+        const btn = document.getElementById('agentModeToggle');
+        const status = document.getElementById('agentModeStatus');
+        if (agentMode) {
+            btn.textContent = '🔓 Learning: ON';
+            btn.style.background = '#6B8E23';
+            status.textContent = '🔓 Can modify app & learn';
+            status.style.color = '#6B8E23';
+        } else {
+            btn.textContent = '🔒 Learning: OFF';
+            btn.style.background = '#999';
+            status.textContent = '🔒 Read-only mode';
+            status.style.color = '#999';
+        }
+    }
+
+    async function uploadAIChatFiles() {
+        const fileInput = document.getElementById('aiChatFileInput');
+        const messages = document.getElementById('aiChatMessages');
+
+        if (!fileInput.files || fileInput.files.length === 0) return;
+
+        const formData = new FormData();
+        for (let file of fileInput.files) {
+            formData.append('files', file);
+        }
+        formData.append('notes', `Uploaded via Canvas chat on ${new Date().toLocaleString()}`);
+
+        try {
+            messages.innerHTML += `<div style="text-align: center; padding: 8px; color: #999; font-size: 0.9em;">Uploading ${fileInput.files.length} file(s)...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            const response = await fetch('/api/upload-learning-data', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                messages.innerHTML += `<div class="ai-message" style="background: #d4edda;"><strong>✅ System:</strong> Uploaded and learned from ${fileInput.files.length} file(s)!</div>`;
+                fileInput.value = '';
+            } else {
+                messages.innerHTML += `<div class="ai-message" style="background: #f8d7da;"><strong>❌ Error:</strong> ${data.error}</div>`;
+            }
+
+            messages.scrollTop = messages.scrollHeight;
+        } catch (error) {
+            messages.innerHTML += `<div class="ai-message" style="background: #f8d7da;"><strong>❌ Error:</strong> ${error.message}</div>`;
+            messages.scrollTop = messages.scrollHeight;
+        }
+    }
+
+    async function sendAIMessage() {
+        const input = document.getElementById('aiChatInput');
+        const messages = document.getElementById('aiChatMessages');
+        const sendBtn = document.getElementById('aiChatSendBtn');
+        const question = input.value.trim();
+        
+        if (!question) return;
+        
+        // Add user message
+        messages.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
+        input.value = '';
+        sendBtn.disabled = true;
+
+        conversationHistory.push({ role: 'user', content: question });
+
+        // Scroll to bottom
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+            const response = await fetch('/api/ai-chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    message: question,
+                    agent_mode: agentMode,
+                    conversation_history: conversationHistory.slice(-10),
+                    current_page: 'canvas'
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.response) {
+                messages.innerHTML += `<div class="ai-message"><strong>🤖 AI:</strong> ${data.response.replace(/\n/g, '<br>')}</div>`;
+                conversationHistory.push({ role: 'assistant', content: data.response });
+            }
+
+            if (data.actions_taken && data.actions_taken.length > 0) {
+                data.actions_taken.forEach(action => {
+                    messages.innerHTML += `<div class="ai-message" style="background: #e8f5e9;"><strong>✅ Action:</strong> ${action.description || action.action}</div>`;
+                });
+            }
+        } catch (error) {
+            messages.innerHTML += `<div class="ai-message" style="background: #fee;"><strong>❌ Error:</strong> ${error.message}</div>`;
+        }
+        
+        sendBtn.disabled = false;
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Enter key to send
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('aiChatInput');
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendAIMessage();
+                }
+            });
+        }
+    });
+
+    // ============================================================================
+    // ZOOM FUNCTIONALITY
+    // ============================================================================
+
+    function handleWheel(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.min(Math.max(zoomLevel * delta, zoomMin), zoomMax);
+
+        if (newZoom !== zoomLevel) {
+            zoomLevel = newZoom;
+            applyZoom();
+        }
+    }
+
+    function zoomIn() {
+        zoomLevel = Math.min(zoomLevel * 1.2, zoomMax);
+        applyZoom();
+    }
+
+    function zoomOut() {
+        zoomLevel = Math.max(zoomLevel * 0.8, zoomMin);
+        applyZoom();
+    }
+
+    function resetZoom() {
+        zoomLevel = 1.0;
+        panOffset = { x: 0, y: 0 };
+        applyZoom();
+    }
+
+    function applyZoom() {
+        const wrapper = document.querySelector('.canvas-wrapper');
+        canvas.style.transform = `scale(${zoomLevel})`;
+        canvas.style.transformOrigin = 'center center';
+        redrawCanvas();
+    }
+
+    // ============================================================================
+    // EDIT AUTOMATION MODE
+    // ============================================================================
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const btn = document.getElementById('editModeBtn');
+
+        if (isEditMode) {
+            btn.textContent = '✅ Exit Edit Mode';
+            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+            canvas.style.cursor = 'pointer';
+            alert('✏️ Edit Mode Active!\n\nClick on any symbol to:\n• Upload custom image\n• Add products and prices\n• Modify symbol properties\n\nClick "Exit Edit Mode" when done.');
+        } else {
+            btn.textContent = '✏️ Edit Automation';
+            btn.style.background = '';
+            canvas.style.cursor = 'crosshair';
+        }
+    }
+
+    // Override handleCanvasClick to support edit mode
+    const originalHandleCanvasClick = handleCanvasClick;
+    handleCanvasClick = function(e) {
+        if (isEditMode) {
+            handleEditModeClick(e);
+        } else {
+            originalHandleCanvasClick(e);
+        }
+    };
+
+    function handleEditModeClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top) / zoomLevel;
+
+        // Find clicked symbol
+        let clickedSymbol = null;
+        for (let i = symbols.length - 1; i >= 0; i--) {
+            const sym = symbols[i];
+            if (Math.abs(x - sym.x) < 20 && Math.abs(y - sym.y) < 20) {
+                clickedSymbol = sym;
+                break;
+            }
+        }
+
+        if (clickedSymbol) {
+            openEditDialog(clickedSymbol);
+        } else {
+            alert('Click on a symbol to edit it.');
+        }
+    }
+
+    function openEditDialog(symbol) {
+        const customImage = symbol.customImage || '';
+        const products = symbol.products || [];
+        const productsText = products.map(p => `${p.name} - $${p.price}`).join('\\n');
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; max-width: 500px; width: 90%;';
+
+        dialog.innerHTML = `
+            <h3 style="margin-top: 0; color: #333;">Edit ${symbol.symbol} ${symbol.type}</h3>
+
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555;">Custom Symbol Image:</label>
+                <input type="file" id="editSymbolImage" accept="image/*" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                ${customImage ? `<p style="font-size: 12px; color: #27ae60; margin-top: 5px;">✓ Custom image set</p>` : ''}
+            </div>
+
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555;">Products & Prices:</label>
+                <textarea id="editProductsList" placeholder="Enter one product per line:\\nProduct Name - $100\\nAnother Product - $200"
+                    style="width: 100%; height: 120px; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 13px;">${productsText}</textarea>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">Format: Product Name - $Price (one per line)</p>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px;">
+                <button onclick="closeEditDialog()" style="padding: 12px 24px; background: #95a5a6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
+                <button onclick="saveSymbolEdits('${symbol.id}')" style="padding: 12px 24px; background: #2ecc71; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Changes</button>
+            </div>
+        `;
+
+        dialog.id = 'editDialog';
+        document.body.appendChild(dialog);
+
+        // Handle custom image upload
+        document.getElementById('editSymbolImage').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    symbol.customImage = event.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+    }
+
+    function closeEditDialog() {
+        const dialog = document.getElementById('editDialog');
+        if (dialog) {
+            dialog.remove();
+        }
+    }
+
+    function saveSymbolEdits(symbolId) {
+        const productsText = document.getElementById('editProductsList').value;
+
+        // Parse products
+        const products = [];
+        if (productsText.trim()) {
+            const lines = productsText.split('\\n');
+            lines.forEach(line => {
+                const match = line.match(/(.+?)\\s*-\\s*\\$?([0-9.]+)/);
+                if (match) {
+                    products.push({
+                        name: match[1].trim(),
+                        price: parseFloat(match[2])
+                    });
+                }
+            });
+        }
+
+        // Update symbol
+        const symbol = symbols.find(s => s.id == symbolId);
+        if (symbol) {
+            symbol.products = products;
+            saveHistory();
+            updatePricing();
+            redrawCanvas();
+        }
+
+        closeEditDialog();
+        alert('✅ Symbol updated successfully!');
+    }
+
+    // ============================================================================
+    // DOWNLOAD FUNCTIONS
+    // ============================================================================
+
+    async function downloadQuote() {
+        document.getElementById('loadingOverlay').classList.add('show');
+
+        try {
+            const response = await fetch('/api/generate-quote-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: PROJECT_ID,
+                    project_name: PROJECT_NAME,
+                    symbols: symbols,
+                    tier: TIER
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '/download/' + data.filename;
+            } else {
+                alert('❌ Error generating quote: ' + data.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        } finally {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+    }
+
+    async function downloadFloorplan() {
+        document.getElementById('loadingOverlay').classList.add('show');
+
+        try {
+            // Generate annotated floorplan with current symbols
+            const response = await fetch('/api/generate-annotated-floorplan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: PROJECT_ID,
+                    symbols: symbols
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '/download/' + data.filename;
+            } else {
+                alert('❌ Error generating floorplan: ' + data.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        } finally {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+    }
+</script>
+</body>
+</html>

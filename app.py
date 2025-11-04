@@ -1451,20 +1451,13 @@ def quotes_page():
 
 @app.route('/canvas')
 def canvas_page():
+    """Professional canvas editor with PDF upload, pan, zoom"""
     automation_data = load_data()
-    pricing = automation_data.get('pricing', {})
-    # Ensure pricing has all required fields
-    if not pricing:
-        pricing = {
-            'basic': 0,
-            'premium': 0,
-            'deluxe': 0
-        }
     return render_template('canvas.html',
                          automation_data=automation_data,
-                         pricing=pricing,
                          initial_symbols=[],
-                         tier='basic')
+                         tier='basic',
+                         project_name='New Project')
 
 @app.route('/learning')
 def learning_page():
