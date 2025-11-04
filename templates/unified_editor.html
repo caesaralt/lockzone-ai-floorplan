@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas Editor - {{ project_name }}</title>
+    <title>Floor Plan Editor - {{ project_name }}</title>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,7 @@
         .top-toolbar {
             background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
             padding: 10px 20px;
-            border-bottom: 2px solid #3498db;
+            border-bottom: 2px solid #e74c3c;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -35,9 +35,9 @@
         }
 
         .project-title {
-            font-size: 1.2em;
+            font-size: 1.3em;
             font-weight: 700;
-            color: #3498db;
+            color: #e74c3c;
         }
 
         .toolbar-btn {
@@ -59,7 +59,11 @@
         }
 
         .toolbar-btn.primary {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .toolbar-btn.success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
         }
 
         .toolbar-btn input[type="file"] {
@@ -99,7 +103,7 @@
         }
 
         .left-panel {
-            width: 280px;
+            width: 300px;
             background: #16213e;
             padding: 15px;
             overflow-y: auto;
@@ -111,14 +115,14 @@
         }
 
         .panel-section h3 {
-            color: #3498db;
+            color: #e74c3c;
             margin-bottom: 10px;
             font-size: 1em;
-            border-bottom: 2px solid #3498db;
+            border-bottom: 2px solid #e74c3c;
             padding-bottom: 5px;
         }
 
-        .symbol-btn {
+        .tool-btn {
             display: flex;
             align-items: center;
             width: 100%;
@@ -133,17 +137,17 @@
             transition: all 0.3s;
         }
 
-        .symbol-btn:hover {
+        .tool-btn:hover {
             background: #34495e;
             border-color: #3498db;
         }
 
-        .symbol-btn.active {
+        .tool-btn.active {
             background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
             border-color: #2ecc71;
         }
 
-        .symbol-emoji {
+        .tool-emoji {
             font-size: 1.3em;
             margin-right: 10px;
         }
@@ -175,12 +179,67 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.7);
         }
 
+        .upload-zone {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px dashed #3498db;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(26, 37, 62, 0.95);
+        }
+
+        .upload-zone:hover {
+            border-color: #2ecc71;
+            background: rgba(26, 37, 62, 1);
+        }
+
+        .upload-zone.drag-over {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.2);
+        }
+
         .right-panel {
-            width: 340px;
+            width: 360px;
             background: #16213e;
             padding: 15px;
             overflow-y: auto;
             border-left: 2px solid #2c3e50;
+        }
+
+        .price-summary {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .price-summary h3 {
+            color: white;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.95em;
+        }
+
+        .price-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            padding-top: 12px;
+            border-top: 2px solid white;
+            margin-top: 8px;
         }
 
         .properties-panel {
@@ -191,7 +250,7 @@
         }
 
         .properties-panel h3 {
-            color: #3498db;
+            color: #e74c3c;
             margin-bottom: 12px;
             font-size: 1em;
         }
@@ -227,29 +286,6 @@
             border-color: #3498db;
         }
 
-        .price-summary {
-            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .price-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            font-size: 0.9em;
-        }
-
-        .price-item:last-child {
-            border-bottom: none;
-            font-weight: bold;
-            font-size: 1.1em;
-            padding-top: 12px;
-            border-top: 2px solid white;
-        }
-
         .action-btn {
             width: 100%;
             padding: 10px;
@@ -261,6 +297,7 @@
             font-weight: 700;
             margin-top: 8px;
             transition: all 0.3s;
+            font-size: 0.9em;
         }
 
         .action-btn:hover {
@@ -272,7 +309,7 @@
         }
 
         .symbol-list {
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
         }
 
@@ -307,8 +344,8 @@
 
         .item-entry {
             background: #34495e;
-            padding: 8px;
-            margin: 6px 0;
+            padding: 10px;
+            margin: 8px 0;
             border-radius: 4px;
             display: flex;
             justify-content: space-between;
@@ -322,82 +359,125 @@
         .item-name {
             font-weight: 600;
             color: #ecf0f1;
-            font-size: 0.85em;
+            font-size: 0.9em;
+        }
+
+        .item-details {
+            color: #95a5a6;
+            font-size: 0.8em;
+            margin-top: 2px;
         }
 
         .item-price {
             color: #2ecc71;
-            font-size: 0.8em;
+            font-size: 0.85em;
+            margin-top: 2px;
         }
 
         .delete-item-btn {
             background: #e74c3c;
             border: none;
             color: white;
-            padding: 4px 10px;
+            padding: 5px 12px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.8em;
         }
 
-        .upload-zone {
-            border: 3px dashed #3498db;
-            border-radius: 8px;
-            padding: 40px 20px;
-            text-align: center;
-            margin: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
+        .inventory-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            padding: 40px;
         }
 
-        .upload-zone:hover {
-            border-color: #2ecc71;
-            background: rgba(52, 152, 219, 0.1);
-        }
-
-        .upload-zone.drag-over {
-            border-color: #2ecc71;
-            background: rgba(46, 204, 113, 0.2);
-        }
-
-        .inventory-selector {
-            max-height: 200px;
+        .inventory-modal-content {
+            background: #16213e;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 12px;
+            max-height: 85vh;
             overflow-y: auto;
-            background: #1a252f;
-            border-radius: 4px;
-            padding: 8px;
+        }
+
+        .inventory-search {
+            width: 100%;
+            padding: 12px;
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 6px;
+            color: white;
+            font-size: 1em;
+            margin-bottom: 20px;
+        }
+
+        .inventory-list {
+            max-height: 500px;
+            overflow-y: auto;
         }
 
         .inventory-item {
             background: #2c3e50;
-            padding: 8px;
-            margin: 4px 0;
-            border-radius: 4px;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s;
+            border: 2px solid transparent;
         }
 
         .inventory-item:hover {
             background: #34495e;
+            border-color: #3498db;
         }
 
         .inventory-item-name {
-            font-weight: 600;
+            font-weight: 700;
             color: #ecf0f1;
-            font-size: 0.85em;
+            font-size: 1em;
+            margin-bottom: 4px;
         }
 
         .inventory-item-details {
             color: #95a5a6;
+            font-size: 0.85em;
+        }
+
+        .stock-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
             font-size: 0.75em;
-            margin-top: 2px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .stock-badge.in-stock {
+            background: #27ae60;
+            color: white;
+        }
+
+        .stock-badge.low-stock {
+            background: #f39c12;
+            color: white;
+        }
+
+        .stock-badge.out-of-stock {
+            background: #e74c3c;
+            color: white;
         }
     </style>
 </head>
 <body>
     <div class="top-toolbar">
         <div class="toolbar-left">
-            <div class="project-title">🎨 Canvas Editor</div>
+            <div class="project-title">🎨 {{ project_name }}</div>
             <label class="toolbar-btn">
                 📁 Upload PDF
                 <input type="file" id="pdfUpload" accept=".pdf,image/*">
@@ -406,12 +486,13 @@
         <div class="zoom-controls">
             <button class="zoom-btn" onclick="zoomIn()">+</button>
             <span class="zoom-level" id="zoomLevel">100%</span>
-            <button class="zoom-btn" onclick="zoomOut()">-</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
             <button class="zoom-btn" onclick="resetView()">Reset</button>
         </div>
         <div>
             <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
-            <button class="toolbar-btn primary" onclick="exportCanvas()">💾 Export</button>
+            <button class="toolbar-btn success" onclick="exportToMapping()">Export to Mapping →</button>
+            <button class="toolbar-btn primary" onclick="exportQuote()">💾 Export Quote</button>
         </div>
     </div>
 
@@ -420,42 +501,45 @@
         <div class="left-panel">
             <div class="panel-section">
                 <h3>🛠️ Tools</h3>
-                <button class="symbol-btn active" onclick="setTool('select')">
-                    <span class="symbol-emoji">🖱️</span> Select & Pan
+                <button class="tool-btn active" id="selectTool" onclick="setTool('select')">
+                    <span class="tool-emoji">🖱️</span> Select & Pan
                 </button>
-                <button class="symbol-btn" onclick="setTool('place')">
-                    <span class="symbol-emoji">📍</span> Place Symbol
+                <button class="tool-btn" id="placeTool" onclick="setTool('place')">
+                    <span class="tool-emoji">📍</span> Place Symbol
                 </button>
             </div>
 
             <div class="panel-section">
                 <h3>➕ Add Symbols</h3>
                 {% for key, automation in automation_data.automation_types.items() %}
-                <button class="symbol-btn" onclick="selectSymbolType('{{ key }}', '{{ automation.name }}')">
-                    <span class="symbol-emoji">{{ automation.symbols[0] }}</span> {{ automation.name }}
+                <button class="tool-btn" onclick="selectSymbolType('{{ key }}', '{{ automation.name }}')">
+                    <span class="tool-emoji">{{ automation.symbols[0] }}</span> {{ automation.name }}
                 </button>
                 {% endfor %}
             </div>
 
             <div class="panel-section">
                 <h3>⚙️ Actions</h3>
-                <button class="symbol-btn" onclick="deleteSelected()">
-                    <span class="symbol-emoji">🗑️</span> Delete Selected
+                <button class="tool-btn" onclick="deleteSelected()">
+                    <span class="tool-emoji">🗑️</span> Delete Selected
                 </button>
-                <button class="symbol-btn" onclick="duplicateSelected()">
-                    <span class="symbol-emoji">📋</span> Duplicate
+                <button class="tool-btn" onclick="duplicateSelected()">
+                    <span class="tool-emoji">📋</span> Duplicate
                 </button>
-                <button class="symbol-btn" onclick="clearAll()">
-                    <span class="symbol-emoji">✖️</span> Clear All
+                <button class="tool-btn" onclick="selectAll()">
+                    <span class="tool-emoji">☑️</span> Select All
                 </button>
             </div>
         </div>
 
         <!-- CENTER: Canvas -->
         <div class="canvas-area">
-            <div id="uploadZone" class="upload-zone" style="display: block;">
-                <h2 style="color: #3498db; margin-bottom: 10px;">📄 Upload Floor Plan</h2>
-                <p style="color: #95a5a6;">Drag & drop a PDF or image file here, or click "Upload PDF" button above</p>
+            <div id="uploadZone" class="upload-zone">
+                <h2 style="color: #3498db; margin-bottom: 15px; font-size: 2em;">📄 Upload Floor Plan</h2>
+                <p style="color: #95a5a6; font-size: 1.1em; line-height: 1.6;">
+                    Drag & drop a PDF or image here<br>
+                    or click "Upload PDF" button above
+                </p>
             </div>
             <div class="canvas-container" id="canvasContainer" style="display: none;">
                 <canvas id="mainCanvas"></canvas>
@@ -465,7 +549,7 @@
         <!-- RIGHT PANEL -->
         <div class="right-panel">
             <div class="price-summary">
-                <h3 style="color: white; margin-bottom: 10px;">💰 Total</h3>
+                <h3>💰 Project Total</h3>
                 <div class="price-item">
                     <span>Subtotal:</span>
                     <span id="priceSubtotal">$0.00</span>
@@ -481,9 +565,11 @@
             </div>
 
             <div class="properties-panel">
-                <h3>📋 Symbols</h3>
+                <h3>📋 Symbols on Plan</h3>
                 <div class="symbol-list" id="symbolList">
-                    <p style="color: #95a5a6; font-size: 0.85em;">No symbols placed yet</p>
+                    <p style="color: #95a5a6; font-size: 0.85em; padding: 10px; text-align: center;">
+                        No symbols placed yet
+                    </p>
                 </div>
             </div>
 
@@ -492,7 +578,7 @@
 
                 <div class="prop-group">
                     <label>Symbol Type</label>
-                    <select id="editSymbolType">
+                    <select id="editSymbolType" onchange="updateSymbolPreview()">
                         {% for key, automation in automation_data.automation_types.items() %}
                         <option value="{{ key }}">{{ automation.symbols[0] }} {{ automation.name }}</option>
                         {% endfor %}
@@ -501,7 +587,7 @@
 
                 <div class="prop-group">
                     <label>Custom Image</label>
-                    <input type="file" id="editSymbolImage" accept="image/*">
+                    <input type="file" id="editSymbolImage" accept="image/*" onchange="uploadCustomImage()">
                 </div>
 
                 <div class="prop-group">
@@ -510,27 +596,28 @@
                 </div>
 
                 <div class="prop-group">
-                    <label>Products & Items</label>
-                    <div id="itemList" style="margin: 8px 0;">
+                    <label>Items from CRM Inventory</label>
+                    <div id="itemList">
                         <!-- Dynamic items -->
                     </div>
-                    <button class="action-btn" onclick="showAddItemDialog()">+ Add from Inventory</button>
+                    <button class="action-btn" onclick="showInventoryModal()">📦 Add from Inventory</button>
                 </div>
 
-                <button class="action-btn primary" onclick="saveSymbolChanges()">💾 Save Changes</button>
+                <button class="action-btn" onclick="saveSymbolChanges()">💾 Save Changes</button>
                 <button class="action-btn danger" onclick="deleteSymbol()">🗑️ Delete Symbol</button>
             </div>
         </div>
     </div>
 
     <!-- Inventory Modal -->
-    <div id="inventoryModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; padding: 40px;">
-        <div style="background: #16213e; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 12px; max-height: 80vh; overflow-y: auto;">
-            <h2 style="color: #3498db; margin-bottom: 20px;">Select from CRM Inventory</h2>
-            <div class="inventory-selector" id="inventoryList">
-                <!-- Dynamic inventory -->
+    <div class="inventory-modal" id="inventoryModal">
+        <div class="inventory-modal-content">
+            <h2 style="color: #e74c3c; margin-bottom: 20px; font-size: 1.5em;">📦 CRM Inventory</h2>
+            <input type="text" class="inventory-search" id="inventorySearch" placeholder="🔍 Search inventory...">
+            <div class="inventory-list" id="inventoryList">
+                <p style="color: #95a5a6; text-align: center; padding: 40px;">Loading inventory...</p>
             </div>
-            <button class="action-btn" style="margin-top: 15px;" onclick="closeInventoryModal()">Cancel</button>
+            <button class="action-btn" style="margin-top: 20px;" onclick="closeInventoryModal()">Cancel</button>
         </div>
     </div>
 
@@ -538,6 +625,7 @@
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const automationData = {{ automation_data | tojson }};
+        const sessionData = {{ session_data | tojson }} || {};
 
         // State
         let floorplanImage = null;
@@ -551,16 +639,29 @@
         let panX = 0, panY = 0;
         let scale = 1;
         let isPanning = false;
+        let isDragging = false;
         let lastPanX = 0, lastPanY = 0;
+        let dragOffset = { x: 0, y: 0 };
+
+        // CRM Inventory
+        let inventory = [];
+        let filteredInventory = [];
 
         // Load inventory from CRM
-        let inventory = [];
-        fetch('/api/crm/inventory')
-            .then(r => r.json())
-            .then(data => {
+        loadInventory();
+
+        async function loadInventory() {
+            try {
+                const response = await fetch('/api/crm/inventory');
+                const data = await response.json();
                 inventory = data.inventory || [];
-            })
-            .catch(err => console.error('Failed to load inventory:', err));
+                filteredInventory = inventory;
+                console.log(`✅ Loaded ${inventory.length} items from CRM inventory`);
+            } catch (error) {
+                console.error('Failed to load inventory:', error);
+                inventory = [];
+            }
+        }
 
         // PDF Upload
         document.getElementById('pdfUpload').addEventListener('change', handleFileUpload);
@@ -592,7 +693,6 @@
 
         async function handleFile(file) {
             if (file.type === 'application/pdf') {
-                // Convert PDF to image
                 const formData = new FormData();
                 formData.append('floorplan', file);
 
@@ -612,7 +712,6 @@
                     alert('Error loading PDF: ' + error.message);
                 }
             } else if (file.type.startsWith('image/')) {
-                // Load image directly
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     loadImage(e.target.result);
@@ -647,19 +746,32 @@
                 const y = symbol.y * canvas.height;
                 const isSelected = selectedSymbols.has(symbol.id);
 
-                // Draw symbol
                 const config = getSymbolConfig(symbol.type || symbol.automation_category);
 
-                // Check if symbol has custom image
+                // Check for custom image
                 if (symbol.custom_image_data) {
-                    // Draw custom image
                     const img = new Image();
+                    img.onload = function() {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(x, y, isSelected ? 28 : 22, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(img, x - (isSelected ? 28 : 22), y - (isSelected ? 28 : 22), (isSelected ? 56 : 44), (isSelected ? 56 : 44));
+                        ctx.restore();
+
+                        if (isSelected) {
+                            ctx.beginPath();
+                            ctx.arc(x, y, 28, 0, 2 * Math.PI);
+                            ctx.strokeStyle = '#2ecc71';
+                            ctx.lineWidth = 4;
+                            ctx.stroke();
+                        }
+                    };
                     img.src = symbol.custom_image_data;
-                    ctx.drawImage(img, x - 20, y - 20, 40, 40);
                 } else {
-                    // Draw default symbol
+                    // Default symbol
                     ctx.beginPath();
-                    ctx.arc(x, y, isSelected ? 20 : 15, 0, 2 * Math.PI);
+                    ctx.arc(x, y, isSelected ? 20 : 16, 0, 2 * Math.PI);
                     ctx.strokeStyle = config.color;
                     ctx.lineWidth = isSelected ? 4 : 3;
                     ctx.stroke();
@@ -669,15 +781,14 @@
                         ctx.fill();
                     }
 
-                    // Draw emoji
-                    ctx.font = '20px Arial';
-                    ctx.fillText(config.emoji, x - 10, y + 8);
+                    ctx.font = '22px Arial';
+                    ctx.fillText(config.emoji, x - 11, y + 8);
                 }
 
-                // Draw label
-                ctx.font = 'bold 12px Arial';
+                // Label
+                ctx.font = 'bold 13px Arial';
                 ctx.fillStyle = config.color;
-                ctx.fillText(symbol.label || symbol.id, x + 25, y - 10);
+                ctx.fillText(symbol.label || symbol.id, x + 28, y - 12);
             });
 
             updateSymbolList();
@@ -689,6 +800,7 @@
                 'lighting': { color: '#FFD700', emoji: '💡' },
                 'shading': { color: '#8B4513', emoji: '🪟' },
                 'security_access': { color: '#DC143C', emoji: '🔐' },
+                'security': { color: '#DC143C', emoji: '🔐' },
                 'climate': { color: '#00CED1', emoji: '🌡️' },
                 'audio': { color: '#9370DB', emoji: '🔊' },
                 'networking': { color: '#4169E1', emoji: '🌐' },
@@ -699,8 +811,8 @@
 
         function setTool(tool) {
             currentTool = tool;
-            document.querySelectorAll('.symbol-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.tool-btn').classList.add('active');
         }
 
         function selectSymbolType(type, name) {
@@ -709,7 +821,7 @@
             alert(`Click on floor plan to place: ${name}`);
         }
 
-        // Zoom controls
+        // Zoom
         function zoomIn() {
             scale = Math.min(scale * 1.2, 5);
             updateTransform();
@@ -737,44 +849,33 @@
         const canvasContainer = document.getElementById('canvasContainer');
 
         canvasContainer.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+
             if (currentTool === 'select') {
-                isPanning = true;
-                lastPanX = e.clientX;
-                lastPanY = e.clientY;
-                canvasContainer.classList.add('panning');
-            }
-        });
+                // Check if clicking symbol
+                let clickedSymbol = null;
+                symbols.forEach(sym => {
+                    const dx = (sym.x - x) * canvas.width;
+                    const dy = (sym.y - y) * canvas.height;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 25) clickedSymbol = sym;
+                });
 
-        canvasContainer.addEventListener('mousemove', (e) => {
-            if (isPanning) {
-                panX += e.clientX - lastPanX;
-                panY += e.clientY - lastPanY;
-                lastPanX = e.clientX;
-                lastPanY = e.clientY;
-                updateTransform();
-            }
-        });
-
-        canvasContainer.addEventListener('mouseup', () => {
-            isPanning = false;
-            canvasContainer.classList.remove('panning');
-        });
-
-        canvasContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            if (e.deltaY < 0) {
-                zoomIn();
-            } else {
-                zoomOut();
-            }
-        });
-
-        canvas.addEventListener('click', (e) => {
-            if (currentTool === 'place' && pendingSymbolType && floorplanImage) {
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = (e.clientY - rect.top) / rect.height;
-
+                if (clickedSymbol) {
+                    if (!e.shiftKey) selectedSymbols.clear();
+                    selectedSymbols.add(clickedSymbol.id);
+                    isDragging = true;
+                    dragOffset = { x: x - clickedSymbol.x, y: y - clickedSymbol.y };
+                    render();
+                } else {
+                    isPanning = true;
+                    lastPanX = e.clientX;
+                    lastPanY = e.clientY;
+                    canvasContainer.classList.add('panning');
+                }
+            } else if (currentTool === 'place' && pendingSymbolType && floorplanImage) {
                 const newSymbol = {
                     id: pendingSymbolType.toUpperCase()[0] + (symbols.length + 1),
                     type: pendingSymbolType,
@@ -791,23 +892,80 @@
             }
         });
 
+        canvasContainer.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+
+            if (isPanning) {
+                panX += e.clientX - lastPanX;
+                panY += e.clientY - lastPanY;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                updateTransform();
+            } else if (isDragging && selectedSymbols.size > 0) {
+                selectedSymbols.forEach(id => {
+                    const symbol = symbols.find(s => s.id === id);
+                    if (symbol) {
+                        symbol.x = Math.max(0, Math.min(1, x - dragOffset.x));
+                        symbol.y = Math.max(0, Math.min(1, y - dragOffset.y));
+                    }
+                });
+                render();
+            }
+        });
+
+        canvasContainer.addEventListener('mouseup', () => {
+            isPanning = false;
+            isDragging = false;
+            canvasContainer.classList.remove('panning');
+        });
+
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) zoomIn();
+            else zoomOut();
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+
+            symbols.forEach(sym => {
+                const dx = (sym.x - x) * canvas.width;
+                const dy = (sym.y - y) * canvas.height;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 25) editSymbol(sym);
+            });
+        });
+
         function updateSymbolList() {
             const list = document.getElementById('symbolList');
             if (symbols.length === 0) {
-                list.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">No symbols placed yet</p>';
+                list.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em; padding: 10px; text-align: center;">No symbols placed yet</p>';
                 return;
             }
 
             list.innerHTML = '';
             symbols.forEach(symbol => {
                 const div = document.createElement('div');
-                div.className = 'symbol-item';
-                div.onclick = () => editSymbol(symbol);
+                div.className = 'symbol-item' + (selectedSymbols.has(symbol.id) ? ' selected' : '');
+                div.onclick = () => {
+                    selectedSymbols.clear();
+                    selectedSymbols.add(symbol.id);
+                    render();
+                };
+                div.ondblclick = () => editSymbol(symbol);
+
+                const itemCount = symbol.items ? symbol.items.length : 0;
                 div.innerHTML = `
                     <div class="symbol-item-header">
                         <span>${symbol.id}</span>
                         <span style="color: #95a5a6; font-size: 0.8em;">${symbol.type || symbol.automation_category}</span>
                     </div>
+                    <div style="color: #3498db; font-size: 0.8em; margin-top: 4px;">${symbol.room || 'Unassigned'}</div>
+                    ${itemCount > 0 ? `<div style="color: #2ecc71; font-size: 0.75em; margin-top: 2px;">📦 ${itemCount} item(s)</div>` : ''}
                 `;
                 list.appendChild(div);
             });
@@ -815,6 +973,10 @@
 
         function editSymbol(symbol) {
             editingSymbol = symbol;
+            selectedSymbols.clear();
+            selectedSymbols.add(symbol.id);
+            render();
+
             const panel = document.getElementById('editPanel');
             panel.style.display = 'block';
 
@@ -822,20 +984,28 @@
             document.getElementById('editSymbolType').value = symbol.automation_category || symbol.type;
             document.getElementById('editSymbolRoom').value = symbol.room || '';
 
-            // Populate items
+            updateItemList();
+        }
+
+        function updateItemList() {
             const itemList = document.getElementById('itemList');
             itemList.innerHTML = '';
 
-            if (symbol.items && symbol.items.length > 0) {
-                symbol.items.forEach((item, index) => {
+            if (editingSymbol.items && editingSymbol.items.length > 0) {
+                editingSymbol.items.forEach((item, index) => {
                     const div = document.createElement('div');
                     div.className = 'item-entry';
+                    const quantity = item.quantity || 1;
+                    const price = parseFloat(item.price) || 0;
+                    const total = quantity * price;
+
                     div.innerHTML = `
                         <div class="item-info">
                             <div class="item-name">${item.name}</div>
-                            <div class="item-price">$${item.price} × ${item.quantity || 1}</div>
+                            <div class="item-details">Qty: ${quantity} | Unit: $${price.toFixed(2)}</div>
+                            <div class="item-price">Total: $${total.toFixed(2)}</div>
                         </div>
-                        <button class="delete-item-btn" onclick="deleteItem(${index})">Delete</button>
+                        <button class="delete-item-btn" onclick="deleteItem(${index})">✖</button>
                     `;
                     itemList.appendChild(div);
                 });
@@ -849,19 +1019,31 @@
             editingSymbol.type = editingSymbol.automation_category;
             editingSymbol.room = document.getElementById('editSymbolRoom').value;
 
-            // Handle custom image
-            const imageInput = document.getElementById('editSymbolImage');
-            if (imageInput.files && imageInput.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    editingSymbol.custom_image_data = e.target.result;
-                    render();
-                };
-                reader.readAsDataURL(imageInput.files[0]);
-            }
-
             render();
             alert('✅ Symbol updated!');
+        }
+
+        function uploadCustomImage() {
+            const file = document.getElementById('editSymbolImage').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (editingSymbol) {
+                    editingSymbol.custom_image_data = e.target.result;
+                    render();
+                    alert('✅ Custom image uploaded to this symbol!');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateSymbolPreview() {
+            if (editingSymbol) {
+                editingSymbol.automation_category = document.getElementById('editSymbolType').value;
+                editingSymbol.type = editingSymbol.automation_category;
+                render();
+            }
         }
 
         function deleteSymbol() {
@@ -869,35 +1051,50 @@
             if (confirm('Delete this symbol?')) {
                 symbols = symbols.filter(s => s !== editingSymbol);
                 editingSymbol = null;
+                selectedSymbols.clear();
                 document.getElementById('editPanel').style.display = 'none';
                 render();
             }
         }
 
-        function showAddItemDialog() {
-            // Show inventory modal
+        function showInventoryModal() {
             const modal = document.getElementById('inventoryModal');
             const list = document.getElementById('inventoryList');
 
             list.innerHTML = '';
             if (inventory.length === 0) {
-                list.innerHTML = '<p style="color: #95a5a6; padding: 20px; text-align: center;">No inventory items found in CRM</p>';
+                list.innerHTML = '<p style="color: #95a5a6; padding: 40px; text-align: center;">No inventory items in CRM</p>';
             } else {
-                inventory.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'inventory-item';
-                    div.onclick = () => addItemFromInventory(item);
-                    div.innerHTML = `
-                        <div class="inventory-item-name">${item.name}</div>
-                        <div class="inventory-item-details">
-                            Price: $${item.price || 0} | Stock: ${item.quantity || 0}
-                        </div>
-                    `;
-                    list.appendChild(div);
-                });
+                renderInventoryList(inventory);
             }
 
             modal.style.display = 'block';
+        }
+
+        function renderInventoryList(items) {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = '';
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'inventory-item';
+                div.onclick = () => addItemFromInventory(item);
+
+                const stock = item.quantity || 0;
+                const stockClass = stock > 10 ? 'in-stock' : stock > 0 ? 'low-stock' : 'out-of-stock';
+                const stockText = stock > 10 ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock';
+
+                div.innerHTML = `
+                    <div class="inventory-item-name">
+                        ${item.name}
+                        <span class="stock-badge ${stockClass}">${stockText}</span>
+                    </div>
+                    <div class="inventory-item-details">
+                        Price: $${item.price || 0} | Available: ${stock} units
+                    </div>
+                `;
+                list.appendChild(div);
+            });
         }
 
         function closeInventoryModal() {
@@ -905,28 +1102,39 @@
         }
 
         function addItemFromInventory(item) {
-            if (!editingSymbol.items) editingSymbol.items = [];
-
-            const quantity = prompt('Quantity:', '1');
+            const quantity = prompt(`How many ${item.name}?`, '1');
             if (!quantity) return;
+
+            if (!editingSymbol.items) editingSymbol.items = [];
 
             editingSymbol.items.push({
                 name: item.name,
                 price: item.price || 0,
-                quantity: parseInt(quantity),
+                quantity: parseInt(quantity) || 1,
                 stock_id: item.id
             });
 
             closeInventoryModal();
-            editSymbol(editingSymbol);
+            updateItemList();
             updatePricing();
+            render();
         }
+
+        // Inventory search
+        document.getElementById('inventorySearch').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const filtered = inventory.filter(item =>
+                item.name.toLowerCase().includes(search)
+            );
+            renderInventoryList(filtered);
+        });
 
         function deleteItem(index) {
             if (!editingSymbol || !editingSymbol.items) return;
             editingSymbol.items.splice(index, 1);
-            editSymbol(editingSymbol);
+            updateItemList();
             updatePricing();
+            render();
         }
 
         function updatePricing() {
@@ -934,7 +1142,7 @@
 
             symbols.forEach(symbol => {
                 const automationType = symbol.automation_category || symbol.type;
-                const tier = '{{ tier }}';
+                const tier = sessionData.tier || '{{ tier }}';
 
                 if (automationData.automation_types[automationType]) {
                     const config = automationData.automation_types[automationType];
@@ -946,7 +1154,9 @@
 
                 if (symbol.items && symbol.items.length > 0) {
                     symbol.items.forEach(item => {
-                        subtotal += (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1);
+                        const price = parseFloat(item.price) || 0;
+                        const quantity = parseInt(item.quantity) || 1;
+                        subtotal += price * quantity;
                     });
                 }
             });
@@ -979,7 +1189,7 @@
             selectedSymbols.forEach(id => {
                 const symbol = symbols.find(s => s.id === id);
                 if (symbol) {
-                    const copy = { ...symbol };
+                    const copy = JSON.parse(JSON.stringify(symbol));
                     copy.id = symbol.id + '_copy';
                     copy.x += 0.05;
                     copy.y += 0.05;
@@ -989,18 +1199,99 @@
             render();
         }
 
-        function clearAll() {
-            if (confirm('Clear all symbols?')) {
-                symbols = [];
-                selectedSymbols.clear();
-                render();
+        function selectAll() {
+            selectedSymbols.clear();
+            symbols.forEach(s => selectedSymbols.add(s.id));
+            render();
+        }
+
+        async function exportToMapping() {
+            if (symbols.length === 0) {
+                alert('Add some symbols first!');
+                return;
+            }
+
+            // Save current state
+            const exportData = {
+                session_id: sessionData.session_id || 'new_session',
+                symbols: symbols,
+                project_name: '{{ project_name }}',
+                tier: '{{ tier }}'
+            };
+
+            try {
+                const response = await fetch('/api/takeoffs/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(exportData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/mapping?session=' + (sessionData.session_id || 'new_session');
+                } else {
+                    alert('Failed to export: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
             }
         }
 
-        async function exportCanvas() {
-            alert('Exporting canvas...');
-            // TODO: Implement export functionality
+        async function exportQuote() {
+            if (symbols.length === 0) {
+                alert('Add some symbols first!');
+                return;
+            }
+
+            const exportData = {
+                session_id: sessionData.session_id || 'new_session',
+                symbols: symbols,
+                project_name: '{{ project_name }}',
+                tier: '{{ tier }}'
+            };
+
+            try {
+                const response = await fetch('/api/takeoffs/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(exportData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Quote exported successfully!');
+                    if (data.annotated_pdf) window.open(data.annotated_pdf, '_blank');
+                    if (data.quote_pdf) window.open(data.quote_pdf, '_blank');
+                } else {
+                    alert('❌ Export failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
         }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    deleteSelected();
+                }
+            } else if (e.ctrlKey && e.key === 'a') {
+                e.preventDefault();
+                selectAll();
+            } else if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                duplicateSelected();
+            } else if (e.key === 'Escape') {
+                selectedSymbols.clear();
+                document.getElementById('editPanel').style.display = 'none';
+                render();
+            }
+        });
 
         // Initialize
         if (floorplanImage) render();

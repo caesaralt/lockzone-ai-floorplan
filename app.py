@@ -1451,20 +1451,14 @@ def quotes_page():
 
 @app.route('/canvas')
 def canvas_page():
+    """Unified editor - same as takeoffs but standalone"""
     automation_data = load_data()
-    pricing = automation_data.get('pricing', {})
-    # Ensure pricing has all required fields
-    if not pricing:
-        pricing = {
-            'basic': 0,
-            'premium': 0,
-            'deluxe': 0
-        }
-    return render_template('canvas.html',
+    return render_template('unified_editor.html',
                          automation_data=automation_data,
-                         pricing=pricing,
                          initial_symbols=[],
-                         tier='basic')
+                         tier='basic',
+                         project_name='New Project',
+                         session_data={})
 
 @app.route('/learning')
 def learning_page():
@@ -1480,19 +1474,18 @@ def ai_mapping_page():
 
 @app.route('/takeoffs/<session_id>')
 def takeoffs_page(session_id):
-    """Interactive Bluebeam-style takeoffs editor"""
+    """Unified editor with AI analysis results loaded"""
     session_data = load_session_data(session_id)
     if not session_data:
         return "Session not found", 404
 
-    # Load automation data for symbol editing
+    # Load automation data
     automation_data = load_data()
 
-    # Prepare symbols from analysis result
+    # Prepare symbols from AI analysis
     analysis_result = session_data.get('analysis_result', {})
     components = analysis_result.get('components', [])
 
-    # Convert components to symbols for the editor
     symbols = []
     for comp in components:
         symbols.append({
@@ -1503,15 +1496,15 @@ def takeoffs_page(session_id):
             'room': comp.get('room', ''),
             'automation_category': comp.get('automation_category', comp.get('type', 'unknown')),
             'label': comp.get('id', ''),
-            'items': [],  # Will be populated by user
-            'custom_image': None  # Will be populated by user
+            'items': [],
+            'custom_image_data': None
         })
 
-    return render_template('takeoffs.html',
+    return render_template('unified_editor.html',
                          session_data=session_data,
                          automation_data=automation_data,
                          initial_symbols=symbols,
-                         project_name=session_data.get('project_name', 'Untitled'),
+                         project_name=session_data.get('project_name', 'AI Analysis - Edit & Review'),
                          tier=session_data.get('tier', 'basic'))
 
 @app.route('/mapping')
@@ -2120,15 +2113,17 @@ def takeoffs_export():
                     'room': symbol.get('room', 'Unassigned')
                 })
 
-            # Add custom items
+            # Add custom items with quantities
             if symbol.get('items'):
                 for item in symbol['items']:
+                    price = item.get('price', 0)
+                    quantity = item.get('quantity', 1)
                     cost_items.append({
                         'type': item.get('name', 'Custom Item'),
-                        'quantity': 1,
-                        'unit_cost': item.get('price', 0),
+                        'quantity': quantity,
+                        'unit_cost': price,
                         'labor_cost': 0,
-                        'total': item.get('price', 0),
+                        'total': price * quantity,
                         'room': symbol.get('room', 'Unassigned')
                     })
 
@@ -2816,17 +2811,23 @@ def handle_inventory():
     try:
         if request.method == 'GET':
             inventory = load_json_file(INVENTORY_FILE, [])
+            # Add price field for unified editor compatibility
+            for item in inventory:
+                if 'price' not in item and 'unit_cost' in item:
+                    item['price'] = item['unit_cost']
             return jsonify({'success': True, 'inventory': inventory})
         else:
             data = request.json
             inventory = load_json_file(INVENTORY_FILE, [])
+            unit_cost = data.get('unit_cost', 0.0)
             item = {
                 'id': str(uuid.uuid4()),
                 'name': data.get('name', ''),
                 'sku': data.get('sku', ''),
                 'category': data.get('category', ''),
                 'quantity': data.get('quantity', 0),
-                'unit_cost': data.get('unit_cost', 0.0),
+                'unit_cost': unit_cost,
+                'price': data.get('price', unit_cost),  # For unified editor compatibility
                 'reorder_level': data.get('reorder_level', 10),
                 'created_at': datetime.now().isoformat()
             }
