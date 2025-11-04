@@ -255,11 +255,41 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 4px;
+            gap: 8px;
         }
 
         .circuit-name {
             font-weight: 600;
             color: #3498db;
+            flex: 1;
+        }
+
+        .circuit-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .circuit-btn {
+            padding: 2px 6px;
+            border: none;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .circuit-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .circuit-btn.edit {
+            background: #3498db;
+        }
+
+        .circuit-btn.delete {
+            background: #e74c3c;
         }
 
         .circuit-info {
@@ -518,6 +548,12 @@
         let wireStart = null;
         let isDragging = false;
         let dragOffset = { x: 0, y: 0 };
+        let isResizing = false;
+        let resizeHandle = null;
+        let measureStart = null;
+        let measureEnd = null;
+        let annotations = [];
+        let selectedWire = null;
 
         // Layer visibility
         let layers = {
@@ -530,14 +566,14 @@
 
         // Component types configuration
         const componentConfig = {
-            light: { symbol: '💡', color: '#FFD700', size: 20, name: 'Light Fixture' },
-            switch: { symbol: '🔘', color: '#4169E1', size: 16, name: 'Switch' },
-            outlet: { symbol: '⚡', color: '#32CD32', size: 16, name: 'Outlet' },
-            panel: { symbol: '⚙️', color: '#FF4500', size: 28, name: 'Electrical Panel' },
-            junction: { symbol: '📦', color: '#FFA500', size: 18, name: 'Junction Box' },
-            sensor: { symbol: '📡', color: '#9370DB', size: 18, name: 'Sensor' },
-            dimmer: { symbol: '🎚️', color: '#00CED1', size: 18, name: 'Dimmer' },
-            fan: { symbol: '🌀', color: '#4682B4', size: 22, name: 'Ceiling Fan' }
+            light: { symbol: '💡', color: '#FFD700', size: 20, name: 'Light Fixture', width: 40, height: 40 },
+            switch: { symbol: '🔘', color: '#4169E1', size: 16, name: 'Switch', width: 32, height: 32 },
+            outlet: { symbol: '⚡', color: '#32CD32', size: 16, name: 'Outlet', width: 32, height: 32 },
+            panel: { symbol: '⚙️', color: '#FF4500', size: 28, name: 'Electrical Panel', width: 56, height: 56 },
+            junction: { symbol: '📦', color: '#FFA500', size: 18, name: 'Junction Box', width: 36, height: 36 },
+            sensor: { symbol: '📡', color: '#9370DB', size: 18, name: 'Sensor', width: 36, height: 36 },
+            dimmer: { symbol: '🎚️', color: '#00CED1', size: 18, name: 'Dimmer', width: 36, height: 36 },
+            fan: { symbol: '🌀', color: '#4682B4', size: 22, name: 'Ceiling Fan', width: 44, height: 44 }
         };
 
         // Pan & Zoom Functions
@@ -606,27 +642,60 @@
 
             // Draw wires (behind components)
             if (layers.wiring) {
-                wires.forEach(wire => {
-                    ctx.strokeStyle = wire.type === 'power120' ? '#e74c3c' :
+                wires.forEach((wire, wireIdx) => {
+                    const wireColor = wire.color || (wire.type === 'power120' ? '#e74c3c' :
                                      wire.type === 'power240' ? '#9b59b6' :
-                                     wire.type === 'control' ? '#3498db' : '#2ecc71';
+                                     wire.type === 'control' ? '#3498db' : '#2ecc71');
+                    ctx.strokeStyle = wireColor;
                     ctx.lineWidth = 4;
                     ctx.setLineDash([]);
                     ctx.beginPath();
                     ctx.moveTo(wire.from.x, wire.from.y);
+
+                    // Draw with control points if they exist
+                    if (wire.controlPoints && wire.controlPoints.length > 0) {
+                        wire.controlPoints.forEach(pt => {
+                            ctx.lineTo(pt.x, pt.y);
+                        });
+                    }
                     ctx.lineTo(wire.to.x, wire.to.y);
                     ctx.stroke();
 
-                    // Draw circuit label
+                    // Draw control points as small circles
+                    if (wire.controlPoints && wire.controlPoints.length > 0) {
+                        wire.controlPoints.forEach((pt, idx) => {
+                            ctx.fillStyle = '#3498db';
+                            ctx.beginPath();
+                            ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        });
+                    }
+
+                    // Draw circuit label and cable type
+                    const midX = wire.controlPoints && wire.controlPoints.length > 0 ?
+                                wire.controlPoints[0].x : (wire.from.x + wire.to.x) / 2;
+                    const midY = wire.controlPoints && wire.controlPoints.length > 0 ?
+                                wire.controlPoints[0].y : (wire.from.y + wire.to.y) / 2;
+
                     if (wire.circuit && layers.circuits) {
-                        const midX = (wire.from.x + wire.to.x) / 2;
-                        const midY = (wire.from.y + wire.to.y) / 2;
                         ctx.font = 'bold 12px Arial';
                         ctx.fillStyle = '#ffffff';
                         ctx.strokeStyle = '#000000';
                         ctx.lineWidth = 3;
-                        ctx.strokeText(`C${wire.circuit}`, midX, midY);
-                        ctx.fillText(`C${wire.circuit}`, midX, midY);
+                        ctx.strokeText(`C${wire.circuit}`, midX, midY - 10);
+                        ctx.fillText(`C${wire.circuit}`, midX, midY - 10);
+                    }
+
+                    if (wire.cableType) {
+                        ctx.font = 'bold 10px Arial';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.strokeText(wire.cableType, midX, midY + 10);
+                        ctx.fillText(wire.cableType, midX, midY + 10);
                     }
                 });
             }
@@ -636,10 +705,13 @@
                 components.forEach(comp => {
                     const config = componentConfig[comp.type] || componentConfig.light;
                     const isSelected = selectedComponent === comp;
+                    const compWidth = comp.width || config.width || config.size * 2;
+                    const compHeight = comp.height || config.height || config.size * 2;
+                    const radius = Math.max(compWidth, compHeight) / 2;
 
                     // Draw background circle
                     ctx.beginPath();
-                    ctx.arc(comp.x, comp.y, isSelected ? config.size + 6 : config.size, 0, 2 * Math.PI);
+                    ctx.arc(comp.x, comp.y, isSelected ? radius + 6 : radius, 0, 2 * Math.PI);
                     ctx.fillStyle = isSelected ? 'rgba(52, 152, 219, 0.3)' : 'rgba(255, 255, 255, 0.9)';
                     ctx.fill();
                     ctx.strokeStyle = config.color;
@@ -651,14 +723,33 @@
                     const symbolWidth = ctx.measureText(config.symbol).width;
                     ctx.fillText(config.symbol, comp.x - symbolWidth / 2, comp.y + (config.size / 2));
 
+                    // Draw resize handles if selected
+                    if (isSelected) {
+                        const handleSize = 8;
+                        const handles = [
+                            { x: comp.x - radius, y: comp.y - radius, type: 'nw' },
+                            { x: comp.x + radius, y: comp.y - radius, type: 'ne' },
+                            { x: comp.x - radius, y: comp.y + radius, type: 'sw' },
+                            { x: comp.x + radius, y: comp.y + radius, type: 'se' }
+                        ];
+
+                        handles.forEach(handle => {
+                            ctx.fillStyle = '#3498db';
+                            ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                        });
+                    }
+
                     // Draw label
                     if (comp.label) {
                         ctx.font = 'bold 11px Arial';
                         ctx.fillStyle = '#2c3e50';
                         ctx.strokeStyle = '#ffffff';
                         ctx.lineWidth = 3;
-                        ctx.strokeText(comp.label, comp.x + config.size + 5, comp.y - 10);
-                        ctx.fillText(comp.label, comp.x + config.size + 5, comp.y - 10);
+                        ctx.strokeText(comp.label, comp.x + radius + 5, comp.y - 10);
+                        ctx.fillText(comp.label, comp.x + radius + 5, comp.y - 10);
                     }
 
                     // Draw circuit assignment
@@ -667,10 +758,65 @@
                         ctx.fillStyle = '#f39c12';
                         ctx.strokeStyle = '#000000';
                         ctx.lineWidth = 2;
-                        ctx.strokeText(`C${comp.circuit}`, comp.x - 10, comp.y + config.size + 15);
-                        ctx.fillText(`C${comp.circuit}`, comp.x - 10, comp.y + config.size + 15);
+                        ctx.strokeText(`C${comp.circuit}`, comp.x - 10, comp.y + radius + 15);
+                        ctx.fillText(`C${comp.circuit}`, comp.x - 10, comp.y + radius + 15);
                     }
                 });
+            }
+
+            // Draw annotations
+            if (layers.annotations && annotations.length > 0) {
+                annotations.forEach(ann => {
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(ann.text, ann.x, ann.y);
+                    ctx.fillText(ann.text, ann.x, ann.y);
+
+                    // Draw anchor point
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(ann.x - 5, ann.y - 5, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
+
+            // Draw measure tool
+            if (currentTool === 'measure' && measureStart) {
+                ctx.strokeStyle = '#f39c12';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(measureStart.x, measureStart.y);
+                if (measureEnd) {
+                    ctx.lineTo(measureEnd.x, measureEnd.y);
+                } else {
+                    // Draw to current mouse position if available
+                    ctx.lineTo(measureStart.x, measureStart.y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw distance if we have both points
+                if (measureEnd) {
+                    const dx = measureEnd.x - measureStart.x;
+                    const dy = measureEnd.y - measureStart.y;
+                    const distPx = Math.sqrt(dx * dx + dy * dy);
+                    const distFt = (distPx / 50).toFixed(2); // Assuming 50px = 1ft
+                    const distM = (distPx / 50 * 0.3048).toFixed(2); // Convert to meters
+
+                    const midX = (measureStart.x + measureEnd.x) / 2;
+                    const midY = (measureStart.y + measureEnd.y) / 2;
+
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    const measureText = `${distFt} ft (${distM} m)`;
+                    ctx.strokeText(measureText, midX, midY - 10);
+                    ctx.fillText(measureText, midX, midY - 10);
+                }
             }
 
             // Draw wireStart indicator when drawing wire
@@ -690,9 +836,100 @@
 
             if (tool === 'wire') {
                 wireStart = null;
+            } else if (tool === 'measure') {
+                measureStart = null;
+                measureEnd = null;
             }
 
             canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+            render();
+        }
+
+        // Helper function to check if clicking on resize handle
+        function getResizeHandle(comp, x, y) {
+            if (!comp) return null;
+            const config = componentConfig[comp.type] || componentConfig.light;
+            const compWidth = comp.width || config.width || config.size * 2;
+            const compHeight = comp.height || config.height || config.size * 2;
+            const radius = Math.max(compWidth, compHeight) / 2;
+            const handleSize = 8;
+            const threshold = 10;
+
+            const handles = [
+                { x: comp.x - radius, y: comp.y - radius, type: 'nw' },
+                { x: comp.x + radius, y: comp.y - radius, type: 'ne' },
+                { x: comp.x - radius, y: comp.y + radius, type: 'sw' },
+                { x: comp.x + radius, y: comp.y + radius, type: 'se' }
+            ];
+
+            for (let handle of handles) {
+                const dx = handle.x - x;
+                const dy = handle.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < threshold) {
+                    return handle.type;
+                }
+            }
+            return null;
+        }
+
+        // Helper function to get wire control point near click
+        function getWireControlPoint(x, y) {
+            for (let i = 0; i < wires.length; i++) {
+                const wire = wires[i];
+                if (wire.controlPoints && wire.controlPoints.length > 0) {
+                    for (let j = 0; j < wire.controlPoints.length; j++) {
+                        const pt = wire.controlPoints[j];
+                        const dx = pt.x - x;
+                        const dy = pt.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 10) {
+                            return { wireIndex: i, pointIndex: j };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Helper function to check if click is on a wire line
+        function getWireAtPoint(x, y) {
+            for (let i = 0; i < wires.length; i++) {
+                const wire = wires[i];
+                // Check distance from point to line segment
+                const dist = pointToLineDistance(x, y, wire.from.x, wire.from.y, wire.to.x, wire.to.y);
+                if (dist < 8) {
+                    return i;
+                }
+            }
+            return null;
+        }
+
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            if (lenSq != 0) param = dot / lenSq;
+
+            let xx, yy;
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
         }
 
         function selectComponent(type) {
@@ -702,6 +939,10 @@
         }
 
         // Mouse events
+        let draggingWirePoint = null;
+        let currentMouseX = 0;
+        let currentMouseY = 0;
+
         canvasWrapper.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -710,14 +951,34 @@
             const y = (e.clientY - rect.top) * scaleY;
 
             if (currentTool === 'select') {
+                // Check if clicking on resize handle first
+                if (selectedComponent) {
+                    const handle = getResizeHandle(selectedComponent, x, y);
+                    if (handle) {
+                        isResizing = true;
+                        resizeHandle = handle;
+                        return;
+                    }
+                }
+
+                // Check if clicking on wire control point
+                const wirePoint = getWireControlPoint(x, y);
+                if (wirePoint) {
+                    draggingWirePoint = wirePoint;
+                    return;
+                }
+
                 // Check if clicking on component
                 let clickedComp = null;
                 components.forEach(comp => {
                     const config = componentConfig[comp.type] || componentConfig.light;
+                    const compWidth = comp.width || config.width || config.size * 2;
+                    const compHeight = comp.height || config.height || config.size * 2;
+                    const radius = Math.max(compWidth, compHeight) / 2;
                     const dx = comp.x - x;
                     const dy = comp.y - y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < config.size + 10) {
+                    if (dist < radius + 10) {
                         clickedComp = comp;
                     }
                 });
@@ -737,13 +998,16 @@
                 }
             } else if (currentTool === 'place' && pendingComponentType) {
                 // Place component
+                const config = componentConfig[pendingComponentType];
                 const newComp = {
                     id: components.length + 1,
                     type: pendingComponentType,
                     x: x,
                     y: y,
-                    label: `${componentConfig[pendingComponentType].name} ${components.length + 1}`,
-                    circuit: null
+                    label: `${config.name} ${components.length + 1}`,
+                    circuit: null,
+                    width: config.width,
+                    height: config.height
                 };
                 components.push(newComp);
                 render();
@@ -768,6 +1032,17 @@
                         render();
                     }
                 } else {
+                    // Check if double-clicking to add control point
+                    const wireIdx = getWireAtPoint(x, y);
+                    if (wireIdx !== null) {
+                        if (!wires[wireIdx].controlPoints) {
+                            wires[wireIdx].controlPoints = [];
+                        }
+                        wires[wireIdx].controlPoints.push({ x, y });
+                        render();
+                        return;
+                    }
+
                     // Complete wire
                     let nearest = null;
                     let minDist = 30;
@@ -785,22 +1060,52 @@
 
                     if (nearest) {
                         const wireType = prompt('Wire type:\n1 = 120V Power\n2 = 240V Power\n3 = Control\n4 = Low Voltage', '1');
+                        const cableType = prompt('Cable type (e.g., "14/2 Romex", "12/3 NM-B"):', '14/2 Romex');
                         const typeMap = { '1': 'power120', '2': 'power240', '3': 'control', '4': 'lowvoltage' };
 
                         wires.push({
                             from: { x: wireStart.x, y: wireStart.y },
                             to: { x: nearest.x, y: nearest.y },
                             type: typeMap[wireType] || 'power120',
-                            circuit: null
+                            cableType: cableType,
+                            circuit: null,
+                            controlPoints: []
                         });
                         wireStart = null;
                         render();
                     }
                 }
+            } else if (currentTool === 'measure') {
+                if (!measureStart) {
+                    measureStart = { x, y };
+                } else {
+                    measureEnd = { x, y };
+                    render();
+                    setTimeout(() => {
+                        measureStart = null;
+                        measureEnd = null;
+                        render();
+                    }, 5000); // Clear after 5 seconds
+                }
+            } else if (currentTool === 'annotate') {
+                const text = prompt('Enter annotation text:');
+                if (text) {
+                    annotations.push({ x, y, text });
+                    render();
+                }
             }
         });
 
         canvasWrapper.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            currentMouseX = x;
+            currentMouseY = y;
+
             if (isPanning) {
                 const dx = e.clientX - lastPanX;
                 const dy = e.clientY - lastPanY;
@@ -809,13 +1114,44 @@
                 lastPanX = e.clientX;
                 lastPanY = e.clientY;
                 updateTransform();
-            } else if (isDragging && selectedComponent) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const x = (e.clientX - rect.left) * scaleX;
-                const y = (e.clientY - rect.top) * scaleY;
+            } else if (isResizing && selectedComponent) {
+                // Handle resizing
+                const config = componentConfig[selectedComponent.type] || componentConfig.light;
+                const oldWidth = selectedComponent.width || config.width;
+                const oldHeight = selectedComponent.height || config.height;
+                const oldRadius = Math.max(oldWidth, oldHeight) / 2;
 
+                if (resizeHandle === 'se') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'sw') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'ne') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'nw') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                }
+                render();
+            } else if (draggingWirePoint) {
+                // Drag wire control point
+                const wire = wires[draggingWirePoint.wireIndex];
+                if (wire && wire.controlPoints && wire.controlPoints[draggingWirePoint.pointIndex]) {
+                    wire.controlPoints[draggingWirePoint.pointIndex].x = x;
+                    wire.controlPoints[draggingWirePoint.pointIndex].y = y;
+                    render();
+                }
+            } else if (isDragging && selectedComponent) {
                 selectedComponent.x = x - dragOffset.x;
                 selectedComponent.y = y - dragOffset.y;
                 render();
@@ -825,22 +1161,57 @@
         canvasWrapper.addEventListener('mouseup', () => {
             isPanning = false;
             isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+            draggingWirePoint = null;
             canvasWrapper.classList.remove('panning');
         });
 
-        // Zoom with mouse wheel
+        // Zoom with mouse wheel and two-finger pan support
         canvasWrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
-            if (e.deltaY < 0) {
-                zoomIn();
+
+            // Two-finger pan on trackpad (shift key is set on some trackpads for horizontal scroll)
+            // or when holding shift deliberately
+            if (e.shiftKey || (Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
+                // Pan horizontally and vertically
+                panX -= e.deltaX;
+                panY -= e.deltaY;
+                updateTransform();
+            } else if (e.ctrlKey) {
+                // Pinch zoom on trackpad (ctrl key typically indicates pinch gesture)
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
             } else {
-                zoomOut();
+                // Regular scroll wheel zoom
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
             }
         });
 
         // Right-click context menu
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check if clicking on a wire
+            const wireIdx = getWireAtPoint(x, y);
+            if (wireIdx !== null) {
+                selectedWire = wires[wireIdx];
+                showWireContextMenu(e.pageX, e.pageY);
+                return;
+            }
+
             if (selectedComponent) {
                 const menu = document.getElementById('contextMenu');
                 menu.style.display = 'block';
@@ -849,8 +1220,89 @@
             }
         });
 
+        function showWireContextMenu(x, y) {
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.id = 'wireContextMenu';
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.innerHTML = `
+                <div class="context-menu-item" onclick="editWireProperties()">✏️ Edit Wire Properties</div>
+                <div class="context-menu-item" onclick="addWireControlPoint()">➕ Add Bend Point</div>
+                <div class="context-menu-item" onclick="deleteWire()">🗑️ Delete Wire</div>
+            `;
+
+            // Remove existing wire context menu if any
+            const existing = document.getElementById('wireContextMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        function editWireProperties() {
+            if (!selectedWire) return;
+
+            const cableType = prompt('Cable type (e.g., "14/2 Romex", "12/3 NM-B"):', selectedWire.cableType || '14/2 Romex');
+            if (cableType !== null) {
+                selectedWire.cableType = cableType;
+            }
+
+            const colorChoice = prompt('Wire color:\n1 = Red (120V)\n2 = Purple (240V)\n3 = Blue (Control)\n4 = Green (Low Voltage)\n5 = Custom', '1');
+            const colorMap = { '1': '#e74c3c', '2': '#9b59b6', '3': '#3498db', '4': '#2ecc71' };
+
+            if (colorChoice === '5') {
+                const customColor = prompt('Enter hex color (e.g., #ff6600):', '#ff6600');
+                if (customColor) {
+                    selectedWire.color = customColor;
+                }
+            } else if (colorMap[colorChoice]) {
+                selectedWire.color = colorMap[colorChoice];
+            }
+
+            // Update wire type based on color selection
+            const typeMap = { '1': 'power120', '2': 'power240', '3': 'control', '4': 'lowvoltage' };
+            if (typeMap[colorChoice]) {
+                selectedWire.type = typeMap[colorChoice];
+            }
+
+            render();
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
+        function addWireControlPoint() {
+            if (!selectedWire) return;
+
+            // Add a control point at the midpoint
+            const midX = (selectedWire.from.x + selectedWire.to.x) / 2;
+            const midY = (selectedWire.from.y + selectedWire.to.y) / 2;
+
+            if (!selectedWire.controlPoints) {
+                selectedWire.controlPoints = [];
+            }
+
+            selectedWire.controlPoints.push({ x: midX, y: midY });
+            render();
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
+        function deleteWire() {
+            if (!selectedWire) return;
+
+            if (confirm('Delete this wire?')) {
+                const index = wires.indexOf(selectedWire);
+                if (index > -1) {
+                    wires.splice(index, 1);
+                }
+                selectedWire = null;
+                render();
+            }
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
         document.addEventListener('click', () => {
             document.getElementById('contextMenu').style.display = 'none';
+            document.getElementById('wireContextMenu')?.remove();
         });
 
         // Properties panel
@@ -970,18 +1422,98 @@
                 }
             });
 
-            circuits.forEach(circuit => {
+            circuits.forEach((circuit, idx) => {
                 const div = document.createElement('div');
                 div.className = 'circuit-item';
+                div.style.position = 'relative';
                 div.innerHTML = `
                     <div class="circuit-header">
                         <span class="circuit-name">${circuit.name}</span>
+                        <div class="circuit-actions">
+                            <button onclick="editCircuit(${idx})" class="circuit-btn edit">✏️</button>
+                            <button onclick="deleteCircuit(${idx})" class="circuit-btn delete">🗑️</button>
+                        </div>
                     </div>
                     <div class="circuit-info">${circuit.voltage}V, ${circuit.amperage}A</div>
                     <div class="circuit-info">${circuitMap[circuit.number]?.length || 0} component(s)</div>
                 `;
                 list.appendChild(div);
             });
+        }
+
+        function editCircuit(index) {
+            const circuit = circuits[index];
+            if (!circuit) return;
+
+            const newName = prompt('Circuit name:', circuit.name);
+            if (newName !== null && newName !== '') {
+                circuit.name = newName;
+            }
+
+            const newAmperage = prompt('Amperage (A):', circuit.amperage);
+            if (newAmperage !== null && newAmperage !== '') {
+                circuit.amperage = parseInt(newAmperage) || circuit.amperage;
+            }
+
+            const newVoltage = prompt('Voltage (V):', circuit.voltage);
+            if (newVoltage !== null && newVoltage !== '') {
+                circuit.voltage = parseInt(newVoltage) || circuit.voltage;
+            }
+
+            const colorChoice = prompt('Circuit color:\n1 = Red\n2 = Purple\n3 = Blue\n4 = Green', '1');
+            const colorMap = { '1': '#e74c3c', '2': '#9b59b6', '3': '#3498db', '4': '#2ecc71' };
+            if (colorChoice && colorMap[colorChoice]) {
+                circuit.color = colorMap[colorChoice];
+            }
+
+            updateCircuitList();
+            render();
+        }
+
+        function deleteCircuit(index) {
+            const circuit = circuits[index];
+            if (!circuit) return;
+
+            if (confirm(`Delete circuit "${circuit.name}"? Components will be unassigned.`)) {
+                // Unassign components from this circuit
+                components.forEach(comp => {
+                    if (comp.circuit === circuit.number) {
+                        comp.circuit = null;
+                    }
+                });
+
+                // Unassign wires from this circuit
+                wires.forEach(wire => {
+                    if (wire.circuit === circuit.number) {
+                        wire.circuit = null;
+                    }
+                });
+
+                circuits.splice(index, 1);
+
+                // Renumber remaining circuits
+                circuits.forEach((c, i) => {
+                    const oldNumber = c.number;
+                    c.number = i + 1;
+
+                    // Update component references
+                    components.forEach(comp => {
+                        if (comp.circuit === oldNumber) {
+                            comp.circuit = c.number;
+                        }
+                    });
+
+                    // Update wire references
+                    wires.forEach(wire => {
+                        if (wire.circuit === oldNumber) {
+                            wire.circuit = c.number;
+                        }
+                    });
+                });
+
+                updateCircuitList();
+                render();
+            }
         }
 
         // Floor plan upload with PDF support
@@ -999,7 +1531,7 @@
 
                         // Get first page
                         const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 2.0 });
+                        const viewport = page.getViewport({ scale: 3.5 });
 
                         // Create temporary canvas to render PDF
                         const tempCanvas = document.createElement('canvas');
@@ -1129,42 +1661,120 @@
             }
         }
 
-        // Export mapping
+        // Export mapping as PDF
         async function exportMapping() {
-            if (components.length === 0) {
-                alert('Add some components first!');
+            if (components.length === 0 && wires.length === 0) {
+                alert('Add some components or wires first!');
                 return;
             }
 
             try {
-                const exportData = {
-                    components: components,
-                    wires: wires,
-                    circuits: circuits,
-                    canvas_width: canvas.width,
-                    canvas_height: canvas.height
-                };
+                // Load jsPDF library dynamically
+                if (typeof window.jspdf === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    document.head.appendChild(script);
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+                }
 
-                const response = await fetch('/api/mapping/export', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(exportData)
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('landscape', 'mm', 'a4');
+
+                // Add title
+                pdf.setFontSize(20);
+                pdf.text('Electrical Mapping Plan', 148, 15, { align: 'center' });
+
+                // Convert canvas to image and add to PDF
+                const canvasImage = canvas.toDataURL('image/jpeg', 0.95);
+                pdf.addImage(canvasImage, 'JPEG', 10, 25, 277, 160);
+
+                // Add legend on the right side
+                let legendY = 190;
+                pdf.setFontSize(14);
+                pdf.text('Legend', 10, legendY);
+                legendY += 7;
+
+                // Component types legend
+                pdf.setFontSize(10);
+                pdf.text('Components:', 10, legendY);
+                legendY += 5;
+
+                Object.keys(componentConfig).forEach(key => {
+                    const config = componentConfig[key];
+                    pdf.setDrawColor(0);
+                    pdf.setFillColor(config.color);
+                    pdf.circle(12, legendY - 1, 1.5, 'F');
+                    pdf.text(config.name, 17, legendY);
+                    legendY += 4;
                 });
 
-                const data = await response.json();
+                // Wire types legend
+                legendY += 3;
+                pdf.text('Wire Types:', 10, legendY);
+                legendY += 5;
 
-                if (data.success) {
-                    alert('✅ Mapping exported successfully!');
-                    if (data.file) {
-                        window.open(data.file, '_blank');
-                    }
-                } else {
-                    alert('Export failed: ' + data.error);
+                const wireTypes = [
+                    { name: '120V Power', color: '#e74c3c' },
+                    { name: '240V Power', color: '#9b59b6' },
+                    { name: 'Control/Signal', color: '#3498db' },
+                    { name: 'Low Voltage', color: '#2ecc71' }
+                ];
+
+                wireTypes.forEach(wt => {
+                    const rgb = hexToRgb(wt.color);
+                    pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+                    pdf.setLineWidth(1);
+                    pdf.line(10, legendY - 1, 15, legendY - 1);
+                    pdf.setDrawColor(0);
+                    pdf.text(wt.name, 17, legendY);
+                    legendY += 4;
+                });
+
+                // Circuits legend
+                if (circuits.length > 0) {
+                    legendY += 3;
+                    pdf.text('Circuits:', 100, 190);
+                    let circuitY = 195;
+
+                    circuits.forEach(circuit => {
+                        const circuitColor = circuit.color || '#e74c3c';
+                        const rgb = hexToRgb(circuitColor);
+                        pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+                        pdf.circle(102, circuitY - 1, 1.5, 'F');
+                        pdf.setDrawColor(0);
+                        pdf.setFontSize(9);
+                        pdf.text(`${circuit.name} - ${circuit.voltage}V, ${circuit.amperage}A`, 107, circuitY);
+                        circuitY += 4;
+                    });
                 }
+
+                // Add metadata
+                pdf.setFontSize(8);
+                pdf.text(`Generated: ${new Date().toLocaleString()}`, 10, 205);
+                pdf.text(`Components: ${components.length} | Wires: ${wires.length} | Circuits: ${circuits.length}`, 10, 209);
+
+                // Save the PDF
+                const filename = `electrical-mapping-${Date.now()}.pdf`;
+                pdf.save(filename);
+
+                alert('✅ PDF exported successfully!');
             } catch (error) {
                 console.error('Export error:', error);
-                alert('Failed to export: ' + error.message);
+                alert('Failed to export PDF: ' + error.message);
             }
+        }
+
+        // Helper function to convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
         }
 
         // Keyboard Shortcuts
@@ -1333,6 +1943,23 @@
                     setTool('wire');
                 }
             }
+            // M - Measure tool
+            else if (e.key === 'm' || e.key === 'M') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('measure');
+                }
+            }
+            // A - Annotate tool
+            else if (e.key === 'a' || e.key === 'A') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA' &&
+                    !e.ctrlKey) {
+                    e.preventDefault();
+                    setTool('annotate');
+                }
+            }
         });
 
         // Save state on component add/delete/move (call saveState() before making changes)
@@ -1371,6 +1998,15 @@
         - 0: Reset view
         - S: Select tool
         - W: Wire tool
+        - M: Measure tool
+        - A: Annotate tool
+
+        🖱️ MOUSE CONTROLS:
+        - Scroll wheel: Zoom in/out
+        - Shift + Scroll: Pan (two-finger trackpad pan)
+        - Click + Drag: Pan canvas or move component
+        - Right-click component: Context menu
+        - Right-click wire: Wire properties menu
         `);
     </script>
 

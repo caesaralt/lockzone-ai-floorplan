@@ -492,8 +492,12 @@
         <div>
             <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
             <button class="toolbar-btn ai" onclick="runAIMapping()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">🤖 AI Mapping</button>
+            <button class="toolbar-btn" onclick="showLinkProjectModal()" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);">🔗 Link to Project</button>
             <button class="toolbar-btn success" onclick="exportToMapping()">Export to Mapping →</button>
             <button class="toolbar-btn primary" onclick="exportQuote()">💾 Export Quote</button>
+        </div>
+        <div id="linkedProjectInfo" style="background: #2ecc71; color: white; padding: 8px 16px; border-radius: 8px; font-size: 14px; display: none; margin-top: 10px;">
+            📋 Linked to: <span id="linkedProjectName"></span>
         </div>
     </div>
 
@@ -657,6 +661,37 @@
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="action-btn success" onclick="createAndAddItem()">✅ Create & Add to Symbol</button>
                 <button class="action-btn" onclick="closeCreateItemModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link to Project Modal -->
+    <div class="inventory-modal" id="linkProjectModal">
+        <div class="inventory-modal-content">
+            <h2 style="color: #e67e22; margin-bottom: 20px; font-size: 1.5em;">🔗 Link to CRM Project</h2>
+
+            <div class="prop-group">
+                <label>Select Existing Project</label>
+                <select id="selectProject" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white; font-size: 1em;">
+                    <option value="">-- Select a Project --</option>
+                </select>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0; color: #95a5a6;">- OR -</div>
+
+            <div class="prop-group">
+                <label>Create New Project</label>
+                <input type="text" id="newProjectTitle" placeholder="Project Title" style="margin-bottom: 10px;">
+                <select id="newProjectCustomer" style="margin-bottom: 10px;">
+                    <option value="">-- Select Customer --</option>
+                </select>
+                <textarea id="newProjectDesc" placeholder="Project Description" rows="3"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="action-btn success" onclick="linkToExistingProject()">Link to Selected</button>
+                <button class="action-btn" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);" onclick="createAndLinkProject()">Create & Link New</button>
+                <button class="action-btn" onclick="closeLinkProjectModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -1045,6 +1080,7 @@
                             <div class="item-details">Qty: ${quantity} | Unit: $${price.toFixed(2)}</div>
                             <div class="item-price">Total: $${total.toFixed(2)}</div>
                         </div>
+                        <button class="delete-item-btn" onclick="editItem(${index})" style="background: #3498db; margin-right: 5px;">✏️</button>
                         <button class="delete-item-btn" onclick="deleteItem(${index})">✖</button>
                     `;
                     itemList.appendChild(div);
@@ -1318,6 +1354,30 @@
             );
             renderInventoryList(filtered);
         });
+
+        function editItem(index) {
+            if (!editingSymbol || !editingSymbol.items) return;
+            const item = editingSymbol.items[index];
+
+            // Prompt for new values
+            const newName = prompt('Edit item name:', item.name);
+            if (newName === null) return; // Cancelled
+
+            const newPrice = prompt('Edit unit price:', item.price);
+            if (newPrice === null) return; // Cancelled
+
+            const newQuantity = prompt('Edit quantity:', item.quantity || 1);
+            if (newQuantity === null) return; // Cancelled
+
+            // Update item
+            item.name = newName || item.name;
+            item.price = parseFloat(newPrice) || item.price;
+            item.quantity = parseInt(newQuantity) || item.quantity || 1;
+
+            updateItemList();
+            updatePricing();
+            render();
+        }
 
         function deleteItem(index) {
             if (!editingSymbol || !editingSymbol.items) return;
@@ -1673,6 +1733,170 @@
         - -: Zoom out
         - 0: Reset view
         `);
+
+        // ==========================
+        // PROJECT LINKING FUNCTIONS
+        // ==========================
+
+        let allProjects = [];
+        let allCustomers = [];
+
+        async function showLinkProjectModal() {
+            // Load projects and customers
+            try {
+                const [projectsRes, customersRes] = await Promise.all([
+                    fetch('/api/crm/projects'),
+                    fetch('/api/crm/customers')
+                ]);
+                const projectsData = await projectsRes.json();
+                const customersData = await customersRes.json();
+
+                allProjects = projectsData.projects || [];
+                allCustomers = customersData.customers || [];
+
+                // Populate project dropdown
+                const projectSelect = document.getElementById('selectProject');
+                projectSelect.innerHTML = '<option value="">-- Select a Project --</option>';
+                allProjects.forEach(proj => {
+                    projectSelect.innerHTML += `<option value="${proj.id}">${proj.title}</option>`;
+                });
+
+                // Populate customer dropdown
+                const customerSelect = document.getElementById('newProjectCustomer');
+                customerSelect.innerHTML = '<option value="">-- Select Customer --</option>';
+                allCustomers.forEach(cust => {
+                    customerSelect.innerHTML += `<option value="${cust.id}">${cust.name}</option>`;
+                });
+
+                // Show linked project if exists
+                if (sessionData.project_id) {
+                    const linkedProj = allProjects.find(p => p.id === sessionData.project_id);
+                    if (linkedProj) {
+                        document.getElementById('linkedProjectInfo').style.display = 'block';
+                        document.getElementById('linkedProjectName').textContent = linkedProj.title;
+                    }
+                }
+
+                document.getElementById('linkProjectModal').style.display = 'block';
+            } catch (error) {
+                alert('Failed to load projects: ' + error.message);
+            }
+        }
+
+        function closeLinkProjectModal() {
+            document.getElementById('linkProjectModal').style.display = 'none';
+        }
+
+        async function linkToExistingProject() {
+            const projectId = document.getElementById('selectProject').value;
+            if (!projectId) {
+                alert('Please select a project first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/link-session-to-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionData.session_id || '{{ session_data.session_id }}',
+                        project_id: projectId,
+                        link_type: 'takeoffs'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    sessionData.project_id = projectId;
+                    const linkedProj = allProjects.find(p => p.id === projectId);
+                    document.getElementById('linkedProjectInfo').style.display = 'block';
+                    document.getElementById('linkedProjectName').textContent = linkedProj.title;
+                    alert('✅ Linked to project: ' + linkedProj.title);
+                    closeLinkProjectModal();
+                } else {
+                    alert('Failed to link: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error linking to project: ' + error.message);
+            }
+        }
+
+        async function createAndLinkProject() {
+            const title = document.getElementById('newProjectTitle').value;
+            const customerId = document.getElementById('newProjectCustomer').value;
+            const description = document.getElementById('newProjectDesc').value;
+
+            if (!title) {
+                alert('Please enter a project title');
+                return;
+            }
+
+            try {
+                // Create project
+                const createRes = await fetch('/api/crm/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title,
+                        customer_id: customerId,
+                        description: description,
+                        status: 'pending',
+                        takeoffs_session_id: sessionData.session_id || '{{ session_data.session_id }}'
+                    })
+                });
+
+                const createData = await createRes.json();
+                if (!createData.success) {
+                    alert('Failed to create project: ' + createData.error);
+                    return;
+                }
+
+                const newProject = createData.project;
+
+                // Link to session
+                const linkRes = await fetch('/api/link-session-to-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionData.session_id || '{{ session_data.session_id }}',
+                        project_id: newProject.id,
+                        link_type: 'takeoffs'
+                    })
+                });
+
+                const linkData = await linkRes.json();
+                if (linkData.success) {
+                    sessionData.project_id = newProject.id;
+                    document.getElementById('linkedProjectInfo').style.display = 'block';
+                    document.getElementById('linkedProjectName').textContent = newProject.title;
+                    alert('✅ Created and linked to new project: ' + newProject.title);
+                    closeLinkProjectModal();
+
+                    // Clear form
+                    document.getElementById('newProjectTitle').value = '';
+                    document.getElementById('newProjectCustomer').value = '';
+                    document.getElementById('newProjectDesc').value = '';
+                } else {
+                    alert('Project created but failed to link: ' + linkData.error);
+                }
+            } catch (error) {
+                alert('Error creating project: ' + error.message);
+            }
+        }
+
+        // Check and display linked project on load
+        if (sessionData.project_id) {
+            fetch('/api/crm/projects')
+                .then(res => res.json())
+                .then(data => {
+                    const linkedProj = data.projects.find(p => p.id === sessionData.project_id);
+                    if (linkedProj) {
+                        document.getElementById('linkedProjectInfo').style.display = 'block';
+                        document.getElementById('linkedProjectName').textContent = linkedProj.title;
+                    }
+                })
+                .catch(err => console.error('Failed to load linked project:', err));
+        }
     </script>
 
     <!-- AI Chatbot Component -->
