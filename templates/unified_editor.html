@@ -491,6 +491,8 @@
         </div>
         <div>
             <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
+            <button class="toolbar-btn" onclick="saveProgress()" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">💾 Save Progress</button>
+            <button class="toolbar-btn" onclick="loadProgress()" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">📂 Load Progress</button>
             <button class="toolbar-btn ai" onclick="runAIMapping()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">🤖 AI Mapping</button>
             <button class="toolbar-btn" onclick="showLinkProjectModal()" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);">🔗 Link to Project</button>
             <button class="toolbar-btn success" onclick="exportToMapping()">Export to Mapping →</button>
@@ -998,8 +1000,30 @@
 
         canvasContainer.addEventListener('wheel', (e) => {
             e.preventDefault();
-            if (e.deltaY < 0) zoomIn();
-            else zoomOut();
+
+            // Pinch zoom detection (Ctrl+wheel or actual pinch gesture)
+            if (e.ctrlKey) {
+                // Zoom with pinch or Ctrl+wheel
+                const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+                scale *= zoomDelta;
+                scale = Math.max(0.1, Math.min(5, scale));
+                updateTransform();
+                return;
+            }
+
+            // Two-finger pan (horizontal scrolling component present)
+            // If deltaX is significant, it's a horizontal pan gesture
+            if (Math.abs(e.deltaX) > 0 || e.shiftKey) {
+                panX -= e.deltaX;
+                panY -= e.deltaY;
+                updateTransform();
+            } else {
+                // Normal wheel = zoom
+                const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+                scale *= zoomDelta;
+                scale = Math.max(0.1, Math.min(5, scale));
+                updateTransform();
+            }
         });
 
         canvas.addEventListener('dblclick', (e) => {
@@ -1524,6 +1548,126 @@
             }
         }
 
+        // ==========================
+        // SAVE/LOAD PROGRESS FUNCTIONS
+        // ==========================
+
+        function saveProgress() {
+            try {
+                const progressData = {
+                    timestamp: new Date().toISOString(),
+                    sessionId: sessionData.session_id || 'default_session',
+                    symbols: symbols,
+                    floorplanImageData: floorplanImage ? canvas.toDataURL('image/jpeg', 0.8) : null,
+                    panX: panX,
+                    panY: panY,
+                    scale: scale,
+                    projectName: '{{ project_name }}',
+                    tier: '{{ tier }}',
+                    selectedSymbols: Array.from(selectedSymbols)
+                };
+
+                const storageKey = `takeoffs_progress_${sessionData.session_id || 'default_session'}`;
+                localStorage.setItem(storageKey, JSON.stringify(progressData));
+
+                const timestamp = new Date().toLocaleString();
+                alert(`✅ Progress saved successfully!\n\nSaved at: ${timestamp}\n\nYour work will be preserved even if you close the browser.`);
+                console.log('📦 Progress saved to localStorage:', storageKey);
+            } catch (error) {
+                console.error('Failed to save progress:', error);
+                alert('❌ Failed to save progress. Your browser may have storage limits. Error: ' + error.message);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const storageKey = `takeoffs_progress_${sessionData.session_id || 'default_session'}`;
+                const saved = localStorage.getItem(storageKey);
+
+                if (!saved) {
+                    alert('📭 No saved progress found for this session.\n\nMake sure you\'re using the same browser and session.');
+                    return;
+                }
+
+                const data = JSON.parse(saved);
+                const timestamp = new Date(data.timestamp).toLocaleString();
+
+                if (!confirm(`📂 Load progress from ${timestamp}?\n\nThis will replace your current work.`)) {
+                    return;
+                }
+
+                // Restore symbols
+                symbols = data.symbols || [];
+
+                // Restore pan and zoom
+                panX = data.panX || 0;
+                panY = data.panY || 0;
+                scale = data.scale || 1;
+
+                // Restore selected symbols
+                selectedSymbols.clear();
+                if (data.selectedSymbols) {
+                    data.selectedSymbols.forEach(id => selectedSymbols.add(id));
+                }
+
+                // Restore floorplan image
+                if (data.floorplanImageData) {
+                    const img = new Image();
+                    img.onload = () => {
+                        floorplanImage = img;
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        document.getElementById('uploadZone').style.display = 'none';
+                        document.getElementById('canvasContainer').style.display = 'block';
+                        updateTransform();
+                        render();
+                        updatePricing();
+                        alert(`✅ Progress loaded successfully!\n\nRestored from: ${timestamp}\n\n${symbols.length} symbol(s) loaded.`);
+                    };
+                    img.onerror = () => {
+                        alert('⚠️ Loaded symbols but failed to restore floor plan image.');
+                        render();
+                        updatePricing();
+                    };
+                    img.src = data.floorplanImageData;
+                } else {
+                    render();
+                    updatePricing();
+                    alert(`✅ Progress loaded!\n\nRestored from: ${timestamp}\n\n${symbols.length} symbol(s) loaded.\n\nNote: No floor plan image was saved.`);
+                }
+
+                console.log('📂 Progress loaded from localStorage:', storageKey);
+            } catch (error) {
+                console.error('Failed to load progress:', error);
+                alert('❌ Failed to load progress. The saved data may be corrupted. Error: ' + error.message);
+            }
+        }
+
+        // Auto-save every 2 minutes (optional)
+        let autoSaveInterval = setInterval(() => {
+            if (symbols.length > 0 && floorplanImage) {
+                try {
+                    const progressData = {
+                        timestamp: new Date().toISOString(),
+                        sessionId: sessionData.session_id || 'default_session',
+                        symbols: symbols,
+                        floorplanImageData: canvas.toDataURL('image/jpeg', 0.8),
+                        panX: panX,
+                        panY: panY,
+                        scale: scale,
+                        projectName: '{{ project_name }}',
+                        tier: '{{ tier }}',
+                        selectedSymbols: Array.from(selectedSymbols)
+                    };
+                    const storageKey = `takeoffs_progress_${sessionData.session_id || 'default_session'}`;
+                    localStorage.setItem(storageKey, JSON.stringify(progressData));
+                    console.log('💾 Auto-saved at', new Date().toLocaleTimeString());
+                } catch (error) {
+                    console.error('Auto-save failed:', error);
+                }
+            }
+        }, 120000); // 2 minutes
+
         // AI Mapping function
         async function runAIMapping() {
             if (!floorplanImage) {
@@ -1552,7 +1696,8 @@
                     body: JSON.stringify({
                         floor_plan_image: imageData,
                         canvas_width: canvas.width,
-                        canvas_height: canvas.height
+                        canvas_height: canvas.height,
+                        purpose: 'automation'  // Takeoffs: Place automation symbols
                     })
                 });
 
@@ -1648,25 +1793,28 @@
             const isInput = document.activeElement.tagName === 'INPUT' ||
                            document.activeElement.tagName === 'TEXTAREA';
 
-            // Ctrl+C - Copy
-            if (e.ctrlKey && e.key === 'c' && !isInput) {
+            // Use Ctrl on Windows/Linux, Cmd on Mac
+            const modKey = e.ctrlKey || e.metaKey;
+
+            // Ctrl/Cmd+C - Copy
+            if (modKey && e.key === 'c' && !isInput) {
                 if (selectedSymbols.size > 0) {
                     e.preventDefault();
                     copySelected();
                 }
             }
-            // Ctrl+V - Paste
-            else if (e.ctrlKey && e.key === 'v' && !isInput) {
+            // Ctrl/Cmd+V - Paste
+            else if (modKey && e.key === 'v' && !isInput) {
                 e.preventDefault();
                 pasteClipboard();
             }
-            // Ctrl+Z - Undo
-            else if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+            // Ctrl/Cmd+Z - Undo
+            else if (modKey && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 undo();
             }
-            // Ctrl+Y or Ctrl+Shift+Z - Redo
-            else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+            // Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z - Redo
+            else if ((modKey && e.key === 'y') || (modKey && e.shiftKey && e.key === 'z')) {
                 e.preventDefault();
                 redo();
             }
@@ -1678,16 +1826,21 @@
                     deleteSelected();
                 }
             }
-            // Ctrl+A - Select All
-            else if (e.ctrlKey && e.key === 'a') {
+            // Ctrl/Cmd+A - Select All
+            else if (modKey && e.key === 'a') {
                 e.preventDefault();
                 selectAll();
             }
-            // Ctrl+D - Duplicate
-            else if (e.ctrlKey && e.key === 'd') {
+            // Ctrl/Cmd+D - Duplicate
+            else if (modKey && e.key === 'd') {
                 e.preventDefault();
                 saveState();
                 duplicateSelected();
+            }
+            // Ctrl/Cmd+S - Save Progress
+            else if (modKey && e.key === 's') {
+                e.preventDefault();
+                saveProgress();
             }
             // Escape - Deselect
             else if (e.key === 'Escape') {
@@ -1720,18 +1873,30 @@
 
         // Show keyboard shortcuts in console
         console.log(`
-        🎹 KEYBOARD SHORTCUTS:
-        - Ctrl+C: Copy selected symbols
-        - Ctrl+V: Paste symbols
-        - Ctrl+Z: Undo
-        - Ctrl+Y: Redo
-        - Ctrl+A: Select all symbols
-        - Ctrl+D: Duplicate selected
+        🎹 KEYBOARD SHORTCUTS (use Ctrl on Windows/Linux, Cmd on Mac):
+        - Ctrl/Cmd+C: Copy selected symbols
+        - Ctrl/Cmd+V: Paste symbols
+        - Ctrl/Cmd+Z: Undo
+        - Ctrl/Cmd+Y: Redo
+        - Ctrl/Cmd+A: Select all symbols
+        - Ctrl/Cmd+D: Duplicate selected
+        - Ctrl/Cmd+S: Save progress to browser storage
         - Delete/Backspace: Delete selected
         - Escape: Deselect all
         - +/=: Zoom in
         - -: Zoom out
         - 0: Reset view
+
+        🖱️ MOUSE/TRACKPAD CONTROLS:
+        - Mouse wheel: Zoom in/out
+        - Two-finger pan: Pan the canvas (trackpad)
+        - Ctrl/Cmd + wheel: Pinch zoom
+        - Click + drag: Pan the canvas (when in Select mode)
+        - Click symbol + drag: Move symbol
+        - Double-click symbol: Edit symbol
+        - Shift + click: Multi-select symbols
+
+        💾 AUTO-SAVE: Your work is automatically saved every 2 minutes!
         `);
 
         // ==========================
