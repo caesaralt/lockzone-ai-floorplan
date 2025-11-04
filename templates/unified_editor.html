@@ -491,6 +491,7 @@
         </div>
         <div>
             <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
+            <button class="toolbar-btn ai" onclick="runAIMapping()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">🤖 AI Mapping</button>
             <button class="toolbar-btn success" onclick="exportToMapping()">Export to Mapping →</button>
             <button class="toolbar-btn primary" onclick="exportQuote()">💾 Export Quote</button>
         </div>
@@ -1418,9 +1419,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    window.location.href = '/mapping?session=' + (sessionData.session_id || 'new_session');
+                    // Use the session_id returned from the server
+                    const finalSessionId = data.session_id || sessionData.session_id || 'new_session';
+                    window.location.href = '/mapping?session=' + finalSessionId;
                 } else {
-                    alert('Failed to export: ' + data.error);
+                    alert('Failed to export: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
@@ -1461,29 +1464,218 @@
             }
         }
 
-        // Keyboard shortcuts
+        // AI Mapping function
+        async function runAIMapping() {
+            if (!floorplanImage) {
+                alert('Please upload a floor plan first!');
+                return;
+            }
+
+            if (!confirm('Run AI analysis to automatically place symbols on this floor plan? This will replace existing symbols.')) {
+                return;
+            }
+
+            try {
+                // Convert canvas to image data
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(floorplanImage, 0, 0, canvas.width, canvas.height);
+                const imageData = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+                alert('🤖 AI is analyzing your floor plan... This may take 10-30 seconds.');
+
+                const response = await fetch('/api/ai/mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        floor_plan_image: imageData,
+                        canvas_width: canvas.width,
+                        canvas_height: canvas.height
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.components) {
+                    // Convert mapping components to symbols
+                    symbols = data.components.map(comp => ({
+                        id: comp.label || comp.id,
+                        type: comp.type,
+                        automation_category: comp.type,
+                        x: comp.x / canvas.width,
+                        y: comp.y / canvas.height,
+                        label: comp.label,
+                        room: comp.room || '',
+                        items: [],
+                        custom_image_data: null
+                    }));
+
+                    render();
+                    updatePricing();
+                    alert(`✅ AI placed ${symbols.length} symbols! You can now edit and refine them.`);
+                } else {
+                    alert('AI mapping failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('AI mapping error:', error);
+                alert('Failed to run AI mapping: ' + error.message);
+            }
+        }
+
+        // Enhanced Keyboard shortcuts with undo/redo and copy/paste
+        let clipboard = [];
+        let undoStack = [];
+        let redoStack = [];
+
+        function saveState() {
+            undoStack.push(JSON.parse(JSON.stringify(symbols)));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push(JSON.parse(JSON.stringify(symbols)));
+                symbols = undoStack.pop();
+                selectedSymbols.clear();
+                render();
+                updatePricing();
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push(JSON.parse(JSON.stringify(symbols)));
+                symbols = redoStack.pop();
+                selectedSymbols.clear();
+                render();
+                updatePricing();
+            }
+        }
+
+        function copySelected() {
+            clipboard = [];
+            selectedSymbols.forEach(id => {
+                const symbol = symbols.find(s => s.id === id);
+                if (symbol) {
+                    clipboard.push(JSON.parse(JSON.stringify(symbol)));
+                }
+            });
+            if (clipboard.length > 0) {
+                console.log(`📋 Copied ${clipboard.length} symbol(s)`);
+            }
+        }
+
+        function pasteClipboard() {
+            if (clipboard.length > 0) {
+                saveState();
+                clipboard.forEach(sym => {
+                    const newSym = JSON.parse(JSON.stringify(sym));
+                    newSym.id = sym.type.toUpperCase()[0] + (symbols.length + 1);
+                    newSym.x += 0.05;
+                    newSym.y += 0.05;
+                    symbols.push(newSym);
+                });
+                render();
+                updatePricing();
+                console.log(`📌 Pasted ${clipboard.length} symbol(s)`);
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (document.activeElement.tagName !== 'INPUT' &&
-                    document.activeElement.tagName !== 'TEXTAREA') {
+            const isInput = document.activeElement.tagName === 'INPUT' ||
+                           document.activeElement.tagName === 'TEXTAREA';
+
+            // Ctrl+C - Copy
+            if (e.ctrlKey && e.key === 'c' && !isInput) {
+                if (selectedSymbols.size > 0) {
                     e.preventDefault();
+                    copySelected();
+                }
+            }
+            // Ctrl+V - Paste
+            else if (e.ctrlKey && e.key === 'v' && !isInput) {
+                e.preventDefault();
+                pasteClipboard();
+            }
+            // Ctrl+Z - Undo
+            else if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+            // Ctrl+Y or Ctrl+Shift+Z - Redo
+            else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redo();
+            }
+            // Delete or Backspace
+            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (!isInput) {
+                    e.preventDefault();
+                    saveState();
                     deleteSelected();
                 }
-            } else if (e.ctrlKey && e.key === 'a') {
+            }
+            // Ctrl+A - Select All
+            else if (e.ctrlKey && e.key === 'a') {
                 e.preventDefault();
                 selectAll();
-            } else if (e.ctrlKey && e.key === 'd') {
+            }
+            // Ctrl+D - Duplicate
+            else if (e.ctrlKey && e.key === 'd') {
                 e.preventDefault();
+                saveState();
                 duplicateSelected();
-            } else if (e.key === 'Escape') {
+            }
+            // Escape - Deselect
+            else if (e.key === 'Escape') {
                 selectedSymbols.clear();
                 document.getElementById('editPanel').style.display = 'none';
                 render();
             }
+            // +/= - Zoom in
+            else if ((e.key === '+' || e.key === '=') && !isInput) {
+                e.preventDefault();
+                zoomIn();
+            }
+            // - - Zoom out
+            else if (e.key === '-' && !isInput) {
+                e.preventDefault();
+                zoomOut();
+            }
+            // 0 - Reset view
+            else if (e.key === '0' && !isInput) {
+                e.preventDefault();
+                resetView();
+            }
         });
+
+        // Save state before making changes
+        const originalSymbolsPush = Array.prototype.push;
 
         // Initialize
         if (floorplanImage) render();
+
+        // Show keyboard shortcuts in console
+        console.log(`
+        🎹 KEYBOARD SHORTCUTS:
+        - Ctrl+C: Copy selected symbols
+        - Ctrl+V: Paste symbols
+        - Ctrl+Z: Undo
+        - Ctrl+Y: Redo
+        - Ctrl+A: Select all symbols
+        - Ctrl+D: Duplicate selected
+        - Delete/Backspace: Delete selected
+        - Escape: Deselect all
+        - +/=: Zoom in
+        - -: Zoom out
+        - 0: Reset view
+        `);
     </script>
+
+    <!-- AI Chatbot Component -->
+    {% include 'chatbot_component.html' %}
 </body>
 </html>

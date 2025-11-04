@@ -1,0 +1,445 @@
+<!-- AI Assistant Chatbot Component -->
+<div class="ai-chatbot-container" id="aiChatbot">
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+        🤖 AI Assistant
+    </button>
+
+    <div class="chatbot-panel" id="chatbotPanel" style="display: none;">
+        <div class="chatbot-header">
+            <div class="chatbot-title">
+                <span class="chatbot-icon">🤖</span>
+                <span>AI Assistant</span>
+                <span class="chatbot-status" id="chatbotStatus">Ready</span>
+            </div>
+            <div class="chatbot-actions">
+                <button class="chatbot-header-btn" onclick="clearChat()" title="Clear conversation">🗑️</button>
+                <button class="chatbot-header-btn" onclick="toggleChatbot()">✖️</button>
+            </div>
+        </div>
+
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="chatbot-message assistant">
+                <div class="message-content">
+                    👋 Hi! I'm your AI assistant with advanced capabilities:
+                    <ul style="margin: 8px 0; padding-left: 20px;">
+                        <li>💭 <strong>Extended Thinking</strong> - Deep reasoning for complex questions</li>
+                        <li>🌐 <strong>Web Search</strong> - Real-time information from the internet</li>
+                        <li>🔧 <strong>Agentic Actions</strong> - Can help with tasks in this app</li>
+                        <li>📊 <strong>Data Analysis</strong> - Analyze your projects and quotes</li>
+                    </ul>
+                    Ask me anything! I can help with electrical codes, pricing, components, troubleshooting, and more.
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-input-container">
+            <div class="chatbot-options">
+                <label class="chatbot-option">
+                    <input type="checkbox" id="useExtendedThinking" checked>
+                    <span>💭 Extended Thinking</span>
+                </label>
+                <label class="chatbot-option">
+                    <input type="checkbox" id="useWebSearch">
+                    <span>🌐 Web Search</span>
+                </label>
+            </div>
+            <div class="chatbot-input-row">
+                <textarea
+                    id="chatbotInput"
+                    class="chatbot-input"
+                    placeholder="Ask me anything... (Press Enter to send, Shift+Enter for new line)"
+                    rows="1"></textarea>
+                <button class="chatbot-send-btn" onclick="sendMessage()">
+                    <span id="sendIcon">📤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.ai-chatbot-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.chatbot-toggle {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 30px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(155, 89, 182, 0.4);
+    transition: all 0.3s;
+}
+
+.chatbot-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(155, 89, 182, 0.6);
+}
+
+.chatbot-panel {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    width: 420px;
+    max-width: 95vw;
+    height: 600px;
+    max-height: 80vh;
+    background: #1a1f2e;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 2px solid #9b59b6;
+}
+
+.chatbot-header {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #8e44ad;
+}
+
+.chatbot-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.chatbot-icon {
+    font-size: 1.3em;
+}
+
+.chatbot-status {
+    font-size: 0.75em;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+.chatbot-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.chatbot-header-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.2s;
+}
+
+.chatbot-header-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #0f1419;
+}
+
+.chatbot-message {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chatbot-message.user {
+    align-items: flex-end;
+}
+
+.chatbot-message.assistant {
+    align-items: flex-start;
+}
+
+.message-content {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.5;
+    font-size: 0.95em;
+}
+
+.chatbot-message.user .message-content {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+}
+
+.chatbot-message.assistant .message-content {
+    background: #2c3e50;
+    color: #ecf0f1;
+}
+
+.message-thinking {
+    font-style: italic;
+    color: #95a5a6;
+    font-size: 0.9em;
+    margin-top: 4px;
+    padding: 8px;
+    background: rgba(155, 89, 182, 0.1);
+    border-left: 3px solid #9b59b6;
+    border-radius: 4px;
+}
+
+.chatbot-options {
+    display: flex;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #16213e;
+    border-top: 1px solid #2c3e50;
+}
+
+.chatbot-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    color: #95a5a6;
+    cursor: pointer;
+}
+
+.chatbot-option input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.chatbot-input-container {
+    background: #16213e;
+    border-top: 2px solid #2c3e50;
+}
+
+.chatbot-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+}
+
+.chatbot-input {
+    flex: 1;
+    background: #2c3e50;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    color: white;
+    padding: 12px;
+    font-size: 0.95em;
+    resize: none;
+    max-height: 120px;
+    font-family: inherit;
+}
+
+.chatbot-input:focus {
+    outline: none;
+    border-color: #9b59b6;
+}
+
+.chatbot-send-btn {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    border: none;
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.3em;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.chatbot-send-btn:hover {
+    transform: scale(1.05);
+}
+
+.chatbot-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.chatbot-loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+</style>
+
+<script>
+let chatHistory = [];
+let isProcessing = false;
+
+function toggleChatbot() {
+    const panel = document.getElementById('chatbotPanel');
+    const isVisible = panel.style.display === 'block';
+    panel.style.display = isVisible ? 'none' : 'block';
+
+    if (!isVisible) {
+        document.getElementById('chatbotInput').focus();
+    }
+}
+
+function clearChat() {
+    if (confirm('Clear conversation history?')) {
+        chatHistory = [];
+        document.getElementById('chatbotMessages').innerHTML = `
+            <div class="chatbot-message assistant">
+                <div class="message-content">
+                    Conversation cleared! How can I help you?
+                </div>
+            </div>
+        `;
+    }
+}
+
+function addMessage(role, content, thinking = null) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chatbot-message ${role}`;
+
+    let html = `<div class="message-content">${formatMessage(content)}</div>`;
+
+    if (thinking && role === 'assistant') {
+        html += `<div class="message-thinking">💭 Thinking: ${thinking}</div>`;
+    }
+
+    messageDiv.innerHTML = html;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function formatMessage(content) {
+    // Basic markdown-like formatting
+    return content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatbotInput');
+    const message = input.value.trim();
+
+    if (!message || isProcessing) return;
+
+    const useExtendedThinking = document.getElementById('useExtendedThinking').checked;
+    const useWebSearch = document.getElementById('useWebSearch').checked;
+
+    // Add user message
+    addMessage('user', message);
+    chatHistory.push({ role: 'user', content: message });
+
+    input.value = '';
+    isProcessing = true;
+
+    // Update UI
+    document.getElementById('chatbotStatus').textContent = useExtendedThinking ? 'Thinking deeply...' : 'Processing...';
+    document.getElementById('sendIcon').innerHTML = '⏳';
+    document.querySelector('.chatbot-send-btn').classList.add('chatbot-loading');
+
+    try {
+        const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: message,
+                history: chatHistory,
+                use_extended_thinking: useExtendedThinking,
+                use_web_search: useWebSearch,
+                context: {
+                    page: window.location.pathname,
+                    app: document.title
+                }
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            addMessage('assistant', data.response, data.thinking);
+            chatHistory.push({ role: 'assistant', content: data.response });
+
+            // Execute any actions the AI suggests
+            if (data.actions && data.actions.length > 0) {
+                for (const action of data.actions) {
+                    await executeAction(action);
+                }
+            }
+        } else {
+            addMessage('assistant', '❌ Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    } catch (error) {
+        console.error('Chat error:', error);
+        addMessage('assistant', '❌ Failed to get response: ' + error.message);
+    } finally {
+        isProcessing = false;
+        document.getElementById('chatbotStatus').textContent = 'Ready';
+        document.getElementById('sendIcon').innerHTML = '📤';
+        document.querySelector('.chatbot-send-btn').classList.remove('chatbot-loading');
+    }
+}
+
+async function executeAction(action) {
+    console.log('Executing action:', action);
+
+    // Handle different action types
+    switch (action.type) {
+        case 'navigate':
+            if (confirm(`Navigate to ${action.destination}?`)) {
+                window.location.href = action.destination;
+            }
+            break;
+        case 'export':
+            if (typeof exportToMapping === 'function') {
+                await exportToMapping();
+            }
+            break;
+        case 'ai_mapping':
+            if (typeof runAIMapping === 'function') {
+                await runAIMapping();
+            }
+            break;
+        default:
+            console.log('Unknown action type:', action.type);
+    }
+}
+
+// Auto-resize textarea
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('chatbotInput');
+    if (input) {
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send on Enter, new line on Shift+Enter
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+});
+</script>
