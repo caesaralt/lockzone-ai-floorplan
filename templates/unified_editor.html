@@ -1418,9 +1418,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    window.location.href = '/mapping?session=' + (sessionData.session_id || 'new_session');
+                    // Use the session_id returned from the server
+                    const finalSessionId = data.session_id || sessionData.session_id || 'new_session';
+                    window.location.href = '/mapping?session=' + finalSessionId;
                 } else {
-                    alert('Failed to export: ' + data.error);
+                    alert('Failed to export: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
                 alert('Error: ' + error.message);

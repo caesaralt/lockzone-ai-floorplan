@@ -2085,7 +2085,19 @@ def takeoffs_export():
 
         # Update session data with edited symbols
         session_data = load_session_data(session_id)
-        if session_data:
+
+        # Create new session if it doesn't exist
+        if not session_data:
+            session_id = get_session_id()  # Generate new session ID
+            session_data = {
+                'session_id': session_id,
+                'project_name': project_name,
+                'tier': tier,
+                'symbols': symbols,
+                'created_at': datetime.now().isoformat()
+            }
+            save_session_data(session_id, session_data)
+        else:
             session_data['symbols'] = symbols
             save_session_data(session_id, session_data)
 
@@ -2138,8 +2150,9 @@ def takeoffs_export():
         annotated_path = os.path.join(app.config['OUTPUT_FOLDER'], annotated_filename)
         quote_path = os.path.join(app.config['OUTPUT_FOLDER'], quote_filename)
 
-        # Get original floor plan
-        original_pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], session_data.get('original_pdf', ''))
+        # Get original floor plan (may not exist for new sessions)
+        original_pdf = session_data.get('original_pdf', '') or session_data.get('floorplan_image', '')
+        original_pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], original_pdf) if original_pdf else None
 
         # Generate marked-up image with edited symbols
         mapping_data = {
@@ -2151,7 +2164,7 @@ def takeoffs_export():
             }
         }
 
-        if os.path.exists(original_pdf_path):
+        if original_pdf_path and os.path.exists(original_pdf_path):
             generate_marked_up_image(original_pdf_path, mapping_data, annotated_path)
         else:
             # Fallback: use existing annotated image
@@ -2217,6 +2230,7 @@ def takeoffs_export():
 
         return jsonify({
             'success': True,
+            'session_id': session_id,
             'annotated_pdf': f'/api/download/{annotated_filename}',
             'quote_pdf': f'/api/download/{quote_filename}',
             'total': grand_total

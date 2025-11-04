@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electrical Mapping - {{ project_name | default('New Project') }}</title>
+    <!-- PDF.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    </script>
     <style>
         * {
             margin: 0;
@@ -978,27 +984,63 @@
             });
         }
 
-        // Floor plan upload
+        // Floor plan upload with PDF support
         document.getElementById('floorplanUpload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
             if (file.type === 'application/pdf') {
-                // Convert PDF to image (simplified - in production use pdf.js)
-                alert('PDF upload: Please convert to image format (JPG/PNG) for now. Full PDF support coming soon!');
-                return;
-            }
+                // Handle PDF using PDF.js
+                const fileReader = new FileReader();
+                fileReader.onload = async function(event) {
+                    try {
+                        const typedarray = new Uint8Array(event.target.result);
+                        const pdf = await pdfjsLib.getDocument(typedarray).promise;
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    floorplanImage = img;
-                    render();
+                        // Get first page
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({ scale: 2.0 });
+
+                        // Create temporary canvas to render PDF
+                        const tempCanvas = document.createElement('canvas');
+                        const tempContext = tempCanvas.getContext('2d');
+                        tempCanvas.width = viewport.width;
+                        tempCanvas.height = viewport.height;
+
+                        // Render PDF page to canvas
+                        await page.render({
+                            canvasContext: tempContext,
+                            viewport: viewport
+                        }).promise;
+
+                        // Convert canvas to image
+                        const img = new Image();
+                        img.onload = function() {
+                            floorplanImage = img;
+                            render();
+                            alert('✅ PDF loaded successfully!');
+                        };
+                        img.src = tempCanvas.toDataURL();
+                    } catch (error) {
+                        console.error('PDF loading error:', error);
+                        alert('Failed to load PDF: ' + error.message);
+                    }
                 };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+                fileReader.readAsArrayBuffer(file);
+            } else {
+                // Handle image files
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        floorplanImage = img;
+                        render();
+                        alert('✅ Image loaded successfully!');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
         });
 
         // Import from takeoffs
@@ -1125,6 +1167,181 @@
             }
         }
 
+        // Keyboard Shortcuts
+        let clipboard = null;  // For copy/paste
+        let undoStack = [];
+        let redoStack = [];
+
+        function saveState() {
+            undoStack.push({
+                components: JSON.parse(JSON.stringify(components)),
+                wires: JSON.parse(JSON.stringify(wires))
+            });
+            // Limit undo stack size
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];  // Clear redo on new action
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push({
+                    components: JSON.parse(JSON.stringify(components)),
+                    wires: JSON.parse(JSON.stringify(wires))
+                });
+                const state = undoStack.pop();
+                components = state.components;
+                wires = state.wires;
+                selectedComponent = null;
+                render();
+                alert('⏪ Undo');
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push({
+                    components: JSON.parse(JSON.stringify(components)),
+                    wires: JSON.parse(JSON.stringify(wires))
+                });
+                const state = redoStack.pop();
+                components = state.components;
+                wires = state.wires;
+                render();
+                alert('⏩ Redo');
+            }
+        }
+
+        function copyComponent() {
+            if (selectedComponent) {
+                clipboard = JSON.parse(JSON.stringify(selectedComponent));
+                alert('📋 Component copied');
+            }
+        }
+
+        function pasteComponent() {
+            if (clipboard) {
+                saveState();
+                const newComp = JSON.parse(JSON.stringify(clipboard));
+                newComp.id = components.length + 1;
+                newComp.x += 30;
+                newComp.y += 30;
+                newComp.label = (newComp.label || 'Component') + ' (copy)';
+                components.push(newComp);
+                selectedComponent = newComp;
+                render();
+                alert('📌 Component pasted');
+            }
+        }
+
+        function selectAllComponents() {
+            // In future can add multi-select
+            alert('📍 All components selectable with Shift+Click');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+C - Copy
+            if (e.ctrlKey && e.key === 'c' && !e.shiftKey) {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    copyComponent();
+                }
+            }
+            // Ctrl+V - Paste
+            else if (e.ctrlKey && e.key === 'v') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    pasteComponent();
+                }
+            }
+            // Ctrl+Z - Undo
+            else if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+            // Ctrl+Y or Ctrl+Shift+Z - Redo
+            else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redo();
+            }
+            // Ctrl+A - Select All
+            else if (e.ctrlKey && e.key === 'a') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    selectAllComponents();
+                }
+            }
+            // Ctrl+D - Duplicate
+            else if (e.ctrlKey && e.key === 'd') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    duplicateComponent();
+                }
+            }
+            // Delete or Backspace - Delete component
+            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    deleteComponent();
+                }
+            }
+            // Escape - Deselect
+            else if (e.key === 'Escape') {
+                selectedComponent = null;
+                wireStart = null;
+                document.getElementById('propertiesContent').innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>';
+                render();
+            }
+            // +/= - Zoom in
+            else if (e.key === '+' || e.key === '=') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    zoomIn();
+                }
+            }
+            // - - Zoom out
+            else if (e.key === '-' || e.key === '_') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    zoomOut();
+                }
+            }
+            // 0 - Reset view
+            else if (e.key === '0') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    resetView();
+                }
+            }
+            // S - Select tool
+            else if (e.key === 's' || e.key === 'S') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('select');
+                }
+            }
+            // W - Wire tool
+            else if (e.key === 'w' || e.key === 'W') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('wire');
+                }
+            }
+        });
+
+        // Save state on component add/delete/move (call saveState() before making changes)
+        const originalPush = components.push;
+        components.push = function(...args) {
+            saveState();
+            return originalPush.apply(this, args);
+        };
+
         // Initialize
         render();
 
@@ -1137,6 +1354,24 @@
                 }
             }, 500);
         }
+
+        // Show keyboard shortcuts on load
+        console.log(`
+        🎹 KEYBOARD SHORTCUTS:
+        - Ctrl+C: Copy component
+        - Ctrl+V: Paste component
+        - Ctrl+Z: Undo
+        - Ctrl+Y: Redo
+        - Ctrl+D: Duplicate component
+        - Ctrl+A: Select all info
+        - Delete/Backspace: Delete component
+        - Escape: Deselect
+        - +/=: Zoom in
+        - -: Zoom out
+        - 0: Reset view
+        - S: Select tool
+        - W: Wire tool
+        `);
     </script>
 </body>
 </html>
