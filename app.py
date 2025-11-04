@@ -2261,6 +2261,7 @@ def ai_mapping():
         floor_plan_image_data = data.get('floor_plan_image')
         canvas_width = data.get('canvas_width', 1400)
         canvas_height = data.get('canvas_height', 900)
+        purpose = data.get('purpose', 'electrical')  # 'automation' or 'electrical'
 
         if not floor_plan_image_data:
             return jsonify({'success': False, 'error': 'No floor plan image provided'}), 200
@@ -2290,22 +2291,27 @@ def ai_mapping():
         with open(temp_path, 'rb') as f:
             image_data = base64.b64encode(f.read()).decode('utf-8')
 
-        # Prepare AI prompt for electrical mapping
-        prompt = """You are an expert electrician analyzing a floor plan for electrical component placement.
+        # Prepare AI prompt based on purpose
+        if purpose == 'automation':
+            # Takeoffs: Place home automation symbols
+            prompt = """You are a home automation expert analyzing a floor plan for smart home automation placement.
 
-Analyze this floor plan and identify optimal locations for electrical components such as:
-- Light fixtures (💡) - ceiling lights in each room
-- Switches (🔘) - typically near doorways
-- Outlets (⚡) - wall outlets around the perimeter
-- Electrical Panel (⚙️) - main electrical panel location
-- Junction Boxes (📦) - wire junction points
-- Sensors/Detectors (📡) - smoke detectors, motion sensors
+Analyze this floor plan and identify optimal locations for home automation components such as:
+- Smart Lights (light) - intelligent lighting fixtures in each room
+- Smart Switches (switch) - wall switches near doorways that control lights/devices
+- Smart Outlets (outlet) - intelligent power outlets around perimeter
+- Motion Sensors (sensor) - detect movement for automation triggers
+- Smart Thermostats (thermostat) - climate control (usually in hallways)
+- Smart Speakers (speaker) - voice control points throughout home
+- Security Cameras (camera) - entry points and key areas
+- Door/Window Sensors (door_sensor) - entry point monitoring
+- Smart Door Locks (lock) - main entry doors
 
-For EACH component you identify, provide:
-1. Component type (light, switch, outlet, panel, junction, sensor, dimmer, fan)
+For EACH automation component you identify, provide:
+1. Component type (light, switch, outlet, sensor, thermostat, speaker, camera, door_sensor, lock, fan, dimmer)
 2. X position as a decimal (0.0 to 1.0) relative to image width
 3. Y position as a decimal (0.0 to 1.0) relative to image height
-4. Label/description (e.g., "Kitchen Light 1", "Living Room Switch")
+4. Label/description (e.g., "Living Room Smart Light", "Front Door Lock")
 5. Room/location name
 
 Respond ONLY with a JSON object in this exact format:
@@ -2315,7 +2321,7 @@ Respond ONLY with a JSON object in this exact format:
       "type": "light",
       "x": 0.5,
       "y": 0.3,
-      "label": "Kitchen Ceiling Light",
+      "label": "Kitchen Smart Light",
       "room": "Kitchen"
     },
     {
@@ -2329,12 +2335,69 @@ Respond ONLY with a JSON object in this exact format:
 }
 
 Place components logically based on:
-- Room function and size
-- Typical electrical code requirements
-- Optimal coverage and accessibility
-- Standard residential/commercial practices
+- Room function and typical automation needs
+- User convenience and accessibility
+- Smart home best practices and coverage
+- Voice control range considerations
+- Security and monitoring requirements
 
-Aim for comprehensive coverage - include all necessary components for a professional electrical installation."""
+Focus on practical automation that improves daily living."""
+        else:
+            # Vectorworks: Electrical installation mapping
+            prompt = """You are an expert electrician creating a comprehensive electrical installation plan for a building.
+
+Analyze this floor plan and create a complete electrical mapping with:
+- Light fixtures (light) - ceiling lights, wall sconces, LED strips in each room
+- Switches (switch) - single, 3-way, 4-way switches near doorways
+- Outlets (outlet) - wall outlets every 6-12 feet around perimeter
+- Electrical Panel (panel) - main breaker panel location (usually garage/utility)
+- Junction Boxes (junction) - wire connection points in ceilings/walls
+- Smoke Detectors (smoke_detector) - required by code in bedrooms/hallways
+- Ceiling Fans (fan) - bedrooms and living areas
+- Dimmers (dimmer) - dining rooms, bedrooms
+- GFCI Outlets (gfci) - kitchens, bathrooms, outdoor areas
+- 220V Outlets (outlet_220v) - kitchen range, dryer, HVAC
+
+For EACH electrical component, provide:
+1. Component type (light, switch, outlet, panel, junction, smoke_detector, fan, dimmer, gfci, outlet_220v)
+2. X position as a decimal (0.0 to 1.0) relative to image width
+3. Y position as a decimal (0.0 to 1.0) relative to image height
+4. Label/description (e.g., "Kitchen Ceiling Light #1", "GFCI Outlet - Kitchen Counter")
+5. Room/location name
+6. Circuit suggestion (e.g., "Circuit 1 - 15A", "Circuit 2 - 20A Kitchen")
+
+Respond ONLY with a JSON object in this exact format:
+{
+  "components": [
+    {
+      "type": "light",
+      "x": 0.5,
+      "y": 0.3,
+      "label": "Kitchen Ceiling Light #1",
+      "room": "Kitchen",
+      "circuit": "Circuit 1 - 15A Lighting"
+    },
+    {
+      "type": "switch",
+      "x": 0.45,
+      "y": 0.25,
+      "label": "Kitchen Light Switch",
+      "room": "Kitchen",
+      "circuit": "Circuit 1 - 15A Lighting"
+    }
+  ]
+}
+
+Follow NEC (National Electrical Code) requirements:
+- Outlets spaced properly (no point >6ft from outlet)
+- GFCI protection in wet areas
+- AFCI protection in bedrooms
+- Adequate lighting for each space
+- Proper circuit loading and distribution
+- Required smoke detectors
+- Dedicated circuits for high-power appliances
+
+Create a professional, code-compliant electrical plan suitable for permitting and installation."""
 
         # Make AI API call
         anthropic_api_url = 'https://api.anthropic.com/v1/messages'
@@ -2345,7 +2408,7 @@ Aim for comprehensive coverage - include all necessary components for a professi
         }
 
         ai_payload = {
-            'model': 'claude-3-5-sonnet-20241022',
+            'model': 'claude-sonnet-4-20250514',
             'max_tokens': 4096,
             'messages': [
                 {
