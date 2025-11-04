@@ -2237,6 +2237,175 @@ def get_session(session_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ai/mapping', methods=['POST'])
+def ai_mapping():
+    """AI-powered electrical component placement on floor plans"""
+    try:
+        data = request.json
+        floor_plan_image_data = data.get('floor_plan_image')
+        canvas_width = data.get('canvas_width', 1400)
+        canvas_height = data.get('canvas_height', 900)
+
+        if not floor_plan_image_data:
+            return jsonify({'success': False, 'error': 'No floor plan image provided'}), 400
+
+        # Convert base64 image to file
+        import base64
+        import io
+        from PIL import Image as PILImage
+
+        # Remove data URL prefix if present
+        if ',' in floor_plan_image_data:
+            floor_plan_image_data = floor_plan_image_data.split(',')[1]
+
+        image_bytes = base64.b64decode(floor_plan_image_data)
+        image = PILImage.open(io.BytesIO(image_bytes))
+
+        # Save temporarily
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_mapping.jpg')
+        image.save(temp_path, 'JPEG')
+
+        # Call AI for analysis
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({'success': False, 'error': 'AI API key not configured'}), 500
+
+        # Read image for AI
+        with open(temp_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+
+        # Prepare AI prompt for electrical mapping
+        prompt = """You are an expert electrician analyzing a floor plan for electrical component placement.
+
+Analyze this floor plan and identify optimal locations for electrical components such as:
+- Light fixtures (💡) - ceiling lights in each room
+- Switches (🔘) - typically near doorways
+- Outlets (⚡) - wall outlets around the perimeter
+- Electrical Panel (⚙️) - main electrical panel location
+- Junction Boxes (📦) - wire junction points
+- Sensors/Detectors (📡) - smoke detectors, motion sensors
+
+For EACH component you identify, provide:
+1. Component type (light, switch, outlet, panel, junction, sensor, dimmer, fan)
+2. X position as a decimal (0.0 to 1.0) relative to image width
+3. Y position as a decimal (0.0 to 1.0) relative to image height
+4. Label/description (e.g., "Kitchen Light 1", "Living Room Switch")
+5. Room/location name
+
+Respond ONLY with a JSON object in this exact format:
+{
+  "components": [
+    {
+      "type": "light",
+      "x": 0.5,
+      "y": 0.3,
+      "label": "Kitchen Ceiling Light",
+      "room": "Kitchen"
+    },
+    {
+      "type": "switch",
+      "x": 0.45,
+      "y": 0.25,
+      "label": "Kitchen Light Switch",
+      "room": "Kitchen"
+    }
+  ]
+}
+
+Place components logically based on:
+- Room function and size
+- Typical electrical code requirements
+- Optimal coverage and accessibility
+- Standard residential/commercial practices
+
+Aim for comprehensive coverage - include all necessary components for a professional electrical installation."""
+
+        # Make AI API call
+        anthropic_api_url = 'https://api.anthropic.com/v1/messages'
+        headers = {
+            'x-api-key': api_key,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json'
+        }
+
+        ai_payload = {
+            'model': 'claude-3-5-sonnet-20241022',
+            'max_tokens': 4096,
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': [
+                        {
+                            'type': 'image',
+                            'source': {
+                                'type': 'base64',
+                                'media_type': 'image/jpeg',
+                                'data': image_data
+                            }
+                        },
+                        {
+                            'type': 'text',
+                            'text': prompt
+                        }
+                    ]
+                }
+            ]
+        }
+
+        response = requests.post(anthropic_api_url, headers=headers, json=ai_payload, timeout=60)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'AI API error: {response.status_code}'
+            }), 500
+
+        ai_response = response.json()
+        ai_text = ai_response['content'][0]['text']
+
+        # Parse AI response
+        import json
+        import re
+
+        # Extract JSON from response
+        json_match = re.search(r'\{[\s\S]*\}', ai_text)
+        if json_match:
+            ai_components_data = json.loads(json_match.group())
+            ai_components = ai_components_data.get('components', [])
+
+            # Convert coordinates to canvas pixels and add IDs
+            components = []
+            for idx, comp in enumerate(ai_components):
+                components.append({
+                    'id': idx + 1,
+                    'type': comp.get('type', 'light'),
+                    'x': comp.get('x', 0.5) * canvas_width,
+                    'y': comp.get('y', 0.5) * canvas_height,
+                    'label': comp.get('label', f"Component {idx + 1}"),
+                    'room': comp.get('room', 'Unknown'),
+                    'circuit': None
+                })
+
+            # Clean up temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+            return jsonify({
+                'success': True,
+                'components': components,
+                'count': len(components)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Could not parse AI response'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"AI mapping error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/mapping/export', methods=['POST'])
 def mapping_export():
     """Export electrical mapping with wiring and circuits"""
