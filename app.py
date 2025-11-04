@@ -3436,26 +3436,6 @@ def get_inventory():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/inventory/<item_id>', methods=['PUT', 'DELETE'])
-def handle_inventory_item(item_id):
-    """Update/delete inventory"""
-    try:
-        inventory = load_json_file(INVENTORY_FILE, [])
-        idx = next((i for i, item in enumerate(inventory) if item['id'] == item_id), None)
-        if idx is None:
-            return jsonify({'success': False, 'error': 'Not found'}), 404
-        if request.method == 'DELETE':
-            inventory.pop(idx)
-            save_json_file(INVENTORY_FILE, inventory)
-            return jsonify({'success': True})
-        else:
-            inventory[idx].update(request.json)
-            inventory[idx]['updated_at'] = datetime.now().isoformat()
-            save_json_file(INVENTORY_FILE, inventory)
-            return jsonify({'success': True, 'item': inventory[idx]})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 # ============================================================================
 # AI CHAT AGENT WITH EXTENDED THINKING
 # ============================================================================
