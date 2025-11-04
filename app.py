@@ -2169,9 +2169,11 @@ def takeoffs_export():
         else:
             # Fallback: use existing annotated image
             import shutil
-            existing_annotated = os.path.join(app.config['OUTPUT_FOLDER'], session_data.get('floorplan_image', ''))
-            if os.path.exists(existing_annotated):
-                shutil.copy(existing_annotated, annotated_path)
+            floorplan_image = session_data.get('floorplan_image', '')
+            if floorplan_image:  # Only copy if there's an actual filename
+                existing_annotated = os.path.join(app.config['OUTPUT_FOLDER'], floorplan_image)
+                if os.path.exists(existing_annotated) and os.path.isfile(existing_annotated):
+                    shutil.copy(existing_annotated, annotated_path)
 
         # Generate quote PDF
         try:
@@ -2261,7 +2263,7 @@ def ai_mapping():
         canvas_height = data.get('canvas_height', 900)
 
         if not floor_plan_image_data:
-            return jsonify({'success': False, 'error': 'No floor plan image provided'}), 400
+            return jsonify({'success': False, 'error': 'No floor plan image provided'}), 200
 
         # Convert base64 image to file
         import base64
@@ -2282,7 +2284,7 @@ def ai_mapping():
         # Call AI for analysis
         api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
-            return jsonify({'success': False, 'error': 'AI API key not configured'}), 500
+            return jsonify({'success': False, 'error': 'AI API key not configured'}), 200
 
         # Read image for AI
         with open(temp_path, 'rb') as f:
@@ -2369,10 +2371,16 @@ Aim for comprehensive coverage - include all necessary components for a professi
         response = requests.post(anthropic_api_url, headers=headers, json=ai_payload, timeout=60)
 
         if response.status_code != 200:
+            error_msg = f'AI API error: {response.status_code}'
+            try:
+                error_details = response.json()
+                error_msg += f' - {error_details.get("error", {}).get("message", "")}'
+            except:
+                error_msg += f' - {response.text[:200]}'
             return jsonify({
                 'success': False,
-                'error': f'AI API error: {response.status_code}'
-            }), 500
+                'error': error_msg
+            }), 200  # Return 200 so frontend can parse JSON
 
         ai_response = response.json()
         ai_text = ai_response['content'][0]['text']
@@ -2413,11 +2421,11 @@ Aim for comprehensive coverage - include all necessary components for a professi
             return jsonify({
                 'success': False,
                 'error': 'Could not parse AI response'
-            }), 500
+            }), 200
 
     except Exception as e:
         logger.error(f"AI mapping error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 200
 
 
 @app.route('/api/mapping/export', methods=['POST'])
@@ -2887,6 +2895,8 @@ def handle_projects():
                 'quote_amount': data.get('quote_amount', 0.0),
                 'actual_amount': data.get('actual_amount', 0.0),
                 'due_date': data.get('due_date'),
+                'takeoffs_session_id': data.get('takeoffs_session_id'),
+                'mapping_session_id': data.get('mapping_session_id'),
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
@@ -2896,22 +2906,71 @@ def handle_projects():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/crm/projects/<project_id>', methods=['PUT'])
+@app.route('/api/crm/projects/<project_id>', methods=['PUT', 'DELETE'])
 def update_project(project_id):
     try:
         projects = load_json_file(PROJECTS_FILE, [])
         idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
         if idx is None:
             return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            project = projects[idx]
+            for field in ['title', 'description', 'status', 'priority', 'quote_amount', 'actual_amount', 'due_date', 'customer_id', 'takeoffs_session_id', 'mapping_session_id']:
+                if field in data:
+                    project[field] = data[field]
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+            return jsonify({'success': True, 'project': project})
+
+        elif request.method == 'DELETE':
+            projects.pop(idx)
+            save_json_file(PROJECTS_FILE, projects)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/link-session-to-project', methods=['POST'])
+def link_session_to_project():
+    """Link a takeoffs/mapping session to a CRM project"""
+    try:
         data = request.json
-        project = projects[idx]
-        for field in ['title', 'description', 'status', 'priority', 'quote_amount', 'actual_amount', 'due_date']:
-            if field in data:
-                project[field] = data[field]
-        project['updated_at'] = datetime.now().isoformat()
-        projects[idx] = project
-        save_json_file(PROJECTS_FILE, projects)
-        return jsonify({'success': True, 'project': project})
+        session_id = data.get('session_id')
+        project_id = data.get('project_id')
+        link_type = data.get('link_type', 'takeoffs')  # 'takeoffs' or 'mapping'
+
+        if not session_id or not project_id:
+            return jsonify({'success': False, 'error': 'Missing session_id or project_id'}), 400
+
+        # Update session data with project_id
+        session_data = load_session_data(session_id)
+        if session_data:
+            session_data['project_id'] = project_id
+            save_session_data(session_id, session_data)
+
+        # Update project with session_id
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is not None:
+            if link_type == 'takeoffs':
+                projects[idx]['takeoffs_session_id'] = session_id
+            else:
+                projects[idx]['mapping_session_id'] = session_id
+            projects[idx]['updated_at'] = datetime.now().isoformat()
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({
+                'success': True,
+                'project': projects[idx]
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -2941,6 +3000,34 @@ def handle_communications():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/crm/communications/<comm_id>', methods=['PUT', 'DELETE'])
+def handle_communication(comm_id):
+    try:
+        comms = load_json_file(COMMUNICATIONS_FILE, [])
+        idx = next((i for i, c in enumerate(comms) if c['id'] == comm_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            comm = comms[idx]
+            for field in ['customer_id', 'type', 'subject', 'content']:
+                if field in data:
+                    comm[field] = data[field]
+            comm['updated_at'] = datetime.now().isoformat()
+            comms[idx] = comm
+            save_json_file(COMMUNICATIONS_FILE, comms)
+            return jsonify({'success': True, 'communication': comm})
+
+        elif request.method == 'DELETE':
+            comms.pop(idx)
+            save_json_file(COMMUNICATIONS_FILE, comms)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/crm/calendar', methods=['GET', 'POST'])
 def handle_calendar():
     try:
@@ -2965,6 +3052,34 @@ def handle_calendar():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/crm/calendar/<event_id>', methods=['PUT', 'DELETE'])
+def handle_event(event_id):
+    try:
+        events = load_json_file(CALENDAR_FILE, [])
+        idx = next((i for i, e in enumerate(events) if e['id'] == event_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            event = events[idx]
+            for field in ['title', 'date', 'time', 'type', 'status', 'description']:
+                if field in data:
+                    event[field] = data[field]
+            event['updated_at'] = datetime.now().isoformat()
+            events[idx] = event
+            save_json_file(CALENDAR_FILE, events)
+            return jsonify({'success': True, 'event': event})
+
+        elif request.method == 'DELETE':
+            events.pop(idx)
+            save_json_file(CALENDAR_FILE, events)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/crm/technicians', methods=['GET', 'POST'])
 def handle_technicians():
     try:
@@ -2986,6 +3101,34 @@ def handle_technicians():
             techs.append(tech)
             save_json_file(TECHNICIANS_FILE, techs)
             return jsonify({'success': True, 'technician': tech})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/technicians/<tech_id>', methods=['PUT', 'DELETE'])
+def handle_technician(tech_id):
+    try:
+        techs = load_json_file(TECHNICIANS_FILE, [])
+        idx = next((i for i, t in enumerate(techs) if t['id'] == tech_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            tech = techs[idx]
+            for field in ['name', 'email', 'phone', 'skills', 'status']:
+                if field in data:
+                    tech[field] = data[field]
+            tech['updated_at'] = datetime.now().isoformat()
+            techs[idx] = tech
+            save_json_file(TECHNICIANS_FILE, techs)
+            return jsonify({'success': True, 'technician': tech})
+
+        elif request.method == 'DELETE':
+            techs.pop(idx)
+            save_json_file(TECHNICIANS_FILE, techs)
+            return jsonify({'success': True})
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -3020,6 +3163,34 @@ def handle_inventory():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/crm/inventory/<item_id>', methods=['PUT', 'DELETE'])
+def handle_inventory_item(item_id):
+    try:
+        inventory = load_json_file(INVENTORY_FILE, [])
+        idx = next((i for i, item in enumerate(inventory) if item['id'] == item_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            item = inventory[idx]
+            for field in ['name', 'sku', 'category', 'quantity', 'unit_cost', 'price', 'reorder_level']:
+                if field in data:
+                    item[field] = data[field]
+            item['updated_at'] = datetime.now().isoformat()
+            inventory[idx] = item
+            save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True, 'item': item})
+
+        elif request.method == 'DELETE':
+            inventory.pop(idx)
+            save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/crm/suppliers', methods=['GET', 'POST'])
 def handle_suppliers():
     try:
@@ -3040,6 +3211,34 @@ def handle_suppliers():
             suppliers.append(supplier)
             save_json_file(SUPPLIERS_FILE, suppliers)
             return jsonify({'success': True, 'supplier': supplier})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/suppliers/<supplier_id>', methods=['PUT', 'DELETE'])
+def handle_supplier(supplier_id):
+    try:
+        suppliers = load_json_file(SUPPLIERS_FILE, [])
+        idx = next((i for i, s in enumerate(suppliers) if s['id'] == supplier_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            supplier = suppliers[idx]
+            for field in ['name', 'email', 'phone', 'website']:
+                if field in data:
+                    supplier[field] = data[field]
+            supplier['updated_at'] = datetime.now().isoformat()
+            suppliers[idx] = supplier
+            save_json_file(SUPPLIERS_FILE, suppliers)
+            return jsonify({'success': True, 'supplier': supplier})
+
+        elif request.method == 'DELETE':
+            suppliers.pop(idx)
+            save_json_file(SUPPLIERS_FILE, suppliers)
+            return jsonify({'success': True})
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

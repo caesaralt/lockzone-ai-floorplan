@@ -814,6 +814,7 @@
                 <button class="close-btn" onclick="closeModal('eventModal')">×</button>
             </div>
             <form id="eventForm" onsubmit="saveEvent(event)">
+                <input type="hidden" id="eventId">
                 <div class="form-group">
                     <label>Title *</label>
                     <input type="text" id="eventTitle" required>
@@ -857,6 +858,7 @@
                 <button class="close-btn" onclick="closeModal('techModal')">×</button>
             </div>
             <form id="techForm" onsubmit="saveTechnician(event)">
+                <input type="hidden" id="techId">
                 <div class="form-group">
                     <label>Name *</label>
                     <input type="text" id="techName" required>
@@ -891,6 +893,7 @@
                 <button class="close-btn" onclick="closeModal('inventoryModal')">×</button>
             </div>
             <form id="inventoryForm" onsubmit="saveInventory(event)">
+                <input type="hidden" id="invId">
                 <div class="form-group">
                     <label>Item Name *</label>
                     <input type="text" id="invName" required>
@@ -937,6 +940,7 @@
                 <button class="close-btn" onclick="closeModal('supplierModal')">×</button>
             </div>
             <form id="supplierForm" onsubmit="saveSupplier(event)">
+                <input type="hidden" id="supplierId">
                 <div class="form-group">
                     <label>Company Name *</label>
                     <input type="text" id="supplierName" required>
@@ -971,6 +975,7 @@
                 <button class="close-btn" onclick="closeModal('commModal')">×</button>
             </div>
             <form id="commForm" onsubmit="saveComm(event)">
+                <input type="hidden" id="commId">
                 <div class="form-group">
                     <label>Customer</label>
                     <select id="commCustomer"></select>
@@ -1258,6 +1263,9 @@
                                         <td>${p.due_date || '-'}</td>
                                         <td>
                                             <button class="btn btn-secondary btn-small" onclick="editProject('${p.id}')">Edit</button>
+                                            <button class="btn btn-danger btn-small" onclick="deleteProject('${p.id}')">Delete</button>
+                                            ${p.takeoffs_session_id ? `<button class="btn btn-primary btn-small" onclick="window.location.href='/takeoffs/${p.takeoffs_session_id}'">📐 Takeoffs</button>` : ''}
+                                            ${p.mapping_session_id ? `<button class="btn btn-primary btn-small" onclick="window.location.href='/mapping?session=${p.mapping_session_id}'">⚡ Mapping</button>` : ''}
                                         </td>
                                     </tr>
                                 `;
@@ -1316,6 +1324,18 @@
             }
         }
 
+        async function deleteProject(id) {
+            if (!confirm('Delete this project?')) return;
+            try {
+                await fetch(`/api/crm/projects/${id}`, {method: 'DELETE'});
+                loadProjects();
+                loadStats();
+                loadCustomers();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         async function loadCalendar() {
             try {
                 const res = await fetch('/api/crm/calendar');
@@ -1352,6 +1372,7 @@
                                 <th>Time</th>
                                 <th>Type</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1362,6 +1383,10 @@
                                     <td>${e.time}</td>
                                     <td>${e.type}</td>
                                     <td><span class="status-badge status-${e.status}">${e.status}</span></td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-small" onclick="editEvent('${e.id}')">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${e.id}')">Delete</button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1372,6 +1397,7 @@
 
         async function saveEvent(e) {
             e.preventDefault();
+            const id = document.getElementById('eventId').value;
             const data = {
                 title: document.getElementById('eventTitle').value,
                 date: document.getElementById('eventDate').value,
@@ -1381,8 +1407,9 @@
             };
 
             try {
-                const res = await fetch('/api/crm/calendar', {
-                    method: 'POST',
+                const url = id ? `/api/crm/calendar/${id}` : '/api/crm/calendar';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
@@ -1392,8 +1419,32 @@
                     loadCalendar();
                     loadStats();
                     document.getElementById('eventForm').reset();
-                    alert('Event scheduled!');
+                    alert('Event saved!');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editEvent(id) {
+            const evt = calendar.find(x => x.id === id);
+            if (evt) {
+                document.getElementById('eventId').value = evt.id;
+                document.getElementById('eventTitle').value = evt.title;
+                document.getElementById('eventDate').value = evt.date;
+                document.getElementById('eventTime').value = evt.time;
+                document.getElementById('eventType').value = evt.type;
+                document.getElementById('eventDesc').value = evt.description || '';
+                openModal('eventModal');
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Delete this event?')) return;
+            try {
+                await fetch(`/api/crm/calendar/${id}`, {method: 'DELETE'});
+                loadCalendar();
+                loadStats();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
@@ -1435,6 +1486,7 @@
                                 <th>Phone</th>
                                 <th>Skills</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1445,6 +1497,10 @@
                                     <td>${t.phone || '-'}</td>
                                     <td>${(t.skills || []).join(', ')}</td>
                                     <td><span class="status-badge status-${t.status}">${t.status}</span></td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-small" onclick="editTechnician('${t.id}')">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteTechnician('${t.id}')">Delete</button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1455,6 +1511,7 @@
 
         async function saveTechnician(e) {
             e.preventDefault();
+            const id = document.getElementById('techId').value;
             const skills = document.getElementById('techSkills').value.split(',').map(s => s.trim()).filter(Boolean);
             const data = {
                 name: document.getElementById('techName').value,
@@ -1464,8 +1521,9 @@
             };
 
             try {
-                const res = await fetch('/api/crm/technicians', {
-                    method: 'POST',
+                const url = id ? `/api/crm/technicians/${id}` : '/api/crm/technicians';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
@@ -1474,8 +1532,30 @@
                     closeModal('techModal');
                     loadTechnicians();
                     document.getElementById('techForm').reset();
-                    alert('Technician added!');
+                    alert('Technician saved!');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editTechnician(id) {
+            const tech = technicians.find(x => x.id === id);
+            if (tech) {
+                document.getElementById('techId').value = tech.id;
+                document.getElementById('techName').value = tech.name;
+                document.getElementById('techEmail').value = tech.email || '';
+                document.getElementById('techPhone').value = tech.phone || '';
+                document.getElementById('techSkills').value = (tech.skills || []).join(', ');
+                openModal('techModal');
+            }
+        }
+
+        async function deleteTechnician(id) {
+            if (!confirm('Delete this technician?')) return;
+            try {
+                await fetch(`/api/crm/technicians/${id}`, {method: 'DELETE'});
+                loadTechnicians();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
@@ -1518,6 +1598,7 @@
                                 <th>Quantity</th>
                                 <th>Unit Cost</th>
                                 <th>Total Value</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1529,6 +1610,10 @@
                                     <td>${i.quantity || 0}</td>
                                     <td>$${(i.unit_cost || 0).toFixed(2)}</td>
                                     <td>$${((i.quantity || 0) * (i.unit_cost || 0)).toFixed(2)}</td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-small" onclick="editInventory('${i.id}')">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteInventory('${i.id}')">Delete</button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1539,6 +1624,7 @@
 
         async function saveInventory(e) {
             e.preventDefault();
+            const id = document.getElementById('invId').value;
             const data = {
                 name: document.getElementById('invName').value,
                 sku: document.getElementById('invSKU').value,
@@ -1548,8 +1634,9 @@
             };
 
             try {
-                const res = await fetch('/api/crm/inventory', {
-                    method: 'POST',
+                const url = id ? `/api/crm/inventory/${id}` : '/api/crm/inventory';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
@@ -1559,8 +1646,32 @@
                     loadInventory();
                     loadStats();
                     document.getElementById('inventoryForm').reset();
-                    alert('Item added!');
+                    alert('Item saved!');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editInventory(id) {
+            const item = inventory.find(x => x.id === id);
+            if (item) {
+                document.getElementById('invId').value = item.id;
+                document.getElementById('invName').value = item.name;
+                document.getElementById('invSKU').value = item.sku || '';
+                document.getElementById('invCategory').value = item.category;
+                document.getElementById('invQty').value = item.quantity || 0;
+                document.getElementById('invCost').value = item.unit_cost || 0;
+                openModal('inventoryModal');
+            }
+        }
+
+        async function deleteInventory(id) {
+            if (!confirm('Delete this inventory item?')) return;
+            try {
+                await fetch(`/api/crm/inventory/${id}`, {method: 'DELETE'});
+                loadInventory();
+                loadStats();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
@@ -1601,6 +1712,7 @@
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Website</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1610,6 +1722,10 @@
                                     <td>${s.email || '-'}</td>
                                     <td>${s.phone || '-'}</td>
                                     <td>${s.website || '-'}</td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-small" onclick="editSupplier('${s.id}')">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteSupplier('${s.id}')">Delete</button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1620,6 +1736,7 @@
 
         async function saveSupplier(e) {
             e.preventDefault();
+            const id = document.getElementById('supplierId').value;
             const data = {
                 name: document.getElementById('supplierName').value,
                 email: document.getElementById('supplierEmail').value,
@@ -1628,8 +1745,9 @@
             };
 
             try {
-                const res = await fetch('/api/crm/suppliers', {
-                    method: 'POST',
+                const url = id ? `/api/crm/suppliers/${id}` : '/api/crm/suppliers';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
@@ -1638,8 +1756,30 @@
                     closeModal('supplierModal');
                     loadSuppliers();
                     document.getElementById('supplierForm').reset();
-                    alert('Supplier added!');
+                    alert('Supplier saved!');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editSupplier(id) {
+            const supplier = suppliers.find(x => x.id === id);
+            if (supplier) {
+                document.getElementById('supplierId').value = supplier.id;
+                document.getElementById('supplierName').value = supplier.name;
+                document.getElementById('supplierEmail').value = supplier.email || '';
+                document.getElementById('supplierPhone').value = supplier.phone || '';
+                document.getElementById('supplierWeb').value = supplier.website || '';
+                openModal('supplierModal');
+            }
+        }
+
+        async function deleteSupplier(id) {
+            if (!confirm('Delete this supplier?')) return;
+            try {
+                await fetch(`/api/crm/suppliers/${id}`, {method: 'DELETE'});
+                loadSuppliers();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
@@ -1681,6 +1821,7 @@
                                 <th>Customer</th>
                                 <th>Subject</th>
                                 <th>By</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1693,7 +1834,11 @@
                                         <td>${c.type}</td>
                                         <td>${customer ? customer.name : '-'}</td>
                                         <td>${c.subject || '-'}</td>
-                                        <td>${c.created_by}</td>
+                                        <td>${c.created_by || 'System'}</td>
+                                        <td>
+                                            <button class="btn btn-secondary btn-small" onclick="editCommunication('${c.id}')">Edit</button>
+                                            <button class="btn btn-danger btn-small" onclick="deleteCommunication('${c.id}')">Delete</button>
+                                        </td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -1705,6 +1850,7 @@
 
         async function saveComm(e) {
             e.preventDefault();
+            const id = document.getElementById('commId').value;
             const data = {
                 customer_id: document.getElementById('commCustomer').value,
                 type: document.getElementById('commType').value,
@@ -1713,8 +1859,9 @@
             };
 
             try {
-                const res = await fetch('/api/crm/communications', {
-                    method: 'POST',
+                const url = id ? `/api/crm/communications/${id}` : '/api/crm/communications';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
@@ -1723,8 +1870,30 @@
                     closeModal('commModal');
                     loadCommunications();
                     document.getElementById('commForm').reset();
-                    alert('Communication logged!');
+                    alert('Communication saved!');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editCommunication(id) {
+            const comm = communications.find(x => x.id === id);
+            if (comm) {
+                document.getElementById('commId').value = comm.id;
+                document.getElementById('commCustomer').value = comm.customer_id || '';
+                document.getElementById('commType').value = comm.type;
+                document.getElementById('commSubject').value = comm.subject || '';
+                document.getElementById('commContent').value = comm.content || '';
+                openModal('commModal');
+            }
+        }
+
+        async function deleteCommunication(id) {
+            if (!confirm('Delete this communication?')) return;
+            try {
+                await fetch(`/api/crm/communications/${id}`, {method: 'DELETE'});
+                loadCommunications();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
