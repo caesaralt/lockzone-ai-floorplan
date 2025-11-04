@@ -358,31 +358,34 @@ async function sendMessage() {
     document.querySelector('.chatbot-send-btn').classList.add('chatbot-loading');
 
     try {
-        const response = await fetch('/api/ai/chat', {
+        const response = await fetch('/api/ai-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: message,
-                history: chatHistory,
-                use_extended_thinking: useExtendedThinking,
-                use_web_search: useWebSearch,
-                context: {
-                    page: window.location.pathname,
-                    app: document.title
-                }
+                conversation_history: chatHistory,
+                agent_mode: useExtendedThinking,
+                web_search: useWebSearch,
+                current_page: window.location.pathname
             })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            addMessage('assistant', data.response, data.thinking);
+            // Add message with thinking if available
+            const thinkingText = data.agent_mode && data.searches_performed > 0 ?
+                `Performed ${data.searches_performed} web search(es) to find the best answer` : null;
+
+            addMessage('assistant', data.response, thinkingText);
             chatHistory.push({ role: 'assistant', content: data.response });
 
-            // Execute any actions the AI suggests
-            if (data.actions && data.actions.length > 0) {
-                for (const action of data.actions) {
-                    await executeAction(action);
+            // Execute any actions the AI took
+            if (data.actions_taken && data.actions_taken.length > 0) {
+                for (const action of data.actions_taken) {
+                    if (action.success) {
+                        console.log(`✅ Action: ${action.action} - ${action.details}`);
+                    }
                 }
             }
         } else {
