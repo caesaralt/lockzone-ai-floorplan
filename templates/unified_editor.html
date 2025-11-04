@@ -601,6 +601,8 @@
                         <!-- Dynamic items -->
                     </div>
                     <button class="action-btn" onclick="showInventoryModal()">📦 Add from Inventory</button>
+                    <button class="action-btn" onclick="showCreateItemModal()">➕ Create New Item</button>
+                    <button class="action-btn success" onclick="exportItemsToCRM()">💾 Export Items to CRM</button>
                 </div>
 
                 <button class="action-btn" onclick="saveSymbolChanges()">💾 Save Changes</button>
@@ -618,6 +620,43 @@
                 <p style="color: #95a5a6; text-align: center; padding: 40px;">Loading inventory...</p>
             </div>
             <button class="action-btn" style="margin-top: 20px;" onclick="closeInventoryModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Create Item Modal -->
+    <div class="inventory-modal" id="createItemModal">
+        <div class="inventory-modal-content">
+            <h2 style="color: #2ecc71; margin-bottom: 20px; font-size: 1.5em;">➕ Create New Item</h2>
+            <div class="prop-group">
+                <label>Item Name *</label>
+                <input type="text" id="newItemName" placeholder="e.g., LED Smart Bulb" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+            </div>
+            <div class="prop-group">
+                <label>SKU / Part Number</label>
+                <input type="text" id="newItemSku" placeholder="e.g., LED-001" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+            </div>
+            <div class="prop-group">
+                <label>Category</label>
+                <input type="text" id="newItemCategory" placeholder="e.g., Lighting" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+            </div>
+            <div class="prop-group">
+                <label>Unit Price ($) *</label>
+                <input type="number" id="newItemPrice" placeholder="0.00" step="0.01" min="0" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+            </div>
+            <div class="prop-group">
+                <label>Quantity for This Symbol *</label>
+                <input type="number" id="newItemQuantity" placeholder="1" min="1" value="1" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+            </div>
+            <div class="prop-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="newItemSaveToCRM" checked>
+                    <span>Save to CRM Inventory for future reuse</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="action-btn success" onclick="createAndAddItem()">✅ Create & Add to Symbol</button>
+                <button class="action-btn" onclick="closeCreateItemModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -1118,6 +1157,156 @@
             updateItemList();
             updatePricing();
             render();
+        }
+
+        // Create Item Modal Functions
+        function showCreateItemModal() {
+            if (!editingSymbol) {
+                alert('Please select a symbol first!');
+                return;
+            }
+            document.getElementById('createItemModal').style.display = 'block';
+            // Clear previous values
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemSku').value = '';
+            document.getElementById('newItemCategory').value = '';
+            document.getElementById('newItemPrice').value = '';
+            document.getElementById('newItemQuantity').value = '1';
+            document.getElementById('newItemSaveToCRM').checked = true;
+        }
+
+        function closeCreateItemModal() {
+            document.getElementById('createItemModal').style.display = 'none';
+        }
+
+        async function createAndAddItem() {
+            const name = document.getElementById('newItemName').value.trim();
+            const sku = document.getElementById('newItemSku').value.trim();
+            const category = document.getElementById('newItemCategory').value.trim();
+            const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
+            const quantity = parseInt(document.getElementById('newItemQuantity').value) || 1;
+            const saveToCRM = document.getElementById('newItemSaveToCRM').checked;
+
+            if (!name) {
+                alert('Please enter an item name!');
+                return;
+            }
+
+            if (price <= 0) {
+                alert('Please enter a valid price!');
+                return;
+            }
+
+            const newItem = {
+                name: name,
+                price: price,
+                quantity: quantity,
+                sku: sku,
+                category: category
+            };
+
+            // Save to CRM if checked
+            if (saveToCRM) {
+                try {
+                    const response = await fetch('/api/crm/inventory', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: name,
+                            sku: sku,
+                            category: category,
+                            price: price,
+                            unit_cost: price,
+                            quantity: 100,  // Default stock quantity
+                            reorder_level: 10
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        newItem.stock_id = data.item.id;
+                        // Reload inventory to include new item
+                        await loadInventory();
+                        console.log('✅ Item saved to CRM inventory!');
+                    }
+                } catch (error) {
+                    console.error('Failed to save to CRM:', error);
+                    alert('Warning: Item added to symbol but failed to save to CRM inventory');
+                }
+            }
+
+            // Add to current symbol
+            if (!editingSymbol.items) editingSymbol.items = [];
+            editingSymbol.items.push(newItem);
+
+            closeCreateItemModal();
+            updateItemList();
+            updatePricing();
+            render();
+
+            if (saveToCRM) {
+                alert(`✅ Item "${name}" created and saved to CRM inventory!`);
+            }
+        }
+
+        async function exportItemsToCRM() {
+            if (!editingSymbol || !editingSymbol.items || editingSymbol.items.length === 0) {
+                alert('No items to export! Add some items to this symbol first.');
+                return;
+            }
+
+            // Filter items that don't already have a stock_id (not already in CRM)
+            const itemsToExport = editingSymbol.items.filter(item => !item.stock_id);
+
+            if (itemsToExport.length === 0) {
+                alert('All items are already in CRM inventory!');
+                return;
+            }
+
+            if (!confirm(`Export ${itemsToExport.length} item(s) to CRM inventory for future reuse?`)) {
+                return;
+            }
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const item of itemsToExport) {
+                try {
+                    const response = await fetch('/api/crm/inventory', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: item.name,
+                            sku: item.sku || '',
+                            category: item.category || 'Takeoffs Export',
+                            price: item.price,
+                            unit_cost: item.price,
+                            quantity: 100,  // Default stock
+                            reorder_level: 10
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        item.stock_id = data.item.id;  // Mark as saved
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    console.error('Failed to export item:', item.name, error);
+                    failCount++;
+                }
+            }
+
+            // Reload inventory
+            await loadInventory();
+
+            if (failCount === 0) {
+                alert(`✅ Successfully exported ${successCount} item(s) to CRM inventory!`);
+            } else {
+                alert(`⚠️ Exported ${successCount} item(s), but ${failCount} failed. Check console for details.`);
+            }
         }
 
         // Inventory search
