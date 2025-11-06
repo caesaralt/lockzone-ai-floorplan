@@ -4061,7 +4061,7 @@ def handle_kanban_task(task_id):
         if request.method == 'PUT':
             data = request.json
             task = tasks[idx]
-            for field in ['column', 'content', 'notes', 'color', 'position']:
+            for field in ['column', 'content', 'notes', 'color', 'position', 'due_date']:
                 if field in data:
                     task[field] = data[field]
             task['updated_at'] = datetime.now().isoformat()
