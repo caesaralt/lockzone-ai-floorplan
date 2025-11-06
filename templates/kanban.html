@@ -39,9 +39,9 @@
         }
 
         .home-btn {
-            background: #556B2F;
-            color: white;
-            border: none;
+            background: white;
+            color: #556B2F;
+            border: 2px solid #556B2F;
             padding: 10px 20px;
             border-radius: 8px;
             font-size: 14px;
@@ -55,7 +55,7 @@
         }
 
         .home-btn:hover {
-            background: #6b8838;
+            background: #f5f5f7;
             transform: translateY(-1px);
         }
 
@@ -69,6 +69,21 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .search-input {
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            width: 250px;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #556B2F;
         }
 
         .add-task-btn {
@@ -105,7 +120,10 @@
             display: flex;
             flex-direction: column;
             min-height: 500px;
-            max-height: calc(100vh - 120px);
+        }
+
+        .kanban-column.highlight {
+            box-shadow: 0 0 0 3px #556B2F;
         }
 
         .column-header {
@@ -114,6 +132,20 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: relative;
+        }
+
+        .column-color-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: transform 0.2s;
+        }
+
+        .column-color-btn:hover {
+            transform: scale(1.2);
         }
 
         .column-title {
@@ -136,15 +168,14 @@
         .column-content {
             flex: 1;
             padding: 12px;
-            overflow-y: auto;
+            overflow-y: visible;
             position: relative;
             min-height: 400px;
         }
 
         /* TASK CARD */
         .task-card {
-            background: white;
-            border: 2px solid #e0e0e0;
+            border: 2px solid transparent;
             border-radius: 10px;
             padding: 12px;
             margin-bottom: 12px;
@@ -156,13 +187,25 @@
         }
 
         .task-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .task-card.selected {
+            border: 3px solid #556B2F;
+            box-shadow: 0 0 0 3px rgba(85, 107, 47, 0.2);
+        }
+
+        .task-card.overdue {
+            border: 3px solid #e74c3c;
         }
 
         .task-card.dragging {
-            opacity: 0.5;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            opacity: 0.7;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
             transform: rotate(2deg);
+            position: fixed !important;
+            z-index: 10000 !important;
+            pointer-events: none;
         }
 
         .task-header {
@@ -237,10 +280,10 @@
         .task-content {
             font-size: 14px;
             line-height: 1.5;
-            color: #1d1d1f;
+            color: #000;
             padding: 8px;
             border-radius: 6px;
-            background: #fafafa;
+            background: transparent;
             min-height: 60px;
             word-wrap: break-word;
             cursor: text;
@@ -248,7 +291,17 @@
 
         .task-content:focus {
             outline: 2px solid #556B2F;
-            background: white;
+        }
+
+        .due-date-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .task-footer {
@@ -426,6 +479,21 @@
             border-color: #556B2F;
         }
 
+        .date-picker-input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .date-picker-input:focus {
+            outline: none;
+            border-color: #556B2F;
+        }
+
         /* LOADING STATE */
         .loading {
             display: flex;
@@ -490,7 +558,8 @@
             <h1 class="header-title">📋 Operations Board</h1>
         </div>
         <div class="header-right">
-            <button class="add-task-btn" onclick="openAddTaskModal()">+ Add Task</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search tasks..." oninput="searchTasks(this.value)">
+            <button class="add-task-btn" onclick="addTaskToTodo()">+ Add Task</button>
         </div>
     </div>
 
@@ -522,26 +591,27 @@
         </div>
     </div>
 
-    <!-- ADD TASK MODAL -->
-    <div class="modal" id="addTaskModal">
+    <!-- DATE PICKER MODAL -->
+    <div class="modal" id="dateModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Add New Task</h2>
-                <button class="modal-close" onclick="closeAddTaskModal()">Close</button>
+                <h2 class="modal-title">Set Due Date</h2>
+                <button class="modal-close" onclick="closeDateModal()">Close</button>
             </div>
-            <div class="column-selector">
-                <label for="newTaskColumn">Column:</label>
-                <select id="newTaskColumn">
-                    <option value="todo">TO DO</option>
-                    <option value="assigned">ASSIGNED</option>
-                    <option value="working">WORKING ON</option>
-                    <option value="stuck">STUCK</option>
-                    <option value="review">REVIEW</option>
-                    <option value="finished">FINISHED</option>
-                </select>
+            <input type="date" class="date-picker-input" id="datePicker" />
+            <button class="save-notes-btn" onclick="saveDueDate()">Save Date</button>
+            <button class="save-notes-btn" onclick="removeDueDate()" style="background: #e74c3c; margin-top: 8px;">Remove Date</button>
+        </div>
+    </div>
+
+    <!-- COLUMN COLOR PICKER MODAL -->
+    <div class="modal" id="columnColorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Choose Column Color</h2>
+                <button class="modal-close" onclick="closeColumnColorModal()">Close</button>
             </div>
-            <input type="text" class="task-input" id="newTaskContent" placeholder="Task description..." />
-            <button class="save-notes-btn" onclick="createNewTask()">Create Task</button>
+            <div class="color-picker-grid" id="columnColorPickerGrid"></div>
         </div>
     </div>
 
@@ -551,14 +621,17 @@
         let currentTaskId = null;
         let draggedTask = null;
         let dragOffset = { x: 0, y: 0 };
+        let selectedTaskId = null;
+        let currentColumnId = null;
+        let columnColors = {};
 
         const columns = [
-            { id: 'todo', title: 'TO DO' },
-            { id: 'assigned', title: 'ASSIGNED' },
-            { id: 'working', title: 'WORKING ON' },
-            { id: 'stuck', title: 'STUCK' },
-            { id: 'review', title: 'REVIEW' },
-            { id: 'finished', title: 'FINISHED' }
+            { id: 'todo', title: '📝 TO DO' },
+            { id: 'assigned', title: '👤 ASSIGNED' },
+            { id: 'working', title: '🔊 WORKING ON' },
+            { id: 'stuck', title: '😵‍💫 STUCK' },
+            { id: 'review', title: '🔭 REVIEW' },
+            { id: 'finished', title: '✅ FINISHED' }
         ];
 
         const colors = [
@@ -571,8 +644,49 @@
         // INITIALIZE
         async function init() {
             await loadTasks();
+            loadColumnColors();
             renderBoard();
             setupColorPicker();
+            setupColumnColorPicker();
+            setupKeyboardShortcuts();
+        }
+
+        // LOAD COLUMN COLORS
+        function loadColumnColors() {
+            const saved = localStorage.getItem('columnColors');
+            if (saved) {
+                columnColors = JSON.parse(saved);
+            }
+        }
+
+        // SAVE COLUMN COLORS
+        function saveColumnColors() {
+            localStorage.setItem('columnColors', JSON.stringify(columnColors));
+        }
+
+        // GET SYDNEY DATE/TIME
+        function getSydneyDate(date = new Date()) {
+            return new Date(date.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+        }
+
+        // FORMAT DATE FOR DISPLAY (DD/MM/YYYY)
+        function formatDateAustralian(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        // CHECK IF DATE IS OVERDUE
+        function isOverdue(dueDate) {
+            if (!dueDate) return false;
+            const now = getSydneyDate();
+            const due = new Date(dueDate);
+            now.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            return due < now;
         }
 
         // LOAD TASKS
@@ -599,11 +713,15 @@
                 columnEl.dataset.columnId = column.id;
 
                 const columnTasks = tasks.filter(t => t.column === column.id);
+                const columnColor = columnColors[column.id] || 'transparent';
 
                 columnEl.innerHTML = `
-                    <div class="column-header">
+                    <div class="column-header" style="background-color: ${columnColor};">
                         <span class="column-title">${column.title}</span>
-                        <span class="task-count">${columnTasks.length}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
+                            <span class="task-count">${columnTasks.length}</span>
+                        </div>
                     </div>
                     <div class="column-content" data-column="${column.id}"></div>
                 `;
@@ -619,6 +737,9 @@
                 // Setup drop zone
                 setupDropZone(contentEl);
             });
+
+            // Update task counts
+            updateTaskCounts();
         }
 
         // RENDER TASK
@@ -630,21 +751,37 @@
             taskEl.style.top = `${task.position.y}px`;
             taskEl.style.backgroundColor = task.color;
 
+            // Add selected class
+            if (selectedTaskId === task.id) {
+                taskEl.classList.add('selected');
+            }
+
+            // Add overdue class
+            if (task.due_date && isOverdue(task.due_date)) {
+                taskEl.classList.add('overdue');
+            }
+
             const hasNotes = task.notes && task.notes.trim().length > 0;
+            const createdDate = formatDateAustralian(task.created_at);
+            const dueDate = task.due_date ? formatDateAustralian(task.due_date) : null;
 
             taskEl.innerHTML = `
                 <div class="task-header">
                     <div class="task-actions">
-                        <button class="task-btn notes" onclick="openNotesModal('${task.id}')" title="Notes">📝</button>
-                        <button class="task-btn color" onclick="openColorModal('${task.id}')" title="Color">🎨</button>
-                        <button class="task-btn duplicate" onclick="duplicateTask('${task.id}')" title="Duplicate">📋</button>
-                        <button class="task-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
+                        <button class="task-btn notes" onclick="event.stopPropagation(); openNotesModal('${task.id}')" title="Notes">📝</button>
+                        <button class="task-btn color" onclick="event.stopPropagation(); openColorModal('${task.id}')" title="Color">🎨</button>
+                        <button class="task-btn" onclick="event.stopPropagation(); openDateModal('${task.id}')" title="Due Date">📅</button>
+                        <button class="task-btn duplicate" onclick="event.stopPropagation(); duplicateTask('${task.id}')" title="Duplicate">📋</button>
+                        <button class="task-btn delete" onclick="event.stopPropagation(); deleteTask('${task.id}')" title="Delete">🗑️</button>
                     </div>
                 </div>
-                <div class="task-content" contenteditable="true" onblur="updateTaskContent('${task.id}', this.innerText)">${task.content}</div>
+                <div class="task-content" contenteditable="true" onclick="event.stopPropagation();" onblur="updateTaskContent('${task.id}', this.innerText)">${task.content}</div>
                 <div class="task-footer">
-                    ${hasNotes ? '<span class="has-notes-indicator">HAS NOTES</span>' : '<span></span>'}
-                    <span>${new Date(task.created_at).toLocaleDateString()}</span>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        ${hasNotes ? '<span class="has-notes-indicator">HAS NOTES</span>' : ''}
+                        ${dueDate ? `<span class="due-date-display">📅 ${dueDate}</span>` : ''}
+                    </div>
+                    <span>${createdDate}</span>
                 </div>
             `;
 
@@ -652,14 +789,18 @@
 
             // Setup drag
             setupTaskDrag(taskEl);
+
+            // Setup selection
+            taskEl.addEventListener('click', (e) => {
+                if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON') {
+                    selectTask(task.id);
+                }
+            });
         }
 
         // SETUP TASK DRAG
         function setupTaskDrag(taskEl) {
-            // Mouse events
             taskEl.addEventListener('mousedown', startDrag);
-
-            // Touch events
             taskEl.addEventListener('touchstart', startDrag, { passive: false });
         }
 
@@ -683,8 +824,10 @@
                 y: clientY - rect.top
             };
 
+            // Store original position for relative positioning
+            taskEl.dataset.originalParent = taskEl.parentElement.dataset.column;
+
             taskEl.classList.add('dragging');
-            taskEl.style.zIndex = '1000';
 
             document.addEventListener('mousemove', onDrag);
             document.addEventListener('mouseup', stopDrag);
@@ -700,18 +843,31 @@
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
-            const container = draggedTask.parentElement;
-            const containerRect = container.getBoundingClientRect();
+            // Position task at mouse location (fixed positioning during drag)
+            draggedTask.style.left = `${clientX - dragOffset.x}px`;
+            draggedTask.style.top = `${clientY - dragOffset.y}px`;
 
-            let x = clientX - containerRect.left - dragOffset.x;
-            let y = clientY - containerRect.top - dragOffset.y;
+            // Highlight column under mouse
+            highlightColumnUnderMouse(clientX, clientY);
+        }
 
-            // Constrain within column
-            x = Math.max(0, Math.min(x, containerRect.width - draggedTask.offsetWidth));
-            y = Math.max(0, Math.min(y, containerRect.height - draggedTask.offsetHeight));
+        function highlightColumnUnderMouse(x, y) {
+            // Remove all highlights
+            document.querySelectorAll('.kanban-column').forEach(col => {
+                col.classList.remove('highlight');
+            });
 
-            draggedTask.style.left = `${x}px`;
-            draggedTask.style.top = `${y}px`;
+            // Find column under mouse
+            const elements = document.elementsFromPoint(x, y);
+            for (const el of elements) {
+                if (el.classList.contains('column-content')) {
+                    const column = el.closest('.kanban-column');
+                    if (column) {
+                        column.classList.add('highlight');
+                    }
+                    break;
+                }
+            }
         }
 
         function stopDrag(e) {
@@ -720,32 +876,54 @@
             const taskId = draggedTask.dataset.taskId;
             const task = tasks.find(t => t.id === taskId);
 
-            if (task) {
-                task.position = {
-                    x: parseInt(draggedTask.style.left),
-                    y: parseInt(draggedTask.style.top)
-                };
+            const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+            const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
 
-                // Check if dropped in different column
-                const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-                const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+            let newColumn = null;
+            let columnContent = null;
 
-                if (clientX && clientY) {
-                    const dropTarget = document.elementFromPoint(clientX, clientY);
-                    if (dropTarget) {
-                        const columnContent = dropTarget.closest('.column-content');
-                        if (columnContent && columnContent.dataset.column !== task.column) {
-                            task.column = columnContent.dataset.column;
-                            columnContent.appendChild(draggedTask);
-                        }
+            if (clientX && clientY) {
+                // Find column content under drop point
+                const elements = document.elementsFromPoint(clientX, clientY);
+                for (const el of elements) {
+                    if (el.classList.contains('column-content')) {
+                        columnContent = el;
+                        newColumn = el.dataset.column;
+                        break;
                     }
                 }
+            }
+
+            if (task && newColumn && columnContent) {
+                // Calculate position relative to new column
+                const containerRect = columnContent.getBoundingClientRect();
+                let x = clientX - containerRect.left - dragOffset.x;
+                let y = clientY - containerRect.top - dragOffset.y;
+
+                // Constrain within column bounds
+                x = Math.max(0, Math.min(x, containerRect.width - draggedTask.offsetWidth));
+                y = Math.max(0, y);
+
+                task.position = { x, y };
+                task.column = newColumn;
+
+                // Move to new column if changed
+                if (newColumn !== draggedTask.dataset.originalParent) {
+                    columnContent.appendChild(draggedTask);
+                }
+
+                // Update position for absolute positioning within column
+                draggedTask.style.left = `${x}px`;
+                draggedTask.style.top = `${y}px`;
 
                 updateTask(taskId, task);
             }
 
+            // Clean up
             draggedTask.classList.remove('dragging');
-            draggedTask.style.zIndex = '';
+            document.querySelectorAll('.kanban-column').forEach(col => {
+                col.classList.remove('highlight');
+            });
             draggedTask = null;
 
             document.removeEventListener('mousemove', onDrag);
@@ -773,6 +951,7 @@
         // UPDATE TASK
         async function updateTask(taskId, updates) {
             try {
+                console.log('💾 Auto-saving task:', taskId, updates);
                 const response = await fetch(`/api/kanban/tasks/${taskId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -785,19 +964,19 @@
                     if (idx !== -1) {
                         tasks[idx] = data.task;
                     }
+                    console.log('✅ Task saved successfully');
+                } else {
+                    console.error('❌ Failed to save task');
                 }
             } catch (error) {
-                console.error('Error updating task:', error);
+                console.error('❌ Error updating task:', error);
             }
         }
 
-        // DELETE TASK
+        // DELETE TASK (NO CONFIRMATION)
         async function deleteTask(taskId) {
-            if (!confirm('Are you sure you want to delete this task?')) {
-                return;
-            }
-
             try {
+                console.log('🗑️ Deleting task:', taskId);
                 const response = await fetch(`/api/kanban/tasks/${taskId}`, {
                     method: 'DELETE'
                 });
@@ -805,10 +984,14 @@
                 const data = await response.json();
                 if (data.success) {
                     tasks = tasks.filter(t => t.id !== taskId);
+                    if (selectedTaskId === taskId) {
+                        selectedTaskId = null;
+                    }
                     renderBoard();
+                    console.log('✅ Task deleted successfully');
                 }
             } catch (error) {
-                console.error('Error deleting task:', error);
+                console.error('❌ Error deleting task:', error);
             }
         }
 
@@ -818,6 +1001,7 @@
             if (!task) return;
 
             try {
+                console.log('📋 Duplicating task:', taskId);
                 const response = await fetch('/api/kanban/tasks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -826,6 +1010,7 @@
                         content: task.content + ' (Copy)',
                         notes: task.notes,
                         color: task.color,
+                        due_date: task.due_date,
                         position: { x: task.position.x + 20, y: task.position.y + 20 }
                     })
                 });
@@ -834,10 +1019,124 @@
                 if (data.success) {
                     tasks.push(data.task);
                     renderBoard();
+                    console.log('✅ Task duplicated successfully');
                 }
             } catch (error) {
-                console.error('Error duplicating task:', error);
+                console.error('❌ Error duplicating task:', error);
             }
+        }
+
+        // TASK SELECTION
+        function selectTask(taskId) {
+            selectedTaskId = taskId;
+            // Re-render to show selection
+            document.querySelectorAll('.task-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.dataset.taskId === taskId) {
+                    card.classList.add('selected');
+                }
+            });
+        }
+
+        // KEYBOARD SHORTCUTS
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Don't trigger shortcuts when typing in input fields
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+                    return;
+                }
+
+                // Cmd/Ctrl + C: Copy selected task
+                if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedTaskId) {
+                    e.preventDefault();
+                    duplicateTask(selectedTaskId);
+                }
+
+                // Cmd/Ctrl + V: Paste (duplicate) selected task
+                if ((e.metaKey || e.ctrlKey) && e.key === 'v' && selectedTaskId) {
+                    e.preventDefault();
+                    duplicateTask(selectedTaskId);
+                }
+
+                // Delete or Backspace: Delete selected task
+                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTaskId) {
+                    e.preventDefault();
+                    deleteTask(selectedTaskId);
+                }
+            });
+        }
+
+        // SEARCH TASKS
+        function searchTasks(query) {
+            const searchTerm = query.toLowerCase().trim();
+
+            document.querySelectorAll('.task-card').forEach(taskCard => {
+                const taskId = taskCard.dataset.taskId;
+                const task = tasks.find(t => t.id === taskId);
+
+                if (!task) return;
+
+                const contentMatch = task.content.toLowerCase().includes(searchTerm);
+                const notesMatch = task.notes && task.notes.toLowerCase().includes(searchTerm);
+
+                if (searchTerm === '' || contentMatch || notesMatch) {
+                    taskCard.style.display = 'block';
+                } else {
+                    taskCard.style.display = 'none';
+                }
+            });
+        }
+
+        // ADD TASK TO TODO (NO MODAL)
+        async function addTaskToTodo() {
+            try {
+                console.log('➕ Creating new task in TO DO');
+                const response = await fetch('/api/kanban/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        column: 'todo',
+                        content: 'New Task',
+                        notes: '',
+                        color: '#ffffff',
+                        position: { x: 10, y: 10 }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    tasks.push(data.task);
+                    renderBoard();
+                    console.log('✅ New task created in TO DO');
+
+                    // Auto-focus the new task for editing
+                    setTimeout(() => {
+                        const taskEl = document.querySelector(`[data-task-id="${data.task.id}"] .task-content`);
+                        if (taskEl) {
+                            taskEl.focus();
+                            // Select all text
+                            const range = document.createRange();
+                            range.selectNodeContents(taskEl);
+                            const sel = window.getSelection();
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('❌ Error creating task:', error);
+            }
+        }
+
+        // UPDATE TASK COUNTS
+        function updateTaskCounts() {
+            columns.forEach(column => {
+                const count = tasks.filter(t => t.column === column.id).length;
+                const countEl = document.querySelector(`[data-column-id="${column.id}"] .task-count`);
+                if (countEl) {
+                    countEl.textContent = count;
+                }
+            });
         }
 
         // NOTES MODAL
@@ -888,7 +1187,7 @@
             const task = tasks.find(t => t.id === taskId);
 
             // Highlight current color
-            document.querySelectorAll('.color-option').forEach(opt => {
+            document.querySelectorAll('#colorPickerGrid .color-option').forEach(opt => {
                 opt.classList.remove('selected');
                 if (task && opt.style.backgroundColor === rgbToHex(task.color)) {
                     opt.classList.add('selected');
@@ -915,48 +1214,96 @@
             }
         }
 
-        // ADD TASK MODAL
-        function openAddTaskModal() {
-            document.getElementById('newTaskContent').value = '';
-            document.getElementById('newTaskColumn').value = 'todo';
-            document.getElementById('addTaskModal').classList.add('active');
-        }
+        // DATE MODAL
+        function openDateModal(taskId) {
+            currentTaskId = taskId;
+            const task = tasks.find(t => t.id === taskId);
 
-        function closeAddTaskModal() {
-            document.getElementById('addTaskModal').classList.remove('active');
-        }
-
-        async function createNewTask() {
-            const content = document.getElementById('newTaskContent').value.trim();
-            const column = document.getElementById('newTaskColumn').value;
-
-            if (!content) {
-                alert('Please enter task description');
-                return;
+            if (task && task.due_date) {
+                // Convert to YYYY-MM-DD format for input
+                const date = new Date(task.due_date);
+                const formatted = date.toISOString().split('T')[0];
+                document.getElementById('datePicker').value = formatted;
+            } else {
+                document.getElementById('datePicker').value = '';
             }
 
-            try {
-                const response = await fetch('/api/kanban/tasks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        column: column,
-                        content: content,
-                        notes: '',
-                        color: '#ffffff',
-                        position: { x: 10, y: 10 }
-                    })
-                });
+            document.getElementById('dateModal').classList.add('active');
+        }
 
-                const data = await response.json();
-                if (data.success) {
-                    tasks.push(data.task);
-                    renderBoard();
-                    closeAddTaskModal();
+        function closeDateModal() {
+            document.getElementById('dateModal').classList.remove('active');
+            currentTaskId = null;
+        }
+
+        async function saveDueDate() {
+            if (!currentTaskId) return;
+
+            const dateValue = document.getElementById('datePicker').value;
+            const task = tasks.find(t => t.id === currentTaskId);
+
+            if (task && dateValue) {
+                task.due_date = dateValue;
+                await updateTask(currentTaskId, task);
+                renderBoard();
+                closeDateModal();
+            }
+        }
+
+        async function removeDueDate() {
+            if (!currentTaskId) return;
+
+            const task = tasks.find(t => t.id === currentTaskId);
+
+            if (task) {
+                task.due_date = null;
+                await updateTask(currentTaskId, task);
+                renderBoard();
+                closeDateModal();
+            }
+        }
+
+        // COLUMN COLOR PICKER
+        function setupColumnColorPicker() {
+            const grid = document.getElementById('columnColorPickerGrid');
+            grid.innerHTML = '';
+
+            colors.forEach(color => {
+                const option = document.createElement('div');
+                option.className = 'color-option';
+                option.style.backgroundColor = color;
+                option.onclick = () => selectColumnColor(color);
+                grid.appendChild(option);
+            });
+        }
+
+        function openColumnColorModal(columnId) {
+            currentColumnId = columnId;
+
+            // Highlight current color
+            const currentColor = columnColors[columnId] || 'transparent';
+            document.querySelectorAll('#columnColorPickerGrid .color-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.style.backgroundColor === rgbToHex(currentColor)) {
+                    opt.classList.add('selected');
                 }
-            } catch (error) {
-                console.error('Error creating task:', error);
-            }
+            });
+
+            document.getElementById('columnColorModal').classList.add('active');
+        }
+
+        function closeColumnColorModal() {
+            document.getElementById('columnColorModal').classList.remove('active');
+            currentColumnId = null;
+        }
+
+        function selectColumnColor(color) {
+            if (!currentColumnId) return;
+
+            columnColors[currentColumnId] = color;
+            saveColumnColors();
+            renderBoard();
+            closeColumnColorModal();
         }
 
         // UTILITY
@@ -978,15 +1325,9 @@
                 if (e.target === modal) {
                     modal.classList.remove('active');
                     currentTaskId = null;
+                    currentColumnId = null;
                 }
             });
-        });
-
-        // ENTER KEY FOR ADD TASK
-        document.getElementById('newTaskContent').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                createNewTask();
-            }
         });
 
         // INITIALIZE ON LOAD
