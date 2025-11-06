@@ -4010,6 +4010,74 @@ def generate_annotated_floorplan():
         return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
+# ========================================
+# KANBAN BOARD ENDPOINTS
+# ========================================
+
+# Kanban Board Data File
+KANBAN_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'kanban_tasks.json')
+
+@app.route('/kanban')
+def kanban_board():
+    """Kanban operations board"""
+    return render_template('kanban.html')
+
+@app.route('/api/kanban/tasks', methods=['GET', 'POST'])
+def handle_kanban_tasks():
+    """Get all tasks or create new task"""
+    try:
+        if request.method == 'GET':
+            tasks = load_json_file(KANBAN_FILE, [])
+            return jsonify({'success': True, 'tasks': tasks})
+        else:
+            data = request.json
+            tasks = load_json_file(KANBAN_FILE, [])
+            task = {
+                'id': str(uuid.uuid4()),
+                'column': data.get('column', 'todo'),
+                'content': data.get('content', 'New Task'),
+                'notes': data.get('notes', ''),
+                'color': data.get('color', '#ffffff'),
+                'position': data.get('position', {'x': 10, 'y': 10}),
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            tasks.append(task)
+            save_json_file(KANBAN_FILE, tasks)
+            return jsonify({'success': True, 'task': task})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/kanban/tasks/<task_id>', methods=['PUT', 'DELETE'])
+def handle_kanban_task(task_id):
+    """Update or delete a specific task"""
+    try:
+        tasks = load_json_file(KANBAN_FILE, [])
+        idx = next((i for i, t in enumerate(tasks) if t['id'] == task_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            task = tasks[idx]
+            for field in ['column', 'content', 'notes', 'color', 'position']:
+                if field in data:
+                    task[field] = data[field]
+            task['updated_at'] = datetime.now().isoformat()
+            tasks[idx] = task
+            save_json_file(KANBAN_FILE, tasks)
+            return jsonify({'success': True, 'task': task})
+
+        elif request.method == 'DELETE':
+            tasks.pop(idx)
+            save_json_file(KANBAN_FILE, tasks)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
