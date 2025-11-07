@@ -1092,17 +1092,20 @@
                 y: clientY - rect.top
             };
 
-            // Store the task element
+            // Store the task element and its original parent
             draggedTask = taskEl;
+            draggedTask.dataset.originalParent = taskEl.parentElement;
+            draggedTask.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
 
-            // Store original column
-            taskEl.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
+            // MOVE TASK TO BODY - this is key for true free dragging
+            document.body.appendChild(taskEl);
 
             // Set position to fixed and place at current location
             taskEl.style.position = 'fixed';
             taskEl.style.left = `${rect.left}px`;
             taskEl.style.top = `${rect.top}px`;
             taskEl.style.width = `${rect.width}px`;
+            taskEl.style.margin = '0';
             taskEl.style.zIndex = '9999999';
 
             // Add dragging class
@@ -1180,6 +1183,19 @@
                 }
             }
 
+            // Clean up - remove all dragging styles FIRST
+            draggedTask.classList.remove('dragging');
+            draggedTask.style.position = '';
+            draggedTask.style.left = '';
+            draggedTask.style.top = '';
+            draggedTask.style.width = '';
+            draggedTask.style.margin = '';
+            draggedTask.style.zIndex = '';
+
+            document.querySelectorAll('.kanban-column').forEach(col => {
+                col.classList.remove('highlight');
+            });
+
             if (task && newColumn && columnContent) {
                 // Update column
                 task.column = newColumn;
@@ -1198,26 +1214,14 @@
 
                 console.log('Dropped at exact position:', task.position);
 
-                // Update task in database
+                // Update task in database and re-render
                 updateTask(taskId, task).then(() => {
                     renderBoard();
                 });
             } else {
-                // If dropped outside columns, keep in original column but update renderBoard
+                // If dropped outside columns, just re-render
                 renderBoard();
             }
-
-            // Clean up - remove all dragging styles
-            draggedTask.classList.remove('dragging');
-            draggedTask.style.position = '';
-            draggedTask.style.left = '';
-            draggedTask.style.top = '';
-            draggedTask.style.width = '';
-            draggedTask.style.zIndex = '';
-
-            document.querySelectorAll('.kanban-column').forEach(col => {
-                col.classList.remove('highlight');
-            });
 
             draggedTask = null;
 
