@@ -999,6 +999,13 @@
 
         // RENDER TASK
         function renderTask(task, container) {
+            // Skip tasks with invalid positions
+            if (!task.position || task.position.x < -500 || task.position.y < -500 ||
+                task.position.x > 10000 || task.position.y > 10000) {
+                console.warn('Skipping task with invalid position:', task.id, task.position);
+                return;
+            }
+
             const taskEl = document.createElement('div');
             taskEl.className = 'task-card';
             taskEl.dataset.taskId = task.id;
@@ -1183,15 +1190,7 @@
                 }
             }
 
-            // Clean up - remove all dragging styles FIRST
-            draggedTask.classList.remove('dragging');
-            draggedTask.style.position = '';
-            draggedTask.style.left = '';
-            draggedTask.style.top = '';
-            draggedTask.style.width = '';
-            draggedTask.style.margin = '';
-            draggedTask.style.zIndex = '';
-
+            // Remove highlight from columns
             document.querySelectorAll('.kanban-column').forEach(col => {
                 col.classList.remove('highlight');
             });
@@ -1200,26 +1199,51 @@
                 // Update column
                 task.column = newColumn;
 
-                // Calculate EXACT position relative to the column content area
+                // Calculate position relative to the column content area
                 const containerRect = columnContent.getBoundingClientRect();
                 const scrollTop = columnContent.scrollTop;
-                const scrollLeft = columnContent.scrollLeft;
 
-                // Get exact position where task was dropped
-                const x = clientX - containerRect.left - dragOffset.x + scrollLeft;
+                // CENTER the task horizontally in the column
+                const columnWidth = containerRect.width - 24; // Subtract padding
+                const taskWidth = 240; // Task card width
+                const x = (columnWidth - taskWidth) / 2; // Center it
+
+                // Get Y position where dropped
                 const y = clientY - containerRect.top - dragOffset.y + scrollTop;
 
-                // Store EXACT position - absolutely NO rounding, snapping, or constraints
-                task.position = { x: x, y: y };
+                // Store position
+                task.position = {
+                    x: Math.max(0, x),
+                    y: Math.max(0, y)
+                };
 
-                console.log('Dropped at exact position:', task.position);
+                console.log('Dropped at centered position:', task.position);
+
+                // Clean up dragging class but KEEP the styles temporarily to avoid flash
+                draggedTask.classList.remove('dragging');
 
                 // Update task in database and re-render
                 updateTask(taskId, task).then(() => {
+                    // Now clean up all styles after update is done
+                    if (draggedTask) {
+                        draggedTask.style.position = '';
+                        draggedTask.style.left = '';
+                        draggedTask.style.top = '';
+                        draggedTask.style.width = '';
+                        draggedTask.style.margin = '';
+                        draggedTask.style.zIndex = '';
+                    }
                     renderBoard();
                 });
             } else {
-                // If dropped outside columns, just re-render
+                // If dropped outside columns, clean up and re-render
+                draggedTask.classList.remove('dragging');
+                draggedTask.style.position = '';
+                draggedTask.style.left = '';
+                draggedTask.style.top = '';
+                draggedTask.style.width = '';
+                draggedTask.style.margin = '';
+                draggedTask.style.zIndex = '';
                 renderBoard();
             }
 
