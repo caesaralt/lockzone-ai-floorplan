@@ -1031,6 +1031,10 @@
             const assignedTo = task.assigned_to || null;
             const isPinned = task.pinned || false;
 
+            if (assignedTo) {
+                console.log('📌 Rendering task with assignment:', task.id, 'assigned to:', assignedTo);
+            }
+
             taskEl.innerHTML = `
                 <div class="task-header">
                     <button class="task-menu-btn" onclick="event.stopPropagation(); toggleTaskMenu('${task.id}')" title="Options">⋯</button>
@@ -1860,7 +1864,7 @@
 
             // Move to top of column if pinning
             if (task.pinned) {
-                task.position.y = -100; // Negative Y to ensure it's at the top
+                task.position.y = 10; // Position at top but still visible
             }
 
             await updateTask(taskId, task);
@@ -1888,12 +1892,15 @@
         async function assignTask(assignee) {
             if (!currentTaskId) return;
 
+            console.log('👤 Assigning task:', currentTaskId, 'to:', assignee);
             const task = tasks.find(t => t.id === currentTaskId);
             if (task) {
                 task.assigned_to = assignee;
+                console.log('Task updated with assignment:', task.assigned_to);
                 await updateTask(currentTaskId, task);
-                renderBoard();
+                console.log('✅ Assignment saved to database');
                 closeAssignModal();
+                renderBoard();
             }
         }
 
