@@ -4039,6 +4039,9 @@ def handle_kanban_tasks():
                 'notes': data.get('notes', ''),
                 'color': data.get('color', '#ffffff'),
                 'position': data.get('position', {'x': 10, 'y': 10}),
+                'assigned_to': data.get('assigned_to'),
+                'pinned': data.get('pinned', False),
+                'due_date': data.get('due_date'),
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
@@ -4061,7 +4064,7 @@ def handle_kanban_task(task_id):
         if request.method == 'PUT':
             data = request.json
             task = tasks[idx]
-            for field in ['column', 'content', 'notes', 'color', 'position', 'due_date']:
+            for field in ['column', 'content', 'notes', 'color', 'position', 'due_date', 'assigned_to', 'pinned']:
                 if field in data:
                     task[field] = data[field]
             task['updated_at'] = datetime.now().isoformat()
