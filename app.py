@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -44,6 +45,21 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
 
+# Database configuration
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # Fix postgres:// to postgresql:// for SQLAlchemy
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    USE_DATABASE = True
+else:
+    USE_DATABASE = False
+    print("INFO: No DATABASE_URL found. Using JSON file storage.")
+
+db = SQLAlchemy(app) if USE_DATABASE else None
+
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['DATA_FOLDER'] = 'data'
@@ -61,6 +77,39 @@ for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'],
                app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER'],
                app.config['SESSION_DATA_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
+
+# Database Models
+if USE_DATABASE:
+    class KanbanTask(db.Model):
+        __tablename__ = 'kanban_tasks'
+
+        id = db.Column(db.String(36), primary_key=True)
+        column = db.Column(db.String(50), nullable=False)
+        content = db.Column(db.Text, nullable=False)
+        notes = db.Column(db.Text, default='')
+        color = db.Column(db.String(7), default='#ffffff')
+        position_x = db.Column(db.Float, default=10)
+        position_y = db.Column(db.Float, default=10)
+        assigned_to = db.Column(db.String(100))
+        pinned = db.Column(db.Boolean, default=False)
+        due_date = db.Column(db.String(20))
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+        def to_dict(self):
+            return {
+                'id': self.id,
+                'column': self.column,
+                'content': self.content,
+                'notes': self.notes,
+                'color': self.color,
+                'position': {'x': self.position_x, 'y': self.position_y},
+                'assigned_to': self.assigned_to,
+                'pinned': self.pinned,
+                'due_date': self.due_date,
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            }
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 LEARNING_INDEX_FILE = os.path.join(app.config['LEARNING_FOLDER'], 'learning_index.json')
@@ -4027,27 +4076,50 @@ def handle_kanban_tasks():
     """Get all tasks or create new task"""
     try:
         if request.method == 'GET':
-            tasks = load_json_file(KANBAN_FILE, [])
+            if USE_DATABASE:
+                tasks = [task.to_dict() for task in KanbanTask.query.all()]
+            else:
+                tasks = load_json_file(KANBAN_FILE, [])
             return jsonify({'success': True, 'tasks': tasks})
         else:
             data = request.json
-            tasks = load_json_file(KANBAN_FILE, [])
-            task = {
-                'id': str(uuid.uuid4()),
-                'column': data.get('column', 'todo'),
-                'content': data.get('content', 'New Task'),
-                'notes': data.get('notes', ''),
-                'color': data.get('color', '#ffffff'),
-                'position': data.get('position', {'x': 10, 'y': 10}),
-                'assigned_to': data.get('assigned_to'),
-                'pinned': data.get('pinned', False),
-                'due_date': data.get('due_date'),
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-            tasks.append(task)
-            save_json_file(KANBAN_FILE, tasks)
-            return jsonify({'success': True, 'task': task})
+            task_id = str(uuid.uuid4())
+            position = data.get('position', {'x': 10, 'y': 10})
+
+            if USE_DATABASE:
+                task = KanbanTask(
+                    id=task_id,
+                    column=data.get('column', 'todo'),
+                    content=data.get('content', 'New Task'),
+                    notes=data.get('notes', ''),
+                    color=data.get('color', '#ffffff'),
+                    position_x=position.get('x', 10),
+                    position_y=position.get('y', 10),
+                    assigned_to=data.get('assigned_to'),
+                    pinned=data.get('pinned', False),
+                    due_date=data.get('due_date')
+                )
+                db.session.add(task)
+                db.session.commit()
+                return jsonify({'success': True, 'task': task.to_dict()})
+            else:
+                tasks = load_json_file(KANBAN_FILE, [])
+                task = {
+                    'id': task_id,
+                    'column': data.get('column', 'todo'),
+                    'content': data.get('content', 'New Task'),
+                    'notes': data.get('notes', ''),
+                    'color': data.get('color', '#ffffff'),
+                    'position': position,
+                    'assigned_to': data.get('assigned_to'),
+                    'pinned': data.get('pinned', False),
+                    'due_date': data.get('due_date'),
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                tasks.append(task)
+                save_json_file(KANBAN_FILE, tasks)
+                return jsonify({'success': True, 'task': task})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -4055,32 +4127,73 @@ def handle_kanban_tasks():
 def handle_kanban_task(task_id):
     """Update or delete a specific task"""
     try:
-        tasks = load_json_file(KANBAN_FILE, [])
-        idx = next((i for i, t in enumerate(tasks) if t['id'] == task_id), None)
+        if USE_DATABASE:
+            task = KanbanTask.query.get(task_id)
+            if not task:
+                return jsonify({'success': False, 'error': 'Task not found'}), 404
 
-        if idx is None:
-            return jsonify({'success': False, 'error': 'Task not found'}), 404
+            if request.method == 'PUT':
+                data = request.json
+                if 'column' in data:
+                    task.column = data['column']
+                if 'content' in data:
+                    task.content = data['content']
+                if 'notes' in data:
+                    task.notes = data['notes']
+                if 'color' in data:
+                    task.color = data['color']
+                if 'position' in data:
+                    task.position_x = data['position'].get('x', task.position_x)
+                    task.position_y = data['position'].get('y', task.position_y)
+                if 'due_date' in data:
+                    task.due_date = data['due_date']
+                if 'assigned_to' in data:
+                    task.assigned_to = data['assigned_to']
+                if 'pinned' in data:
+                    task.pinned = data['pinned']
 
-        if request.method == 'PUT':
-            data = request.json
-            task = tasks[idx]
-            for field in ['column', 'content', 'notes', 'color', 'position', 'due_date', 'assigned_to', 'pinned']:
-                if field in data:
-                    task[field] = data[field]
-            task['updated_at'] = datetime.now().isoformat()
-            tasks[idx] = task
-            save_json_file(KANBAN_FILE, tasks)
-            return jsonify({'success': True, 'task': task})
+                task.updated_at = datetime.utcnow()
+                db.session.commit()
+                return jsonify({'success': True, 'task': task.to_dict()})
 
-        elif request.method == 'DELETE':
-            tasks.pop(idx)
-            save_json_file(KANBAN_FILE, tasks)
-            return jsonify({'success': True})
+            elif request.method == 'DELETE':
+                db.session.delete(task)
+                db.session.commit()
+                return jsonify({'success': True})
+
+        else:
+            tasks = load_json_file(KANBAN_FILE, [])
+            idx = next((i for i, t in enumerate(tasks) if t['id'] == task_id), None)
+
+            if idx is None:
+                return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+            if request.method == 'PUT':
+                data = request.json
+                task = tasks[idx]
+                for field in ['column', 'content', 'notes', 'color', 'position', 'due_date', 'assigned_to', 'pinned']:
+                    if field in data:
+                        task[field] = data[field]
+                task['updated_at'] = datetime.now().isoformat()
+                tasks[idx] = task
+                save_json_file(KANBAN_FILE, tasks)
+                return jsonify({'success': True, 'task': task})
+
+            elif request.method == 'DELETE':
+                tasks.pop(idx)
+                save_json_file(KANBAN_FILE, tasks)
+                return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
+    # Create database tables if using database
+    if USE_DATABASE:
+        with app.app_context():
+            db.create_all()
+            print("✅ Database tables created successfully")
+
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
