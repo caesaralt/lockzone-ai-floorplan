@@ -145,6 +145,8 @@
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(255,255,255,0.5);
+            position: relative;
+            z-index: 1;
         }
 
         .kanban-column:hover {
@@ -211,9 +213,13 @@
             flex: 1;
             padding: 12px;
             overflow-y: auto;
+            overflow-x: hidden;
             position: relative;
             min-height: 400px;
             max-height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         /* TASK CARD */
@@ -221,12 +227,12 @@
             border: 1px solid rgba(0,0,0,0.08);
             border-radius: 12px;
             padding: 14px;
-            margin-bottom: 12px;
             cursor: move;
-            position: absolute;
-            width: 240px;
+            position: relative;
+            width: 100%;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
+            flex-shrink: 0;
             box-shadow:
                 0 1px 3px rgba(0,0,0,0.1),
                 0 3px 8px rgba(0,0,0,0.08),
@@ -258,15 +264,17 @@
         }
 
         .task-card.dragging {
-            opacity: 0.85;
+            opacity: 0.95;
             box-shadow:
                 0 12px 32px rgba(0,0,0,0.25),
                 0 24px 56px rgba(0,0,0,0.2),
                 inset 0 1px 0 rgba(255,255,255,0.5);
-            transform: rotate(3deg) scale(1.05);
+            transform: rotate(2deg) scale(1.03);
             position: fixed !important;
-            z-index: 10000 !important;
+            z-index: 999999 !important;
             pointer-events: none;
+            transition: none !important;
+            will-change: transform;
         }
 
         .task-header {
@@ -1016,8 +1024,6 @@
             const taskEl = document.createElement('div');
             taskEl.className = 'task-card';
             taskEl.dataset.taskId = task.id;
-            taskEl.style.left = `${task.position.x}px`;
-            taskEl.style.top = `${task.position.y}px`;
             taskEl.style.backgroundColor = task.color;
 
             // Add selected class
@@ -1100,10 +1106,16 @@
                 y: clientY - rect.top
             };
 
-            // Store original position for relative positioning
-            taskEl.dataset.originalParent = taskEl.parentElement.dataset.column;
+            // Store original column
+            taskEl.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
 
+            // Add dragging class
             taskEl.classList.add('dragging');
+
+            // Set initial position
+            taskEl.style.left = `${rect.left}px`;
+            taskEl.style.top = `${rect.top}px`;
+            taskEl.style.width = `${rect.width}px`;
 
             document.addEventListener('mousemove', onDrag);
             document.addEventListener('mouseup', stopDrag);
@@ -1119,9 +1131,13 @@
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
-            // Position task at mouse location (fixed positioning during drag)
-            draggedTask.style.left = `${clientX - dragOffset.x}px`;
-            draggedTask.style.top = `${clientY - dragOffset.y}px`;
+            // Update position smoothly - task follows cursor exactly
+            requestAnimationFrame(() => {
+                if (draggedTask) {
+                    draggedTask.style.left = `${clientX - dragOffset.x}px`;
+                    draggedTask.style.top = `${clientY - dragOffset.y}px`;
+                }
+            });
 
             // Highlight column under mouse
             highlightColumnUnderMouse(clientX, clientY);
@@ -1162,43 +1178,55 @@
                 // Find column content under drop point
                 const elements = document.elementsFromPoint(clientX, clientY);
                 for (const el of elements) {
-                    if (el.classList.contains('column-content')) {
-                        columnContent = el;
-                        newColumn = el.dataset.column;
+                    if (el.classList.contains('column-content') || el.classList.contains('kanban-column')) {
+                        if (el.classList.contains('column-content')) {
+                            columnContent = el;
+                            newColumn = el.dataset.column;
+                        } else {
+                            // If over column but not content area, find the content
+                            columnContent = el.querySelector('.column-content');
+                            if (columnContent) {
+                                newColumn = columnContent.dataset.column;
+                            }
+                        }
                         break;
                     }
                 }
             }
 
-            if (task && newColumn && columnContent) {
-                // Calculate position relative to new column
-                const containerRect = columnContent.getBoundingClientRect();
-                const scrollTop = columnContent.scrollTop;
-                let x = clientX - containerRect.left - dragOffset.x;
-                let y = clientY - containerRect.top - dragOffset.y + scrollTop;
-
-                // Constrain within column bounds
-                x = Math.max(0, Math.min(x, containerRect.width - draggedTask.offsetWidth));
-                y = Math.max(0, y);
-
-                task.position = { x, y };
-                task.column = newColumn;
-
-                // Update task without re-rendering the entire board
-                updateTask(taskId, task).then(() => {
-                    // Only re-render after successful update to avoid position conflicts
-                    renderBoard();
-                });
-            } else {
-                // If dropped outside columns, restore original position
-                renderBoard();
-            }
-
-            // Clean up
+            // Clean up dragging styles immediately for smooth transition
             draggedTask.classList.remove('dragging');
+            draggedTask.style.position = '';
+            draggedTask.style.left = '';
+            draggedTask.style.top = '';
+            draggedTask.style.width = '';
+
             document.querySelectorAll('.kanban-column').forEach(col => {
                 col.classList.remove('highlight');
             });
+
+            if (task && newColumn) {
+                // Update task column
+                const oldColumn = task.column;
+                task.column = newColumn;
+
+                // Calculate position based on where in the column it was dropped
+                if (columnContent) {
+                    const scrollTop = columnContent.scrollTop;
+                    const containerRect = columnContent.getBoundingClientRect();
+                    const relativeY = clientY - containerRect.top + scrollTop;
+                    task.position.y = Math.max(0, relativeY);
+                }
+
+                // Update task in database
+                updateTask(taskId, task).then(() => {
+                    renderBoard();
+                });
+            } else {
+                // If dropped outside columns, keep in original column
+                renderBoard();
+            }
+
             draggedTask = null;
 
             document.removeEventListener('mousemove', onDrag);
