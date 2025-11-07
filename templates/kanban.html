@@ -146,7 +146,7 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(255,255,255,0.5);
             position: relative;
-            z-index: 1;
+            z-index: 0;
         }
 
         .kanban-column:hover {
@@ -267,10 +267,10 @@
                 inset 0 1px 0 rgba(255,255,255,0.5);
             transform: rotate(2deg) scale(1.03);
             position: fixed !important;
-            z-index: 999999 !important;
+            z-index: 9999999 !important;
             pointer-events: none;
             transition: none !important;
-            will-change: transform;
+            will-change: transform, left, top;
         }
 
         .task-header {
@@ -1082,27 +1082,34 @@
             e.preventDefault();
 
             const taskEl = e.currentTarget;
-            draggedTask = taskEl;
-
             const rect = taskEl.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
+            // Calculate offset from mouse to top-left of task
             dragOffset = {
                 x: clientX - rect.left,
                 y: clientY - rect.top
             };
 
-            // Store original column
-            taskEl.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
+            // Store the task element and its original parent
+            draggedTask = taskEl;
+            draggedTask.dataset.originalParent = taskEl.parentElement;
+            draggedTask.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
 
-            // Add dragging class
-            taskEl.classList.add('dragging');
+            // MOVE TASK TO BODY - this is key for true free dragging
+            document.body.appendChild(taskEl);
 
-            // Set initial position
+            // Set position to fixed and place at current location
+            taskEl.style.position = 'fixed';
             taskEl.style.left = `${rect.left}px`;
             taskEl.style.top = `${rect.top}px`;
             taskEl.style.width = `${rect.width}px`;
+            taskEl.style.margin = '0';
+            taskEl.style.zIndex = '9999999';
+
+            // Add dragging class
+            taskEl.classList.add('dragging');
 
             document.addEventListener('mousemove', onDrag);
             document.addEventListener('mouseup', stopDrag);
@@ -1118,13 +1125,9 @@
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
-            // Update position smoothly - task follows cursor exactly
-            requestAnimationFrame(() => {
-                if (draggedTask) {
-                    draggedTask.style.left = `${clientX - dragOffset.x}px`;
-                    draggedTask.style.top = `${clientY - dragOffset.y}px`;
-                }
-            });
+            // Update position directly - no requestAnimationFrame, just instant updates
+            draggedTask.style.left = `${clientX - dragOffset.x}px`;
+            draggedTask.style.top = `${clientY - dragOffset.y}px`;
 
             // Highlight column under mouse
             highlightColumnUnderMouse(clientX, clientY);
@@ -1180,12 +1183,14 @@
                 }
             }
 
-            // Clean up dragging styles immediately
+            // Clean up - remove all dragging styles FIRST
             draggedTask.classList.remove('dragging');
             draggedTask.style.position = '';
             draggedTask.style.left = '';
             draggedTask.style.top = '';
             draggedTask.style.width = '';
+            draggedTask.style.margin = '';
+            draggedTask.style.zIndex = '';
 
             document.querySelectorAll('.kanban-column').forEach(col => {
                 col.classList.remove('highlight');
@@ -1195,26 +1200,26 @@
                 // Update column
                 task.column = newColumn;
 
-                // Calculate exact position relative to the column content area
+                // Calculate EXACT position relative to the column content area
                 const containerRect = columnContent.getBoundingClientRect();
                 const scrollTop = columnContent.scrollTop;
+                const scrollLeft = columnContent.scrollLeft;
 
-                // Calculate position where dropped, accounting for scroll
-                const x = clientX - containerRect.left - dragOffset.x;
+                // Get exact position where task was dropped
+                const x = clientX - containerRect.left - dragOffset.x + scrollLeft;
                 const y = clientY - containerRect.top - dragOffset.y + scrollTop;
 
-                // Store exact position - NO SNAPPING OR CONSTRAINTS
-                task.position = {
-                    x: Math.max(0, x),
-                    y: Math.max(0, y)
-                };
+                // Store EXACT position - absolutely NO rounding, snapping, or constraints
+                task.position = { x: x, y: y };
 
-                // Update task in database
+                console.log('Dropped at exact position:', task.position);
+
+                // Update task in database and re-render
                 updateTask(taskId, task).then(() => {
                     renderBoard();
                 });
             } else {
-                // If dropped outside columns, keep in original column
+                // If dropped outside columns, just re-render
                 renderBoard();
             }
 
