@@ -1203,6 +1203,12 @@
                 col.classList.remove('highlight');
             });
 
+            // CRITICAL: Remove the dragged task from the DOM completely
+            // This prevents duplicates when renderBoard() creates a new element
+            if (draggedTask && draggedTask.parentElement) {
+                draggedTask.parentElement.removeChild(draggedTask);
+            }
+
             if (task && newColumn && columnContent) {
                 // Update column
                 task.column = newColumn;
@@ -1227,31 +1233,12 @@
 
                 console.log('Dropped at centered position:', task.position);
 
-                // Clean up dragging class but KEEP the styles temporarily to avoid flash
-                draggedTask.classList.remove('dragging');
-
                 // Update task in database and re-render
                 updateTask(taskId, task).then(() => {
-                    // Now clean up all styles after update is done
-                    if (draggedTask) {
-                        draggedTask.style.position = '';
-                        draggedTask.style.left = '';
-                        draggedTask.style.top = '';
-                        draggedTask.style.width = '';
-                        draggedTask.style.margin = '';
-                        draggedTask.style.zIndex = '';
-                    }
                     renderBoard();
                 });
             } else {
-                // If dropped outside columns, clean up and re-render
-                draggedTask.classList.remove('dragging');
-                draggedTask.style.position = '';
-                draggedTask.style.left = '';
-                draggedTask.style.top = '';
-                draggedTask.style.width = '';
-                draggedTask.style.margin = '';
-                draggedTask.style.zIndex = '';
+                // If dropped outside columns, just re-render
                 renderBoard();
             }
 
