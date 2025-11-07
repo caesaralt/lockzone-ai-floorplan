@@ -311,7 +311,7 @@
             flex-direction: column;
             gap: 4px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 8px 24px rgba(0,0,0,0.12);
-            z-index: 100;
+            z-index: 10000;
             min-width: 140px;
         }
 
@@ -1081,12 +1081,16 @@
         }
 
         function startDrag(e) {
-            // Don't drag if clicking on buttons or contenteditable
-            if (e.target.tagName === 'BUTTON' || e.target.contentEditable === 'true') {
+            // Don't drag if clicking on buttons, menus, or contenteditable
+            if (e.target.tagName === 'BUTTON' ||
+                e.target.contentEditable === 'true' ||
+                e.target.closest('.task-actions-menu') ||
+                e.target.closest('.task-menu-btn')) {
                 return;
             }
 
             e.preventDefault();
+            e.stopPropagation();
 
             const taskEl = e.currentTarget;
             const rect = taskEl.getBoundingClientRect();
@@ -1101,7 +1105,6 @@
 
             // Store the task element and its original parent
             draggedTask = taskEl;
-            draggedTask.dataset.originalParent = taskEl.parentElement;
             draggedTask.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
 
             // MOVE TASK TO BODY - this is key for true free dragging
