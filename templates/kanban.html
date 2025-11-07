@@ -217,9 +217,6 @@
             position: relative;
             min-height: 400px;
             max-height: calc(100vh - 200px);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
         }
 
         /* TASK CARD */
@@ -228,11 +225,10 @@
             border-radius: 12px;
             padding: 14px;
             cursor: move;
-            position: relative;
-            width: 100%;
+            position: absolute;
+            width: 240px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
-            flex-shrink: 0;
             box-shadow:
                 0 1px 3px rgba(0,0,0,0.1),
                 0 3px 8px rgba(0,0,0,0.08),
@@ -969,26 +965,8 @@
                 columnEl.className = 'kanban-column';
                 columnEl.dataset.columnId = column.id;
 
-                // Sort tasks: pinned first, then by position
-                const columnTasks = tasks
-                    .filter(t => t.column === column.id)
-                    .sort((a, b) => {
-                        // Pinned tasks come first
-                        if (a.pinned && !b.pinned) return -1;
-                        if (!a.pinned && b.pinned) return 1;
-                        // Then sort by Y position
-                        return a.position.y - b.position.y;
-                    });
-
-                // Only recalculate positions if tasks overlap or are too close
-                // This preserves user-placed positions better
-                let lastY = -120;
-                columnTasks.forEach((task) => {
-                    if (task.position.y < lastY + 120) {
-                        task.position.y = lastY + 120;
-                    }
-                    lastY = task.position.y;
-                });
+                // Get tasks for this column - NO sorting or position manipulation
+                const columnTasks = tasks.filter(t => t.column === column.id);
 
                 const columnColor = columnColors[column.id] || 'transparent';
 
@@ -1005,7 +983,7 @@
 
                 container.appendChild(columnEl);
 
-                // Render tasks in column
+                // Render tasks in column - they'll position themselves absolutely
                 const contentEl = columnEl.querySelector('.column-content');
                 columnTasks.forEach(task => {
                     renderTask(task, contentEl);
@@ -1024,6 +1002,10 @@
             const taskEl = document.createElement('div');
             taskEl.className = 'task-card';
             taskEl.dataset.taskId = task.id;
+
+            // Use absolute positioning with exact coordinates
+            taskEl.style.left = `${task.position.x}px`;
+            taskEl.style.top = `${task.position.y}px`;
             taskEl.style.backgroundColor = task.color;
 
             // Add selected class
@@ -1072,9 +1054,14 @@
             // Setup drag
             setupTaskDrag(taskEl);
 
-            // Setup selection
+            // Setup selection with proper click handler
             taskEl.addEventListener('click', (e) => {
-                if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON') {
+                // Only select if not clicking on buttons or editable content
+                if (e.target.tagName !== 'BUTTON' &&
+                    e.target.contentEditable !== 'true' &&
+                    !e.target.closest('.task-actions-menu') &&
+                    !e.target.closest('.task-menu-btn')) {
+                    e.stopPropagation();
                     selectTask(task.id);
                 }
             });
@@ -1175,7 +1162,7 @@
             let columnContent = null;
 
             if (clientX && clientY) {
-                // Find column content under drop point
+                // Find which column we're over
                 const elements = document.elementsFromPoint(clientX, clientY);
                 for (const el of elements) {
                     if (el.classList.contains('column-content') || el.classList.contains('kanban-column')) {
@@ -1183,7 +1170,6 @@
                             columnContent = el;
                             newColumn = el.dataset.column;
                         } else {
-                            // If over column but not content area, find the content
                             columnContent = el.querySelector('.column-content');
                             if (columnContent) {
                                 newColumn = columnContent.dataset.column;
@@ -1194,7 +1180,7 @@
                 }
             }
 
-            // Clean up dragging styles immediately for smooth transition
+            // Clean up dragging styles immediately
             draggedTask.classList.remove('dragging');
             draggedTask.style.position = '';
             draggedTask.style.left = '';
@@ -1205,18 +1191,23 @@
                 col.classList.remove('highlight');
             });
 
-            if (task && newColumn) {
-                // Update task column
-                const oldColumn = task.column;
+            if (task && newColumn && columnContent) {
+                // Update column
                 task.column = newColumn;
 
-                // Calculate position based on where in the column it was dropped
-                if (columnContent) {
-                    const scrollTop = columnContent.scrollTop;
-                    const containerRect = columnContent.getBoundingClientRect();
-                    const relativeY = clientY - containerRect.top + scrollTop;
-                    task.position.y = Math.max(0, relativeY);
-                }
+                // Calculate exact position relative to the column content area
+                const containerRect = columnContent.getBoundingClientRect();
+                const scrollTop = columnContent.scrollTop;
+
+                // Calculate position where dropped, accounting for scroll
+                const x = clientX - containerRect.left - dragOffset.x;
+                const y = clientY - containerRect.top - dragOffset.y + scrollTop;
+
+                // Store exact position - NO SNAPPING OR CONSTRAINTS
+                task.position = {
+                    x: Math.max(0, x),
+                    y: Math.max(0, y)
+                };
 
                 // Update task in database
                 updateTask(taskId, task).then(() => {
@@ -1339,6 +1330,7 @@
         // TASK SELECTION
         function selectTask(taskId) {
             selectedTaskId = taskId;
+            console.log('✅ Task selected:', taskId);
             // Re-render to show selection
             document.querySelectorAll('.task-card').forEach(card => {
                 card.classList.remove('selected');
@@ -1347,6 +1339,18 @@
                 }
             });
         }
+
+        // Deselect when clicking outside tasks
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.task-card') && !e.target.closest('.modal')) {
+                if (selectedTaskId) {
+                    selectedTaskId = null;
+                    document.querySelectorAll('.task-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                }
+            }
+        });
 
         // UNDO/REDO FUNCTIONALITY
         function saveToHistory(action, data) {
@@ -1446,42 +1450,62 @@
         function setupKeyboardShortcuts() {
             document.addEventListener('keydown', (e) => {
                 // Don't trigger shortcuts when typing in input fields
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+                if (e.target.tagName === 'INPUT' ||
+                    e.target.tagName === 'TEXTAREA' ||
+                    e.target.contentEditable === 'true' ||
+                    e.target.isContentEditable) {
                     return;
                 }
+
+                console.log('Key pressed:', e.key, 'Selected task:', selectedTaskId);
 
                 // Cmd/Ctrl + Z: Undo
                 if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
                     e.preventDefault();
+                    console.log('🔙 Undo triggered');
                     undo();
+                    return;
                 }
 
                 // Cmd/Ctrl + Shift + Z: Redo
                 if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
                     e.preventDefault();
+                    console.log('🔜 Redo triggered');
                     redo();
+                    return;
                 }
 
                 // Cmd/Ctrl + C: Copy selected task
-                if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedTaskId) {
-                    e.preventDefault();
-                    const task = tasks.find(t => t.id === selectedTaskId);
-                    if (task) {
-                        copiedTask = JSON.parse(JSON.stringify(task));
-                        console.log('📋 Task copied');
+                if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+                    if (selectedTaskId) {
+                        e.preventDefault();
+                        const task = tasks.find(t => t.id === selectedTaskId);
+                        if (task) {
+                            copiedTask = JSON.parse(JSON.stringify(task));
+                            console.log('📋 Task copied:', task.content);
+                        }
                     }
+                    return;
                 }
 
                 // Cmd/Ctrl + V: Paste copied task
-                if ((e.metaKey || e.ctrlKey) && e.key === 'v' && copiedTask) {
-                    e.preventDefault();
-                    pasteTask();
+                if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+                    if (copiedTask) {
+                        e.preventDefault();
+                        console.log('📋 Pasting task');
+                        pasteTask();
+                    }
+                    return;
                 }
 
                 // Delete or Backspace: Delete selected task
-                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTaskId) {
-                    e.preventDefault();
-                    deleteTask(selectedTaskId);
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (selectedTaskId) {
+                        e.preventDefault();
+                        console.log('🗑️ Deleting selected task:', selectedTaskId);
+                        deleteTask(selectedTaskId);
+                    }
+                    return;
                 }
             });
         }
