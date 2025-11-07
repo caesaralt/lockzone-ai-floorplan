@@ -170,7 +170,7 @@
             align-items: center;
             justify-content: space-between;
             position: relative;
-            background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 100%);
+            background: rgba(255,255,255,0.5);
             backdrop-filter: blur(10px);
         }
 
@@ -210,9 +210,10 @@
         .column-content {
             flex: 1;
             padding: 12px;
-            overflow-y: visible;
+            overflow-y: auto;
             position: relative;
             min-height: 400px;
+            max-height: calc(100vh - 200px);
         }
 
         /* TASK CARD */
@@ -341,51 +342,39 @@
         }
 
         .task-btn.notes {
-            background: #3498db;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(52,152,219,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.notes:hover {
-            background: #2980b9;
-            box-shadow: 0 3px 9px rgba(52,152,219,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         .task-btn.color {
-            background: #9b59b6;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(155,89,182,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.color:hover {
-            background: #8e44ad;
-            box-shadow: 0 3px 9px rgba(155,89,182,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         .task-btn.duplicate {
-            background: #f39c12;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(243,156,18,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.duplicate:hover {
-            background: #e67e22;
-            box-shadow: 0 3px 9px rgba(243,156,18,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         .task-btn.delete {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(231,76,60,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.delete:hover {
-            background: #c0392b;
-            box-shadow: 0 3px 9px rgba(231,76,60,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         .task-content {
@@ -461,27 +450,21 @@
         }
 
         .task-btn.pin {
-            background: #f39c12;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(243,156,18,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.pin:hover {
-            background: #e67e22;
-            box-shadow: 0 3px 9px rgba(243,156,18,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         .task-btn.assign {
-            background: #1abc9c;
-            color: white;
-            border: none;
-            box-shadow: 0 2px 6px rgba(26,188,156,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .task-btn.assign:hover {
-            background: #16a085;
-            box-shadow: 0 3px 9px rgba(26,188,156,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            background: #f5f5f7;
         }
 
         /* MODAL */
@@ -864,17 +847,17 @@
                 <button class="modal-close" onclick="closeAssignModal()">Close</button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
-                <button class="save-notes-btn" onclick="assignTask('Arian')" style="background: #3498db; border: none;">👤 Arian</button>
-                <button class="save-notes-btn" onclick="assignTask('Tayla')" style="background: #9b59b6; border: none;">👤 Tayla</button>
-                <button class="save-notes-btn" onclick="assignTask('George')" style="background: #e74c3c; border: none;">👤 George</button>
-                <button class="save-notes-btn" onclick="assignTask('Thim')" style="background: #f39c12; border: none;">👤 Thim</button>
-                <button class="save-notes-btn" onclick="assignTask('Caesar')" style="background: #1abc9c; border: none;">👤 Caesar</button>
-                <button class="save-notes-btn" onclick="showCustomAssignInput()" style="background: #95a5a6; border: none;">👤 Other...</button>
+                <button class="save-notes-btn" onclick="assignTask('Arian')">👤 Arian</button>
+                <button class="save-notes-btn" onclick="assignTask('Tayla')">👤 Tayla</button>
+                <button class="save-notes-btn" onclick="assignTask('George')">👤 George</button>
+                <button class="save-notes-btn" onclick="assignTask('Thim')">👤 Thim</button>
+                <button class="save-notes-btn" onclick="assignTask('Caesar')">👤 Caesar</button>
+                <button class="save-notes-btn" onclick="showCustomAssignInput()">👤 Other...</button>
                 <div id="customAssignInput" style="display: none; margin-top: 8px;">
                     <input type="text" class="task-input" id="customAssignName" placeholder="Enter name..." style="margin-bottom: 8px;" />
                     <button class="save-notes-btn" onclick="assignCustom()">Assign</button>
                 </div>
-                <button class="save-notes-btn" onclick="assignTask(null)" style="background: #e74c3c; border: none; margin-top: 8px;">❌ Remove Assignment</button>
+                <button class="save-notes-btn" onclick="assignTask(null)" style="margin-top: 8px;">❌ Remove Assignment</button>
             </div>
         </div>
     </div>
@@ -888,6 +871,9 @@
         let selectedTaskId = null;
         let currentColumnId = null;
         let columnColors = {};
+        let actionHistory = [];
+        let historyIndex = -1;
+        let copiedTask = null;
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
@@ -986,9 +972,14 @@
                         return a.position.y - b.position.y;
                     });
 
-                // Recalculate positions for sorted tasks
-                columnTasks.forEach((task, index) => {
-                    task.position.y = index * 120; // Space tasks vertically
+                // Only recalculate positions if tasks overlap or are too close
+                // This preserves user-placed positions better
+                let lastY = -120;
+                columnTasks.forEach((task) => {
+                    if (task.position.y < lastY + 120) {
+                        task.position.y = lastY + 120;
+                    }
+                    lastY = task.position.y;
                 });
 
                 const columnColor = columnColors[column.id] || 'transparent';
@@ -1182,8 +1173,9 @@
             if (task && newColumn && columnContent) {
                 // Calculate position relative to new column
                 const containerRect = columnContent.getBoundingClientRect();
+                const scrollTop = columnContent.scrollTop;
                 let x = clientX - containerRect.left - dragOffset.x;
-                let y = clientY - containerRect.top - dragOffset.y;
+                let y = clientY - containerRect.top - dragOffset.y + scrollTop;
 
                 // Constrain within column bounds
                 x = Math.max(0, Math.min(x, containerRect.width - draggedTask.offsetWidth));
@@ -1192,16 +1184,14 @@
                 task.position = { x, y };
                 task.column = newColumn;
 
-                // Move to new column if changed
-                if (newColumn !== draggedTask.dataset.originalParent) {
-                    columnContent.appendChild(draggedTask);
-                }
-
-                // Update position for absolute positioning within column
-                draggedTask.style.left = `${x}px`;
-                draggedTask.style.top = `${y}px`;
-
-                updateTask(taskId, task);
+                // Update task without re-rendering the entire board
+                updateTask(taskId, task).then(() => {
+                    // Only re-render after successful update to avoid position conflicts
+                    renderBoard();
+                });
+            } else {
+                // If dropped outside columns, restore original position
+                renderBoard();
             }
 
             // Clean up
@@ -1262,6 +1252,13 @@
         async function deleteTask(taskId) {
             try {
                 console.log('🗑️ Deleting task:', taskId);
+
+                // Save to history before deleting
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    saveToHistory('delete', { task: JSON.parse(JSON.stringify(task)) });
+                }
+
                 const response = await fetch(`/api/kanban/tasks/${taskId}`, {
                     method: 'DELETE'
                 });
@@ -1323,6 +1320,100 @@
             });
         }
 
+        // UNDO/REDO FUNCTIONALITY
+        function saveToHistory(action, data) {
+            // Remove any actions after current index
+            actionHistory = actionHistory.slice(0, historyIndex + 1);
+
+            // Add new action
+            actionHistory.push({ action, data, timestamp: Date.now() });
+            historyIndex++;
+
+            // Limit history to 50 actions
+            if (actionHistory.length > 50) {
+                actionHistory.shift();
+                historyIndex--;
+            }
+        }
+
+        async function undo() {
+            if (historyIndex < 0) return;
+
+            const action = actionHistory[historyIndex];
+            historyIndex--;
+
+            switch (action.action) {
+                case 'create':
+                    // Remove the created task
+                    tasks = tasks.filter(t => t.id !== action.data.task.id);
+                    await fetch(`/api/kanban/tasks/${action.data.task.id}`, { method: 'DELETE' });
+                    break;
+
+                case 'delete':
+                    // Restore the deleted task
+                    const response = await fetch('/api/kanban/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(action.data.task)
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        tasks.push(data.task);
+                    }
+                    break;
+
+                case 'update':
+                    // Restore previous state
+                    const task = tasks.find(t => t.id === action.data.taskId);
+                    if (task) {
+                        Object.assign(task, action.data.previousState);
+                        await updateTask(action.data.taskId, task);
+                    }
+                    break;
+            }
+
+            renderBoard();
+        }
+
+        async function redo() {
+            if (historyIndex >= actionHistory.length - 1) return;
+
+            historyIndex++;
+            const action = actionHistory[historyIndex];
+
+            switch (action.action) {
+                case 'create':
+                    // Re-create the task
+                    const response = await fetch('/api/kanban/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(action.data.task)
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        tasks.push(data.task);
+                    }
+                    break;
+
+                case 'delete':
+                    // Re-delete the task
+                    tasks = tasks.filter(t => t.id !== action.data.task.id);
+                    await fetch(`/api/kanban/tasks/${action.data.task.id}`, { method: 'DELETE' });
+                    break;
+
+                case 'update':
+                    // Restore new state
+                    const task = tasks.find(t => t.id === action.data.taskId);
+                    if (task) {
+                        Object.assign(task, action.data.newState);
+                        await updateTask(action.data.taskId, task);
+                    }
+                    break;
+            }
+
+            renderBoard();
+        }
+
         // KEYBOARD SHORTCUTS
         function setupKeyboardShortcuts() {
             document.addEventListener('keydown', (e) => {
@@ -1331,16 +1422,32 @@
                     return;
                 }
 
+                // Cmd/Ctrl + Z: Undo
+                if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    undo();
+                }
+
+                // Cmd/Ctrl + Shift + Z: Redo
+                if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
+                    e.preventDefault();
+                    redo();
+                }
+
                 // Cmd/Ctrl + C: Copy selected task
                 if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedTaskId) {
                     e.preventDefault();
-                    duplicateTask(selectedTaskId);
+                    const task = tasks.find(t => t.id === selectedTaskId);
+                    if (task) {
+                        copiedTask = JSON.parse(JSON.stringify(task));
+                        console.log('📋 Task copied');
+                    }
                 }
 
-                // Cmd/Ctrl + V: Paste (duplicate) selected task
-                if ((e.metaKey || e.ctrlKey) && e.key === 'v' && selectedTaskId) {
+                // Cmd/Ctrl + V: Paste copied task
+                if ((e.metaKey || e.ctrlKey) && e.key === 'v' && copiedTask) {
                     e.preventDefault();
-                    duplicateTask(selectedTaskId);
+                    pasteTask();
                 }
 
                 // Delete or Backspace: Delete selected task
@@ -1349,6 +1456,39 @@
                     deleteTask(selectedTaskId);
                 }
             });
+        }
+
+        // PASTE TASK
+        async function pasteTask() {
+            if (!copiedTask) return;
+
+            try {
+                console.log('📋 Pasting task');
+                const response = await fetch('/api/kanban/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        column: copiedTask.column,
+                        content: copiedTask.content + ' (Copy)',
+                        notes: copiedTask.notes,
+                        color: copiedTask.color,
+                        due_date: copiedTask.due_date,
+                        assigned_to: copiedTask.assigned_to,
+                        pinned: false,
+                        position: { x: copiedTask.position.x + 20, y: copiedTask.position.y + 20 }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    tasks.push(data.task);
+                    saveToHistory('create', { task: data.task });
+                    renderBoard();
+                    console.log('✅ Task pasted successfully');
+                }
+            } catch (error) {
+                console.error('❌ Error pasting task:', error);
+            }
         }
 
         // SEARCH TASKS
@@ -1391,6 +1531,7 @@
                 const data = await response.json();
                 if (data.success) {
                     tasks.push(data.task);
+                    saveToHistory('create', { task: data.task });
                     renderBoard();
                     console.log('✅ New task created in TO DO');
 
