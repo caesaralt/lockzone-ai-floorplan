@@ -482,7 +482,7 @@
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            z-index: 2000;
+            z-index: 99999999;
             align-items: center;
             justify-content: center;
             animation: fadeIn 0.2s ease;
@@ -1062,7 +1062,7 @@
             setupTaskDrag(taskEl);
 
             // Setup selection with proper click handler
-            taskEl.addEventListener('click', (e) => {
+            taskEl.onclick = (e) => {
                 // Only select if not clicking on buttons or editable content
                 if (e.target.tagName !== 'BUTTON' &&
                     e.target.contentEditable !== 'true' &&
@@ -1071,11 +1071,16 @@
                     e.stopPropagation();
                     selectTask(task.id);
                 }
-            });
+            };
         }
 
         // SETUP TASK DRAG
         function setupTaskDrag(taskEl) {
+            // Remove any existing listeners to prevent duplicates
+            taskEl.removeEventListener('mousedown', startDrag);
+            taskEl.removeEventListener('touchstart', startDrag);
+
+            // Add fresh listeners
             taskEl.addEventListener('mousedown', startDrag);
             taskEl.addEventListener('touchstart', startDrag, { passive: false });
         }
@@ -1302,13 +1307,16 @@
         // DELETE TASK (NO CONFIRMATION)
         async function deleteTask(taskId) {
             try {
-                console.log('🗑️ Deleting task:', taskId);
+                console.log('🗑️ Attempting to delete task:', taskId);
 
                 // Save to history before deleting
                 const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    saveToHistory('delete', { task: JSON.parse(JSON.stringify(task)) });
+                if (!task) {
+                    console.error('Task not found:', taskId);
+                    return;
                 }
+
+                saveToHistory('delete', { task: JSON.parse(JSON.stringify(task)) });
 
                 const response = await fetch(`/api/kanban/tasks/${taskId}`, {
                     method: 'DELETE'
@@ -1320,8 +1328,10 @@
                     if (selectedTaskId === taskId) {
                         selectedTaskId = null;
                     }
-                    renderBoard();
                     console.log('✅ Task deleted successfully');
+                    renderBoard();
+                } else {
+                    console.error('Failed to delete task:', data);
                 }
             } catch (error) {
                 console.error('❌ Error deleting task:', error);
