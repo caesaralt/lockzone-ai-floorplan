@@ -101,7 +101,7 @@
         }
 
         .add-task-btn {
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            background: #2ecc71;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -115,7 +115,7 @@
         }
 
         .add-task-btn:hover {
-            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            background: #27ae60;
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(46,204,113,0.4), 0 8px 24px rgba(46,204,113,0.25);
         }
@@ -270,20 +270,57 @@
 
         .task-header {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
             margin-bottom: 8px;
+            position: relative;
         }
 
-        .task-actions {
-            display: flex;
+        .task-menu-btn {
+            background: rgba(0,0,0,0.1);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            color: rgba(0,0,0,0.6);
+        }
+
+        .task-menu-btn:hover {
+            background: rgba(0,0,0,0.2);
+            transform: scale(1.1);
+        }
+
+        .task-actions-menu {
+            position: absolute;
+            top: 28px;
+            left: 0;
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 6px;
+            display: none;
+            flex-direction: column;
             gap: 4px;
-            opacity: 0;
-            transition: opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 8px 24px rgba(0,0,0,0.12);
+            z-index: 100;
+            min-width: 140px;
         }
 
-        .task-card:hover .task-actions {
-            opacity: 1;
+        .task-actions-menu.active {
+            display: flex;
+        }
+
+        .task-actions-menu .task-btn {
+            width: 100%;
+            text-align: left;
+            justify-content: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .task-btn {
@@ -304,50 +341,50 @@
         }
 
         .task-btn.notes {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            background: #3498db;
             color: white;
             border: none;
             box-shadow: 0 2px 6px rgba(52,152,219,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .task-btn.notes:hover {
-            background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+            background: #2980b9;
             box-shadow: 0 3px 9px rgba(52,152,219,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
         }
 
         .task-btn.color {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            background: #9b59b6;
             color: white;
             border: none;
             box-shadow: 0 2px 6px rgba(155,89,182,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .task-btn.color:hover {
-            background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
+            background: #8e44ad;
             box-shadow: 0 3px 9px rgba(155,89,182,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
         }
 
         .task-btn.duplicate {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            background: #f39c12;
             color: white;
             border: none;
             box-shadow: 0 2px 6px rgba(243,156,18,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .task-btn.duplicate:hover {
-            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            background: #e67e22;
             box-shadow: 0 3px 9px rgba(243,156,18,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
         }
 
         .task-btn.delete {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            background: #e74c3c;
             color: white;
             border: none;
             box-shadow: 0 2px 6px rgba(231,76,60,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .task-btn.delete:hover {
-            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+            background: #c0392b;
             box-shadow: 0 3px 9px rgba(231,76,60,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
         }
 
@@ -395,7 +432,7 @@
         }
 
         .has-notes-indicator {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            background: #3498db;
             color: white;
             padding: 3px 8px;
             border-radius: 6px;
@@ -403,6 +440,48 @@
             font-weight: 700;
             letter-spacing: 0.2px;
             box-shadow: 0 2px 4px rgba(52,152,219,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .task-assigned {
+            font-size: 11px;
+            color: rgba(0,0,0,0.7);
+            margin-bottom: 4px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .task-pinned-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 16px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .task-btn.pin {
+            background: #f39c12;
+            color: white;
+            border: none;
+            box-shadow: 0 2px 6px rgba(243,156,18,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .task-btn.pin:hover {
+            background: #e67e22;
+            box-shadow: 0 3px 9px rgba(243,156,18,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        .task-btn.assign {
+            background: #1abc9c;
+            color: white;
+            border: none;
+            box-shadow: 0 2px 6px rgba(26,188,156,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .task-btn.assign:hover {
+            background: #16a085;
+            box-shadow: 0 3px 9px rgba(26,188,156,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
         }
 
         /* MODAL */
@@ -777,6 +856,29 @@
         </div>
     </div>
 
+    <!-- ASSIGN MODAL -->
+    <div class="modal" id="assignModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Assign To</h2>
+                <button class="modal-close" onclick="closeAssignModal()">Close</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="save-notes-btn" onclick="assignTask('Arian')" style="background: #3498db; border: none;">👤 Arian</button>
+                <button class="save-notes-btn" onclick="assignTask('Tayla')" style="background: #9b59b6; border: none;">👤 Tayla</button>
+                <button class="save-notes-btn" onclick="assignTask('George')" style="background: #e74c3c; border: none;">👤 George</button>
+                <button class="save-notes-btn" onclick="assignTask('Thim')" style="background: #f39c12; border: none;">👤 Thim</button>
+                <button class="save-notes-btn" onclick="assignTask('Caesar')" style="background: #1abc9c; border: none;">👤 Caesar</button>
+                <button class="save-notes-btn" onclick="showCustomAssignInput()" style="background: #95a5a6; border: none;">👤 Other...</button>
+                <div id="customAssignInput" style="display: none; margin-top: 8px;">
+                    <input type="text" class="task-input" id="customAssignName" placeholder="Enter name..." style="margin-bottom: 8px;" />
+                    <button class="save-notes-btn" onclick="assignCustom()">Assign</button>
+                </div>
+                <button class="save-notes-btn" onclick="assignTask(null)" style="background: #e74c3c; border: none; margin-top: 8px;">❌ Remove Assignment</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // STATE
         let tasks = [];
@@ -789,7 +891,6 @@
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
-            { id: 'assigned', title: '👤 ASSIGNED' },
             { id: 'working', title: '🔊 WORKING ON' },
             { id: 'stuck', title: '😵‍💫 STUCK' },
             { id: 'review', title: '🔭 REVIEW' },
@@ -874,7 +975,22 @@
                 columnEl.className = 'kanban-column';
                 columnEl.dataset.columnId = column.id;
 
-                const columnTasks = tasks.filter(t => t.column === column.id);
+                // Sort tasks: pinned first, then by position
+                const columnTasks = tasks
+                    .filter(t => t.column === column.id)
+                    .sort((a, b) => {
+                        // Pinned tasks come first
+                        if (a.pinned && !b.pinned) return -1;
+                        if (!a.pinned && b.pinned) return 1;
+                        // Then sort by Y position
+                        return a.position.y - b.position.y;
+                    });
+
+                // Recalculate positions for sorted tasks
+                columnTasks.forEach((task, index) => {
+                    task.position.y = index * 120; // Space tasks vertically
+                });
+
                 const columnColor = columnColors[column.id] || 'transparent';
 
                 columnEl.innerHTML = `
@@ -926,18 +1042,25 @@
             const hasNotes = task.notes && task.notes.trim().length > 0;
             const createdDate = formatDateAustralian(task.created_at);
             const dueDate = task.due_date ? formatDateAustralian(task.due_date) : null;
+            const assignedTo = task.assigned_to || null;
+            const isPinned = task.pinned || false;
 
             taskEl.innerHTML = `
                 <div class="task-header">
-                    <div class="task-actions">
-                        <button class="task-btn notes" onclick="event.stopPropagation(); openNotesModal('${task.id}')" title="Notes">📝</button>
-                        <button class="task-btn color" onclick="event.stopPropagation(); openColorModal('${task.id}')" title="Color">🎨</button>
-                        <button class="task-btn" onclick="event.stopPropagation(); openDateModal('${task.id}')" title="Due Date">📅</button>
-                        <button class="task-btn duplicate" onclick="event.stopPropagation(); duplicateTask('${task.id}')" title="Duplicate">📋</button>
-                        <button class="task-btn delete" onclick="event.stopPropagation(); deleteTask('${task.id}')" title="Delete">🗑️</button>
+                    <button class="task-menu-btn" onclick="event.stopPropagation(); toggleTaskMenu('${task.id}')" title="Options">⋯</button>
+                    <div class="task-actions-menu" id="menu-${task.id}">
+                        <button class="task-btn pin" onclick="event.stopPropagation(); togglePinTask('${task.id}')" title="Pin">${isPinned ? '📌 Unpin' : '📌 Pin'}</button>
+                        <button class="task-btn assign" onclick="event.stopPropagation(); openAssignModal('${task.id}')" title="Assign">👤 Assign</button>
+                        <button class="task-btn notes" onclick="event.stopPropagation(); openNotesModal('${task.id}')" title="Notes">📝 Notes</button>
+                        <button class="task-btn color" onclick="event.stopPropagation(); openColorModal('${task.id}')" title="Color">🎨 Color</button>
+                        <button class="task-btn" onclick="event.stopPropagation(); openDateModal('${task.id}')" title="Due Date">📅 Date</button>
+                        <button class="task-btn duplicate" onclick="event.stopPropagation(); duplicateTask('${task.id}')" title="Duplicate">📋 Duplicate</button>
+                        <button class="task-btn delete" onclick="event.stopPropagation(); deleteTask('${task.id}')" title="Delete">🗑️ Delete</button>
                     </div>
+                    ${isPinned ? '<span class="task-pinned-indicator">📌</span>' : ''}
                 </div>
                 <div class="task-content" contenteditable="true" onclick="event.stopPropagation();" onblur="updateTaskContent('${task.id}', this.innerText)">${task.content}</div>
+                ${assignedTo ? `<div class="task-assigned">👤 ${assignedTo}</div>` : ''}
                 <div class="task-footer">
                     <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                         ${hasNotes ? '<span class="has-notes-indicator">HAS NOTES</span>' : ''}
@@ -1479,6 +1602,84 @@
                 const hex = parseInt(x).toString(16);
                 return hex.length === 1 ? '0' + hex : hex;
             }).join('');
+        }
+
+        // TOGGLE TASK MENU
+        function toggleTaskMenu(taskId) {
+            // Close all other menus
+            document.querySelectorAll('.task-actions-menu').forEach(menu => {
+                if (menu.id !== `menu-${taskId}`) {
+                    menu.classList.remove('active');
+                }
+            });
+
+            // Toggle this menu
+            const menu = document.getElementById(`menu-${taskId}`);
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+
+        // Close menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.task-menu-btn') && !e.target.closest('.task-actions-menu')) {
+                document.querySelectorAll('.task-actions-menu').forEach(menu => {
+                    menu.classList.remove('active');
+                });
+            }
+        });
+
+        // PIN/UNPIN TASK
+        async function togglePinTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            task.pinned = !task.pinned;
+
+            // Move to top of column if pinning
+            if (task.pinned) {
+                task.position.y = -100; // Negative Y to ensure it's at the top
+            }
+
+            await updateTask(taskId, task);
+            renderBoard();
+        }
+
+        // ASSIGN MODAL
+        function openAssignModal(taskId) {
+            currentTaskId = taskId;
+            document.getElementById('customAssignInput').style.display = 'none';
+            document.getElementById('customAssignName').value = '';
+            document.getElementById('assignModal').classList.add('active');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.remove('active');
+            currentTaskId = null;
+        }
+
+        function showCustomAssignInput() {
+            document.getElementById('customAssignInput').style.display = 'block';
+            document.getElementById('customAssignName').focus();
+        }
+
+        async function assignTask(assignee) {
+            if (!currentTaskId) return;
+
+            const task = tasks.find(t => t.id === currentTaskId);
+            if (task) {
+                task.assigned_to = assignee;
+                await updateTask(currentTaskId, task);
+                renderBoard();
+                closeAssignModal();
+            }
+        }
+
+        async function assignCustom() {
+            const customName = document.getElementById('customAssignName').value.trim();
+            if (customName) {
+                await assignTask(customName);
+            }
         }
 
         // Click outside modal to close
