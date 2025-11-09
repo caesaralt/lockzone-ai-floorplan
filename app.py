@@ -45,17 +45,24 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
 
-# Database configuration
+# Database configuration with psycopg3 (Python 3.13 compatible)
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
-    # Fix postgres:// to postgresql+psycopg:// for SQLAlchemy with psycopg3 (Python 3.13 compatible)
+    # Convert Render's postgres:// URL to psycopg3 dialect
+    # psycopg3 uses 'postgresql+psycopg://' dialect in SQLAlchemy
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
-    elif DATABASE_URL.startswith('postgresql://'):
+    elif DATABASE_URL.startswith('postgresql://') and '+psycopg' not in DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
+
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # Verify connections before using
+        'pool_recycle': 300,     # Recycle connections after 5 minutes
+    }
     USE_DATABASE = True
+    print(f"✅ Database configured with psycopg3")
 else:
     USE_DATABASE = False
     print("INFO: No DATABASE_URL found. Using JSON file storage.")
