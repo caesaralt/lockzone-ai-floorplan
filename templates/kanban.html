@@ -1014,6 +1014,19 @@
         </div>
     </div>
 
+    <!-- History Modal -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📜 Task History</h2>
+                <button class="modal-close" onclick="closeHistoryModal()">Close</button>
+            </div>
+            <div id="historyContent" style="max-height: 60vh; overflow-y: auto;">
+                <p style="color: #95a5a6; text-align: center; padding: 40px;">Loading history...</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         // STATE
         let tasks = [];
@@ -1122,6 +1135,7 @@
                     <div class="column-header" style="background-color: ${columnColor};">
                         <span class="column-title">${column.title}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
+                            ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
                             <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
                             <span class="task-count">${columnTasks.length}</span>
                         </div>
@@ -1193,6 +1207,7 @@
                         <button class="task-btn color" onclick="event.stopPropagation(); openColorModal('${task.id}')" title="Color">🎨 Color</button>
                         <button class="task-btn" onclick="event.stopPropagation(); openDateModal('${task.id}')" title="Due Date">📅 Date</button>
                         <button class="task-btn duplicate" onclick="event.stopPropagation(); duplicateTask('${task.id}')" title="Duplicate">📋 Duplicate</button>
+                        <button class="task-btn" onclick="event.stopPropagation(); archiveTask('${task.id}')" title="Send to History">📜 Send to History</button>
                         <button class="task-btn delete" onclick="event.stopPropagation(); deleteTask('${task.id}')" title="Delete">🗑️ Delete</button>
                     </div>
                     ${isPinned ? '<span class="task-pinned-indicator">📌</span>' : ''}
@@ -2075,6 +2090,90 @@
             const customName = document.getElementById('customAssignName').value.trim();
             if (customName) {
                 await assignTask(customName);
+            }
+        }
+
+        // HISTORY MODAL FUNCTIONS
+        async function archiveTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            if (confirm('Send this task to history? It will be removed from the board but can be restored later.')) {
+                task.archived = true;
+                await updateTask(taskId, task);
+                await loadTasks();
+                renderBoard();
+            }
+        }
+
+        async function openHistoryModal() {
+            document.getElementById('historyModal').classList.add('active');
+            await loadHistoryTasks();
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.remove('active');
+        }
+
+        async function loadHistoryTasks() {
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 40px;">Loading history...</p>';
+
+            try {
+                const response = await fetch('/api/kanban/tasks?archived=true');
+                const data = await response.json();
+
+                if (data.success && data.tasks.length > 0) {
+                    const archivedTasks = data.tasks;
+
+                    historyContent.innerHTML = archivedTasks.map(task => `
+                        <div style="background: ${task.color}; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; margin-bottom: 4px;">${task.content}</div>
+                                    ${task.assigned_to ? `<div style="font-size: 0.85em; color: #666;">👤 ${task.assigned_to}</div>` : ''}
+                                    ${task.due_date ? `<div style="font-size: 0.85em; color: #666;">📅 ${formatDateAustralian(task.due_date)}</div>` : ''}
+                                    <div style="font-size: 0.75em; color: #999; margin-top: 4px;">
+                                        Archived: ${task.archived_at ? formatDateAustralian(task.archived_at) : 'Unknown'}
+                                    </div>
+                                </div>
+                                <button class="save-notes-btn" onclick="restoreTask('${task.id}')" style="padding: 8px 16px; font-size: 0.85em;">
+                                    ↩️ Restore
+                                </button>
+                            </div>
+                            ${task.notes ? `<div style="font-size: 0.85em; color: #555; margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px;">📝 ${task.notes}</div>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    historyContent.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 40px;">No archived tasks</p>';
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+                historyContent.innerHTML = '<p style="color: #e74c3c; text-align: center; padding: 40px;">Error loading history</p>';
+            }
+        }
+
+        async function restoreTask(taskId) {
+            try {
+                const response = await fetch('/api/kanban/tasks?archived=true');
+                const data = await response.json();
+
+                if (data.success) {
+                    const archivedTasks = data.tasks;
+                    const task = archivedTasks.find(t => t.id === taskId);
+
+                    if (task) {
+                        task.archived = false;
+                        task.archived_at = null;
+                        await updateTask(taskId, task);
+                        await loadHistoryTasks();
+                        await loadTasks();
+                        renderBoard();
+                    }
+                }
+            } catch (error) {
+                console.error('Error restoring task:', error);
+                alert('Failed to restore task');
             }
         }
 
