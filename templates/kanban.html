@@ -1375,7 +1375,26 @@
                 const x = (columnWidth - taskWidth) / 2; // Center it
 
                 // Get Y position where dropped
-                const y = clientY - containerRect.top - dragOffset.y + scrollTop;
+                let y = clientY - containerRect.top - dragOffset.y + scrollTop;
+
+                // COLLISION DETECTION: Check if dropping on top of another task
+                const columnTasks = tasks.filter(t => t.column === newColumn && t.id !== taskId);
+                const taskHeight = 120; // Approximate task height
+                const taskPadding = 10; // Space between tasks
+
+                for (const otherTask of columnTasks) {
+                    if (!otherTask.position) continue;
+
+                    const otherY = otherTask.position.y;
+                    const otherBottom = otherY + taskHeight;
+
+                    // Check if the dropped position overlaps with another task
+                    if (y >= otherY && y < otherBottom) {
+                        // Position it below the overlapping task
+                        y = otherBottom + taskPadding;
+                        console.log('🔽 Collision detected, moving task below to y:', y);
+                    }
+                }
 
                 // Store position
                 task.position = {
