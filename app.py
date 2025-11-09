@@ -93,6 +93,8 @@ if USE_DATABASE:
         assigned_to = db.Column(db.String(100))
         pinned = db.Column(db.Boolean, default=False)
         due_date = db.Column(db.String(20))
+        archived = db.Column(db.Boolean, default=False)
+        archived_at = db.Column(db.DateTime)
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
         updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -107,6 +109,8 @@ if USE_DATABASE:
                 'assigned_to': self.assigned_to,
                 'pinned': self.pinned,
                 'due_date': self.due_date,
+                'archived': self.archived,
+                'archived_at': self.archived_at.isoformat() if self.archived_at else None,
                 'created_at': self.created_at.isoformat() if self.created_at else None,
                 'updated_at': self.updated_at.isoformat() if self.updated_at else None
             }
@@ -4076,10 +4080,20 @@ def handle_kanban_tasks():
     """Get all tasks or create new task"""
     try:
         if request.method == 'GET':
+            # Check if requesting archived tasks
+            show_archived = request.args.get('archived') == 'true'
+
             if USE_DATABASE:
-                tasks = [task.to_dict() for task in KanbanTask.query.all()]
+                if show_archived:
+                    tasks = [task.to_dict() for task in KanbanTask.query.filter_by(archived=True).order_by(KanbanTask.archived_at.desc()).all()]
+                else:
+                    tasks = [task.to_dict() for task in KanbanTask.query.filter_by(archived=False).all()]
             else:
-                tasks = load_json_file(KANBAN_FILE, [])
+                all_tasks = load_json_file(KANBAN_FILE, [])
+                if show_archived:
+                    tasks = [t for t in all_tasks if t.get('archived', False)]
+                else:
+                    tasks = [t for t in all_tasks if not t.get('archived', False)]
             return jsonify({'success': True, 'tasks': tasks})
         else:
             data = request.json
@@ -4151,6 +4165,12 @@ def handle_kanban_task(task_id):
                     task.assigned_to = data['assigned_to']
                 if 'pinned' in data:
                     task.pinned = data['pinned']
+                if 'archived' in data:
+                    task.archived = data['archived']
+                    if data['archived']:
+                        task.archived_at = datetime.utcnow()
+                    else:
+                        task.archived_at = None
 
                 task.updated_at = datetime.utcnow()
                 db.session.commit()
@@ -4171,9 +4191,13 @@ def handle_kanban_task(task_id):
             if request.method == 'PUT':
                 data = request.json
                 task = tasks[idx]
-                for field in ['column', 'content', 'notes', 'color', 'position', 'due_date', 'assigned_to', 'pinned']:
+                for field in ['column', 'content', 'notes', 'color', 'position', 'due_date', 'assigned_to', 'pinned', 'archived']:
                     if field in data:
                         task[field] = data[field]
+                if 'archived' in data and data['archived']:
+                    task['archived_at'] = datetime.now().isoformat()
+                elif 'archived' in data and not data['archived']:
+                    task['archived_at'] = None
                 task['updated_at'] = datetime.now().isoformat()
                 tasks[idx] = task
                 save_json_file(KANBAN_FILE, tasks)
