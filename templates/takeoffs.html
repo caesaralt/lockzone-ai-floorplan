@@ -425,6 +425,26 @@
             border: 2px solid #c0392b;
         }
 
+        .color-swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .color-swatch.selected {
+            border-color: #ffffff;
+            box-shadow: 0 0 12px rgba(255,255,255,0.8);
+        }
+
         @media (max-width: 1400px) {
             .left-sidebar,
             .right-sidebar {
@@ -471,6 +491,34 @@
                 <button class="tool-button" id="annotateTool" onclick="setTool('annotate')">
                     <span class="emoji">📝</span> Annotate
                 </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>🎨 Markup Tools</h3>
+                <button class="tool-button" id="rectangleTool" onclick="setTool('rectangle')">
+                    <span class="emoji">⬜</span> Rectangle
+                </button>
+                <button class="tool-button" id="circleTool" onclick="setTool('circle')">
+                    <span class="emoji">⭕</span> Circle
+                </button>
+                <button class="tool-button" id="polygonTool" onclick="setTool('polygon')">
+                    <span class="emoji">🔷</span> Polygon
+                </button>
+                <button class="tool-button" id="freehandTool" onclick="setTool('freehand')">
+                    <span class="emoji">✏️</span> Freehand
+                </button>
+
+                <div style="margin-top: 12px;">
+                    <label style="color: #ecf0f1; font-size: 0.9em; font-weight: 600; display: block; margin-bottom: 6px;">Markup Color:</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div class="color-swatch" data-color="#e74c3c" style="background: #e74c3c;" onclick="setMarkupColor('#e74c3c')" title="Electrical"></div>
+                        <div class="color-swatch" data-color="#3498db" style="background: #3498db;" onclick="setMarkupColor('#3498db')" title="Plumbing"></div>
+                        <div class="color-swatch" data-color="#2ecc71" style="background: #2ecc71;" onclick="setMarkupColor('#2ecc71')" title="HVAC"></div>
+                        <div class="color-swatch" data-color="#f39c12" style="background: #f39c12;" onclick="setMarkupColor('#f39c12')" title="Gas"></div>
+                        <div class="color-swatch" data-color="#9b59b6" style="background: #9b59b6;" onclick="setMarkupColor('#9b59b6')" title="Data"></div>
+                        <div class="color-swatch" data-color="#1abc9c" style="background: #1abc9c;" onclick="setMarkupColor('#1abc9c')" title="Security"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="sidebar-section">
@@ -617,6 +665,14 @@
         let measurementStart = null;
         let annotations = [];
 
+        // Markup tools state
+        let markups = [];
+        let currentMarkup = null;
+        let markupColor = '#e74c3c'; // Default: Electrical red
+        let isDrawingMarkup = false;
+        let polygonPoints = [];
+        let freehandPoints = [];
+
         // Undo/Redo system
         let undoStack = [];
         let redoStack = [];
@@ -706,6 +762,81 @@
                 ctx.fillStyle = color;
                 ctx.fillText(symbol.id || symbol.label, x + 25, y - 10);
             });
+
+            // Draw markups
+            markups.forEach(markup => {
+                ctx.strokeStyle = markup.color;
+                ctx.fillStyle = markup.color + '40'; // Semi-transparent fill
+                ctx.lineWidth = 3;
+
+                if (markup.type === 'rectangle') {
+                    ctx.beginPath();
+                    ctx.rect(markup.x, markup.y, markup.width, markup.height);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (markup.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(markup.centerX, markup.centerY, markup.radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (markup.type === 'polygon' && markup.points && markup.points.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(markup.points[0].x, markup.points[0].y);
+                    for (let i = 1; i < markup.points.length; i++) {
+                        ctx.lineTo(markup.points[i].x, markup.points[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (markup.type === 'freehand' && markup.points && markup.points.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(markup.points[0].x, markup.points[0].y);
+                    for (let i = 1; i < markup.points.length; i++) {
+                        ctx.lineTo(markup.points[i].x, markup.points[i].y);
+                    }
+                    ctx.stroke();
+                }
+            });
+
+            // Draw current markup being created
+            if (currentMarkup) {
+                ctx.strokeStyle = markupColor;
+                ctx.fillStyle = markupColor + '40';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+
+                if (currentMarkup.type === 'rectangle') {
+                    ctx.strokeRect(currentMarkup.x, currentMarkup.y, currentMarkup.width, currentMarkup.height);
+                } else if (currentMarkup.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(currentMarkup.centerX, currentMarkup.centerY, currentMarkup.radius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                } else if (currentMarkup.type === 'polygon' && polygonPoints.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+                    for (let i = 1; i < polygonPoints.length; i++) {
+                        ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+                    }
+                    ctx.stroke();
+
+                    // Draw points
+                    polygonPoints.forEach(pt => {
+                        ctx.fillStyle = markupColor;
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+                } else if (currentMarkup.type === 'freehand' && freehandPoints.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(freehandPoints[0].x, freehandPoints[0].y);
+                    for (let i = 1; i < freehandPoints.length; i++) {
+                        ctx.lineTo(freehandPoints[i].x, freehandPoints[i].y);
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.setLineDash([]);
+            }
         }
 
         function updateSymbolList() {
@@ -771,11 +902,31 @@
             });
             document.getElementById(tool + 'Tool').classList.add('active');
 
+            // Reset markup drawing state
+            currentMarkup = null;
+            polygonPoints = [];
+            freehandPoints = [];
+            isDrawingMarkup = false;
+
             // Update cursor
             if (tool === 'select') canvas.style.cursor = 'default';
             else if (tool === 'place') canvas.style.cursor = 'crosshair';
             else if (tool === 'measure') canvas.style.cursor = 'crosshair';
             else if (tool === 'annotate') canvas.style.cursor = 'text';
+            else if (tool === 'rectangle' || tool === 'circle' || tool === 'polygon' || tool === 'freehand') {
+                canvas.style.cursor = 'crosshair';
+            }
+
+            render();
+        }
+
+        function setMarkupColor(color) {
+            markupColor = color;
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.classList.remove('selected');
+            });
+            document.querySelector(`.color-swatch[data-color="${color}"]`).classList.add('selected');
+            console.log(`🎨 Markup color set to ${color}`);
         }
 
         function selectSymbolType(type, name) {
@@ -927,15 +1078,17 @@
         // Canvas interactions
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / canvas.width;
-            const y = (e.clientY - rect.top) / canvas.height;
+            const x = (e.clientX - rect.left) / rect.width * canvas.width;
+            const y = (e.clientY - rect.top) / rect.height * canvas.height;
+            const normX = (e.clientX - rect.left) / canvas.width;
+            const normY = (e.clientY - rect.top) / canvas.height;
 
             if (currentTool === 'select') {
                 // Check if clicking on symbol
                 let clickedSymbol = null;
                 symbols.forEach(symbol => {
-                    const dx = (symbol.x - x) * canvas.width;
-                    const dy = (symbol.y - y) * canvas.height;
+                    const dx = (symbol.x - normX) * canvas.width;
+                    const dy = (symbol.y - normY) * canvas.height;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 20) {
                         clickedSymbol = symbol;
@@ -953,7 +1106,7 @@
                             updateSymbolList();
                         }
                         isDragging = true;
-                        dragOffset = { x: x - clickedSymbol.x, y: y - clickedSymbol.y };
+                        dragOffset = { x: normX - clickedSymbol.x, y: normY - clickedSymbol.y };
                     }
                 } else {
                     // Start selection box
@@ -969,8 +1122,8 @@
                         id: type.toUpperCase()[0] + (symbols.length + 1),
                         type: type,
                         automation_category: type,
-                        x: x,
-                        y: y,
+                        x: normX,
+                        y: normY,
                         room: '',
                         items: []
                     };
@@ -979,20 +1132,64 @@
                     updateSymbolList();
                     updatePricing();
                 }
+            } else if (currentTool === 'rectangle') {
+                // Start drawing rectangle
+                isDrawingMarkup = true;
+                currentMarkup = {
+                    type: 'rectangle',
+                    x: x,
+                    y: y,
+                    width: 0,
+                    height: 0,
+                    color: markupColor
+                };
+            } else if (currentTool === 'circle') {
+                // Start drawing circle
+                isDrawingMarkup = true;
+                currentMarkup = {
+                    type: 'circle',
+                    centerX: x,
+                    centerY: y,
+                    radius: 0,
+                    color: markupColor
+                };
+            } else if (currentTool === 'polygon') {
+                // Add point to polygon
+                polygonPoints.push({ x, y });
+                if (!currentMarkup) {
+                    currentMarkup = {
+                        type: 'polygon',
+                        points: [],
+                        color: markupColor
+                    };
+                }
+                render();
+            } else if (currentTool === 'freehand') {
+                // Start freehand drawing
+                isDrawingMarkup = true;
+                freehandPoints = [{ x, y }];
+                currentMarkup = {
+                    type: 'freehand',
+                    points: [],
+                    color: markupColor
+                };
+                render();
             }
         });
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / canvas.width;
-            const y = (e.clientY - rect.top) / canvas.height;
+            const x = (e.clientX - rect.left) / rect.width * canvas.width;
+            const y = (e.clientY - rect.top) / rect.height * canvas.height;
+            const normX = (e.clientX - rect.left) / canvas.width;
+            const normY = (e.clientY - rect.top) / canvas.height;
 
             if (isDragging && selectedSymbols.size > 0) {
                 selectedSymbols.forEach(id => {
                     const symbol = symbols.find(s => s.id === id);
                     if (symbol) {
-                        symbol.x = Math.max(0, Math.min(1, x - dragOffset.x));
-                        symbol.y = Math.max(0, Math.min(1, y - dragOffset.y));
+                        symbol.x = Math.max(0, Math.min(1, normX - dragOffset.x));
+                        symbol.y = Math.max(0, Math.min(1, normY - dragOffset.y));
                     }
                 });
                 render();
@@ -1007,6 +1204,20 @@
                 box.style.top = top + 'px';
                 box.style.width = width + 'px';
                 box.style.height = height + 'px';
+            } else if (isDrawingMarkup && currentMarkup) {
+                if (currentMarkup.type === 'rectangle') {
+                    currentMarkup.width = x - currentMarkup.x;
+                    currentMarkup.height = y - currentMarkup.y;
+                    render();
+                } else if (currentMarkup.type === 'circle') {
+                    const dx = x - currentMarkup.centerX;
+                    const dy = y - currentMarkup.centerY;
+                    currentMarkup.radius = Math.sqrt(dx * dx + dy * dy);
+                    render();
+                } else if (currentMarkup.type === 'freehand') {
+                    freehandPoints.push({ x, y });
+                    render();
+                }
             }
         });
 
@@ -1029,6 +1240,29 @@
                 updateSymbolList();
             }
 
+            // Finalize markup drawing
+            if (isDrawingMarkup && currentMarkup) {
+                if (currentMarkup.type === 'rectangle' && (currentMarkup.width !== 0 || currentMarkup.height !== 0)) {
+                    markups.push(currentMarkup);
+                    console.log('✅ Rectangle markup added');
+                    saveState();
+                } else if (currentMarkup.type === 'circle' && currentMarkup.radius > 0) {
+                    markups.push(currentMarkup);
+                    console.log('✅ Circle markup added');
+                    saveState();
+                } else if (currentMarkup.type === 'freehand' && freehandPoints.length > 1) {
+                    currentMarkup.points = freehandPoints;
+                    markups.push(currentMarkup);
+                    console.log('✅ Freehand markup added');
+                    saveState();
+                }
+
+                currentMarkup = null;
+                freehandPoints = [];
+                isDrawingMarkup = false;
+                render();
+            }
+
             isDragging = false;
             isSelectionDrag = false;
         });
@@ -1037,6 +1271,18 @@
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) / canvas.width;
             const y = (e.clientY - rect.top) / canvas.height;
+
+            // Double-click finishes polygon
+            if (currentTool === 'polygon' && polygonPoints.length >= 3) {
+                currentMarkup.points = polygonPoints;
+                markups.push(currentMarkup);
+                console.log('✅ Polygon markup added');
+                currentMarkup = null;
+                polygonPoints = [];
+                saveState();
+                render();
+                return;
+            }
 
             symbols.forEach(symbol => {
                 const dx = (symbol.x - x) * canvas.width;
@@ -1064,18 +1310,44 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (document.activeElement.tagName !== 'INPUT' &&
-                    document.activeElement.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    deleteSelected();
+            const isInputFocused = document.activeElement.tagName === 'INPUT' ||
+                                  document.activeElement.tagName === 'TEXTAREA';
+
+            // Enter - Finish polygon
+            if (e.key === 'Enter' && currentTool === 'polygon' && polygonPoints.length >= 3) {
+                e.preventDefault();
+                currentMarkup.points = polygonPoints;
+                markups.push(currentMarkup);
+                console.log('✅ Polygon markup added (Enter)');
+                currentMarkup = null;
+                polygonPoints = [];
+                saveState();
+                render();
+            }
+            // Escape - Cancel polygon or clear selection
+            else if (e.key === 'Escape') {
+                if (currentTool === 'polygon' && polygonPoints.length > 0) {
+                    // Cancel polygon drawing
+                    currentMarkup = null;
+                    polygonPoints = [];
+                    console.log('❌ Polygon cancelled');
+                    render();
+                } else {
+                    clearSelection();
                 }
-            } else if (e.key === 'Escape') {
-                clearSelection();
-            } else if (e.ctrlKey && e.key === 'a') {
+            }
+            // Delete/Backspace - Delete selected
+            else if ((e.key === 'Delete' || e.key === 'Backspace') && !isInputFocused) {
+                e.preventDefault();
+                deleteSelected();
+            }
+            // Ctrl+A - Select all
+            else if (e.ctrlKey && e.key === 'a' && !isInputFocused) {
                 e.preventDefault();
                 selectAll();
-            } else if (e.ctrlKey && e.key === 'd') {
+            }
+            // Ctrl+D - Duplicate
+            else if (e.ctrlKey && e.key === 'd' && !isInputFocused) {
                 e.preventDefault();
                 duplicateSelected();
             }
@@ -1199,7 +1471,8 @@
                     if (!pageData[i]) {
                         pageData[i] = {
                             symbols: [],
-                            annotations: []
+                            annotations: [],
+                            markups: []
                         };
                     }
                 }
@@ -1286,7 +1559,8 @@
         function savePageState(pageNum) {
             pageData[pageNum] = {
                 symbols: JSON.parse(JSON.stringify(symbols)),
-                annotations: JSON.parse(JSON.stringify(annotations))
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                markups: JSON.parse(JSON.stringify(markups))
             };
         }
 
@@ -1295,13 +1569,15 @@
                 // Initialize empty page
                 pageData[pageNum] = {
                     symbols: [],
-                    annotations: []
+                    annotations: [],
+                    markups: []
                 };
             }
 
             const state = pageData[pageNum];
             symbols = JSON.parse(JSON.stringify(state.symbols));
             annotations = JSON.parse(JSON.stringify(state.annotations));
+            markups = JSON.parse(JSON.stringify(state.markups || []));
             selectedSymbols.clear();
         }
 
@@ -1313,6 +1589,7 @@
             const state = {
                 symbols: JSON.parse(JSON.stringify(symbols)),
                 annotations: JSON.parse(JSON.stringify(annotations)),
+                markups: JSON.parse(JSON.stringify(markups)),
                 currentPage,
                 pageData: JSON.parse(JSON.stringify(pageData))
             };
@@ -1334,6 +1611,7 @@
             const currentState = {
                 symbols: JSON.parse(JSON.stringify(symbols)),
                 annotations: JSON.parse(JSON.stringify(annotations)),
+                markups: JSON.parse(JSON.stringify(markups)),
                 currentPage,
                 pageData: JSON.parse(JSON.stringify(pageData))
             };
@@ -1356,6 +1634,7 @@
             const currentState = {
                 symbols: JSON.parse(JSON.stringify(symbols)),
                 annotations: JSON.parse(JSON.stringify(annotations)),
+                markups: JSON.parse(JSON.stringify(markups)),
                 currentPage,
                 pageData: JSON.parse(JSON.stringify(pageData))
             };
@@ -1371,6 +1650,7 @@
         function restoreState(state) {
             symbols = JSON.parse(JSON.stringify(state.symbols));
             annotations = JSON.parse(JSON.stringify(state.annotations));
+            markups = JSON.parse(JSON.stringify(state.markups || []));
             pageData = JSON.parse(JSON.stringify(state.pageData));
 
             if (state.currentPage && state.currentPage !== currentPage && pdfDocument) {
@@ -1617,6 +1897,9 @@
         // Start auto-save
         startAutoSave();
 
+        // Initialize default color swatch
+        document.querySelector('.color-swatch[data-color="#e74c3c"]').classList.add('selected');
+
         // Log initialization
         console.log(`
         ===================================
@@ -1625,6 +1908,12 @@
         ✅ Multi-page PDF support
         ✅ Undo/Redo (Ctrl+Z / Ctrl+Y)
         ✅ Auto-save (every 30s)
+        ✅ Advanced Markup Tools:
+           • Rectangle (drag to draw)
+           • Circle (drag to draw)
+           • Polygon (click points, Enter/double-click to finish)
+           • Freehand (drag to draw)
+           • Color-coded by trade (Electrical, Plumbing, HVAC, etc.)
         ✅ Keyboard shortcuts:
            • Page Up/Down = Navigate pages
            • Ctrl+S = Save
@@ -1632,7 +1921,8 @@
            • Ctrl+A = Select All
            • Ctrl+D = Duplicate
            • Delete = Delete selected
-           • Esc = Clear selection
+           • Enter = Finish polygon
+           • Esc = Cancel polygon / Clear selection
         ✅ Professional takeoff tools
         ===================================
         `);
