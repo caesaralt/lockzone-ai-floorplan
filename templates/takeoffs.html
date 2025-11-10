@@ -547,6 +547,16 @@
             </div>
 
             <div class="sidebar-section">
+                <h3>📊 Reports</h3>
+                <button class="tool-button" onclick="exportMarkupsToCSV()">
+                    <span class="emoji">📈</span> Export Markups (CSV)
+                </button>
+                <button class="tool-button" onclick="exportTakeoffsReport()">
+                    <span class="emoji">📋</span> Full Takeoffs Report
+                </button>
+            </div>
+
+            <div class="sidebar-section">
                 <h3>💡 Instructions</h3>
                 <div style="font-size: 0.85em; color: #95a5a6; line-height: 1.5;">
                     <strong>AI placed symbols automatically!</strong><br><br>
@@ -1884,6 +1894,292 @@
                 saveState(); // Enable undo/redo
             }
         });
+
+        // ========================================
+        // EXPORT TAKEOFFS REPORTS
+        // ========================================
+
+        function exportMarkupsToCSV() {
+            // Gather all markups from all pages
+            const allMarkups = [];
+
+            // Save current page state first
+            if (currentPage) {
+                savePageState(currentPage);
+            }
+
+            // Collect markups from all pages
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                const page = pageData[pageNum];
+                if (page && page.markups) {
+                    page.markups.forEach(markup => {
+                        allMarkups.push({
+                            ...markup,
+                            page: pageNum
+                        });
+                    });
+                }
+            }
+
+            if (allMarkups.length === 0) {
+                alert('⚠️ No markups found. Draw some markups first!');
+                return;
+            }
+
+            // Calculate measurements for each markup
+            const measurements = allMarkups.map((markup, idx) => {
+                const tradeNames = {
+                    '#e74c3c': 'Electrical',
+                    '#3498db': 'Plumbing',
+                    '#2ecc71': 'HVAC',
+                    '#f39c12': 'Gas',
+                    '#9b59b6': 'Data',
+                    '#1abc9c': 'Security'
+                };
+
+                const trade = tradeNames[markup.color] || 'Other';
+                let measurement = 0;
+                let unit = '';
+                let quantity = 1;
+
+                if (markup.type === 'rectangle') {
+                    measurement = Math.abs(markup.width * markup.height);
+                    unit = 'sq px';
+                    quantity = 1;
+                } else if (markup.type === 'circle') {
+                    measurement = Math.PI * markup.radius * markup.radius;
+                    unit = 'sq px';
+                    quantity = 1;
+                } else if (markup.type === 'polygon' && markup.points) {
+                    // Calculate polygon area using shoelace formula
+                    let area = 0;
+                    for (let i = 0; i < markup.points.length; i++) {
+                        const j = (i + 1) % markup.points.length;
+                        area += markup.points[i].x * markup.points[j].y;
+                        area -= markup.points[j].x * markup.points[i].y;
+                    }
+                    measurement = Math.abs(area / 2);
+                    unit = 'sq px';
+                    quantity = 1;
+                } else if (markup.type === 'freehand' && markup.points) {
+                    // Calculate freehand length
+                    let length = 0;
+                    for (let i = 0; i < markup.points.length - 1; i++) {
+                        const dx = markup.points[i + 1].x - markup.points[i].x;
+                        const dy = markup.points[i + 1].y - markup.points[i].y;
+                        length += Math.sqrt(dx * dx + dy * dy);
+                    }
+                    measurement = length;
+                    unit = 'px';
+                    quantity = 1;
+                }
+
+                return {
+                    id: `Markup-${idx + 1}`,
+                    type: markup.type.charAt(0).toUpperCase() + markup.type.slice(1),
+                    trade: trade,
+                    page: markup.page,
+                    measurement: measurement.toFixed(2),
+                    unit: unit,
+                    quantity: quantity,
+                    color: markup.color
+                };
+            });
+
+            // Group by trade
+            const byTrade = {};
+            measurements.forEach(m => {
+                if (!byTrade[m.trade]) {
+                    byTrade[m.trade] = {
+                        count: 0,
+                        totalArea: 0,
+                        totalLength: 0,
+                        items: []
+                    };
+                }
+                byTrade[m.trade].count++;
+                byTrade[m.trade].items.push(m);
+
+                if (m.unit === 'sq px') {
+                    byTrade[m.trade].totalArea += parseFloat(m.measurement);
+                } else if (m.unit === 'px') {
+                    byTrade[m.trade].totalLength += parseFloat(m.measurement);
+                }
+            });
+
+            // Generate CSV content
+            let csv = 'Takeoffs Markup Report\n';
+            csv += `Project: ${sessionData.project_name || 'Untitled'}\n`;
+            csv += `Generated: ${new Date().toLocaleString()}\n`;
+            csv += `Total Pages: ${totalPages}\n`;
+            csv += `Total Markups: ${allMarkups.length}\n\n`;
+
+            // Summary by trade
+            csv += 'SUMMARY BY TRADE\n';
+            csv += 'Trade,Count,Total Area (sq px),Total Length (px)\n';
+            Object.keys(byTrade).forEach(trade => {
+                const data = byTrade[trade];
+                csv += `${trade},${data.count},${data.totalArea.toFixed(2)},${data.totalLength.toFixed(2)}\n`;
+            });
+            csv += '\n';
+
+            // Detailed measurements
+            csv += 'DETAILED MEASUREMENTS\n';
+            csv += 'ID,Type,Trade,Page,Measurement,Unit,Quantity,Color\n';
+            measurements.forEach(m => {
+                csv += `${m.id},${m.type},${m.trade},${m.page},${m.measurement},${m.unit},${m.quantity},${m.color}\n`;
+            });
+
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `takeoffs-markups-${sessionData.project_name || 'project'}-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            console.log(`✅ Exported ${measurements.length} markups to CSV`);
+            alert(`✅ Exported ${measurements.length} markups to CSV file!`);
+        }
+
+        function exportTakeoffsReport() {
+            // Full report including symbols AND markups
+
+            // Save current page state first
+            if (currentPage) {
+                savePageState(currentPage);
+            }
+
+            // Gather all data
+            const allSymbols = [];
+            const allMarkups = [];
+
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                const page = pageData[pageNum];
+                if (page) {
+                    if (page.symbols) {
+                        page.symbols.forEach(symbol => {
+                            allSymbols.push({ ...symbol, page: pageNum });
+                        });
+                    }
+                    if (page.markups) {
+                        page.markups.forEach(markup => {
+                            allMarkups.push({ ...markup, page: pageNum });
+                        });
+                    }
+                }
+            }
+
+            // Calculate pricing
+            let subtotal = 0;
+            allSymbols.forEach(symbol => {
+                const automationType = symbol.automation_category || symbol.type;
+                const tier = sessionData.tier || 'basic';
+
+                if (automationData.automation_types[automationType]) {
+                    const config = automationData.automation_types[automationType];
+                    const unitCost = config.base_cost_per_unit[tier] || 0;
+                    const laborHours = config.labor_hours[tier] || 0;
+                    const laborCost = laborHours * automationData.labor_rate;
+                    subtotal += unitCost + laborCost;
+                }
+
+                if (symbol.items && symbol.items.length > 0) {
+                    symbol.items.forEach(item => {
+                        const price = parseFloat(item.price) || 0;
+                        const quantity = parseInt(item.quantity) || 1;
+                        subtotal += price * quantity;
+                    });
+                }
+            });
+
+            const markup = subtotal * (automationData.markup_percentage / 100);
+            const total = subtotal + markup;
+
+            // Generate comprehensive CSV
+            let csv = 'COMPREHENSIVE TAKEOFFS REPORT\n';
+            csv += '=================================\n\n';
+            csv += `Project: ${sessionData.project_name || 'Untitled'}\n`;
+            csv += `Generated: ${new Date().toLocaleString()}\n`;
+            csv += `Total Pages: ${totalPages}\n\n`;
+
+            // Financial Summary
+            csv += 'FINANCIAL SUMMARY\n';
+            csv += `Subtotal,$${subtotal.toFixed(2)}\n`;
+            csv += `Markup (${automationData.markup_percentage}%),$${markup.toFixed(2)}\n`;
+            csv += `TOTAL,$${total.toFixed(2)}\n\n`;
+
+            // Symbols Summary
+            csv += 'SYMBOLS SUMMARY\n';
+            csv += `Total Symbols: ${allSymbols.length}\n`;
+            csv += 'ID,Type,Room,Page,Items Count\n';
+            allSymbols.forEach(symbol => {
+                csv += `${symbol.id},${symbol.automation_category || symbol.type},${symbol.room || 'Unassigned'},${symbol.page},${symbol.items ? symbol.items.length : 0}\n`;
+            });
+            csv += '\n';
+
+            // Markups Summary (use the same logic from exportMarkupsToCSV)
+            if (allMarkups.length > 0) {
+                csv += 'MARKUPS SUMMARY\n';
+                csv += `Total Markups: ${allMarkups.length}\n`;
+                csv += 'ID,Type,Trade,Page,Measurement,Unit\n';
+
+                allMarkups.forEach((markup, idx) => {
+                    const tradeNames = {
+                        '#e74c3c': 'Electrical',
+                        '#3498db': 'Plumbing',
+                        '#2ecc71': 'HVAC',
+                        '#f39c12': 'Gas',
+                        '#9b59b6': 'Data',
+                        '#1abc9c': 'Security'
+                    };
+                    const trade = tradeNames[markup.color] || 'Other';
+                    let measurement = 0;
+                    let unit = '';
+
+                    if (markup.type === 'rectangle') {
+                        measurement = Math.abs(markup.width * markup.height);
+                        unit = 'sq px';
+                    } else if (markup.type === 'circle') {
+                        measurement = Math.PI * markup.radius * markup.radius;
+                        unit = 'sq px';
+                    } else if (markup.type === 'polygon' && markup.points) {
+                        let area = 0;
+                        for (let i = 0; i < markup.points.length; i++) {
+                            const j = (i + 1) % markup.points.length;
+                            area += markup.points[i].x * markup.points[j].y;
+                            area -= markup.points[j].x * markup.points[i].y;
+                        }
+                        measurement = Math.abs(area / 2);
+                        unit = 'sq px';
+                    } else if (markup.type === 'freehand' && markup.points) {
+                        let length = 0;
+                        for (let i = 0; i < markup.points.length - 1; i++) {
+                            const dx = markup.points[i + 1].x - markup.points[i].x;
+                            const dy = markup.points[i + 1].y - markup.points[i].y;
+                            length += Math.sqrt(dx * dx + dy * dy);
+                        }
+                        measurement = length;
+                        unit = 'px';
+                    }
+
+                    csv += `Markup-${idx + 1},${markup.type},${trade},${markup.page},${measurement.toFixed(2)},${unit}\n`;
+                });
+            }
+
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `takeoffs-full-report-${sessionData.project_name || 'project'}-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            console.log(`✅ Exported full report: ${allSymbols.length} symbols, ${allMarkups.length} markups`);
+            alert(`✅ Exported full takeoffs report!\n\nSymbols: ${allSymbols.length}\nMarkups: ${allMarkups.length}\nTotal: $${total.toFixed(2)}`);
+        }
 
         // ========================================
         // INITIALIZATION
