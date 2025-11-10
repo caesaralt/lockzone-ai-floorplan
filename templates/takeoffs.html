@@ -1173,6 +1173,469 @@
         function deleteFromContext() {
             deleteSelected();
         }
+
+        // ========================================
+        // MULTI-PAGE PDF SUPPORT
+        // ========================================
+
+        async function loadPDFFile(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                totalPages = pdfDocument.numPages;
+                currentPage = 1;
+
+                console.log(`📄 Loaded PDF with ${totalPages} pages`);
+
+                // Show page controls if multi-page
+                if (totalPages > 1) {
+                    document.getElementById('pageControls').style.display = 'flex';
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('pageInput').max = totalPages;
+                }
+
+                // Initialize page data for all pages
+                for (let i = 1; i <= totalPages; i++) {
+                    if (!pageData[i]) {
+                        pageData[i] = {
+                            symbols: [],
+                            annotations: []
+                        };
+                    }
+                }
+
+                // Load first page
+                await loadPDFPage(1);
+                updatePageNavigation();
+                saveState(); // Save initial state to undo stack
+
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                alert('Failed to load PDF: ' + error.message);
+            }
+        }
+
+        async function loadPDFPage(pageNum) {
+            if (!pdfDocument) return;
+
+            try {
+                const page = await pdfDocument.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 2.5 });
+
+                // Create temporary canvas to render PDF
+                const tempCanvas = document.createElement('canvas');
+                const tempContext = tempCanvas.getContext('2d');
+                tempCanvas.width = viewport.width;
+                tempCanvas.height = viewport.height;
+
+                // Render PDF page to canvas
+                await page.render({
+                    canvasContext: tempContext,
+                    viewport: viewport
+                }).promise;
+
+                // Convert canvas to image
+                const img = new Image();
+                img.onload = function() {
+                    floorplanImage = img;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    loadPageState(pageNum);
+                    render();
+                    updateSymbolList();
+                    updatePricing();
+                };
+                img.src = tempCanvas.toDataURL();
+
+            } catch (error) {
+                console.error(`Error loading page ${pageNum}:`, error);
+                alert(`Failed to load page ${pageNum}`);
+            }
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+
+            // Save current page state
+            savePageState(currentPage);
+
+            // Load new page
+            currentPage = newPage;
+            loadPDFPage(currentPage);
+            updatePageNavigation();
+
+            console.log(`📄 Switched to page ${currentPage}/${totalPages}`);
+        }
+
+        function jumpToPage(pageNum) {
+            const num = parseInt(pageNum);
+            if (isNaN(num) || num < 1 || num > totalPages) {
+                alert(`Invalid page number. Enter a number between 1 and ${totalPages}`);
+                document.getElementById('pageInput').value = currentPage;
+                return;
+            }
+            changePage(num);
+        }
+
+        function updatePageNavigation() {
+            document.getElementById('pageInput').value = currentPage;
+            document.getElementById('prevPage').disabled = (currentPage <= 1);
+            document.getElementById('nextPage').disabled = (currentPage >= totalPages);
+        }
+
+        function savePageState(pageNum) {
+            pageData[pageNum] = {
+                symbols: JSON.parse(JSON.stringify(symbols)),
+                annotations: JSON.parse(JSON.stringify(annotations))
+            };
+        }
+
+        function loadPageState(pageNum) {
+            if (!pageData[pageNum]) {
+                // Initialize empty page
+                pageData[pageNum] = {
+                    symbols: [],
+                    annotations: []
+                };
+            }
+
+            const state = pageData[pageNum];
+            symbols = JSON.parse(JSON.stringify(state.symbols));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            selectedSymbols.clear();
+        }
+
+        // ========================================
+        // UNDO/REDO SYSTEM
+        // ========================================
+
+        function saveState() {
+            const state = {
+                symbols: JSON.parse(JSON.stringify(symbols)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+
+            undoStack.push(state);
+            if (undoStack.length > MAX_UNDO_STACK) {
+                undoStack.shift(); // Remove oldest
+            }
+            redoStack = []; // Clear redo stack on new action
+        }
+
+        function undoAction() {
+            if (undoStack.length === 0) {
+                console.log('Nothing to undo');
+                return;
+            }
+
+            // Save current state to redo stack
+            const currentState = {
+                symbols: JSON.parse(JSON.stringify(symbols)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            redoStack.push(currentState);
+
+            // Restore previous state
+            const prevState = undoStack.pop();
+            restoreState(prevState);
+
+            console.log('↶ Undo performed');
+        }
+
+        function redoAction() {
+            if (redoStack.length === 0) {
+                console.log('Nothing to redo');
+                return;
+            }
+
+            // Save current state to undo stack
+            const currentState = {
+                symbols: JSON.parse(JSON.stringify(symbols)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            undoStack.push(currentState);
+
+            // Restore next state
+            const nextState = redoStack.pop();
+            restoreState(nextState);
+
+            console.log('↷ Redo performed');
+        }
+
+        function restoreState(state) {
+            symbols = JSON.parse(JSON.stringify(state.symbols));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            pageData = JSON.parse(JSON.stringify(state.pageData));
+
+            if (state.currentPage && state.currentPage !== currentPage && pdfDocument) {
+                changePage(state.currentPage);
+            } else {
+                render();
+                updateSymbolList();
+                updatePricing();
+            }
+        }
+
+        // ========================================
+        // SAVE/LOAD PROGRESS
+        // ========================================
+
+        function saveProgress() {
+            // Save current page first
+            if (currentPage && pageData[currentPage]) {
+                savePageState(currentPage);
+            }
+
+            const progressData = {
+                // Multi-page support
+                pageData: pageData,
+                currentPage: currentPage,
+                totalPages: totalPages,
+                hasPDF: !!pdfDocument,
+                sessionData: sessionData,
+
+                // Legacy support
+                symbols: symbols,
+                annotations: annotations,
+                timestamp: Date.now(),
+                version: '2.0'
+            };
+
+            try {
+                const jsonString = JSON.stringify(progressData);
+                if (jsonString.length > 5000000) {
+                    alert('⚠️ Project too large for browser storage (>5MB). Exporting as file instead.');
+                    downloadProjectFile(progressData);
+                    return;
+                }
+                localStorage.setItem('takeoffs_progress', jsonString);
+                alert(`✅ Progress saved! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
+            } catch (e) {
+                console.error('Save failed:', e);
+                alert('❌ Save failed - exporting as file instead');
+                downloadProjectFile(progressData);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const savedData = localStorage.getItem('takeoffs_progress');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    restoreProgress(data);
+                    const pageInfo = data.totalPages > 1 ? ` (${data.totalPages} pages)` : '';
+                    alert('✅ Progress loaded from browser storage!' + pageInfo);
+                    return;
+                }
+                alert('⚠️ No saved progress found');
+            } catch (e) {
+                console.error('Load failed:', e);
+                alert('❌ Failed to load progress');
+            }
+        }
+
+        function downloadProjectFile(data) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `takeoffs-${sessionData.project_name || 'project'}-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Project exported as JSON file');
+        }
+
+        function restoreProgress(data) {
+            // Check if this is v2.0 (multi-page) or v1.0 (single page)
+            if (data.version === '2.0' && data.pageData) {
+                // NEW FORMAT: Multi-page support
+                pageData = data.pageData || {};
+                totalPages = data.totalPages || 1;
+                currentPage = data.currentPage || 1;
+
+                // Update page navigation
+                if (totalPages > 1) {
+                    document.getElementById('pageControls').style.display = 'flex';
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('pageInput').max = totalPages;
+                    updatePageNavigation();
+                }
+
+                // Load current page state
+                loadPageState(currentPage);
+            } else {
+                // OLD FORMAT: Single page
+                symbols = data.symbols || [];
+                annotations = data.annotations || [];
+            }
+
+            render();
+            updateSymbolList();
+            updatePricing();
+            console.log('✅ Progress restored');
+        }
+
+        // ========================================
+        // AUTO-SAVE FUNCTIONALITY
+        // ========================================
+
+        function startAutoSave() {
+            // Auto-save every 30 seconds
+            autoSaveInterval = setInterval(() => {
+                autoSaveToLocalStorage();
+            }, 30000);
+            console.log('✅ Auto-save enabled (every 30 seconds)');
+        }
+
+        function autoSaveToLocalStorage() {
+            try {
+                if (currentPage && pageData[currentPage]) {
+                    savePageState(currentPage);
+                }
+
+                const autoSaveData = {
+                    pageData: pageData,
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    sessionData: sessionData,
+                    timestamp: Date.now(),
+                    version: '2.0'
+                };
+
+                const jsonString = JSON.stringify(autoSaveData);
+                if (jsonString.length < 5000000) {
+                    localStorage.setItem('takeoffs_autosave', jsonString);
+                    console.log('💾 Auto-saved at ' + new Date().toLocaleTimeString());
+                }
+            } catch (e) {
+                console.warn('Auto-save failed:', e.message);
+            }
+        }
+
+        function loadAutoSave() {
+            try {
+                const savedData = localStorage.getItem('takeoffs_autosave');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    const savedTime = new Date(data.timestamp).toLocaleString();
+                    if (confirm(`Found auto-saved data from ${savedTime}. Restore it?`)) {
+                        restoreProgress(data);
+                        console.log('✅ Auto-save restored');
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load auto-save:', e.message);
+            }
+        }
+
+        // ========================================
+        // ENHANCED KEYBOARD SHORTCUTS
+        // ========================================
+
+        document.addEventListener('keydown', (e) => {
+            const isInputFocused = document.activeElement.tagName === 'INPUT' ||
+                                  document.activeElement.tagName === 'TEXTAREA';
+
+            // Page Up/Down - Navigate pages
+            if (e.key === 'PageUp' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage - 1);
+            } else if (e.key === 'PageDown' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage + 1);
+            }
+
+            // Ctrl+Z - Undo
+            if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undoAction();
+            }
+
+            // Ctrl+Y or Ctrl+Shift+Z - Redo
+            if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redoAction();
+            }
+
+            // Ctrl+S - Save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveProgress();
+            }
+
+            // Ctrl+A - Select All
+            if (e.ctrlKey && e.key === 'a' && !isInputFocused) {
+                e.preventDefault();
+                selectAll();
+            }
+
+            // Ctrl+D - Duplicate
+            if (e.ctrlKey && e.key === 'd' && !isInputFocused) {
+                e.preventDefault();
+                duplicateSelected();
+            }
+
+            // Delete/Backspace - Delete selected
+            if ((e.key === 'Delete' || e.key === 'Backspace') && !isInputFocused) {
+                e.preventDefault();
+                deleteSelected();
+            }
+
+            // Escape - Clear selection
+            if (e.key === 'Escape') {
+                clearSelection();
+            }
+        });
+
+        // ========================================
+        // ENHANCED CANVAS MOUSE HANDLERS
+        // ========================================
+
+        // Intercept mouseup to save state for undo/redo
+        const originalMouseUp = canvas.onmouseup;
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging || isSelectionDrag) {
+                saveState(); // Enable undo/redo
+            }
+        });
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+
+        // Check for auto-saved data on page load
+        setTimeout(() => {
+            loadAutoSave();
+        }, 1000);
+
+        // Start auto-save
+        startAutoSave();
+
+        // Log initialization
+        console.log(`
+        ===================================
+        🎨 TAKEOFFS APP v2.0
+        ===================================
+        ✅ Multi-page PDF support
+        ✅ Undo/Redo (Ctrl+Z / Ctrl+Y)
+        ✅ Auto-save (every 30s)
+        ✅ Keyboard shortcuts:
+           • Page Up/Down = Navigate pages
+           • Ctrl+S = Save
+           • Ctrl+Z/Y = Undo/Redo
+           • Ctrl+A = Select All
+           • Ctrl+D = Duplicate
+           • Delete = Delete selected
+           • Esc = Clear selection
+        ✅ Professional takeoff tools
+        ===================================
+        `);
     </script>
 </body>
 </html>
