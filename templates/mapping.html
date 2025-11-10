@@ -534,13 +534,21 @@
     </div>
 
     <script>
+        console.log('🚀 DEBUG: Mapping tool script loading...');
+        console.log('🚀 DEBUG: PDF.js library available:', typeof pdfjsLib !== 'undefined');
+
         const canvas = document.getElementById('mappingCanvas');
         const ctx = canvas.getContext('2d');
         const canvasWrapper = document.getElementById('canvasWrapper');
 
+        console.log('✅ DEBUG: Canvas element found:', canvas);
+        console.log('✅ DEBUG: Canvas context:', ctx);
+
         // Initialize canvas size
         canvas.width = 1400;
         canvas.height = 900;
+
+        console.log('✅ DEBUG: Canvas initialized with size:', canvas.width, 'x', canvas.height);
 
         // Pan & Zoom state
         let panX = 0, panY = 0;
@@ -622,11 +630,13 @@
 
         // Pan & Zoom Functions
         function zoomIn() {
+            console.log('🔍 DEBUG: zoomIn() called');
             scale = Math.min(scale * 1.2, 5);
             updateTransform();
         }
 
         function zoomOut() {
+            console.log('🔍 DEBUG: zoomOut() called');
             scale = Math.max(scale / 1.2, 0.2);
             updateTransform();
         }
@@ -2178,6 +2188,7 @@
 
         // Save/Load Progress
         function saveProgress() {
+            console.log('💾 DEBUG: saveProgress() called');
             // Save current page first
             if (currentPage && pageData[currentPage]) {
                 savePageState(currentPage);
@@ -2241,6 +2252,7 @@
         }
 
         async function loadProgress() {
+            console.log('📂 DEBUG: loadProgress() called');
             // Try localStorage first
             try {
                 const savedData = localStorage.getItem('mapping_progress');
@@ -2504,75 +2516,88 @@
         }
 
         // Floor plan upload with PDF support
-        document.getElementById('floorplanUpload').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        console.log('🔧 DEBUG: Initializing file upload handler...');
+        const uploadElement = document.getElementById('floorplanUpload');
+        console.log('🔧 DEBUG: Upload element found:', uploadElement);
 
-            console.log(`📤 Uploading file: ${file.name} (${file.type})`);
+        if (!uploadElement) {
+            console.error('❌ ERROR: floorplanUpload element not found!');
+        } else {
+            console.log('✅ DEBUG: Adding event listener to file upload element');
+            uploadElement.addEventListener('change', async (e) => {
+                console.log('🔥 DEBUG: File upload change event triggered!');
+                const file = e.target.files[0];
+                if (!file) {
+                    console.log('⚠️ DEBUG: No file selected');
+                    return;
+                }
 
-            if (file.type === 'application/pdf') {
-                // Handle PDF using PDF.js - ENHANCED for multi-page support with HIGHEST QUALITY
-                const fileReader = new FileReader();
-                fileReader.onload = async function(event) {
-                    try {
-                        const typedarray = new Uint8Array(event.target.result);
-                        pdfDocument = await pdfjsLib.getDocument(typedarray).promise;
-                        totalPages = pdfDocument.numPages;
-                        currentPage = 1;
+                console.log(`📤 Uploading file: ${file.name} (${file.type})`);
 
-                        console.log(`📄 Loaded PDF with ${totalPages} pages`);
+                if (file.type === 'application/pdf') {
+                    // Handle PDF using PDF.js - ENHANCED for multi-page support with HIGHEST QUALITY
+                    const fileReader = new FileReader();
+                    fileReader.onload = async function(event) {
+                        try {
+                            const typedarray = new Uint8Array(event.target.result);
+                            pdfDocument = await pdfjsLib.getDocument(typedarray).promise;
+                            totalPages = pdfDocument.numPages;
+                            currentPage = 1;
 
-                        // Show page controls if multi-page
-                        if (totalPages > 1) {
-                            document.getElementById('pageControls').style.display = 'flex';
-                            document.getElementById('totalPages').textContent = totalPages;
-                            document.getElementById('pageInput').max = totalPages;
-                        }
+                            console.log(`📄 Loaded PDF with ${totalPages} pages`);
 
-                        // Initialize page data for all pages
-                        for (let i = 1; i <= totalPages; i++) {
-                            if (!pageData[i]) {
-                                pageData[i] = {
-                                    components: [],
-                                    wires: [],
-                                    circuits: [],
-                                    annotations: [],
-                                    viewport: { panX: 0, panY: 0, scale: 1 }
-                                };
+                            // Show page controls if multi-page
+                            if (totalPages > 1) {
+                                document.getElementById('pageControls').style.display = 'flex';
+                                document.getElementById('totalPages').textContent = totalPages;
+                                document.getElementById('pageInput').max = totalPages;
                             }
+
+                            // Initialize page data for all pages
+                            for (let i = 1; i <= totalPages; i++) {
+                                if (!pageData[i]) {
+                                    pageData[i] = {
+                                        components: [],
+                                        wires: [],
+                                        circuits: [],
+                                        annotations: [],
+                                        viewport: { panX: 0, panY: 0, scale: 1 }
+                                    };
+                                }
+                            }
+
+                            // Load first page at highest quality
+                            await loadPDFPage(1);
+                            updatePageNavigation();
+                            saveState(); // Save initial state to undo stack
+
+                            alert(`✅ PDF loaded successfully! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
+
+                        } catch (error) {
+                            console.error('Error loading PDF:', error);
+                            alert('❌ Failed to load PDF: ' + error.message);
                         }
-
-                        // Load first page at highest quality
-                        await loadPDFPage(1);
-                        updatePageNavigation();
-                        saveState(); // Save initial state to undo stack
-
-                        alert(`✅ PDF loaded successfully! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
-
-                    } catch (error) {
-                        console.error('Error loading PDF:', error);
-                        alert('❌ Failed to load PDF: ' + error.message);
-                    }
-                };
-                fileReader.readAsArrayBuffer(file);
-            } else {
-                // Handle image files (PNG, JPG, etc.)
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        floorplanImage = img;
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        render();
-                        console.log(`✅ Image loaded: ${img.width}x${img.height}px`);
-                        alert('✅ Image loaded successfully!');
                     };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+                    fileReader.readAsArrayBuffer(file);
+                } else {
+                    // Handle image files (PNG, JPG, etc.)
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            floorplanImage = img;
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            render();
+                            console.log(`✅ Image loaded: ${img.width}x${img.height}px`);
+                            alert('✅ Image loaded successfully!');
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
 
         // Import from takeoffs or canvas
         function importFromTakeoffs() {
