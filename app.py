@@ -2084,6 +2084,101 @@ def import_from_canvas(session_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/board-builder/export/crm', methods=['POST'])
+def export_board_to_crm():
+    """Export Loxone board to CRM (create job and add components to stock)"""
+    try:
+        data = request.get_json()
+        job_name = data.get('jobName', 'Loxone Board')
+        components = data.get('components', [])
+        total_cost = data.get('totalCost', 0)
+        board_data = data.get('boardData', {})
+
+        # Load CRM data
+        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
+        if os.path.exists(crm_file):
+            with open(crm_file, 'r') as f:
+                crm_data = json.load(f)
+        else:
+            crm_data = {'jobs': [], 'stock': [], 'customers': []}
+
+        # Create new job
+        job_id = f"JOB-{len(crm_data.get('jobs', [])) + 1:04d}"
+        new_job = {
+            'id': job_id,
+            'name': job_name,
+            'customer': 'Board Builder Export',
+            'status': 'planned',
+            'total': total_cost,
+            'components': components,
+            'boardData': board_data,
+            'created': datetime.now().strftime('%Y-%m-%d'),
+            'type': 'loxone_installation'
+        }
+
+        if 'jobs' not in crm_data:
+            crm_data['jobs'] = []
+        crm_data['jobs'].append(new_job)
+
+        # Add components to stock
+        if 'stock' not in crm_data:
+            crm_data['stock'] = []
+
+        for comp in components:
+            # Check if component already exists in stock
+            existing = next((s for s in crm_data['stock'] if s.get('name') == comp['name']), None)
+
+            if existing:
+                # Increment quantity
+                existing['quantity'] = existing.get('quantity', 0) + comp.get('quantity', 1)
+            else:
+                # Add new stock item
+                crm_data['stock'].append({
+                    'sku': f"LXN-{len(crm_data['stock']) + 1:04d}",
+                    'name': comp['name'],
+                    'category': 'Loxone Components',
+                    'quantity': comp.get('quantity', 1),
+                    'price': comp.get('cost', 0),
+                    'supplier': 'Loxone',
+                    'type': comp.get('type', 'component')
+                })
+
+        # Save CRM data
+        with open(crm_file, 'w') as f:
+            json.dump(crm_data, f, indent=2)
+
+        return jsonify({
+            'success': True,
+            'jobId': job_id,
+            'componentsAdded': len(components),
+            'message': f'Job {job_id} created with {len(components)} components'
+        })
+
+    except Exception as e:
+        print(f"CRM export error: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/crm/stock', methods=['GET'])
+def get_crm_stock():
+    """Get CRM stock data"""
+    try:
+        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
+        if os.path.exists(crm_file):
+            with open(crm_file, 'r') as f:
+                crm_data = json.load(f)
+                return jsonify({
+                    'success': True,
+                    'stock': crm_data.get('stock', [])
+                })
+        else:
+            return jsonify({
+                'success': True,
+                'stock': []
+            })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""

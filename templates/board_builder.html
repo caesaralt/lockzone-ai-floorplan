@@ -448,9 +448,10 @@
             <button class="toolbar-btn" onclick="window.location.href='/'">🏠 Home</button>
             <button class="toolbar-btn" onclick="window.location.href='/mapping'">⚡ Mapping</button>
             <button class="toolbar-btn" onclick="window.location.href='/canvas'">🎨 Canvas</button>
+            <button class="toolbar-btn" onclick="openCustomizeModal()">🎨 Customize</button>
             <button class="toolbar-btn" onclick="saveBoard()">💾 Save</button>
             <button class="toolbar-btn" onclick="loadBoard()">📂 Load</button>
-            <button class="toolbar-btn success" onclick="exportBoard()">📤 Export</button>
+            <button class="toolbar-btn success" onclick="openExportModal()">📤 Export</button>
             <button class="toolbar-btn danger" onclick="clearBoard()">🗑️ Clear</button>
         </div>
     </div>
@@ -582,6 +583,16 @@
                 <button class="close-btn" onclick="closeImportModal()">✖</button>
             </div>
             <div class="import-section">
+                <div class="import-card" onclick="importBackgroundPDF()">
+                    <div class="import-card-icon">📄</div>
+                    <div class="import-card-title">Import PDF Background</div>
+                    <div class="import-card-desc">Upload a PDF as board background</div>
+                </div>
+                <div class="import-card" onclick="importBackgroundImage()">
+                    <div class="import-card-icon">🖼️</div>
+                    <div class="import-card-title">Import Image Background</div>
+                    <div class="import-card-desc">Upload an image as board background</div>
+                </div>
                 <div class="import-card" onclick="importFromMapping()">
                     <div class="import-card-icon">⚡</div>
                     <div class="import-card-title">Import from Mapping</div>
@@ -592,9 +603,14 @@
                     <div class="import-card-title">Import from Canvas</div>
                     <div class="import-card-desc">Import automation data from the canvas editor</div>
                 </div>
+                <div class="import-card" onclick="importFromCRM()">
+                    <div class="import-card-icon">📦</div>
+                    <div class="import-card-title">Import from CRM Stock</div>
+                    <div class="import-card-desc">Import components from CRM inventory</div>
+                </div>
                 <div class="import-card" onclick="importFromFile()">
                     <div class="import-card-icon">📁</div>
-                    <div class="import-card-title">Import from File</div>
+                    <div class="import-card-title">Import Board File</div>
                     <div class="import-card-desc">Load a previously saved board configuration</div>
                 </div>
             </div>
@@ -647,6 +663,85 @@
                 </div>
             </div>
             <button class="toolbar-btn ai" style="width: 100%;" onclick="generateWithAI()">🤖 Generate Board with AI</button>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📤 Export Board</div>
+                <button class="close-btn" onclick="closeExportModal()">✖</button>
+            </div>
+            <div class="import-section">
+                <div class="import-card" onclick="exportAsImage()">
+                    <div class="import-card-icon">🖼️</div>
+                    <div class="import-card-title">Export as Image</div>
+                    <div class="import-card-desc">PNG or JPG format</div>
+                </div>
+                <div class="import-card" onclick="exportAsPDF()">
+                    <div class="import-card-icon">📄</div>
+                    <div class="import-card-title">Export as PDF</div>
+                    <div class="import-card-desc">Professional PDF document</div>
+                </div>
+                <div class="import-card" onclick="exportAsDXF()">
+                    <div class="import-card-icon">📐</div>
+                    <div class="import-card-title">Export as DXF</div>
+                    <div class="import-card-desc">For AutoCAD/Vectorworks</div>
+                </div>
+                <div class="import-card" onclick="exportAsJSON()">
+                    <div class="import-card-icon">📋</div>
+                    <div class="import-card-title">Export as JSON</div>
+                    <div class="import-card-desc">Board configuration data</div>
+                </div>
+                <div class="import-card" onclick="exportToCRM()">
+                    <div class="import-card-icon">📦</div>
+                    <div class="import-card-title">Export to CRM</div>
+                    <div class="import-card-desc">Add to job and stock</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Component Customization Modal -->
+    <div class="modal" id="customizeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🎨 Customize Component</div>
+                <button class="close-btn" onclick="closeCustomizeModal()">✖</button>
+            </div>
+            <div id="customizeContent" style="padding: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Component Color</label>
+                    <input type="color" id="componentColor" style="width: 100%; height: 50px; cursor: pointer;" onchange="updateComponentColor(this.value)">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Background Color</label>
+                    <input type="color" id="componentBgColor" value="#2c3e50" style="width: 100%; height: 50px; cursor: pointer;" onchange="updateComponentBgColor(this.value)">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Component Icon</label>
+                    <input type="text" id="componentIcon" placeholder="Enter emoji or text" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;" onchange="updateComponentIcon(this.value)">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Custom Image</label>
+                    <button class="toolbar-btn" style="width: 100%;" onclick="uploadComponentImage()">📷 Upload Image</button>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Size</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="font-size: 0.8em; color: #7f8c8d;">Width</label>
+                            <input type="number" id="componentWidth" min="80" max="400" style="width: 100%; padding: 8px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;" onchange="updateComponentSize()">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8em; color: #7f8c8d;">Height</label>
+                            <input type="number" id="componentHeight" min="60" max="300" style="width: 100%; padding: 8px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;" onchange="updateComponentSize()">
+                        </div>
+                    </div>
+                </div>
+                <button class="toolbar-btn" style="width: 100%; margin-top: 20px;" onclick="closeCustomizeModal()">✓ Apply Changes</button>
+            </div>
         </div>
     </div>
 
@@ -1477,10 +1572,494 @@
             }
         }
 
+        // ============================================================================
+        // ENHANCED FEATURES - Import, Export, Customization, CRM
+        // ============================================================================
+
+        // Background image support
+        let backgroundImage = null;
+
+        // Import PDF as background
+        async function importBackgroundPDF() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    // Load PDF.js if not already loaded
+                    if (typeof pdfjsLib === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+                        document.head.appendChild(script);
+                        await new Promise(resolve => script.onload = resolve);
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        const typedarray = new Uint8Array(event.target.result);
+                        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({ scale: 2 });
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        const context = canvas.getContext('2d');
+
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                        // Set as background
+                        const boardGrid = document.getElementById('boardGrid');
+                        boardGrid.style.backgroundImage = `url(${canvas.toDataURL()})`;
+                        boardGrid.style.backgroundSize = 'contain';
+                        boardGrid.style.backgroundRepeat = 'no-repeat';
+                        backgroundImage = canvas.toDataURL();
+
+                        closeImportModal();
+                        alert('✅ PDF background loaded!');
+                    };
+                    reader.readAsArrayBuffer(file);
+                } catch (error) {
+                    console.error('PDF import error:', error);
+                    alert('❌ Failed to import PDF');
+                }
+            };
+            input.click();
+        }
+
+        // Import image as background
+        function importBackgroundImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const boardGrid = document.getElementById('boardGrid');
+                        boardGrid.style.backgroundImage = `url(${event.target.result})`;
+                        boardGrid.style.backgroundSize = 'contain';
+                        boardGrid.style.backgroundRepeat = 'no-repeat';
+                        backgroundImage = event.target.result;
+
+                        closeImportModal();
+                        alert('✅ Background image loaded!');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        // Import from CRM stock
+        async function importFromCRM() {
+            try {
+                const response = await fetch('/api/crm/stock');
+                const data = await response.json();
+
+                if (data.success && data.stock) {
+                    // Create components from CRM stock
+                    let y = 100;
+                    data.stock.forEach((item, index) => {
+                        if (item.category && item.category.toLowerCase().includes('loxone')) {
+                            addComponentToBoard('extension', 200, y + (index * 130), {
+                                name: item.name,
+                                serialNumber: item.sku || '',
+                                notes: `From CRM: €${item.price}`
+                            });
+                        }
+                    });
+                    closeImportModal();
+                    alert(`✅ Imported components from CRM stock!`);
+                } else {
+                    alert('❌ No CRM stock data available');
+                }
+            } catch (error) {
+                console.error('CRM import error:', error);
+                alert('❌ Failed to import from CRM');
+            }
+        }
+
+        // Export modal controls
+        function openExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+
+        // Export as Image (PNG)
+        async function exportAsImage() {
+            try {
+                const boardWrapper = document.getElementById('boardWrapper');
+
+                // Use html2canvas to capture the board
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                document.head.appendChild(script);
+
+                script.onload = async () => {
+                    const canvas = await html2canvas(boardWrapper, {
+                        backgroundColor: '#0f1419',
+                        scale: 2
+                    });
+
+                    canvas.toBlob((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `loxone_board_${Date.now()}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        closeExportModal();
+                        alert('✅ Board exported as PNG!');
+                    });
+                };
+            } catch (error) {
+                console.error('Image export error:', error);
+                alert('❌ Failed to export as image');
+            }
+        }
+
+        // Export as PDF
+        async function exportAsPDF() {
+            try {
+                // Load jsPDF
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                document.head.appendChild(script);
+
+                script.onload = async () => {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF('landscape', 'mm', 'a3');
+
+                    // Add title
+                    doc.setFontSize(20);
+                    doc.text('Loxone Board Configuration', 20, 20);
+
+                    // Add component list
+                    doc.setFontSize(12);
+                    let y = 40;
+
+                    doc.text('Components:', 20, y);
+                    y += 10;
+
+                    boardComponents.forEach((comp, index) => {
+                        const spec = COMPONENT_SPECS[comp.type];
+                        doc.setFontSize(10);
+                        doc.text(`${index + 1}. ${comp.properties.name} - €${spec.cost}`, 25, y);
+                        y += 7;
+                        if (y > 180) {
+                            doc.addPage();
+                            y = 20;
+                        }
+                    });
+
+                    // Add totals
+                    const totalCost = boardComponents.reduce((sum, comp) => sum + (COMPONENT_SPECS[comp.type].cost || 0), 0);
+                    const totalPower = boardComponents.reduce((sum, comp) => sum + (COMPONENT_SPECS[comp.type].power || 0), 0);
+
+                    y += 10;
+                    doc.setFontSize(12);
+                    doc.text(`Total Components: ${boardComponents.length}`, 20, y);
+                    y += 10;
+                    doc.text(`Total Cost: €${totalCost.toFixed(2)}`, 20, y);
+                    y += 10;
+                    doc.text(`Total Power: ${totalPower}W`, 20, y);
+
+                    doc.save(`loxone_board_${Date.now()}.pdf`);
+                    closeExportModal();
+                    alert('✅ Board exported as PDF!');
+                };
+            } catch (error) {
+                console.error('PDF export error:', error);
+                alert('❌ Failed to export as PDF');
+            }
+        }
+
+        // Export as DXF (for AutoCAD/Vectorworks)
+        function exportAsDXF() {
+            try {
+                let dxf = '';
+
+                // DXF header
+                dxf += '0\nSECTION\n2\nHEADER\n';
+                dxf += '9\n$ACADVER\n1\nAC1015\n';
+                dxf += '0\nENDSEC\n';
+
+                // Entities section
+                dxf += '0\nSECTION\n2\nENTITIES\n';
+
+                // Add components as rectangles and text
+                boardComponents.forEach(comp => {
+                    const spec = COMPONENT_SPECS[comp.type];
+
+                    // Rectangle
+                    dxf += '0\nLWPOLYLINE\n';
+                    dxf += '8\nCOMPONENTS\n';
+                    dxf += '90\n5\n';
+                    dxf += '70\n1\n';
+
+                    // Coordinates
+                    dxf += `10\n${comp.x}\n20\n${-comp.y}\n`;
+                    dxf += `10\n${comp.x + spec.width}\n20\n${-comp.y}\n`;
+                    dxf += `10\n${comp.x + spec.width}\n20\n${-(comp.y + spec.height)}\n`;
+                    dxf += `10\n${comp.x}\n20\n${-(comp.y + spec.height)}\n`;
+                    dxf += `10\n${comp.x}\n20\n${-comp.y}\n`;
+
+                    // Text label
+                    dxf += '0\nTEXT\n';
+                    dxf += '8\nLABELS\n';
+                    dxf += `10\n${comp.x + 10}\n20\n${-(comp.y + 20)}\n`;
+                    dxf += '40\n12\n';
+                    dxf += `1\n${comp.properties.name}\n`;
+                });
+
+                // Add connections as lines
+                boardConnections.forEach(conn => {
+                    const fromComp = boardComponents.find(c => c.id === conn.from.componentId);
+                    const toComp = boardComponents.find(c => c.id === conn.to.componentId);
+
+                    if (fromComp && toComp) {
+                        const fromSpec = COMPONENT_SPECS[fromComp.type];
+                        const toSpec = COMPONENT_SPECS[toComp.type];
+
+                        dxf += '0\nLINE\n';
+                        dxf += '8\nCONNECTIONS\n';
+                        dxf += `10\n${fromComp.x + fromSpec.width}\n20\n${-(fromComp.y + 20)}\n`;
+                        dxf += `11\n${toComp.x}\n21\n${-(toComp.y + 20)}\n`;
+                    }
+                });
+
+                dxf += '0\nENDSEC\n';
+                dxf += '0\nEOF\n';
+
+                // Download
+                const blob = new Blob([dxf], { type: 'application/dxf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `loxone_board_${Date.now()}.dxf`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                closeExportModal();
+                alert('✅ Board exported as DXF!');
+            } catch (error) {
+                console.error('DXF export error:', error);
+                alert('❌ Failed to export as DXF');
+            }
+        }
+
+        // Export as JSON
+        function exportAsJSON() {
+            const boardData = {
+                components: boardComponents,
+                connections: boardConnections,
+                background: backgroundImage,
+                metadata: {
+                    version: '2.0',
+                    exported: new Date().toISOString(),
+                    projectName: '{{ project_name | default("Loxone Board") }}'
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(boardData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `loxone_board_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            closeExportModal();
+            console.log('Board exported as JSON');
+        }
+
+        // Export to CRM (add to job and stock)
+        async function exportToCRM() {
+            try {
+                const jobName = prompt('Enter job name for this board:');
+                if (!jobName) return;
+
+                const response = await fetch('/api/board-builder/export/crm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jobName: jobName,
+                        components: boardComponents.map(comp => ({
+                            name: comp.properties.name,
+                            type: comp.type,
+                            quantity: 1,
+                            cost: COMPONENT_SPECS[comp.type].cost
+                        })),
+                        totalCost: boardComponents.reduce((sum, comp) => sum + (COMPONENT_SPECS[comp.type].cost || 0), 0),
+                        boardData: {
+                            components: boardComponents,
+                            connections: boardConnections
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    closeExportModal();
+                    alert(`✅ Board exported to CRM!\nJob: ${jobName}\nComponents added to stock`);
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('CRM export error:', error);
+                alert('❌ Failed to export to CRM');
+            }
+        }
+
+        // Component customization modal
+        let customizingComponent = null;
+
+        function openCustomizeModal() {
+            if (!selectedComponent) {
+                alert('Please select a component first');
+                return;
+            }
+
+            customizingComponent = selectedComponent;
+            const comp = boardComponents.find(c => c.id === selectedComponent);
+            const compElement = document.getElementById(selectedComponent);
+            const spec = COMPONENT_SPECS[comp.type];
+
+            // Set current values
+            document.getElementById('componentColor').value = comp.properties.color || spec.color || '#e74c3c';
+            document.getElementById('componentBgColor').value = comp.properties.bgColor || '#2c3e50';
+            document.getElementById('componentIcon').value = comp.properties.customIcon || spec.icon;
+            document.getElementById('componentWidth').value = comp.properties.width || spec.width;
+            document.getElementById('componentHeight').value = comp.properties.height || spec.height;
+
+            document.getElementById('customizeModal').classList.add('active');
+        }
+
+        function closeCustomizeModal() {
+            document.getElementById('customizeModal').classList.remove('active');
+            customizingComponent = null;
+        }
+
+        function updateComponentColor(color) {
+            if (!customizingComponent) return;
+
+            const comp = boardComponents.find(c => c.id === customizingComponent);
+            comp.properties.color = color;
+
+            const compElement = document.getElementById(customizingComponent);
+            compElement.style.borderColor = color;
+        }
+
+        function updateComponentBgColor(color) {
+            if (!customizingComponent) return;
+
+            const comp = boardComponents.find(c => c.id === customizingComponent);
+            comp.properties.bgColor = color;
+
+            const compElement = document.getElementById(customizingComponent);
+            compElement.style.background = color;
+        }
+
+        function updateComponentIcon(icon) {
+            if (!customizingComponent) return;
+
+            const comp = boardComponents.find(c => c.id === customizingComponent);
+            comp.properties.customIcon = icon;
+
+            const compElement = document.getElementById(customizingComponent);
+            const iconElement = compElement.querySelector('.component-header span:first-child');
+            if (iconElement) iconElement.textContent = icon;
+        }
+
+        function updateComponentSize() {
+            if (!customizingComponent) return;
+
+            const width = parseInt(document.getElementById('componentWidth').value);
+            const height = parseInt(document.getElementById('componentHeight').value);
+
+            const comp = boardComponents.find(c => c.id === customizingComponent);
+            comp.properties.width = width;
+            comp.properties.height = height;
+
+            const compElement = document.getElementById(customizingComponent);
+            compElement.style.width = width + 'px';
+            compElement.style.height = height + 'px';
+
+            redrawAllConnections();
+        }
+
+        function uploadComponentImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (!customizingComponent) return;
+
+                    const comp = boardComponents.find(c => c.id === customizingComponent);
+                    comp.properties.customImage = event.target.result;
+
+                    const compElement = document.getElementById(customizingComponent);
+                    compElement.style.backgroundImage = `url(${event.target.result})`;
+                    compElement.style.backgroundSize = 'cover';
+                    compElement.style.backgroundPosition = 'center';
+
+                    alert('✅ Custom image applied!');
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        // Enhanced connection system - allow any-to-any connections
+        function handlePortClick(componentId, portType, portIndex) {
+            console.log(`Port clicked: ${componentId}, ${portType}, ${portIndex}`);
+
+            if (!isConnecting) {
+                // Start connection - allow from any port
+                isConnecting = true;
+                connectionStart = { componentId, portType, portIndex };
+                console.log('Connection started');
+            } else {
+                // Complete connection - allow to any different component
+                if (connectionStart.componentId !== componentId) {
+                    const connection = {
+                        id: `conn-${Date.now()}`,
+                        from: connectionStart,
+                        to: { componentId, portType, portIndex }
+                    };
+                    boardConnections.push(connection);
+                    renderConnection(connection);
+                    console.log('Connection created:', connection);
+                }
+                isConnecting = false;
+                connectionStart = null;
+                updateStats();
+            }
+        }
+
         // Initialize on load
         initBoard();
 
-        console.log('✅ Board Builder ready');
+        console.log('✅ Board Builder ready with enhanced features');
     </script>
 
     <!-- AI Chatbot Component -->
