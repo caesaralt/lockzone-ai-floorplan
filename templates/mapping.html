@@ -4,17 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electrical Mapping - {{ project_name | default('New Project') }}</title>
-    <!-- PDF.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" onerror="console.error('❌ Failed to load PDF.js from CDN')"></script>
+    <!-- PDF.js CDN - defer to ensure proper loading order -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer onload="initPDFJS()" onerror="console.error('❌ Failed to load PDF.js from CDN')"></script>
     <script>
-        // Configure PDF.js worker - with error handling
-        if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-            console.log('✅ PDF.js loaded and configured');
-        } else {
-            console.error('❌ PDF.js library failed to load! PDF uploads will not work.');
-            console.error('Please check your internet connection or try refreshing the page.');
-        }
+        // Configure PDF.js worker after library loads - with error handling
+        window.initPDFJS = function() {
+            try {
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+                    console.log('✅ PDF.js loaded and configured successfully');
+                    window.pdfJSReady = true;
+                } else {
+                    console.error('❌ PDF.js library failed to load! PDF uploads will not work.');
+                    console.error('Please check your internet connection or try refreshing the page.');
+                    window.pdfJSReady = false;
+                }
+            } catch (error) {
+                console.error('❌ Error configuring PDF.js:', error);
+                window.pdfJSReady = false;
+            }
+        };
+
+        // Fallback: try to initialize on DOMContentLoaded if onload doesn't fire
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (window.pdfJSReady === undefined && typeof pdfjsLib !== 'undefined') {
+                    console.log('🔄 Initializing PDF.js via fallback...');
+                    window.initPDFJS();
+                }
+            }, 500);
+        });
     </script>
     <style>
         * {
@@ -2541,10 +2560,22 @@
                 console.log(`📤 Uploading file: ${file.name} (${file.type})`);
 
                 if (file.type === 'application/pdf') {
-                    // Check if PDF.js is available
-                    if (typeof pdfjsLib === 'undefined') {
-                        alert('❌ PDF support is not available. PDF.js library failed to load.\n\nPlease refresh the page or try uploading an image file (PNG/JPG) instead.');
-                        console.error('Cannot process PDF: pdfjsLib is undefined');
+                    // Check if PDF.js is available - with better error handling
+                    if (typeof pdfjsLib === 'undefined' || !window.pdfJSReady) {
+                        const waitForPDFJS = confirm('⏳ PDF.js library is still loading. Wait a moment and try again?\n\n' +
+                            'Click OK to wait and retry, or Cancel to upload an image instead.');
+                        if (waitForPDFJS) {
+                            // Wait and retry
+                            setTimeout(() => {
+                                if (typeof pdfjsLib !== 'undefined') {
+                                    alert('✅ PDF.js is now ready! Please select your PDF file again.');
+                                } else {
+                                    alert('❌ PDF.js failed to load. Please refresh the page or upload an image file instead.');
+                                }
+                            }, 2000);
+                        }
+                        // Reset file input
+                        e.target.value = '';
                         return;
                     }
 
