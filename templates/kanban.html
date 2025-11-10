@@ -1103,76 +1103,65 @@
 
         // Handle all clicks using event delegation
         function handleAllClicks(e) {
-            // CRITICAL: Prevent multiple rapid clicks (debounce 300ms)
-            const now = Date.now();
-            if (now - lastActionTime < 300) {
-                console.log('⚠️ Click ignored - too soon after last action');
+            const button = e.target.closest('button');
+
+            // Handle column header buttons
+            if (button && button.dataset.columnAction) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                const action = button.dataset.columnAction;
+                const columnId = button.dataset.columnId;
+
+                if (action === 'history') {
+                    openHistoryModal();
+                } else if (action === 'color' && columnId) {
+                    openColumnColorModal(columnId);
+                }
                 return;
             }
 
-            const button = e.target.closest('button');
             const taskCard = e.target.closest('.task-card');
 
-            // Handle button clicks
+            // Handle task button clicks
             if (button && taskCard) {
-                e.preventDefault(); // CRITICAL: Prevent any default button behavior
+                e.preventDefault();
                 e.stopPropagation();
-
-                // Prevent simultaneous operations
-                if (isProcessingAction) {
-                    console.log('⚠️ Action ignored - already processing another action');
-                    return;
-                }
 
                 const taskId = taskCard.dataset.taskId;
                 const action = button.dataset.action;
 
                 if (!action) return;
 
-                // Update last action time
-                lastActionTime = now;
-                isProcessingAction = true;
-
-                console.log(`🎯 Processing action: ${action} for task: ${taskId}`);
-
                 // Route to appropriate handler based on data-action attribute
-                try {
-                    switch(action) {
-                        case 'menu':
-                            toggleTaskMenu(taskId);
-                            break;
-                        case 'pin':
-                            togglePinTask(taskId);
-                            break;
-                        case 'assign':
-                            openAssignModal(taskId);
-                            break;
-                        case 'notes':
-                            openNotesModal(taskId);
-                            break;
-                        case 'color':
-                            openColorModal(taskId);
-                            break;
-                        case 'date':
-                            openDateModal(taskId);
-                            break;
-                        case 'duplicate':
-                            duplicateTask(taskId);
-                            break;
-                        case 'archive':
-                            archiveTask(taskId);
-                            break;
-                        case 'delete':
-                            deleteTask(taskId);
-                            break;
-                    }
-                } finally {
-                    // Always release the lock after a short delay
-                    setTimeout(() => {
-                        isProcessingAction = false;
-                    }, 100);
+                switch(action) {
+                    case 'menu':
+                        toggleTaskMenu(taskId);
+                        break;
+                    case 'pin':
+                        togglePinTask(taskId);
+                        break;
+                    case 'assign':
+                        openAssignModal(taskId);
+                        break;
+                    case 'notes':
+                        openNotesModal(taskId);
+                        break;
+                    case 'color':
+                        openColorModal(taskId);
+                        break;
+                    case 'date':
+                        openDateModal(taskId);
+                        break;
+                    case 'duplicate':
+                        duplicateTask(taskId);
+                        break;
+                    case 'archive':
+                        archiveTask(taskId);
+                        break;
+                    case 'delete':
+                        deleteTask(taskId);
+                        break;
                 }
                 return;
             }
@@ -1366,8 +1355,8 @@
                         <div class="column-header" style="background-color: ${columnColor};">
                             <span class="column-title">${column.title}</span>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
-                                <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
+                                ${column.id === 'finished' ? '<button class="column-color-btn" data-column-action="history" title="View History">📜</button>' : ''}
+                                <button class="column-color-btn" data-column-action="color" data-column-id="${column.id}" title="Change color">🎨</button>
                                 <span class="task-count">${columnTasks.length}</span>
                             </div>
                         </div>
