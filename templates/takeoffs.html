@@ -470,6 +470,9 @@
             <button class="toolbar-btn" onclick="undoAction()">↶ Undo</button>
             <button class="toolbar-btn" onclick="redoAction()">↷ Redo</button>
             <button class="toolbar-btn" id="snapGridBtn" onclick="toggleSnapGrid()">📐 Snap: OFF</button>
+            <button class="toolbar-btn" onclick="zoomIn()">🔍+ Zoom In</button>
+            <button class="toolbar-btn" onclick="zoomOut()">🔍- Zoom Out</button>
+            <button class="toolbar-btn" onclick="resetZoom()">⊡ Fit</button>
             <button class="toolbar-btn" onclick="saveToMapping()">Export to Mapping Tool →</button>
             <button class="toolbar-btn primary" onclick="exportResults()">💾 Export & Generate Quote</button>
         </div>
@@ -687,6 +690,12 @@
         // Snap-to-grid state
         let snapToGrid = false;
         let gridSize = 20; // pixels
+
+        // Zoom state
+        let zoomLevel = 1.0;
+        const MIN_ZOOM = 0.25;
+        const MAX_ZOOM = 4.0;
+        const ZOOM_STEP = 0.25;
 
         // Undo/Redo system
         let undoStack = [];
@@ -988,6 +997,38 @@
                 x: Math.round(x / gridSize) * gridSize,
                 y: Math.round(y / gridSize) * gridSize
             };
+        }
+
+        function zoomIn() {
+            if (zoomLevel < MAX_ZOOM) {
+                zoomLevel += ZOOM_STEP;
+                applyZoom();
+                console.log(`🔍 Zoom: ${(zoomLevel * 100).toFixed(0)}%`);
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > MIN_ZOOM) {
+                zoomLevel -= ZOOM_STEP;
+                applyZoom();
+                console.log(`🔍 Zoom: ${(zoomLevel * 100).toFixed(0)}%`);
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 1.0;
+            applyZoom();
+            console.log('🔍 Zoom: Reset to 100%');
+        }
+
+        function applyZoom() {
+            const wrapper = canvas.parentElement;
+            canvas.style.transform = `scale(${zoomLevel})`;
+            canvas.style.transformOrigin = 'top left';
+
+            // Adjust wrapper to accommodate scaled canvas
+            wrapper.style.width = (canvas.width * zoomLevel) + 'px';
+            wrapper.style.height = (canvas.height * zoomLevel) + 'px';
         }
 
         function selectSymbolType(type, name) {
@@ -1368,6 +1409,25 @@
                 }
             });
         });
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            if (e.deltaY < 0) {
+                // Scroll up = zoom in
+                if (zoomLevel < MAX_ZOOM) {
+                    zoomLevel += ZOOM_STEP;
+                    applyZoom();
+                }
+            } else {
+                // Scroll down = zoom out
+                if (zoomLevel > MIN_ZOOM) {
+                    zoomLevel -= ZOOM_STEP;
+                    applyZoom();
+                }
+            }
+        }, { passive: false });
 
         // Context menu
         canvas.addEventListener('contextmenu', (e) => {
