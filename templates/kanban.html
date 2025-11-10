@@ -1061,10 +1061,39 @@
             await loadTasks();
             await fixOverlappingTasks(); // Fix positions once on load
             loadColumnColors();
+            setupDragListeners(); // Set up ONCE using event delegation
             renderBoard();
             setupColorPicker();
             setupColumnColorPicker();
             setupKeyboardShortcuts();
+        }
+
+        // Setup drag listeners ONCE using event delegation
+        function setupDragListeners() {
+            const container = document.getElementById('kanbanContainer');
+
+            // Use event delegation - ONE listener for all tasks
+            container.addEventListener('mousedown', handleDragStart);
+            container.addEventListener('touchstart', handleDragStart, { passive: false });
+
+            console.log('✅ Drag listeners set up using event delegation');
+        }
+
+        // Handle drag start with event delegation
+        function handleDragStart(e) {
+            // Check if target is a task card or inside one
+            const taskCard = e.target.closest('.task-card');
+            if (!taskCard) return;
+
+            // Don't drag if clicking on buttons, menus, or contenteditable
+            if (e.target.tagName === 'BUTTON' ||
+                e.target.contentEditable === 'true' ||
+                e.target.closest('.task-actions-menu') ||
+                e.target.closest('.task-menu-btn')) {
+                return;
+            }
+
+            startDrag(e, taskCard);
         }
 
         // FIX OVERLAPPING TASKS - Run once on load
@@ -1318,9 +1347,6 @@
 
             container.appendChild(taskEl);
 
-            // Setup drag
-            setupTaskDrag(taskEl);
-
             // Setup selection with proper click handler
             taskEl.onclick = (e) => {
                 // Only select if not clicking on buttons or editable content
@@ -1334,39 +1360,16 @@
             };
         }
 
-        // SETUP TASK DRAG
-        function setupTaskDrag(taskEl) {
-            // Mark that we've already set up this element
-            if (taskEl.dataset.dragSetup === 'true') {
-                return; // Already set up, skip
-            }
-
-            taskEl.dataset.dragSetup = 'true';
-
-            // Add listeners only once
-            taskEl.addEventListener('mousedown', startDrag, { once: false });
-            taskEl.addEventListener('touchstart', startDrag, { passive: false, once: false });
-        }
-
-        function startDrag(e) {
+        function startDrag(e, taskEl) {
             // Prevent multiple simultaneous drags
             if (draggedTask) {
                 console.log('⚠️ Drag already in progress, ignoring new drag');
                 return;
             }
 
-            // Don't drag if clicking on buttons, menus, or contenteditable
-            if (e.target.tagName === 'BUTTON' ||
-                e.target.contentEditable === 'true' ||
-                e.target.closest('.task-actions-menu') ||
-                e.target.closest('.task-menu-btn')) {
-                return;
-            }
-
             e.preventDefault();
             e.stopPropagation();
 
-            const taskEl = e.currentTarget;
             const rect = taskEl.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
