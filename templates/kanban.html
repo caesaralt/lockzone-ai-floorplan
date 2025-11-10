@@ -1076,7 +1076,28 @@
             container.addEventListener('mousedown', handleDragStart);
             container.addEventListener('touchstart', handleDragStart, { passive: false });
 
+            // Also delegate click events for task selection
+            container.addEventListener('click', handleTaskClick);
+
             console.log('✅ Drag listeners set up using event delegation');
+        }
+
+        // Handle task click for selection
+        function handleTaskClick(e) {
+            const taskCard = e.target.closest('.task-card');
+            if (!taskCard) return;
+
+            // Only select if not clicking on buttons or editable content
+            if (e.target.tagName !== 'BUTTON' &&
+                e.target.contentEditable !== 'true' &&
+                !e.target.closest('.task-actions-menu') &&
+                !e.target.closest('.task-menu-btn')) {
+                e.stopPropagation();
+                const taskId = taskCard.dataset.taskId;
+                if (taskId) {
+                    selectTask(taskId);
+                }
+            }
         }
 
         // Handle drag start with event delegation
@@ -1346,18 +1367,6 @@
             `;
 
             container.appendChild(taskEl);
-
-            // Setup selection with proper click handler
-            taskEl.onclick = (e) => {
-                // Only select if not clicking on buttons or editable content
-                if (e.target.tagName !== 'BUTTON' &&
-                    e.target.contentEditable !== 'true' &&
-                    !e.target.closest('.task-actions-menu') &&
-                    !e.target.closest('.task-menu-btn')) {
-                    e.stopPropagation();
-                    selectTask(task.id);
-                }
-            };
         }
 
         function startDrag(e, taskEl) {
