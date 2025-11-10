@@ -1040,7 +1040,6 @@
         let historyIndex = -1;
         let copiedTask = null;
         let isRendering = false;
-        let renderTimeout = null;
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
@@ -1179,7 +1178,7 @@
             }
         }
 
-        // RENDER BOARD - Throttled to prevent infinite loops
+        // RENDER BOARD - With proper cleanup
         function renderBoard() {
             // Prevent rendering if currently dragging to avoid chaos
             if (draggedTask) {
@@ -1193,65 +1192,64 @@
                 return;
             }
 
-            // Throttle renders - max once per 100ms
-            if (renderTimeout) {
-                clearTimeout(renderTimeout);
-            }
+            try {
+                isRendering = true;
 
-            renderTimeout = setTimeout(() => {
-                try {
-                    isRendering = true;
+                // CRITICAL: Clean up any orphaned dragged elements from body
+                const orphanedTasks = document.querySelectorAll('body > .task-card');
+                orphanedTasks.forEach(el => {
+                    console.log('🧹 Cleaning up orphaned task element from body');
+                    el.remove();
+                });
 
-                    const container = document.getElementById('kanbanContainer');
-                    container.innerHTML = '';
+                const container = document.getElementById('kanbanContainer');
+                container.innerHTML = '';
 
-                    columns.forEach(column => {
-                        const columnEl = document.createElement('div');
-                        columnEl.className = 'kanban-column';
-                        columnEl.dataset.columnId = column.id;
+                columns.forEach(column => {
+                    const columnEl = document.createElement('div');
+                    columnEl.className = 'kanban-column';
+                    columnEl.dataset.columnId = column.id;
 
-                        // Get tasks for this column - NO auto-arrange here
-                        const columnTasks = tasks
-                            .filter(t => t.column === column.id)
-                            .sort((a, b) => {
-                                if (a.pinned && !b.pinned) return -1;
-                                if (!a.pinned && b.pinned) return 1;
-                                return (a.position?.y || 0) - (b.position?.y || 0);
-                            });
-
-                        const columnColor = columnColors[column.id] || 'transparent';
-
-                        columnEl.innerHTML = `
-                            <div class="column-header" style="background-color: ${columnColor};">
-                                <span class="column-title">${column.title}</span>
-                                <div style="display: flex; gap: 8px; align-items: center;">
-                                    ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
-                                    <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
-                                    <span class="task-count">${columnTasks.length}</span>
-                                </div>
-                            </div>
-                            <div class="column-content" data-column="${column.id}"></div>
-                        `;
-
-                        container.appendChild(columnEl);
-
-                        // Render tasks in column
-                        const contentEl = columnEl.querySelector('.column-content');
-                        columnTasks.forEach(task => {
-                            renderTask(task, contentEl);
+                    // Get tasks for this column - NO auto-arrange here
+                    const columnTasks = tasks
+                        .filter(t => t.column === column.id)
+                        .sort((a, b) => {
+                            if (a.pinned && !b.pinned) return -1;
+                            if (!a.pinned && b.pinned) return 1;
+                            return (a.position?.y || 0) - (b.position?.y || 0);
                         });
 
-                        // Setup drop zone
-                        setupDropZone(contentEl);
+                    const columnColor = columnColors[column.id] || 'transparent';
+
+                    columnEl.innerHTML = `
+                        <div class="column-header" style="background-color: ${columnColor};">
+                            <span class="column-title">${column.title}</span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
+                                <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
+                                <span class="task-count">${columnTasks.length}</span>
+                            </div>
+                        </div>
+                        <div class="column-content" data-column="${column.id}"></div>
+                    `;
+
+                    container.appendChild(columnEl);
+
+                    // Render tasks in column
+                    const contentEl = columnEl.querySelector('.column-content');
+                    columnTasks.forEach(task => {
+                        renderTask(task, contentEl);
                     });
 
-                    // Update task counts
-                    updateTaskCounts();
-                } finally {
-                    isRendering = false;
-                    renderTimeout = null;
-                }
-            }, 100);
+                    // Setup drop zone
+                    setupDropZone(contentEl);
+                });
+
+                // Update task counts
+                updateTaskCounts();
+            } finally {
+                isRendering = false;
+            }
         }
 
         // RENDER TASK
@@ -1443,9 +1441,25 @@
         function stopDrag(e) {
             if (!draggedTask) return;
 
+            // Store reference and IMMEDIATELY clear the global to prevent issues
+            const draggedElement = draggedTask;
+            const taskId = draggedElement.dataset.taskId;
+            draggedTask = null;
+
+            // ALWAYS remove event listeners first
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', stopDrag);
+
             try {
-                const taskId = draggedTask.dataset.taskId;
                 const task = tasks.find(t => t.id === taskId);
+                if (!task) {
+                    console.error('Task not found:', taskId);
+                    cleanupDraggedElement(draggedElement);
+                    renderBoard();
+                    return;
+                }
 
                 const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
                 const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
@@ -1477,11 +1491,8 @@
                     col.classList.remove('highlight');
                 });
 
-                // CRITICAL: Remove the dragged task from the DOM completely
-                // This prevents duplicates when renderBoard() creates a new element
-                if (draggedTask && draggedTask.parentElement) {
-                    draggedTask.parentElement.removeChild(draggedTask);
-                }
+                // Clean up the dragged element immediately
+                cleanupDraggedElement(draggedElement);
 
                 if (task && newColumn && columnContent) {
                     // Update column
@@ -1492,37 +1503,32 @@
                     const scrollTop = columnContent.scrollTop;
 
                     // CENTER the task horizontally in the column
-                    const columnWidth = containerRect.width - 24; // Subtract padding
-                    const taskWidth = 240; // Task card width
-                    const x = (columnWidth - taskWidth) / 2; // Center it
+                    const columnWidth = containerRect.width - 24;
+                    const taskWidth = 240;
+                    const x = (columnWidth - taskWidth) / 2;
 
                     // Get Y position where dropped
                     let y = clientY - containerRect.top - dragOffset.y + scrollTop;
 
-                    // IMPROVED COLLISION DETECTION: Find next available position
+                    // IMPROVED COLLISION DETECTION
                     const columnTasks = tasks.filter(t => t.column === newColumn && t.id !== taskId);
-                    const taskHeight = 120; // Approximate task height
-                    const taskPadding = 10; // Space between tasks
+                    const taskHeight = 120;
+                    const taskPadding = 10;
 
-                    // Sort other tasks by Y position
                     const sortedTasks = columnTasks
                         .filter(t => t.position)
                         .sort((a, b) => a.position.y - b.position.y);
 
-                    // Find a non-overlapping position
                     for (const otherTask of sortedTasks) {
                         const otherY = otherTask.position.y;
                         const otherBottom = otherY + taskHeight;
 
-                        // Check if the dropped position overlaps with another task
                         if (y >= otherY - taskPadding && y < otherBottom + taskPadding) {
-                            // Position it below the overlapping task
                             y = otherBottom + taskPadding;
                             console.log('🔽 Collision detected, moving task below to y:', y);
                         }
                     }
 
-                    // Store position
                     task.position = {
                         x: Math.max(0, x),
                         y: Math.max(0, y)
@@ -1530,32 +1536,47 @@
 
                     console.log('✅ Dropped at position:', task.position);
 
-                    // Update task in database and re-render
+                    // Update and re-render
                     updateTask(taskId, task).then(() => {
-                        draggedTask = null; // Clear before render
                         renderBoard();
                     }).catch(error => {
                         console.error('❌ Error updating task:', error);
-                        draggedTask = null;
                         renderBoard();
                     });
                 } else {
-                    // If dropped outside columns, restore to original position
                     console.log('⚠️ Dropped outside valid area');
-                    draggedTask = null;
                     renderBoard();
                 }
 
             } catch (error) {
                 console.error('❌ Error in stopDrag:', error);
-                draggedTask = null;
+                cleanupDraggedElement(draggedElement);
                 renderBoard();
-            } finally {
-                // ALWAYS clean up event listeners
-                document.removeEventListener('mousemove', onDrag);
-                document.removeEventListener('mouseup', stopDrag);
-                document.removeEventListener('touchmove', onDrag);
-                document.removeEventListener('touchend', stopDrag);
+            }
+        }
+
+        // Clean up dragged element - reset styles and remove from DOM
+        function cleanupDraggedElement(element) {
+            if (!element) return;
+
+            try {
+                // Remove dragging class
+                element.classList.remove('dragging');
+
+                // Reset all inline styles that were set during drag
+                element.style.position = '';
+                element.style.left = '';
+                element.style.top = '';
+                element.style.width = '';
+                element.style.margin = '';
+                element.style.zIndex = '';
+
+                // Remove from DOM if still attached
+                if (element.parentElement) {
+                    element.parentElement.removeChild(element);
+                }
+            } catch (error) {
+                console.error('Error cleaning up dragged element:', error);
             }
         }
 
