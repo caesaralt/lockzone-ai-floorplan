@@ -1040,6 +1040,8 @@
         let historyIndex = -1;
         let copiedTask = null;
         let isRendering = false;
+        let isProcessingAction = false; // Prevent simultaneous operations
+        let lastActionTime = 0; // For debouncing
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
@@ -1087,6 +1089,9 @@
 
         // Handle blur on contenteditable
         function handleContentBlur(e) {
+            // Don't process blur events during rendering
+            if (isRendering) return;
+
             if (e.target.classList.contains('task-content') && e.target.contentEditable === 'true') {
                 const taskId = e.target.dataset.taskId;
                 const content = e.target.innerText;
@@ -1099,11 +1104,30 @@
         // Handle all clicks using event delegation
         function handleAllClicks(e) {
             const button = e.target.closest('button');
+
+            // Handle column header buttons
+            if (button && button.dataset.columnAction) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const action = button.dataset.columnAction;
+                const columnId = button.dataset.columnId;
+
+                if (action === 'history') {
+                    openHistoryModal();
+                } else if (action === 'color' && columnId) {
+                    openColumnColorModal(columnId);
+                }
+                return;
+            }
+
             const taskCard = e.target.closest('.task-card');
 
-            // Handle button clicks
+            // Handle task button clicks
             if (button && taskCard) {
+                e.preventDefault();
                 e.stopPropagation();
+
                 const taskId = taskCard.dataset.taskId;
                 const action = button.dataset.action;
 
@@ -1331,8 +1355,8 @@
                         <div class="column-header" style="background-color: ${columnColor};">
                             <span class="column-title">${column.title}</span>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
-                                <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
+                                ${column.id === 'finished' ? '<button class="column-color-btn" data-column-action="history" title="View History">📜</button>' : ''}
+                                <button class="column-color-btn" data-column-action="color" data-column-id="${column.id}" title="Change color">🎨</button>
                                 <span class="task-count">${columnTasks.length}</span>
                             </div>
                         </div>
@@ -1731,7 +1755,16 @@
         // DUPLICATE TASK
         async function duplicateTask(taskId) {
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task) {
+                console.error('Cannot duplicate - task not found:', taskId);
+                return;
+            }
+
+            // Extra safety check
+            if (!task.position) {
+                console.error('Cannot duplicate - task has no position:', taskId);
+                return;
+            }
 
             try {
                 console.log('📋 Duplicating task:', taskId);
@@ -1744,15 +1777,28 @@
                         notes: task.notes,
                         color: task.color,
                         due_date: task.due_date,
-                        position: { x: task.position.x + 20, y: task.position.y + 20 }
+                        assigned_to: task.assigned_to,
+                        pinned: false,
+                        position: {
+                            x: task.position.x + 20,
+                            y: task.position.y + 20
+                        }
                     })
                 });
 
                 const data = await response.json();
-                if (data.success) {
-                    tasks.push(data.task);
-                    renderBoard();
-                    console.log('✅ Task duplicated successfully');
+                if (data.success && data.task) {
+                    // Only add if not already in array (prevent duplicates)
+                    const exists = tasks.find(t => t.id === data.task.id);
+                    if (!exists) {
+                        tasks.push(data.task);
+                        console.log('✅ Task duplicated successfully');
+                        renderBoard();
+                    } else {
+                        console.warn('Task already exists, skipping duplicate');
+                    }
+                } else {
+                    console.error('Failed to duplicate task:', data);
                 }
             } catch (error) {
                 console.error('❌ Error duplicating task:', error);
