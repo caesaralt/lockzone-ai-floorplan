@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, make_response
 from flask_cors import CORS
 # from flask_sqlalchemy import SQLAlchemy  # Disabled - using JSON files
 from werkzeug.utils import secure_filename
@@ -4064,7 +4064,12 @@ KANBAN_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'kanban_tasks.json')
 @app.route('/kanban')
 def kanban_board():
     """Kanban operations board"""
-    return render_template('kanban.html')
+    response = make_response(render_template('kanban.html'))
+    # Prevent caching to ensure users always get the latest version
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/api/kanban/tasks', methods=['GET', 'POST'])
 def handle_kanban_tasks():
