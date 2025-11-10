@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electrical Mapping - {{ project_name | default('New Project') }}</title>
     <!-- PDF.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" onerror="console.error('❌ Failed to load PDF.js from CDN')"></script>
     <script>
-        // Configure PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        // Configure PDF.js worker - with error handling
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+            console.log('✅ PDF.js loaded and configured');
+        } else {
+            console.error('❌ PDF.js library failed to load! PDF uploads will not work.');
+            console.error('Please check your internet connection or try refreshing the page.');
+        }
     </script>
     <style>
         * {
@@ -2535,11 +2541,21 @@
                 console.log(`📤 Uploading file: ${file.name} (${file.type})`);
 
                 if (file.type === 'application/pdf') {
+                    // Check if PDF.js is available
+                    if (typeof pdfjsLib === 'undefined') {
+                        alert('❌ PDF support is not available. PDF.js library failed to load.\n\nPlease refresh the page or try uploading an image file (PNG/JPG) instead.');
+                        console.error('Cannot process PDF: pdfjsLib is undefined');
+                        return;
+                    }
+
                     // Handle PDF using PDF.js - ENHANCED for multi-page support with HIGHEST QUALITY
+                    console.log('📄 Processing PDF with PDF.js...');
                     const fileReader = new FileReader();
                     fileReader.onload = async function(event) {
                         try {
+                            console.log('📄 Reading PDF data...');
                             const typedarray = new Uint8Array(event.target.result);
+                            console.log('📄 Loading PDF document...');
                             pdfDocument = await pdfjsLib.getDocument(typedarray).promise;
                             totalPages = pdfDocument.numPages;
                             currentPage = 1;
