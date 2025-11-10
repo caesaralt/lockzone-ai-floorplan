@@ -1040,8 +1040,8 @@
         let historyIndex = -1;
         let copiedTask = null;
         let isRendering = false;
-        let isProcessingAction = false; // Prevent simultaneous operations
-        let lastActionTime = 0; // For debouncing
+        let deletingTasks = new Set(); // Track tasks being deleted to prevent double-deletion
+        let duplicatingTasks = new Set(); // Track tasks being duplicated to prevent double-duplication
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
@@ -1810,13 +1810,22 @@
 
         // DELETE TASK (NO CONFIRMATION)
         async function deleteTask(taskId) {
+            // GUARD: Prevent double-deletion
+            if (deletingTasks.has(taskId)) {
+                console.warn('⚠️ Delete already in progress for task:', taskId);
+                return;
+            }
+
             try {
+                // Mark as deleting
+                deletingTasks.add(taskId);
                 console.log('🗑️ Attempting to delete task:', taskId);
 
                 // Save to history before deleting
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) {
-                    console.error('Task not found:', taskId);
+                    console.error('Task not found in local state:', taskId);
+                    deletingTasks.delete(taskId);
                     return;
                 }
 
@@ -1839,11 +1848,20 @@
                 }
             } catch (error) {
                 console.error('❌ Error deleting task:', error);
+            } finally {
+                // Always clean up the lock
+                deletingTasks.delete(taskId);
             }
         }
 
         // DUPLICATE TASK
         async function duplicateTask(taskId) {
+            // GUARD: Prevent double-duplication
+            if (duplicatingTasks.has(taskId)) {
+                console.warn('⚠️ Duplication already in progress for task:', taskId);
+                return;
+            }
+
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
                 console.error('Cannot duplicate - task not found:', taskId);
@@ -1857,7 +1875,10 @@
             }
 
             try {
+                // Mark as duplicating
+                duplicatingTasks.add(taskId);
                 console.log('📋 Duplicating task:', taskId);
+
                 const response = await fetch('/api/kanban/tasks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1892,6 +1913,9 @@
                 }
             } catch (error) {
                 console.error('❌ Error duplicating task:', error);
+            } finally {
+                // Always clean up the lock
+                duplicatingTasks.delete(taskId);
             }
         }
 
