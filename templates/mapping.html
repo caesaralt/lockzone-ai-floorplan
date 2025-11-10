@@ -386,11 +386,18 @@
             <button class="zoom-btn" onclick="zoomOut()">−</button>
             <button class="zoom-btn" onclick="resetView()">⟲</button>
         </div>
+        <div class="page-controls" id="pageControls" style="display: none; align-items: center; gap: 8px; background: #16213e; padding: 5px 12px; border-radius: 6px; border: 2px solid #2c3e50;">
+            <button class="zoom-btn" id="prevPage" onclick="changePage(currentPage - 1)">◀</button>
+            <span style="color: white; font-size: 0.9em;">Page <input type="number" id="pageInput" value="1" min="1" max="1" onchange="jumpToPage(this.value)" style="width: 50px; padding: 4px; background: #2c3e50; border: 1px solid #34495e; border-radius: 4px; color: white; text-align: center;"> of <span id="totalPages">1</span></span>
+            <button class="zoom-btn" id="nextPage" onclick="changePage(currentPage + 1)">▶</button>
+        </div>
         <div>
             <button class="toolbar-btn" onclick="window.location.href='/canvas'">← Canvas</button>
             <button class="toolbar-btn" onclick="importFromTakeoffs()">📥 Import from Takeoffs</button>
             <button class="toolbar-btn" onclick="saveProgress()">💾 Save Progress</button>
             <button class="toolbar-btn" onclick="loadProgress()">📂 Load Progress</button>
+            <button class="toolbar-btn" onclick="undoAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
+            <button class="toolbar-btn" onclick="redoAction()" title="Redo (Ctrl+Y)">↷ Redo</button>
             <button class="toolbar-btn ai" onclick="runAIMapping()">🤖 AI Mapping</button>
             <button class="toolbar-btn success" onclick="exportMapping()">📄 Export PDF</button>
         </div>
@@ -539,6 +546,13 @@
         let scale = 1;
         let isPanning = false;
         let lastPanX = 0, lastPanY = 0;
+        let spacebarPressed = false; // For spacebar + drag pan
+
+        // Multi-page PDF state
+        let pdfDocument = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let pageData = {}; // Store per-page components, wires, etc.
 
         // State
         let floorplanImage = null;
@@ -562,6 +576,15 @@
         let draggingAnnotation = false;
         let draggingEntireWire = false;
         let wireMoveDragOffset = { x: 0, y: 0 };
+
+        // Undo/Redo system
+        let undoStack = [];
+        let redoStack = [];
+        const MAX_UNDO_STACK = 50;
+
+        // Auto-save
+        let autoSaveInterval = null;
+        let lastSaveTime = Date.now();
 
         // Wire types configuration
         let wireTypes = [
@@ -613,6 +636,250 @@
         function updateTransform() {
             canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
             document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+        }
+
+        // ========================================
+        // MULTI-PAGE PDF FUNCTIONS
+        // ========================================
+
+        async function loadPDFPage(pageNum) {
+            if (!pdfDocument) return;
+
+            try {
+                const page = await pdfDocument.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 3.5 });
+
+                // Create temporary canvas to render PDF
+                const tempCanvas = document.createElement('canvas');
+                const tempContext = tempCanvas.getContext('2d');
+                tempCanvas.width = viewport.width;
+                tempCanvas.height = viewport.height;
+
+                // Render PDF page to canvas
+                await page.render({
+                    canvasContext: tempContext,
+                    viewport: viewport
+                }).promise;
+
+                // Convert canvas to image
+                const img = new Image();
+                img.onload = function() {
+                    floorplanImage = img;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    loadPageState(pageNum);
+                    render();
+                };
+                img.src = tempCanvas.toDataURL();
+
+            } catch (error) {
+                console.error(`Error loading page ${pageNum}:`, error);
+                alert(`Failed to load page ${pageNum}`);
+            }
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+
+            // Save current page state
+            savePageState(currentPage);
+
+            // Load new page
+            currentPage = newPage;
+            loadPDFPage(currentPage);
+            updatePageNavigation();
+
+            console.log(`📄 Switched to page ${currentPage}/${totalPages}`);
+        }
+
+        function jumpToPage(pageNum) {
+            const num = parseInt(pageNum);
+            if (isNaN(num) || num < 1 || num > totalPages) {
+                alert(`Invalid page number. Enter a number between 1 and ${totalPages}`);
+                document.getElementById('pageInput').value = currentPage;
+                return;
+            }
+            changePage(num);
+        }
+
+        function updatePageNavigation() {
+            document.getElementById('pageInput').value = currentPage;
+            document.getElementById('prevPage').disabled = (currentPage <= 1);
+            document.getElementById('nextPage').disabled = (currentPage >= totalPages);
+        }
+
+        function savePageState(pageNum) {
+            pageData[pageNum] = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                viewport: { panX, panY, scale }
+            };
+        }
+
+        function loadPageState(pageNum) {
+            if (!pageData[pageNum]) {
+                // Initialize empty page
+                pageData[pageNum] = {
+                    components: [],
+                    wires: [],
+                    circuits: [],
+                    annotations: [],
+                    viewport: { panX: 0, panY: 0, scale: 1 }
+                };
+            }
+
+            const state = pageData[pageNum];
+            components = JSON.parse(JSON.stringify(state.components));
+            wires = JSON.parse(JSON.stringify(state.wires));
+            circuits = JSON.parse(JSON.stringify(state.circuits));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            panX = state.viewport.panX;
+            panY = state.viewport.panY;
+            scale = state.viewport.scale;
+
+            updateTransform();
+        }
+
+        // ========================================
+        // UNDO/REDO SYSTEM
+        // ========================================
+
+        function saveState() {
+            const state = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+
+            undoStack.push(state);
+            if (undoStack.length > MAX_UNDO_STACK) {
+                undoStack.shift(); // Remove oldest
+            }
+            redoStack = []; // Clear redo stack on new action
+        }
+
+        function undoAction() {
+            if (undoStack.length === 0) {
+                console.log('Nothing to undo');
+                return;
+            }
+
+            // Save current state to redo stack
+            const currentState = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            redoStack.push(currentState);
+
+            // Restore previous state
+            const prevState = undoStack.pop();
+            restoreState(prevState);
+
+            console.log('↶ Undo performed');
+        }
+
+        function redoAction() {
+            if (redoStack.length === 0) {
+                console.log('Nothing to redo');
+                return;
+            }
+
+            // Save current state to undo stack
+            const currentState = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            undoStack.push(currentState);
+
+            // Restore next state
+            const nextState = redoStack.pop();
+            restoreState(nextState);
+
+            console.log('↷ Redo performed');
+        }
+
+        function restoreState(state) {
+            components = JSON.parse(JSON.stringify(state.components));
+            wires = JSON.parse(JSON.stringify(state.wires));
+            circuits = JSON.parse(JSON.stringify(state.circuits));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            pageData = JSON.parse(JSON.stringify(state.pageData));
+
+            if (state.currentPage && state.currentPage !== currentPage && pdfDocument) {
+                changePage(state.currentPage);
+            } else {
+                render();
+            }
+        }
+
+        // ========================================
+        // AUTO-SAVE FUNCTIONALITY
+        // ========================================
+
+        function startAutoSave() {
+            // Auto-save every 30 seconds
+            autoSaveInterval = setInterval(() => {
+                autoSaveToLocalStorage();
+            }, 30000);
+            console.log('✅ Auto-save enabled (every 30 seconds)');
+        }
+
+        function autoSaveToLocalStorage() {
+            try {
+                // Save current page first
+                if (currentPage && pageData[currentPage]) {
+                    savePageState(currentPage);
+                }
+
+                const autoSaveData = {
+                    pageData: pageData,
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    timestamp: Date.now(),
+                    version: '2.0'
+                };
+
+                const jsonString = JSON.stringify(autoSaveData);
+                if (jsonString.length < 5000000) { // 5MB limit
+                    localStorage.setItem('mapping_autosave', jsonString);
+                    lastSaveTime = Date.now();
+                    console.log('💾 Auto-saved at ' + new Date().toLocaleTimeString());
+                }
+            } catch (e) {
+                console.warn('Auto-save failed:', e.message);
+            }
+        }
+
+        function loadAutoSave() {
+            try {
+                const savedData = localStorage.getItem('mapping_autosave');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    const savedTime = new Date(data.timestamp).toLocaleString();
+                    if (confirm(`Found auto-saved data from ${savedTime}. Restore it?`)) {
+                        pageData = data.pageData || {};
+                        totalPages = data.totalPages || 1;
+                        currentPage = data.currentPage || 1;
+                        loadPageState(currentPage);
+                        console.log('✅ Auto-save restored');
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load auto-save:', e.message);
+            }
         }
 
         // Layer toggle
@@ -1046,6 +1313,15 @@
             const x = (e.clientX - rect.left) * scaleX;
             const y = (e.clientY - rect.top) * scaleY;
 
+            // SPACEBAR + DRAG = PAN (overrides other tools)
+            if (spacebarPressed) {
+                isPanning = true;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
             if (currentTool === 'select') {
                 // Check if clicking on resize handle first
                 if (selectedComponent) {
@@ -1311,6 +1587,11 @@
         });
 
         canvasWrapper.addEventListener('mouseup', () => {
+            // Save state if something was modified
+            if (isDragging || isResizing || draggingWirePoint || draggingAnnotation || draggingEntireWire) {
+                saveState(); // Enable undo/redo
+            }
+
             isPanning = false;
             isDragging = false;
             isResizing = false;
@@ -1319,6 +1600,11 @@
             draggingAnnotation = false;
             draggingEntireWire = false;
             canvasWrapper.classList.remove('panning');
+
+            // Reset cursor if spacebar still pressed
+            if (spacebarPressed) {
+                canvas.style.cursor = 'grab';
+            }
         });
 
         // Touch state for pinch/pan detection
@@ -1773,7 +2059,19 @@
 
         // Save/Load Progress
         function saveProgress() {
+            // Save current page first
+            if (currentPage && pageData[currentPage]) {
+                savePageState(currentPage);
+            }
+
             const progressData = {
+                // Multi-page support
+                pageData: pageData,
+                currentPage: currentPage,
+                totalPages: totalPages,
+                hasPDF: !!pdfDocument,
+
+                // Legacy support (for single page/image)
                 components: components.map(c => ({
                     ...c,
                     customImageObj: null  // Can't serialize Image objects
@@ -1784,13 +2082,19 @@
                 wireTypes: wireTypes,
                 floorplanImageData: floorplanImage ? canvas.toDataURL('image/jpeg', 0.8) : null,
                 timestamp: Date.now(),
-                version: '1.0'
+                version: '2.0' // Updated version
             };
 
             // Try localStorage first
             try {
-                localStorage.setItem('mapping_progress', JSON.stringify(progressData));
-                alert('✅ Progress saved to browser storage!');
+                const jsonString = JSON.stringify(progressData);
+                if (jsonString.length > 5000000) {
+                    alert('⚠️ Project too large for browser storage (>5MB). Export to file instead.');
+                    downloadProjectFile(progressData);
+                    return;
+                }
+                localStorage.setItem('mapping_progress', jsonString);
+                alert(`✅ Progress saved! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
             } catch (e) {
                 console.error('LocalStorage save failed:', e);
                 // Fallback to API save
@@ -1824,7 +2128,8 @@
                 if (savedData) {
                     const data = JSON.parse(savedData);
                     restoreProgress(data);
-                    alert('✅ Progress loaded from browser storage!');
+                    const pageInfo = data.totalPages > 1 ? ` (${data.totalPages} pages)` : '';
+                    alert('✅ Progress loaded from browser storage!' + pageInfo);
                     return;
                 }
             } catch (e) {
@@ -1847,42 +2152,83 @@
             }
         }
 
-        function restoreProgress(data) {
-            // Restore components
-            components = data.components || [];
+        function downloadProjectFile(data) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mapping-project-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Project exported as JSON file');
+        }
 
-            // Restore custom images
-            components.forEach(comp => {
-                if (comp.customImage) {
+        function restoreProgress(data) {
+            // Check if this is v2.0 (multi-page) or v1.0 (single page)
+            if (data.version === '2.0' && data.pageData) {
+                // NEW FORMAT: Multi-page support
+                pageData = data.pageData || {};
+                totalPages = data.totalPages || 1;
+                currentPage = data.currentPage || 1;
+
+                // Update page navigation
+                if (totalPages > 1) {
+                    document.getElementById('pageControls').style.display = 'flex';
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('pageInput').max = totalPages;
+                    updatePageNavigation();
+                }
+
+                // Load current page state
+                loadPageState(currentPage);
+
+                // Restore floorplan image if available
+                if (data.floorplanImageData) {
                     const img = new Image();
                     img.onload = () => {
-                        comp.customImageObj = img;
+                        floorplanImage = img;
                         render();
                     };
-                    img.src = comp.customImage;
+                    img.src = data.floorplanImageData;
                 }
-            });
+            } else {
+                // OLD FORMAT: Single page (backward compatibility)
+                components = data.components || [];
 
-            // Restore wires, circuits, annotations
-            wires = data.wires || [];
-            circuits = data.circuits || [];
-            annotations = data.annotations || [];
-            wireTypes = data.wireTypes || wireTypes;
+                // Restore custom images
+                components.forEach(comp => {
+                    if (comp.customImage) {
+                        const img = new Image();
+                        img.onload = () => {
+                            comp.customImageObj = img;
+                            render();
+                        };
+                        img.src = comp.customImage;
+                    }
+                });
 
-            // Restore floorplan
-            if (data.floorplanImageData) {
-                const img = new Image();
-                img.onload = () => {
-                    floorplanImage = img;
-                    render();
-                };
-                img.src = data.floorplanImageData;
+                // Restore wires, circuits, annotations
+                wires = data.wires || [];
+                circuits = data.circuits || [];
+                annotations = data.annotations || [];
+                wireTypes = data.wireTypes || wireTypes;
+
+                // Restore floorplan
+                if (data.floorplanImageData) {
+                    const img = new Image();
+                    img.onload = () => {
+                        floorplanImage = img;
+                        render();
+                    };
+                    img.src = data.floorplanImageData;
+                }
             }
 
-            // Update UI
+            // Update UI (common for both formats)
             updateCircuitList();
             updateWireTypesLegend();
             render();
+            console.log('✅ Progress restored');
         }
 
         // Circuit management
@@ -2044,32 +2390,54 @@
             if (!file) return;
 
             if (file.type === 'application/pdf') {
-                // Handle PDF using PDF.js
+                // Handle PDF using PDF.js - ENHANCED for multi-page support
                 const fileReader = new FileReader();
                 fileReader.onload = async function(event) {
                     try {
                         const typedarray = new Uint8Array(event.target.result);
-                        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                        pdfDocument = await pdfjsLib.getDocument(typedarray).promise;
+                        totalPages = pdfDocument.numPages;
+                        currentPage = 1;
 
-                        // Get first page
-                        const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 3.5 });
+                        console.log(`📄 Loaded PDF with ${totalPages} pages`);
 
-                        // Create temporary canvas to render PDF
-                        const tempCanvas = document.createElement('canvas');
-                        const tempContext = tempCanvas.getContext('2d');
-                        tempCanvas.width = viewport.width;
-                        tempCanvas.height = viewport.height;
+                        // Show page controls if multi-page
+                        if (totalPages > 1) {
+                            document.getElementById('pageControls').style.display = 'flex';
+                            document.getElementById('totalPages').textContent = totalPages;
+                            document.getElementById('pageInput').max = totalPages;
+                        }
 
-                        // Render PDF page to canvas
-                        await page.render({
-                            canvasContext: tempContext,
-                            viewport: viewport
-                        }).promise;
+                        // Initialize page data for all pages
+                        for (let i = 1; i <= totalPages; i++) {
+                            if (!pageData[i]) {
+                                pageData[i] = {
+                                    components: [],
+                                    wires: [],
+                                    circuits: [],
+                                    annotations: [],
+                                    viewport: { panX: 0, panY: 0, scale: 1 }
+                                };
+                            }
+                        }
 
-                        // Convert canvas to image
-                        const img = new Image();
-                        img.onload = function() {
+                        // Load first page
+                        await loadPDFPage(1);
+                        updatePageNavigation();
+                        saveState(); // Save initial state to undo stack
+
+                    } catch (error) {
+                        console.error('Error loading PDF:', error);
+                        alert('Failed to load PDF: ' + error.message);
+                    }
+                };
+                fileReader.readAsArrayBuffer(file);
+            } else {
+                // Handle regular image
+                const fileReader = new FileReader();
+                fileReader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
                             floorplanImage = img;
                             render();
                             alert('✅ PDF loaded successfully!');
@@ -2460,36 +2828,52 @@
         }
 
         document.addEventListener('keydown', (e) => {
+            const isInputFocused = document.activeElement.tagName === 'INPUT' ||
+                                  document.activeElement.tagName === 'TEXTAREA';
+
+            // Spacebar - Enable panning mode
+            if (e.key === ' ' && !isInputFocused) {
+                e.preventDefault();
+                spacebarPressed = true;
+                canvas.style.cursor = 'grab';
+            }
+
+            // Page Up/Down - Navigate pages
+            if (e.key === 'PageUp' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage - 1);
+            } else if (e.key === 'PageDown' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage + 1);
+            }
+
             // Ctrl+C - Copy
-            if (e.ctrlKey && e.key === 'c' && !e.shiftKey) {
-                if (document.activeElement.tagName !== 'INPUT' &&
-                    document.activeElement.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    copyComponent();
-                }
+            if (e.ctrlKey && e.key === 'c' && !e.shiftKey && !isInputFocused) {
+                e.preventDefault();
+                copyComponent();
             }
             // Ctrl+V - Paste
-            else if (e.ctrlKey && e.key === 'v') {
-                if (document.activeElement.tagName !== 'INPUT' &&
-                    document.activeElement.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    pasteComponent();
-                }
+            else if (e.ctrlKey && e.key === 'v' && !isInputFocused) {
+                e.preventDefault();
+                pasteComponent();
             }
-            // Ctrl+Z - Undo
+            // Ctrl+Z - Undo (UPDATED to use new undoAction)
             else if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
-                undo();
+                undoAction();
             }
-            // Ctrl+Y or Ctrl+Shift+Z - Redo
+            // Ctrl+Y or Ctrl+Shift+Z - Redo (UPDATED to use new redoAction)
             else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
                 e.preventDefault();
-                redo();
+                redoAction();
+            }
+            // Ctrl+S - Save
+            else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveProgress();
             }
             // Ctrl+A - Select All
-            else if (e.ctrlKey && e.key === 'a') {
-                if (document.activeElement.tagName !== 'INPUT' &&
-                    document.activeElement.tagName !== 'TEXTAREA') {
+            else if (e.ctrlKey && e.key === 'a' && !isInputFocused) {
                     e.preventDefault();
                     selectAllComponents();
                 }
@@ -2639,6 +3023,49 @@
         - 💾 Save Progress: Save all work to browser/server
         - 📂 Load Progress: Restore previous saved work
         - 📄 Export PDF: Generate 2-page PDF report
+        `);
+
+        // ========================================
+        // ENHANCED KEYBOARD SHORTCUTS - KEYUP
+        // ========================================
+
+        document.addEventListener('keyup', (e) => {
+            // Spacebar - Disable panning mode
+            if (e.key === ' ') {
+                spacebarPressed = false;
+                canvas.style.cursor = currentTool === 'select' ? 'default' : 'crosshair';
+            }
+        });
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+
+        // Check for auto-saved data on page load
+        setTimeout(() => {
+            loadAutoSave();
+        }, 1000);
+
+        // Start auto-save
+        startAutoSave();
+
+        // Log initialization complete
+        console.log(`
+        ===================================
+        ⚡ ELECTRICAL MAPPING APP v2.0
+        ===================================
+        ✅ Multi-page PDF support
+        ✅ Undo/Redo (Ctrl+Z / Ctrl+Y)
+        ✅ Auto-save (every 30s)
+        ✅ Keyboard shortcuts:
+           • Spacebar + Drag = Pan
+           • Page Up/Down = Navigate pages
+           • Ctrl+S = Save
+           • Ctrl+Z/Y = Undo/Redo
+           • Ctrl+C/V = Copy/Paste
+           • Delete = Delete component
+        ✅ Enhanced canvas controls
+        ===================================
         `);
     </script>
 
