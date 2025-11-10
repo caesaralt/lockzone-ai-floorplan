@@ -1039,6 +1039,8 @@
         let actionHistory = [];
         let historyIndex = -1;
         let copiedTask = null;
+        let isRendering = false;
+        let renderTimeout = null;
 
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
@@ -1058,11 +1060,72 @@
         // INITIALIZE
         async function init() {
             await loadTasks();
+            await fixOverlappingTasks(); // Fix positions once on load
             loadColumnColors();
             renderBoard();
             setupColorPicker();
             setupColumnColorPicker();
             setupKeyboardShortcuts();
+        }
+
+        // FIX OVERLAPPING TASKS - Run once on load
+        async function fixOverlappingTasks() {
+            const taskHeight = 120;
+            const taskPadding = 10;
+            const tasksToSave = [];
+
+            // Group tasks by column
+            const tasksByColumn = {};
+            columns.forEach(col => {
+                tasksByColumn[col.id] = tasks.filter(t => t.column === col.id);
+            });
+
+            // Fix each column
+            for (const [columnId, columnTasks] of Object.entries(tasksByColumn)) {
+                if (columnTasks.length === 0) continue;
+
+                // Sort: pinned first, then by Y position
+                columnTasks.sort((a, b) => {
+                    if (a.pinned && !b.pinned) return -1;
+                    if (!a.pinned && b.pinned) return 1;
+                    return (a.position?.y || 0) - (b.position?.y || 0);
+                });
+
+                // Check for overlaps and fix them
+                let currentY = 10;
+                for (const task of columnTasks) {
+                    let changed = false;
+
+                    if (!task.position) {
+                        task.position = { x: 10, y: currentY };
+                        changed = true;
+                    } else if (task.position.y < currentY) {
+                        // Overlap detected - fix it
+                        console.log(`🔧 Fixing overlap for task ${task.id}: moving from ${task.position.y} to ${currentY}`);
+                        task.position.y = currentY;
+                        changed = true;
+                    } else {
+                        currentY = task.position.y;
+                    }
+
+                    if (changed) {
+                        tasksToSave.push(task);
+                    }
+
+                    currentY = task.position.y + taskHeight + taskPadding;
+                }
+            }
+
+            // Save only the tasks that were modified
+            if (tasksToSave.length > 0) {
+                console.log(`💾 Saving ${tasksToSave.length} fixed task positions`);
+                for (const task of tasksToSave) {
+                    await updateTask(task.id, task, true); // true = silent update, no render
+                }
+                console.log('✅ All overlapping tasks fixed and saved');
+            } else {
+                console.log('✅ No overlapping tasks found');
+            }
         }
 
         // LOAD COLUMN COLORS
@@ -1116,7 +1179,7 @@
             }
         }
 
-        // RENDER BOARD
+        // RENDER BOARD - Throttled to prevent infinite loops
         function renderBoard() {
             // Prevent rendering if currently dragging to avoid chaos
             if (draggedTask) {
@@ -1124,83 +1187,71 @@
                 return;
             }
 
-            const container = document.getElementById('kanbanContainer');
-            container.innerHTML = '';
+            // Prevent re-entrant renders
+            if (isRendering) {
+                console.log('⚠️ Skipping render - already rendering');
+                return;
+            }
 
-            columns.forEach(column => {
-                const columnEl = document.createElement('div');
-                columnEl.className = 'kanban-column';
-                columnEl.dataset.columnId = column.id;
+            // Throttle renders - max once per 100ms
+            if (renderTimeout) {
+                clearTimeout(renderTimeout);
+            }
 
-                // Get tasks for this column
-                let columnTasks = tasks.filter(t => t.column === column.id);
+            renderTimeout = setTimeout(() => {
+                try {
+                    isRendering = true;
 
-                // Auto-arrange tasks to prevent overlap (pinned tasks first, then by position)
-                columnTasks = autoArrangeTasks(columnTasks);
+                    const container = document.getElementById('kanbanContainer');
+                    container.innerHTML = '';
 
-                const columnColor = columnColors[column.id] || 'transparent';
+                    columns.forEach(column => {
+                        const columnEl = document.createElement('div');
+                        columnEl.className = 'kanban-column';
+                        columnEl.dataset.columnId = column.id;
 
-                columnEl.innerHTML = `
-                    <div class="column-header" style="background-color: ${columnColor};">
-                        <span class="column-title">${column.title}</span>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
-                            <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
-                            <span class="task-count">${columnTasks.length}</span>
-                        </div>
-                    </div>
-                    <div class="column-content" data-column="${column.id}"></div>
-                `;
+                        // Get tasks for this column - NO auto-arrange here
+                        const columnTasks = tasks
+                            .filter(t => t.column === column.id)
+                            .sort((a, b) => {
+                                if (a.pinned && !b.pinned) return -1;
+                                if (!a.pinned && b.pinned) return 1;
+                                return (a.position?.y || 0) - (b.position?.y || 0);
+                            });
 
-                container.appendChild(columnEl);
+                        const columnColor = columnColors[column.id] || 'transparent';
 
-                // Render tasks in column
-                const contentEl = columnEl.querySelector('.column-content');
-                columnTasks.forEach(task => {
-                    renderTask(task, contentEl);
-                });
+                        columnEl.innerHTML = `
+                            <div class="column-header" style="background-color: ${columnColor};">
+                                <span class="column-title">${column.title}</span>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    ${column.id === 'finished' ? '<button class="column-color-btn" onclick="openHistoryModal()" title="View History">📜</button>' : ''}
+                                    <button class="column-color-btn" onclick="openColumnColorModal('${column.id}')" title="Change color">🎨</button>
+                                    <span class="task-count">${columnTasks.length}</span>
+                                </div>
+                            </div>
+                            <div class="column-content" data-column="${column.id}"></div>
+                        `;
 
-                // Setup drop zone
-                setupDropZone(contentEl);
-            });
+                        container.appendChild(columnEl);
 
-            // Update task counts
-            updateTaskCounts();
-        }
+                        // Render tasks in column
+                        const contentEl = columnEl.querySelector('.column-content');
+                        columnTasks.forEach(task => {
+                            renderTask(task, contentEl);
+                        });
 
-        // AUTO-ARRANGE TASKS to prevent overlap
-        function autoArrangeTasks(columnTasks) {
-            if (columnTasks.length === 0) return columnTasks;
+                        // Setup drop zone
+                        setupDropZone(contentEl);
+                    });
 
-            const taskHeight = 120; // Approximate task card height
-            const taskPadding = 10; // Space between tasks
-            const centerX = 10; // Default X position (centered in renderTask)
-
-            // Sort: pinned tasks first, then by Y position
-            columnTasks.sort((a, b) => {
-                if (a.pinned && !b.pinned) return -1;
-                if (!a.pinned && b.pinned) return 1;
-                return (a.position?.y || 0) - (b.position?.y || 0);
-            });
-
-            // Adjust positions to prevent overlap
-            let currentY = 10; // Start from top with padding
-            columnTasks.forEach((task, index) => {
-                if (!task.position) {
-                    task.position = { x: centerX, y: currentY };
-                } else {
-                    // If task position would overlap with previous tasks, move it down
-                    if (task.position.y < currentY) {
-                        task.position.y = currentY;
-                    } else {
-                        currentY = task.position.y;
-                    }
+                    // Update task counts
+                    updateTaskCounts();
+                } finally {
+                    isRendering = false;
+                    renderTimeout = null;
                 }
-                // Next task should be at least one task height + padding below
-                currentY = task.position.y + taskHeight + taskPadding;
-            });
-
-            return columnTasks;
+            }, 100);
         }
 
         // RENDER TASK
@@ -1287,13 +1338,16 @@
 
         // SETUP TASK DRAG
         function setupTaskDrag(taskEl) {
-            // Remove any existing listeners to prevent duplicates
-            taskEl.removeEventListener('mousedown', startDrag);
-            taskEl.removeEventListener('touchstart', startDrag);
+            // Mark that we've already set up this element
+            if (taskEl.dataset.dragSetup === 'true') {
+                return; // Already set up, skip
+            }
 
-            // Add fresh listeners
-            taskEl.addEventListener('mousedown', startDrag);
-            taskEl.addEventListener('touchstart', startDrag, { passive: false });
+            taskEl.dataset.dragSetup = 'true';
+
+            // Add listeners only once
+            taskEl.addEventListener('mousedown', startDrag, { once: false });
+            taskEl.addEventListener('touchstart', startDrag, { passive: false, once: false });
         }
 
         function startDrag(e) {
@@ -1522,9 +1576,12 @@
         }
 
         // UPDATE TASK
-        async function updateTask(taskId, updates) {
+        async function updateTask(taskId, updates, silent = false) {
             try {
-                console.log('💾 Auto-saving task:', taskId, updates);
+                if (!silent) {
+                    console.log('💾 Auto-saving task:', taskId);
+                }
+
                 const response = await fetch(`/api/kanban/tasks/${taskId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -1537,7 +1594,9 @@
                     if (idx !== -1) {
                         tasks[idx] = data.task;
                     }
-                    console.log('✅ Task saved successfully');
+                    if (!silent) {
+                        console.log('✅ Task saved successfully');
+                    }
                 } else {
                     console.error('❌ Failed to save task');
                 }
