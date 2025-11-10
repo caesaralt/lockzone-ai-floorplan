@@ -398,6 +398,7 @@
             <button class="toolbar-btn" onclick="loadProgress()">📂 Load Progress</button>
             <button class="toolbar-btn" onclick="undoAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
             <button class="toolbar-btn" onclick="redoAction()" title="Redo (Ctrl+Y)">↷ Redo</button>
+            <button class="toolbar-btn" id="snapGridBtn" onclick="toggleSnapGrid()">📐 Snap: OFF</button>
             <button class="toolbar-btn ai" onclick="runAIMapping()">🤖 AI Mapping</button>
             <button class="toolbar-btn success" onclick="exportMapping()">📄 Export PDF</button>
         </div>
@@ -547,6 +548,10 @@
         let isPanning = false;
         let lastPanX = 0, lastPanY = 0;
         let spacebarPressed = false; // For spacebar + drag pan
+
+        // Snap-to-grid state
+        let snapToGrid = false;
+        let gridSize = 20; // pixels
 
         // Multi-page PDF state
         let pdfDocument = null;
@@ -837,6 +842,29 @@
             console.log('✅ Auto-save enabled (every 30 seconds)');
         }
 
+        function toggleSnapGrid() {
+            snapToGrid = !snapToGrid;
+            const btn = document.getElementById('snapGridBtn');
+            if (snapToGrid) {
+                btn.textContent = '📐 Snap: ON';
+                btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+                console.log(`✅ Snap-to-grid enabled (${gridSize}px)`);
+            } else {
+                btn.textContent = '📐 Snap: OFF';
+                btn.style.background = '';
+                console.log('❌ Snap-to-grid disabled');
+            }
+            render();
+        }
+
+        function snapToGridPoint(x, y) {
+            if (!snapToGrid) return { x, y };
+            return {
+                x: Math.round(x / gridSize) * gridSize,
+                y: Math.round(y / gridSize) * gridSize
+            };
+        }
+
         function autoSaveToLocalStorage() {
             try {
                 // Save current page first
@@ -906,21 +934,23 @@
                 ctx.globalAlpha = 1;
             }
 
-            // Draw grid for precision
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 0.5;
-            const gridSize = 50;
-            for (let x = 0; x < canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+            // Draw grid if snap-to-grid is enabled
+            if (snapToGrid) {
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
             }
 
             // Draw wires (behind components)
@@ -1354,8 +1384,13 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            let x = (e.clientX - rect.left) * scaleX;
+            let y = (e.clientY - rect.top) * scaleY;
+
+            // Apply snap-to-grid
+            const snapped = snapToGridPoint(x, y);
+            x = snapped.x;
+            y = snapped.y;
 
             // SPACEBAR + DRAG = PAN (overrides other tools)
             if (spacebarPressed) {
@@ -1548,8 +1583,15 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            let x = (e.clientX - rect.left) * scaleX;
+            let y = (e.clientY - rect.top) * scaleY;
+
+            // Apply snap-to-grid when drawing wires
+            if (currentTool === 'wire' || draggingWirePoint) {
+                const snapped = snapToGridPoint(x, y);
+                x = snapped.x;
+                y = snapped.y;
+            }
 
             currentMouseX = x;
             currentMouseY = y;

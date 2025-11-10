@@ -469,6 +469,7 @@
             <button class="toolbar-btn" onclick="loadProgress()">📂 Load</button>
             <button class="toolbar-btn" onclick="undoAction()">↶ Undo</button>
             <button class="toolbar-btn" onclick="redoAction()">↷ Redo</button>
+            <button class="toolbar-btn" id="snapGridBtn" onclick="toggleSnapGrid()">📐 Snap: OFF</button>
             <button class="toolbar-btn" onclick="saveToMapping()">Export to Mapping Tool →</button>
             <button class="toolbar-btn primary" onclick="exportResults()">💾 Export & Generate Quote</button>
         </div>
@@ -683,6 +684,10 @@
         let polygonPoints = [];
         let freehandPoints = [];
 
+        // Snap-to-grid state
+        let snapToGrid = false;
+        let gridSize = 20; // pixels
+
         // Undo/Redo system
         let undoStack = [];
         let redoStack = [];
@@ -707,6 +712,29 @@
 
             // Draw floor plan
             ctx.drawImage(floorplanImage, 0, 0);
+
+            // Draw grid if snap-to-grid is enabled
+            if (snapToGrid) {
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+
+                // Vertical lines
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+
+                // Horizontal lines
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
 
             // Draw symbols
             symbols.forEach(symbol => {
@@ -939,6 +967,29 @@
             console.log(`🎨 Markup color set to ${color}`);
         }
 
+        function toggleSnapGrid() {
+            snapToGrid = !snapToGrid;
+            const btn = document.getElementById('snapGridBtn');
+            if (snapToGrid) {
+                btn.textContent = '📐 Snap: ON';
+                btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+                console.log(`✅ Snap-to-grid enabled (${gridSize}px)`);
+            } else {
+                btn.textContent = '📐 Snap: OFF';
+                btn.style.background = '';
+                console.log('❌ Snap-to-grid disabled');
+            }
+            render();
+        }
+
+        function snapToGridPoint(x, y) {
+            if (!snapToGrid) return { x, y };
+            return {
+                x: Math.round(x / gridSize) * gridSize,
+                y: Math.round(y / gridSize) * gridSize
+            };
+        }
+
         function selectSymbolType(type, name) {
             currentTool = 'place';
             setTool('place');
@@ -1088,8 +1139,14 @@
         // Canvas interactions
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width * canvas.width;
-            const y = (e.clientY - rect.top) / rect.height * canvas.height;
+            let x = (e.clientX - rect.left) / rect.width * canvas.width;
+            let y = (e.clientY - rect.top) / rect.height * canvas.height;
+
+            // Apply snap-to-grid
+            const snapped = snapToGridPoint(x, y);
+            x = snapped.x;
+            y = snapped.y;
+
             const normX = (e.clientX - rect.left) / canvas.width;
             const normY = (e.clientY - rect.top) / canvas.height;
 
@@ -1189,8 +1246,16 @@
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width * canvas.width;
-            const y = (e.clientY - rect.top) / rect.height * canvas.height;
+            let x = (e.clientX - rect.left) / rect.width * canvas.width;
+            let y = (e.clientY - rect.top) / rect.height * canvas.height;
+
+            // Apply snap-to-grid for drawing operations
+            if (isDrawingMarkup || currentTool === 'polygon') {
+                const snapped = snapToGridPoint(x, y);
+                x = snapped.x;
+                y = snapped.y;
+            }
+
             const normX = (e.clientX - rect.left) / canvas.width;
             const normY = (e.clientY - rect.top) / canvas.height;
 
