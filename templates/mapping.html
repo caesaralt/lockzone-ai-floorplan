@@ -939,12 +939,24 @@
                         ctx.setLineDash([]);
                         ctx.beginPath();
                         ctx.moveTo(wire.from.x, wire.from.y);
+
+                        // ENHANCED: Draw curved selection highlight
                         if (wire.controlPoints && wire.controlPoints.length > 0) {
-                            wire.controlPoints.forEach(pt => {
-                                ctx.lineTo(pt.x, pt.y);
-                            });
+                            for (let i = 0; i < wire.controlPoints.length; i++) {
+                                const cp = wire.controlPoints[i];
+                                if (i === wire.controlPoints.length - 1) {
+                                    ctx.quadraticCurveTo(cp.x, cp.y, wire.to.x, wire.to.y);
+                                } else {
+                                    const nextCp = wire.controlPoints[i + 1];
+                                    const midX = (cp.x + nextCp.x) / 2;
+                                    const midY = (cp.y + nextCp.y) / 2;
+                                    ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+                                }
+                            }
+                        } else {
+                            ctx.lineTo(wire.to.x, wire.to.y);
                         }
-                        ctx.lineTo(wire.to.x, wire.to.y);
+
                         ctx.stroke();
                         ctx.globalAlpha = 1;
                     }
@@ -955,24 +967,56 @@
                     ctx.beginPath();
                     ctx.moveTo(wire.from.x, wire.from.y);
 
-                    // Draw with control points if they exist
+                    // ENHANCED: Draw curved path with Bezier curves
                     if (wire.controlPoints && wire.controlPoints.length > 0) {
-                        wire.controlPoints.forEach(pt => {
-                            ctx.lineTo(pt.x, pt.y);
-                        });
+                        // Create smooth curve through control points
+                        for (let i = 0; i < wire.controlPoints.length; i++) {
+                            const cp = wire.controlPoints[i];
+                            if (i === wire.controlPoints.length - 1) {
+                                // Last control point: curve to endpoint
+                                ctx.quadraticCurveTo(cp.x, cp.y, wire.to.x, wire.to.y);
+                            } else {
+                                // Curve to midpoint between this and next control point
+                                const nextCp = wire.controlPoints[i + 1];
+                                const midX = (cp.x + nextCp.x) / 2;
+                                const midY = (cp.y + nextCp.y) / 2;
+                                ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+                            }
+                        }
+                    } else {
+                        // Straight line if no control points
+                        ctx.lineTo(wire.to.x, wire.to.y);
                     }
-                    ctx.lineTo(wire.to.x, wire.to.y);
                     ctx.stroke();
 
-                    // Draw control points as small circles
-                    if (wire.controlPoints && wire.controlPoints.length > 0) {
+                    // Draw control point handles if wire is selected
+                    if (isWireSelected && wire.controlPoints && wire.controlPoints.length > 0) {
                         wire.controlPoints.forEach((pt, idx) => {
+                            // Draw draggable handle
                             ctx.fillStyle = '#3498db';
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 3;
                             ctx.beginPath();
-                            ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+                            ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
                             ctx.fill();
+                            ctx.stroke();
+
+                            // Draw handle number
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 10px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText((idx + 1).toString(), pt.x, pt.y);
+                        });
+                    } else if (wire.controlPoints && wire.controlPoints.length > 0) {
+                        // Show small circles when not selected
+                        wire.controlPoints.forEach((pt) => {
+                            ctx.fillStyle = '#3498db';
                             ctx.strokeStyle = '#ffffff';
                             ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+                            ctx.fill();
                             ctx.stroke();
                         });
                     }
@@ -1604,6 +1648,39 @@
             // Reset cursor if spacebar still pressed
             if (spacebarPressed) {
                 canvas.style.cursor = 'grab';
+            }
+        });
+
+        // DOUBLE-CLICK: Add control point to wire for bending
+        canvasWrapper.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check if double-clicking on a wire
+            const wireIdx = getWireAtPoint(x, y);
+            if (wireIdx !== null) {
+                const wire = wires[wireIdx];
+
+                // Initialize control points array if it doesn't exist
+                if (!wire.controlPoints) {
+                    wire.controlPoints = [];
+                }
+
+                // Add control point at click location
+                wire.controlPoints.push({ x, y });
+
+                // Select the wire
+                selectedWireForMove = wire;
+                selectedComponent = null;
+                selectedAnnotation = null;
+
+                render();
+                saveState(); // Enable undo
+
+                console.log(`✅ Added control point to wire (total: ${wire.controlPoints.length})`);
             }
         });
 
