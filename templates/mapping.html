@@ -1397,7 +1397,7 @@
             }
         });
 
-        // Mouse wheel zoom (only for mouse, not trackpad two-finger)
+        // Mouse wheel and trackpad handling
         canvasWrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
 
@@ -1409,9 +1409,14 @@
                     zoomOut();
                 }
             }
-            // Regular mouse wheel zoom
-            else if (Math.abs(e.deltaY) > 0 && Math.abs(e.deltaX) === 0) {
-                // Only zoom if it's pure vertical scroll (mouse wheel)
+            // Two-finger pan on trackpad (has both deltaX and deltaY)
+            else if (Math.abs(e.deltaX) > 0) {
+                panX -= e.deltaX;
+                panY -= e.deltaY;
+                updateTransform();
+            }
+            // Regular mouse wheel zoom (pure vertical scroll only)
+            else if (Math.abs(e.deltaY) > 0) {
                 if (e.deltaY < 0) {
                     zoomIn();
                 } else {
