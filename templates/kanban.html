@@ -934,8 +934,8 @@
             <h1 class="header-title">📋 Operations Board</h1>
         </div>
         <div class="header-right">
-            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search tasks..." oninput="searchTasks(this.value)">
-            <button class="add-task-btn" onclick="addTaskToTodo()">+ Add Task</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search tasks..." data-action="search">
+            <button class="add-task-btn" data-action="add-task">+ Add Task</button>
         </div>
     </div>
 
@@ -949,10 +949,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Task Notes</h2>
-                <button class="modal-close" onclick="closeNotesModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-notes">Close</button>
             </div>
             <textarea class="notes-textarea" id="notesTextarea" placeholder="Add notes for this task..."></textarea>
-            <button class="save-notes-btn" onclick="saveNotes()">Save Notes</button>
+            <button class="save-notes-btn" data-modal-action="save-notes">Save Notes</button>
         </div>
     </div>
 
@@ -961,7 +961,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Choose Color</h2>
-                <button class="modal-close" onclick="closeColorModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-color">Close</button>
             </div>
             <div class="color-picker-grid" id="colorPickerGrid"></div>
         </div>
@@ -972,11 +972,11 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Set Due Date</h2>
-                <button class="modal-close" onclick="closeDateModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-date">Close</button>
             </div>
             <input type="date" class="date-picker-input" id="datePicker" />
-            <button class="save-notes-btn" onclick="saveDueDate()">Save Date</button>
-            <button class="save-notes-btn" onclick="removeDueDate()" style="background: #e74c3c; margin-top: 8px;">Remove Date</button>
+            <button class="save-notes-btn" data-modal-action="save-date">Save Date</button>
+            <button class="save-notes-btn" data-modal-action="remove-date" style="background: #e74c3c; margin-top: 8px;">Remove Date</button>
         </div>
     </div>
 
@@ -985,7 +985,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Choose Column Color</h2>
-                <button class="modal-close" onclick="closeColumnColorModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-column-color">Close</button>
             </div>
             <div class="color-picker-grid" id="columnColorPickerGrid"></div>
         </div>
@@ -996,20 +996,20 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Assign To</h2>
-                <button class="modal-close" onclick="closeAssignModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-assign">Close</button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
-                <button class="save-notes-btn" onclick="assignTask('Arian')">👤 Arian</button>
-                <button class="save-notes-btn" onclick="assignTask('Tayla')">👤 Tayla</button>
-                <button class="save-notes-btn" onclick="assignTask('George')">👤 George</button>
-                <button class="save-notes-btn" onclick="assignTask('Thim')">👤 Thim</button>
-                <button class="save-notes-btn" onclick="assignTask('Caesar')">👤 Caesar</button>
-                <button class="save-notes-btn" onclick="showCustomAssignInput()">👤 Other...</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="Arian">👤 Arian</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="Tayla">👤 Tayla</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="George">👤 George</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="Thim">👤 Thim</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="Caesar">👤 Caesar</button>
+                <button class="save-notes-btn" data-modal-action="show-custom-assign">👤 Other...</button>
                 <div id="customAssignInput" style="display: none; margin-top: 8px;">
                     <input type="text" class="task-input" id="customAssignName" placeholder="Enter name..." style="margin-bottom: 8px;" />
-                    <button class="save-notes-btn" onclick="assignCustom()">Assign</button>
+                    <button class="save-notes-btn" data-modal-action="assign-custom">Assign</button>
                 </div>
-                <button class="save-notes-btn" onclick="assignTask(null)" style="margin-top: 8px;">❌ Remove Assignment</button>
+                <button class="save-notes-btn" data-modal-action="assign" data-assignee="null" style="margin-top: 8px;">❌ Remove Assignment</button>
             </div>
         </div>
     </div>
@@ -1019,7 +1019,7 @@
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
                 <h2 class="modal-title">📜 Task History</h2>
-                <button class="modal-close" onclick="closeHistoryModal()">Close</button>
+                <button class="modal-close" data-modal-action="close-history">Close</button>
             </div>
             <div id="historyContent" style="max-height: 60vh; overflow-y: auto;">
                 <p style="color: #95a5a6; text-align: center; padding: 40px;">Loading history...</p>
@@ -1064,6 +1064,7 @@
             await fixOverlappingTasks(); // Fix positions once on load
             loadColumnColors();
             setupDragListeners(); // Set up ONCE using event delegation
+            setupGlobalEventDelegation(); // Set up global event handlers ONCE
             renderBoard();
             setupColorPicker();
             setupColumnColorPicker();
@@ -1085,6 +1086,95 @@
             container.addEventListener('blur', handleContentBlur, true);
 
             console.log('✅ All event listeners set up using event delegation');
+        }
+
+        // Setup global event delegation for header, modals, and color pickers
+        function setupGlobalEventDelegation() {
+            // Handle header actions
+            document.addEventListener('input', (e) => {
+                if (e.target.dataset.action === 'search') {
+                    searchTasks(e.target.value);
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const target = e.target;
+
+                // Handle header add task button
+                if (target.dataset.action === 'add-task') {
+                    addTaskToTodo();
+                    return;
+                }
+
+                // Handle modal actions
+                const modalAction = target.dataset.modalAction;
+                if (modalAction) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    switch(modalAction) {
+                        case 'close-notes':
+                            closeNotesModal();
+                            break;
+                        case 'save-notes':
+                            saveNotes();
+                            break;
+                        case 'close-color':
+                            closeColorModal();
+                            break;
+                        case 'close-date':
+                            closeDateModal();
+                            break;
+                        case 'save-date':
+                            saveDueDate();
+                            break;
+                        case 'remove-date':
+                            removeDueDate();
+                            break;
+                        case 'close-column-color':
+                            closeColumnColorModal();
+                            break;
+                        case 'close-assign':
+                            closeAssignModal();
+                            break;
+                        case 'assign':
+                            const assignee = target.dataset.assignee;
+                            assignTask(assignee === 'null' ? null : assignee);
+                            break;
+                        case 'show-custom-assign':
+                            showCustomAssignInput();
+                            break;
+                        case 'assign-custom':
+                            assignCustom();
+                            break;
+                        case 'close-history':
+                            closeHistoryModal();
+                            break;
+                        case 'restore-task':
+                            const taskId = target.dataset.taskId;
+                            if (taskId) restoreTask(taskId);
+                            break;
+                    }
+                    return;
+                }
+
+                // Handle color picker actions
+                const colorAction = target.dataset.colorAction;
+                if (colorAction) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const color = target.dataset.color;
+                    if (colorAction === 'select-task-color') {
+                        selectColor(color);
+                    } else if (colorAction === 'select-column-color') {
+                        selectColumnColor(color);
+                    }
+                    return;
+                }
+            });
+
+            console.log('✅ Global event delegation set up');
         }
 
         // Handle blur on contenteditable
@@ -2133,7 +2223,8 @@
                 const option = document.createElement('div');
                 option.className = 'color-option';
                 option.style.backgroundColor = color;
-                option.onclick = () => selectColor(color);
+                option.dataset.color = color;
+                option.dataset.colorAction = 'select-task-color';
                 grid.appendChild(option);
             });
         }
@@ -2228,7 +2319,8 @@
                 const option = document.createElement('div');
                 option.className = 'color-option';
                 option.style.backgroundColor = color;
-                option.onclick = () => selectColumnColor(color);
+                option.dataset.color = color;
+                option.dataset.colorAction = 'select-column-color';
                 grid.appendChild(option);
             });
         }
@@ -2400,7 +2492,7 @@
                                         Archived: ${task.archived_at ? formatDateAustralian(task.archived_at) : 'Unknown'}
                                     </div>
                                 </div>
-                                <button class="save-notes-btn" onclick="restoreTask('${task.id}')" style="padding: 8px 16px; font-size: 0.85em;">
+                                <button class="save-notes-btn" data-modal-action="restore-task" data-task-id="${task.id}" style="padding: 8px 16px; font-size: 0.85em;">
                                     ↩️ Restore
                                 </button>
                             </div>
