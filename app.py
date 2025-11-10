@@ -1721,6 +1721,391 @@ def ai_chat():
             'error': str(e)
         }), 500
 
+# ============================================================================
+# BOARD BUILDER - LOXONE BOARD DESIGN TOOL
+# ============================================================================
+
+@app.route('/board-builder')
+def board_builder_page():
+    """Loxone Board Builder interface"""
+    session_id = request.args.get('session')
+    project_name = 'New Loxone Board'
+
+    if session_id:
+        session_data = load_session_data(session_id)
+        if session_data:
+            project_name = session_data.get('project_name', 'Loxone Board')
+
+    response = make_response(render_template('board_builder.html', project_name=project_name))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@app.route('/api/board-builder/generate', methods=['POST'])
+def generate_board_with_ai():
+    """AI-powered Loxone board generation"""
+    try:
+        data = request.get_json()
+        requirements = data.get('requirements', '')
+        automation_types = data.get('automationTypes', [])
+        existing_components = data.get('existingComponents', [])
+
+        # Build AI prompt for board generation
+        prompt = f"""You are an expert Loxone system designer. Generate a complete Loxone board configuration based on these requirements:
+
+REQUIREMENTS:
+{requirements}
+
+AUTOMATION TYPES:
+{', '.join(automation_types)}
+
+Generate a professional Loxone board layout with:
+1. Appropriate Miniserver (Gen 2 or Go based on scale)
+2. Required extensions (Relay, Dimmer, Air Base, etc.)
+3. Input/output modules as needed
+4. Power supplies and communication infrastructure
+5. Proper connections between components
+
+Consider:
+- Typical component counts for each automation type
+- Standard Loxone architecture best practices
+- Cost-effective component selection
+- Proper power distribution
+- Scalability
+
+Return a JSON configuration with components array containing:
+- type (component type like 'miniserver', 'relay-extension', etc.)
+- x, y (position coordinates, distributed evenly)
+- properties (name, notes)
+
+Example component types: miniserver, miniserver-go, extension, relay-extension, dimmer-extension, digital-input, analog-input, relay-output, power-supply, air-base, dmx-extension, modbus
+
+Format response as JSON with structure:
+{{
+    "components": [
+        {{"type": "miniserver", "x": 100, "y": 100, "properties": {{"name": "Main Controller", "notes": "Central hub"}}}},
+        ...
+    ],
+    "connections": [],
+    "reasoning": "Explanation of design choices"
+}}"""
+
+        # Call OpenAI API for board generation
+        openai_api_key = os.environ.get('OPENAI_API_KEY')
+
+        if not openai_api_key:
+            # Fallback: Generate basic board structure without AI
+            return generate_basic_board(automation_types)
+
+        # Make API call
+        import requests
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {openai_api_key}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': 'gpt-4',
+                'messages': [
+                    {'role': 'system', 'content': 'You are a Loxone system design expert. Always respond with valid JSON.'},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'temperature': 0.7,
+                'max_tokens': 2000
+            },
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            ai_response = response.json()
+            content = ai_response['choices'][0]['message']['content']
+
+            # Parse JSON from response
+            import json
+            import re
+
+            # Extract JSON from markdown code blocks if present
+            json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            else:
+                json_match = re.search(r'```\s*(.*?)\s*```', content, re.DOTALL)
+                if json_match:
+                    content = json_match.group(1)
+
+            board_data = json.loads(content)
+
+            return jsonify({
+                'success': True,
+                'boardData': board_data,
+                'reasoning': board_data.get('reasoning', '')
+            })
+        else:
+            # Fallback to basic board
+            return generate_basic_board(automation_types)
+
+    except Exception as e:
+        print(f"Error generating board: {e}")
+        traceback.print_exc()
+        # Fallback to basic board generation
+        return generate_basic_board(automation_types)
+
+def generate_basic_board(automation_types):
+    """Generate a basic Loxone board based on automation types (fallback)"""
+    components = []
+    y_offset = 100
+    x_base = 200
+
+    # Always start with a Miniserver
+    components.append({
+        'type': 'miniserver',
+        'x': x_base,
+        'y': y_offset,
+        'properties': {
+            'name': 'Miniserver Gen 2',
+            'notes': 'Main controller'
+        }
+    })
+
+    y_offset += 150
+
+    # Add components based on automation types
+    if 'lighting' in automation_types:
+        components.append({
+            'type': 'dimmer-extension',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'Lighting Dimmer', 'notes': 'Main lighting control'}
+        })
+        components.append({
+            'type': 'relay-extension',
+            'x': x_base + 500,
+            'y': y_offset,
+            'properties': {'name': 'Lighting Relay', 'notes': 'On/off lighting'}
+        })
+        y_offset += 120
+
+    if 'hvac' in automation_types:
+        components.append({
+            'type': 'air-base',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'HVAC Controller', 'notes': 'Climate control'}
+        })
+        y_offset += 120
+
+    if 'blinds' in automation_types:
+        components.append({
+            'type': 'relay-extension',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'Blinds Control', 'notes': 'Motorized blinds'}
+        })
+        y_offset += 120
+
+    if 'security' in automation_types:
+        components.append({
+            'type': 'digital-input',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'Security Inputs', 'notes': 'Door/window sensors'}
+        })
+        y_offset += 120
+
+    if 'audio' in automation_types:
+        components.append({
+            'type': 'extension',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'Audio Zone Extension', 'notes': 'Multi-room audio'}
+        })
+        y_offset += 120
+
+    if 'energy' in automation_types:
+        components.append({
+            'type': 'modbus',
+            'x': x_base + 300,
+            'y': y_offset,
+            'properties': {'name': 'Energy Meter', 'notes': 'Power monitoring'}
+        })
+        y_offset += 120
+
+    # Add power supply
+    components.append({
+        'type': 'power-supply',
+        'x': x_base,
+        'y': y_offset,
+        'properties': {'name': '24V Power Supply', 'notes': 'Main power'}
+    })
+
+    return jsonify({
+        'success': True,
+        'boardData': {
+            'components': components,
+            'connections': [],
+            'reasoning': 'Generated basic board layout based on selected automation types'
+        }
+    })
+
+@app.route('/api/board-builder/import/mapping/<session_id>', methods=['GET'])
+def import_from_mapping(session_id):
+    """Import electrical mapping data into board builder"""
+    try:
+        session_data = load_session_data(session_id)
+
+        if not session_data:
+            return jsonify({'success': False, 'error': 'Session not found'})
+
+        # Extract component information from mapping data
+        components = []
+        automation_data = session_data.get('automation_data', {})
+
+        # Analyze automation data to determine required Loxone components
+        x_offset = 150
+        y_offset = 100
+
+        # Count different component types
+        light_count = sum(1 for item in automation_data.get('symbols', []) if 'light' in item.get('type', '').lower())
+        switch_count = sum(1 for item in automation_data.get('symbols', []) if 'switch' in item.get('type', '').lower())
+        outlet_count = sum(1 for item in automation_data.get('symbols', []) if 'outlet' in item.get('type', '').lower())
+
+        # Add Miniserver
+        components.append({
+            'type': 'miniserver',
+            'x': x_offset,
+            'y': y_offset,
+            'properties': {
+                'name': 'Miniserver',
+                'notes': f'Project: {session_data.get("project_name", "Imported")}'
+            }
+        })
+
+        y_offset += 150
+
+        # Add extensions based on component counts
+        if light_count > 8:
+            components.append({
+                'type': 'dimmer-extension',
+                'x': x_offset + 250,
+                'y': y_offset,
+                'properties': {
+                    'name': f'Dimmer Extension',
+                    'notes': f'For {light_count} lights'
+                }
+            })
+            y_offset += 120
+
+        if switch_count > 0 or outlet_count > 0:
+            components.append({
+                'type': 'relay-extension',
+                'x': x_offset + 250,
+                'y': y_offset,
+                'properties': {
+                    'name': 'Relay Extension',
+                    'notes': f'{switch_count} switches, {outlet_count} outlets'
+                }
+            })
+            y_offset += 120
+
+        # Add digital input for switches
+        if switch_count > 0:
+            components.append({
+                'type': 'digital-input',
+                'x': x_offset + 250,
+                'y': y_offset,
+                'properties': {
+                    'name': 'Digital Inputs',
+                    'notes': f'{switch_count} switch inputs'
+                }
+            })
+
+        return jsonify({
+            'success': True,
+            'boardData': {
+                'components': components,
+                'connections': [],
+                'sourceSession': session_id,
+                'sourceType': 'mapping'
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/board-builder/import/canvas/<session_id>', methods=['GET'])
+def import_from_canvas(session_id):
+    """Import canvas automation data into board builder"""
+    try:
+        session_data = load_session_data(session_id)
+
+        if not session_data:
+            return jsonify({'success': False, 'error': 'Session not found'})
+
+        # Extract automation types from canvas data
+        components = []
+        automation_data = session_data.get('automation_data', {})
+        automation_types = session_data.get('automation_types', [])
+
+        x_offset = 150
+        y_offset = 100
+
+        # Add Miniserver
+        components.append({
+            'type': 'miniserver',
+            'x': x_offset,
+            'y': y_offset,
+            'properties': {
+                'name': 'Miniserver',
+                'notes': f'Project: {session_data.get("project_name", "Canvas Import")}'
+            }
+        })
+
+        y_offset += 150
+
+        # Add components based on automation types
+        for auto_type in automation_types:
+            if auto_type == 'lighting':
+                components.append({
+                    'type': 'dimmer-extension',
+                    'x': x_offset + 250,
+                    'y': y_offset,
+                    'properties': {'name': 'Lighting Control', 'notes': 'From Canvas'}
+                })
+                y_offset += 120
+
+            elif auto_type == 'hvac':
+                components.append({
+                    'type': 'air-base',
+                    'x': x_offset + 250,
+                    'y': y_offset,
+                    'properties': {'name': 'HVAC Extension', 'notes': 'Climate control'}
+                })
+                y_offset += 120
+
+            elif auto_type == 'blinds':
+                components.append({
+                    'type': 'relay-extension',
+                    'x': x_offset + 250,
+                    'y': y_offset,
+                    'properties': {'name': 'Blinds Extension', 'notes': 'Motorized blinds'}
+                })
+                y_offset += 120
+
+        return jsonify({
+            'success': True,
+            'boardData': {
+                'components': components,
+                'connections': [],
+                'sourceSession': session_id,
+                'sourceType': 'canvas'
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""
