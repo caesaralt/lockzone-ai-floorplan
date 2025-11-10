@@ -1497,12 +1497,17 @@ def quotes_page():
 def canvas_page():
     """Unified editor - same as takeoffs but standalone"""
     automation_data = load_data()
-    return render_template('unified_editor.html',
+    response = make_response(render_template('unified_editor.html',
                          automation_data=automation_data,
                          initial_symbols=[],
                          tier='basic',
                          project_name='New Project',
-                         session_data={})
+                         session_data={}))
+    # Prevent caching to ensure users always get the latest version
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/learning')
 def learning_page():
@@ -1562,7 +1567,12 @@ def mapping_page():
         if session_data:
             project_name = session_data.get('project_name', 'Mapping Project')
 
-    return render_template('mapping.html', project_name=project_name)
+    response = make_response(render_template('mapping.html', project_name=project_name))
+    # Prevent caching to ensure users always get the latest version
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 # ============================================================================
 # API - AI MAPPING WITH LEARNING
