@@ -3000,8 +3000,6 @@
 
         // Keyboard Shortcuts
         let clipboard = null;  // For copy/paste
-        let undoStack = [];
-        let redoStack = [];
 
         function saveState() {
             undoStack.push({
@@ -3116,9 +3114,8 @@
             }
             // Ctrl+A - Select All
             else if (e.ctrlKey && e.key === 'a' && !isInputFocused) {
-                    e.preventDefault();
-                    selectAllComponents();
-                }
+                e.preventDefault();
+                selectAllComponents();
             }
             // Ctrl+D - Duplicate
             else if (e.ctrlKey && e.key === 'd') {

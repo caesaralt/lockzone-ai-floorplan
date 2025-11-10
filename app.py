@@ -1699,6 +1699,28 @@ def ai_mapping_download(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ai-chat', methods=['POST'])
+def ai_chat():
+    """Simple AI chatbot endpoint for the mapping tool"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+
+        # For now, return a simple response
+        # TODO: Integrate with actual AI service
+        return jsonify({
+            'success': True,
+            'response': f'I received your message: "{message}". This chatbot endpoint is currently a placeholder and will be enhanced with AI capabilities.',
+            'agent_mode': data.get('agent_mode', False),
+            'searches_performed': 0,
+            'actions_taken': []
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""
