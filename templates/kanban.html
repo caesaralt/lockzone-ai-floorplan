@@ -1118,6 +1118,12 @@
 
         // RENDER BOARD
         function renderBoard() {
+            // Prevent rendering if currently dragging to avoid chaos
+            if (draggedTask) {
+                console.log('⚠️ Skipping render - drag in progress');
+                return;
+            }
+
             const container = document.getElementById('kanbanContainer');
             container.innerHTML = '';
 
@@ -1126,8 +1132,11 @@
                 columnEl.className = 'kanban-column';
                 columnEl.dataset.columnId = column.id;
 
-                // Get tasks for this column - NO sorting or position manipulation
-                const columnTasks = tasks.filter(t => t.column === column.id);
+                // Get tasks for this column
+                let columnTasks = tasks.filter(t => t.column === column.id);
+
+                // Auto-arrange tasks to prevent overlap (pinned tasks first, then by position)
+                columnTasks = autoArrangeTasks(columnTasks);
 
                 const columnColor = columnColors[column.id] || 'transparent';
 
@@ -1145,7 +1154,7 @@
 
                 container.appendChild(columnEl);
 
-                // Render tasks in column - they'll position themselves absolutely
+                // Render tasks in column
                 const contentEl = columnEl.querySelector('.column-content');
                 columnTasks.forEach(task => {
                     renderTask(task, contentEl);
@@ -1157,6 +1166,41 @@
 
             // Update task counts
             updateTaskCounts();
+        }
+
+        // AUTO-ARRANGE TASKS to prevent overlap
+        function autoArrangeTasks(columnTasks) {
+            if (columnTasks.length === 0) return columnTasks;
+
+            const taskHeight = 120; // Approximate task card height
+            const taskPadding = 10; // Space between tasks
+            const centerX = 10; // Default X position (centered in renderTask)
+
+            // Sort: pinned tasks first, then by Y position
+            columnTasks.sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return (a.position?.y || 0) - (b.position?.y || 0);
+            });
+
+            // Adjust positions to prevent overlap
+            let currentY = 10; // Start from top with padding
+            columnTasks.forEach((task, index) => {
+                if (!task.position) {
+                    task.position = { x: centerX, y: currentY };
+                } else {
+                    // If task position would overlap with previous tasks, move it down
+                    if (task.position.y < currentY) {
+                        task.position.y = currentY;
+                    } else {
+                        currentY = task.position.y;
+                    }
+                }
+                // Next task should be at least one task height + padding below
+                currentY = task.position.y + taskHeight + taskPadding;
+            });
+
+            return columnTasks;
         }
 
         // RENDER TASK
@@ -1253,6 +1297,12 @@
         }
 
         function startDrag(e) {
+            // Prevent multiple simultaneous drags
+            if (draggedTask) {
+                console.log('⚠️ Drag already in progress, ignoring new drag');
+                return;
+            }
+
             // Don't drag if clicking on buttons, menus, or contenteditable
             if (e.target.tagName === 'BUTTON' ||
                 e.target.contentEditable === 'true' ||
@@ -1278,6 +1328,8 @@
             // Store the task element and its original parent
             draggedTask = taskEl;
             draggedTask.dataset.originalColumn = taskEl.closest('.column-content').dataset.column;
+
+            console.log('🎯 Starting drag for task:', draggedTask.dataset.taskId);
 
             // MOVE TASK TO BODY - this is key for true free dragging
             document.body.appendChild(taskEl);
@@ -1337,103 +1389,120 @@
         function stopDrag(e) {
             if (!draggedTask) return;
 
-            const taskId = draggedTask.dataset.taskId;
-            const task = tasks.find(t => t.id === taskId);
+            try {
+                const taskId = draggedTask.dataset.taskId;
+                const task = tasks.find(t => t.id === taskId);
 
-            const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-            const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+                const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+                const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
 
-            let newColumn = null;
-            let columnContent = null;
+                let newColumn = null;
+                let columnContent = null;
 
-            if (clientX && clientY) {
-                // Find which column we're over
-                const elements = document.elementsFromPoint(clientX, clientY);
-                for (const el of elements) {
-                    if (el.classList.contains('column-content') || el.classList.contains('kanban-column')) {
-                        if (el.classList.contains('column-content')) {
-                            columnContent = el;
-                            newColumn = el.dataset.column;
-                        } else {
-                            columnContent = el.querySelector('.column-content');
-                            if (columnContent) {
-                                newColumn = columnContent.dataset.column;
+                if (clientX && clientY) {
+                    // Find which column we're over
+                    const elements = document.elementsFromPoint(clientX, clientY);
+                    for (const el of elements) {
+                        if (el.classList.contains('column-content') || el.classList.contains('kanban-column')) {
+                            if (el.classList.contains('column-content')) {
+                                columnContent = el;
+                                newColumn = el.dataset.column;
+                            } else {
+                                columnContent = el.querySelector('.column-content');
+                                if (columnContent) {
+                                    newColumn = columnContent.dataset.column;
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
-                }
-            }
-
-            // Remove highlight from columns
-            document.querySelectorAll('.kanban-column').forEach(col => {
-                col.classList.remove('highlight');
-            });
-
-            // CRITICAL: Remove the dragged task from the DOM completely
-            // This prevents duplicates when renderBoard() creates a new element
-            if (draggedTask && draggedTask.parentElement) {
-                draggedTask.parentElement.removeChild(draggedTask);
-            }
-
-            if (task && newColumn && columnContent) {
-                // Update column
-                task.column = newColumn;
-
-                // Calculate position relative to the column content area
-                const containerRect = columnContent.getBoundingClientRect();
-                const scrollTop = columnContent.scrollTop;
-
-                // CENTER the task horizontally in the column
-                const columnWidth = containerRect.width - 24; // Subtract padding
-                const taskWidth = 240; // Task card width
-                const x = (columnWidth - taskWidth) / 2; // Center it
-
-                // Get Y position where dropped
-                let y = clientY - containerRect.top - dragOffset.y + scrollTop;
-
-                // COLLISION DETECTION: Check if dropping on top of another task
-                const columnTasks = tasks.filter(t => t.column === newColumn && t.id !== taskId);
-                const taskHeight = 120; // Approximate task height
-                const taskPadding = 10; // Space between tasks
-
-                for (const otherTask of columnTasks) {
-                    if (!otherTask.position) continue;
-
-                    const otherY = otherTask.position.y;
-                    const otherBottom = otherY + taskHeight;
-
-                    // Check if the dropped position overlaps with another task
-                    if (y >= otherY && y < otherBottom) {
-                        // Position it below the overlapping task
-                        y = otherBottom + taskPadding;
-                        console.log('🔽 Collision detected, moving task below to y:', y);
                     }
                 }
 
-                // Store position
-                task.position = {
-                    x: Math.max(0, x),
-                    y: Math.max(0, y)
-                };
-
-                console.log('Dropped at centered position:', task.position);
-
-                // Update task in database and re-render
-                updateTask(taskId, task).then(() => {
-                    renderBoard();
+                // Remove highlight from columns
+                document.querySelectorAll('.kanban-column').forEach(col => {
+                    col.classList.remove('highlight');
                 });
-            } else {
-                // If dropped outside columns, just re-render
+
+                // CRITICAL: Remove the dragged task from the DOM completely
+                // This prevents duplicates when renderBoard() creates a new element
+                if (draggedTask && draggedTask.parentElement) {
+                    draggedTask.parentElement.removeChild(draggedTask);
+                }
+
+                if (task && newColumn && columnContent) {
+                    // Update column
+                    task.column = newColumn;
+
+                    // Calculate position relative to the column content area
+                    const containerRect = columnContent.getBoundingClientRect();
+                    const scrollTop = columnContent.scrollTop;
+
+                    // CENTER the task horizontally in the column
+                    const columnWidth = containerRect.width - 24; // Subtract padding
+                    const taskWidth = 240; // Task card width
+                    const x = (columnWidth - taskWidth) / 2; // Center it
+
+                    // Get Y position where dropped
+                    let y = clientY - containerRect.top - dragOffset.y + scrollTop;
+
+                    // IMPROVED COLLISION DETECTION: Find next available position
+                    const columnTasks = tasks.filter(t => t.column === newColumn && t.id !== taskId);
+                    const taskHeight = 120; // Approximate task height
+                    const taskPadding = 10; // Space between tasks
+
+                    // Sort other tasks by Y position
+                    const sortedTasks = columnTasks
+                        .filter(t => t.position)
+                        .sort((a, b) => a.position.y - b.position.y);
+
+                    // Find a non-overlapping position
+                    for (const otherTask of sortedTasks) {
+                        const otherY = otherTask.position.y;
+                        const otherBottom = otherY + taskHeight;
+
+                        // Check if the dropped position overlaps with another task
+                        if (y >= otherY - taskPadding && y < otherBottom + taskPadding) {
+                            // Position it below the overlapping task
+                            y = otherBottom + taskPadding;
+                            console.log('🔽 Collision detected, moving task below to y:', y);
+                        }
+                    }
+
+                    // Store position
+                    task.position = {
+                        x: Math.max(0, x),
+                        y: Math.max(0, y)
+                    };
+
+                    console.log('✅ Dropped at position:', task.position);
+
+                    // Update task in database and re-render
+                    updateTask(taskId, task).then(() => {
+                        draggedTask = null; // Clear before render
+                        renderBoard();
+                    }).catch(error => {
+                        console.error('❌ Error updating task:', error);
+                        draggedTask = null;
+                        renderBoard();
+                    });
+                } else {
+                    // If dropped outside columns, restore to original position
+                    console.log('⚠️ Dropped outside valid area');
+                    draggedTask = null;
+                    renderBoard();
+                }
+
+            } catch (error) {
+                console.error('❌ Error in stopDrag:', error);
+                draggedTask = null;
                 renderBoard();
+            } finally {
+                // ALWAYS clean up event listeners
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchmove', onDrag);
+                document.removeEventListener('touchend', stopDrag);
             }
-
-            draggedTask = null;
-
-            document.removeEventListener('mousemove', onDrag);
-            document.removeEventListener('mouseup', stopDrag);
-            document.removeEventListener('touchmove', onDrag);
-            document.removeEventListener('touchend', stopDrag);
         }
 
         // SETUP DROP ZONE
