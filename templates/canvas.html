@@ -998,8 +998,48 @@
         }
 
         async function exportCanvas() {
-            alert('Exporting canvas...');
-            // TODO: Implement export functionality
+            if (!floorplanImage) {
+                alert('❌ Please upload a floor plan first!');
+                return;
+            }
+
+            if (symbols.length === 0) {
+                alert('⚠️ No symbols to export. Add some symbols to the floor plan first.');
+                return;
+            }
+
+            try {
+                // Create export data
+                const exportData = {
+                    symbols: symbols.map(s => ({
+                        id: s.id,
+                        type: s.type,
+                        automation_category: s.automation_category,
+                        x: s.x,
+                        y: s.y,
+                        room: s.room || '',
+                        items: s.items || []
+                    })),
+                    floorplan_data: floorplanImage.src,
+                    timestamp: Date.now()
+                };
+
+                // Save to localStorage for mapping tool
+                localStorage.setItem('canvas_export', JSON.stringify(exportData));
+
+                // Confirm export
+                const confirmed = confirm(`✅ Export successful!\n\nExporting ${symbols.length} symbols to Mapping Tool.\n\nClick OK to go to Mapping Tool now.`);
+
+                if (confirmed) {
+                    window.location.href = '/mapping?from=canvas';
+                } else {
+                    alert('💾 Data saved! You can access it from the Mapping Tool by clicking "Import from Takeoffs"');
+                }
+
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('❌ Export failed: ' + error.message);
+            }
         }
 
         // Initialize
