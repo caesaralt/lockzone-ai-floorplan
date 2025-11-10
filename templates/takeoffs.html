@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Takeoffs - {{ project_name }}</title>
+    <!-- PDF.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    </script>
     <style>
         * {
             margin: 0;
@@ -433,7 +439,16 @@
             <div class="project-title">🎨 {{ project_name }} - Interactive Takeoffs</div>
         </div>
         <div class="toolbar-actions">
+            <div class="page-controls" id="pageControls" style="display: none; margin-right: 12px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid #3498db;">
+                <button class="zoom-btn" id="prevPage" onclick="changePage(currentPage - 1)" style="background: #2c3e50; border: none; color: white; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; font-size: 16px; margin: 0 4px;">◀</button>
+                <span style="color: white; font-size: 0.9em;">Page <input type="number" id="pageInput" value="1" min="1" max="1" onchange="jumpToPage(this.value)" style="width: 50px; padding: 4px; background: #2c3e50; border: 1px solid #34495e; border-radius: 4px; color: white; text-align: center;"> of <span id="totalPages">1</span></span>
+                <button class="zoom-btn" id="nextPage" onclick="changePage(currentPage + 1)" style="background: #2c3e50; border: none; color: white; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; font-size: 16px; margin: 0 4px;">▶</button>
+            </div>
             <button class="toolbar-btn" onclick="window.location.href='/quotes'">← Back to Quotes</button>
+            <button class="toolbar-btn" onclick="saveProgress()">💾 Save Progress</button>
+            <button class="toolbar-btn" onclick="loadProgress()">📂 Load</button>
+            <button class="toolbar-btn" onclick="undoAction()">↶ Undo</button>
+            <button class="toolbar-btn" onclick="redoAction()">↷ Redo</button>
             <button class="toolbar-btn" onclick="saveToMapping()">Export to Mapping Tool →</button>
             <button class="toolbar-btn primary" onclick="exportResults()">💾 Export & Generate Quote</button>
         </div>
@@ -585,6 +600,12 @@
         const ctx = canvas.getContext('2d');
         let floorplanImage = new Image();
 
+        // Multi-page PDF state
+        let pdfDocument = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let pageData = {}; // Store per-page symbols, annotations
+
         // State
         let currentTool = 'select';
         let selectedSymbols = new Set();
@@ -595,6 +616,14 @@
         let isSelectionDrag = false;
         let measurementStart = null;
         let annotations = [];
+
+        // Undo/Redo system
+        let undoStack = [];
+        let redoStack = [];
+        const MAX_UNDO_STACK = 50;
+
+        // Auto-save
+        let autoSaveInterval = null;
 
         // Load floor plan image
         const floorplanFilename = sessionData.floorplan_image;
