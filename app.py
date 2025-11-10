@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
+# from flask_sqlalchemy import SQLAlchemy  # Disabled - using JSON files
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -45,29 +45,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
 
-# Database configuration with psycopg3 (Python 3.13 compatible)
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    # Convert Render's postgres:// URL to psycopg3 dialect
-    # psycopg3 uses 'postgresql+psycopg://' dialect in SQLAlchemy
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
-    elif DATABASE_URL.startswith('postgresql://') and '+psycopg' not in DATABASE_URL:
-        DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,  # Verify connections before using
-        'pool_recycle': 300,     # Recycle connections after 5 minutes
-    }
-    USE_DATABASE = True
-    print(f"✅ Database configured with psycopg3")
-else:
-    USE_DATABASE = False
-    print("INFO: No DATABASE_URL found. Using JSON file storage.")
-
-db = SQLAlchemy(app) if USE_DATABASE else None
+# Database disabled temporarily - using JSON files for stability
+# Will re-enable database support once fully tested
+USE_DATABASE = False
+db = None
+print("INFO: Using JSON file storage for all data.")
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
