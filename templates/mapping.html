@@ -652,7 +652,7 @@
 
             try {
                 const page = await pdfDocument.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 3.5 });
+                const viewport = page.getViewport({ scale: 5.0 }); // Highest quality PDF rendering
 
                 // Create temporary canvas to render PDF
                 const tempCanvas = document.createElement('canvas');
@@ -2508,8 +2508,10 @@
             const file = e.target.files[0];
             if (!file) return;
 
+            console.log(`📤 Uploading file: ${file.name} (${file.type})`);
+
             if (file.type === 'application/pdf') {
-                // Handle PDF using PDF.js - ENHANCED for multi-page support
+                // Handle PDF using PDF.js - ENHANCED for multi-page support with HIGHEST QUALITY
                 const fileReader = new FileReader();
                 fileReader.onload = async function(event) {
                     try {
@@ -2540,42 +2542,30 @@
                             }
                         }
 
-                        // Load first page
+                        // Load first page at highest quality
                         await loadPDFPage(1);
                         updatePageNavigation();
                         saveState(); // Save initial state to undo stack
 
+                        alert(`✅ PDF loaded successfully! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
+
                     } catch (error) {
                         console.error('Error loading PDF:', error);
-                        alert('Failed to load PDF: ' + error.message);
+                        alert('❌ Failed to load PDF: ' + error.message);
                     }
                 };
                 fileReader.readAsArrayBuffer(file);
             } else {
-                // Handle regular image
-                const fileReader = new FileReader();
-                fileReader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                            floorplanImage = img;
-                            render();
-                            alert('✅ PDF loaded successfully!');
-                        };
-                        img.src = tempCanvas.toDataURL();
-                    } catch (error) {
-                        console.error('PDF loading error:', error);
-                        alert('Failed to load PDF: ' + error.message);
-                    }
-                };
-                fileReader.readAsArrayBuffer(file);
-            } else {
-                // Handle image files
+                // Handle image files (PNG, JPG, etc.)
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const img = new Image();
                     img.onload = function() {
                         floorplanImage = img;
+                        canvas.width = img.width;
+                        canvas.height = img.height;
                         render();
+                        console.log(`✅ Image loaded: ${img.width}x${img.height}px`);
                         alert('✅ Image loaded successfully!');
                     };
                     img.src = event.target.result;
@@ -2584,8 +2574,69 @@
             }
         });
 
-        // Import from takeoffs
+        // Import from takeoffs or canvas
         function importFromTakeoffs() {
+            // Check if coming from canvas
+            const fromCanvas = new URLSearchParams(window.location.search).get('from') === 'canvas';
+
+            if (fromCanvas) {
+                // Import from canvas via localStorage
+                try {
+                    const canvasData = localStorage.getItem('canvas_export');
+                    if (!canvasData) {
+                        alert('❌ No canvas export data found. Please export from Canvas first.');
+                        return;
+                    }
+
+                    const data = JSON.parse(canvasData);
+
+                    if (data.symbols && data.symbols.length > 0) {
+                        components = data.symbols.map((sym, i) => ({
+                            id: i + 1,
+                            type: sym.automation_category || sym.type || 'light',
+                            x: sym.x * canvas.width,
+                            y: sym.y * canvas.height,
+                            label: sym.id || `Component ${i + 1}`,
+                            circuit: null
+                        }));
+
+                        // Load floorplan if available
+                        if (data.floorplan_data) {
+                            const img = new Image();
+                            img.onload = function() {
+                                floorplanImage = img;
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+
+                                // Recalculate component positions
+                                components = components.map(comp => ({
+                                    ...comp,
+                                    x: (comp.x / 1400) * canvas.width,
+                                    y: (comp.y / 900) * canvas.height
+                                }));
+
+                                render();
+                            };
+                            img.src = data.floorplan_data;
+                        } else {
+                            render();
+                        }
+
+                        alert(`✅ Imported ${components.length} components from Canvas!`);
+
+                        // Clear the import flag
+                        window.history.replaceState({}, document.title, '/mapping');
+                    } else {
+                        alert('⚠️ No symbols found in canvas export.');
+                    }
+                } catch (error) {
+                    console.error('Canvas import failed:', error);
+                    alert('❌ Failed to import from canvas: ' + error.message);
+                }
+                return;
+            }
+
+            // Original takeoffs import logic
             const sessionId = new URLSearchParams(window.location.search).get('session');
             if (!sessionId) {
                 alert('No session found. Please export from Canvas/Takeoffs first.');
