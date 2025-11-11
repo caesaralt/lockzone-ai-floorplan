@@ -452,6 +452,7 @@
             <button class="toolbar-btn" onclick="saveBoard()">💾 Save</button>
             <button class="toolbar-btn" onclick="loadBoard()">📂 Load</button>
             <button class="toolbar-btn success" onclick="openExportModal()">📤 Export</button>
+            <button class="toolbar-btn" onclick="generateCADDrawings()" style="background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);">⚡ Generate CAD Drawings →</button>
             <button class="toolbar-btn danger" onclick="clearBoard()">🗑️ Clear</button>
         </div>
     </div>
@@ -1920,6 +1921,27 @@
 
             alert('✅ Board loaded successfully!');
             console.log('Board loaded:', boardId);
+        }
+
+        function generateCADDrawings() {
+            // Save current board first
+            const boardData = {
+                components: boardComponents,
+                connections: boardConnections,
+                metadata: {
+                    version: '1.0',
+                    created: new Date().toISOString(),
+                    projectName: '{{ project_name | default("Loxone Board") }}'
+                }
+            };
+
+            // Save to localStorage for CAD to import
+            const boardId = 'board_' + Date.now();
+            localStorage.setItem(boardId, JSON.stringify(boardData));
+            localStorage.setItem('cad_import_board_id', boardId);
+
+            // Navigate to CAD Designer
+            window.location.href = '/electrical-cad?import_board=' + boardId;
         }
 
         function exportBoard() {
