@@ -23,6 +23,9 @@ let lastRenderTime = 0;
 const RENDER_THROTTLE = 16; // Max 60fps
 let renderScheduled = false;
 
+// Prevent duplicate event listeners
+let canvasDropListenersAdded = false;
+
 // Default layers
 const DEFAULT_LAYERS = [
     { name: 'WALLS-ARCHITECTURAL', color: '#2C3E50', visible: true, locked: false },
@@ -529,20 +532,24 @@ function renderSymbols() {
         symbolsPanel.appendChild(categoryDiv);
     });
 
-    // Enable drop on canvas
-    const canvasEl = document.getElementById('cadCanvas');
-    canvasEl.addEventListener('dragover', (e) => e.preventDefault());
-    canvasEl.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const symbolData = e.dataTransfer.getData('symbol');
-        if (symbolData) {
-            const symbol = JSON.parse(symbolData);
-            const rect = canvasEl.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            addSymbolToCanvas(symbol, x, y);
-        }
-    });
+    // CRITICAL: Only add drop listeners ONCE to prevent event listener accumulation
+    if (!canvasDropListenersAdded) {
+        const canvasEl = document.getElementById('cadCanvas');
+        canvasEl.addEventListener('dragover', (e) => e.preventDefault());
+        canvasEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const symbolData = e.dataTransfer.getData('symbol');
+            if (symbolData) {
+                const symbol = JSON.parse(symbolData);
+                const rect = canvasEl.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                addSymbolToCanvas(symbol, x, y);
+            }
+        });
+        canvasDropListenersAdded = true;
+        console.log('✅ Canvas drop listeners added (one-time)');
+    }
 }
 
 function addSymbolToCanvas(symbol, x = 100, y = 100) {
