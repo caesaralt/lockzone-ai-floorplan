@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Electrical CAD Designer - Integratd Living</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .header-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: white;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .header-btn.ai {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            border: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        /* Left Toolbar */
+        .left-toolbar {
+            width: 80px;
+            background: #2c3e50;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+        }
+
+        .tool-btn {
+            width: 60px;
+            height: 60px;
+            background: #34495e;
+            border: 2px solid #556B2F;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 1.5em;
+        }
+
+        .tool-btn:hover {
+            background: #556B2F;
+            transform: scale(1.05);
+        }
+
+        .tool-btn.active {
+            background: #6B8E23;
+            border-color: #8FBC8F;
+        }
+
+        .tool-label {
+            font-size: 0.65em;
+            margin-top: 5px;
+            color: #95a5a6;
+        }
+
+        /* Canvas Area */
+        .canvas-container-wrapper {
+            flex: 1;
+            background: #1a1a1a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #cadCanvas {
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            width: 320px;
+            background: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+        }
+
+        .panel-tabs {
+            display: flex;
+            background: #1a1a1a;
+        }
+
+        .panel-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .panel-tab.active {
+            background: #2c3e50;
+            border-bottom-color: #6B8E23;
+            color: #6B8E23;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-label {
+            font-size: 0.85em;
+            color: #95a5a6;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .property-input {
+            width: 100%;
+            padding: 10px;
+            background: #34495e;
+            border: 2px solid #556B2F;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .property-input:focus {
+            outline: none;
+            border-color: #6B8E23;
+        }
+
+        /* Symbol Library */
+        .symbol-category {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            font-weight: 700;
+            color: #6B8E23;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .symbol-item {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: move;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .symbol-item:hover {
+            background: #556B2F;
+            border-color: #6B8E23;
+            transform: translateY(-3px);
+        }
+
+        .symbol-icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .symbol-name {
+            font-size: 0.75em;
+            color: #bdc3c7;
+        }
+
+        /* Layer Panel */
+        .layer-item {
+            background: #34495e;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .layer-btn {
+            padding: 4px 8px;
+            background: #556B2F;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        /* Bottom Toolbar */
+        .bottom-toolbar {
+            height: 50px;
+            background: #2c3e50;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 30px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
+        }
+
+        .toolbar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .toolbar-item label {
+            color: #95a5a6;
+            font-weight: 600;
+        }
+
+        .toolbar-select {
+            padding: 6px 12px;
+            background: #34495e;
+            border: 1px solid #556B2F;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2c3e50;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: white;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(107, 142, 35, 0.4);
+        }
+
+        .btn.secondary {
+            background: #34495e;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #34495e;
+            border-top-color: #6B8E23;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .loading-detail {
+            color: #95a5a6;
+            font-size: 0.9em;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #556B2F;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B8E23;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">⚡ Electrical CAD Designer</div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="window.location.href='/'">← Main Menu</button>
+            <button class="header-btn" onclick="newProject()">📄 New</button>
+            <button class="header-btn" onclick="loadProject()">📂 Open</button>
+            <button class="header-btn" onclick="saveProject()">💾 Save</button>
+            <button class="header-btn ai" onclick="openAIModal()">🤖 AI Auto-Generate</button>
+            <button class="header-btn" onclick="exportDrawing()">📤 Export</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Toolbar -->
+        <div class="left-toolbar">
+            <div class="tool-btn active" onclick="selectTool('select')" data-tool="select">
+                <div>⬛</div>
+                <div class="tool-label">Select</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('line')" data-tool="line">
+                <div>📏</div>
+                <div class="tool-label">Line</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('rectangle')" data-tool="rectangle">
+                <div>▭</div>
+                <div class="tool-label">Rectangle</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('circle')" data-tool="circle">
+                <div>⭕</div>
+                <div class="tool-label">Circle</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('text')" data-tool="text">
+                <div>🔤</div>
+                <div class="tool-label">Text</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('wire')" data-tool="wire">
+                <div>〰️</div>
+                <div class="tool-label">Wire</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('pan')" data-tool="pan">
+                <div>✋</div>
+                <div class="tool-label">Pan</div>
+            </div>
+            <div class="tool-btn" onclick="zoomIn()">
+                <div>🔍+</div>
+                <div class="tool-label">Zoom In</div>
+            </div>
+            <div class="tool-btn" onclick="zoomOut()">
+                <div>🔍-</div>
+                <div class="tool-label">Zoom Out</div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container-wrapper">
+            <canvas id="cadCanvas"></canvas>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="panel-tabs">
+                <div class="panel-tab active" onclick="switchTab('properties')">Properties</div>
+                <div class="panel-tab" onclick="switchTab('symbols')">Symbols</div>
+                <div class="panel-tab" onclick="switchTab('layers')">Layers</div>
+            </div>
+            <div class="panel-content" id="propertiesPanel">
+                <div class="property-group">
+                    <div class="property-label">Project Name</div>
+                    <input type="text" class="property-input" id="projectName" value="Untitled Project" onchange="updateMetadata()">
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Drawing Number</div>
+                    <input type="text" class="property-input" id="drawingNumber" value="E-001" onchange="updateMetadata()">
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Scale</div>
+                    <select class="property-input" id="scale" onchange="updateMetadata()">
+                        <option value="1:50">1:50</option>
+                        <option value="1:100" selected>1:100</option>
+                        <option value="1:200">1:200</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Paper Size</div>
+                    <select class="property-input" id="paperSize" onchange="updateMetadata()">
+                        <option value="A4">A4</option>
+                        <option value="A3">A3</option>
+                        <option value="A2">A2</option>
+                        <option value="A1" selected>A1</option>
+                        <option value="A0">A0</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Revision</div>
+                    <input type="text" class="property-input" id="revision" value="A" onchange="updateMetadata()">
+                </div>
+            </div>
+            <div class="panel-content" id="symbolsPanel" style="display:none;">
+                <!-- Symbols will be populated by JavaScript -->
+            </div>
+            <div class="panel-content" id="layersPanel" style="display:none;">
+                <div id="layersList">
+                    <!-- Layers will be populated by JavaScript -->
+                </div>
+                <button class="btn" style="width:100%; margin-top:15px;" onclick="addLayer()">+ Add Layer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Toolbar -->
+    <div class="bottom-toolbar">
+        <div class="toolbar-item">
+            <label>Current Layer:</label>
+            <select class="toolbar-select" id="currentLayer">
+                <option value="WALLS-ARCHITECTURAL">WALLS</option>
+                <option value="DEVICES-SYMBOLS">DEVICES</option>
+            </select>
+        </div>
+        <div class="toolbar-item">
+            <label>Grid:</label>
+            <input type="checkbox" id="gridSnap" checked onchange="toggleGrid()">
+        </div>
+        <div class="toolbar-item">
+            <label>Snap:</label>
+            <input type="checkbox" id="objectSnap" checked>
+        </div>
+        <div class="toolbar-item">
+            <label>Zoom:</label>
+            <span id="zoomLevel">100%</span>
+        </div>
+        <div class="toolbar-item">
+            <label>Objects:</label>
+            <span id="objectCount">0</span>
+        </div>
+    </div>
+
+    <!-- AI Generation Modal -->
+    <div class="modal" id="aiModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🤖 AI Auto-Generate Complete Drawings</div>
+                <button class="close-btn" onclick="closeAIModal()">✖</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:20px; color:#bdc3c7;">AI will generate complete electrical CAD drawings from your floor plan and Loxone board data. This includes wiring diagrams, floor plans with electrical overlays, panel schedules, and legends.</p>
+
+                <div class="property-group">
+                    <div class="property-label">Project Requirements</div>
+                    <textarea class="property-input" id="aiRequirements" rows="6" placeholder="Describe your project (e.g., 3-bedroom house with lighting control, HVAC automation, security system...)"></textarea>
+                </div>
+
+                <button class="btn" style="width:100%; margin-top:20px;" onclick="generateWithAI()">🤖 Generate Professional Drawings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📤 Export Drawing</div>
+                <button class="close-btn" onclick="closeExportModal()">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="property-group">
+                    <div class="property-label">Export Format</div>
+                    <select class="property-input" id="exportFormat">
+                        <option value="dxf">DXF (AutoCAD Compatible)</option>
+                        <option value="pdf">PDF (Print Ready)</option>
+                        <option value="png">PNG (High Resolution Image)</option>
+                        <option value="svg">SVG (Scalable Vector)</option>
+                    </select>
+                </div>
+                <button class="btn" style="width:100%; margin-top:20px;" onclick="executeExport()">📥 Download Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Generating Professional CAD Drawings...</div>
+            <div class="loading-detail">This may take 30-120 seconds</div>
+        </div>
+    </div>
+
+    <script src="/static/cad-engine.js"></script>
+</body>
+</html>
