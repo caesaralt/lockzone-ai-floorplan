@@ -1036,6 +1036,12 @@
         let deletingTasks = new Set(); // Track tasks being deleted to prevent double-deletion
         let duplicatingTasks = new Set(); // Track tasks being duplicated to prevent double-duplication
 
+        // CRITICAL: Render throttle to prevent infinite loops
+        let renderScheduled = false;
+        let lastRenderTime = 0;
+        const RENDER_THROTTLE = 100; // Min 100ms between renders
+        let renderCallCount = 0;
+
         const columns = [
             { id: 'todo', title: '📝 TO DO' },
             { id: 'working', title: '🔊 WORKING ON' },
@@ -1392,7 +1398,39 @@
         }
 
         // RENDER BOARD - With proper cleanup
+        // Throttled render function to prevent infinite loops
         function renderBoard() {
+            const now = Date.now();
+
+            // CRITICAL: Detect infinite loop
+            renderCallCount++;
+            if (renderCallCount > 50) {
+                console.error('🚨 INFINITE LOOP DETECTED: renderBoard() called more than 50 times!');
+                console.trace('Stack trace:');
+                renderCallCount = 0; // Reset
+                return; // STOP rendering
+            }
+
+            // Reset counter after 1 second
+            setTimeout(() => { renderCallCount = 0; }, 1000);
+
+            // CRITICAL: Throttle renders to max once per 100ms
+            if (renderScheduled || (now - lastRenderTime) < RENDER_THROTTLE) {
+                console.log(`⏸️ Render throttled (${now - lastRenderTime}ms since last)`);
+                return;
+            }
+
+            renderScheduled = true;
+            lastRenderTime = now;
+
+            // Use setTimeout to break out of any synchronous loops
+            setTimeout(() => {
+                renderBoardActual();
+                renderScheduled = false;
+            }, 0);
+        }
+
+        function renderBoardActual() {
             // Prevent rendering if currently dragging to avoid chaos
             if (draggedTask) {
                 console.log('⚠️ Skipping render - drag in progress');
@@ -1855,6 +1893,12 @@
                 return;
             }
 
+            // GUARD: Prevent duplication during rendering
+            if (isRendering) {
+                console.warn('⚠️ Cannot duplicate during rendering');
+                return;
+            }
+
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
                 console.error('Cannot duplicate - task not found:', taskId);
@@ -1871,6 +1915,9 @@
                 // Mark as duplicating
                 duplicatingTasks.add(taskId);
                 console.log('📋 Duplicating task:', taskId);
+
+                // Close task menu immediately
+                closeAllTaskMenus();
 
                 const response = await fetch('/api/kanban/tasks', {
                     method: 'POST',
@@ -1890,6 +1937,10 @@
                     })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
                 if (data.success && data.task) {
                     // Only add if not already in array (prevent duplicates)
@@ -1897,7 +1948,13 @@
                     if (!exists) {
                         tasks.push(data.task);
                         console.log('✅ Task duplicated successfully');
-                        renderBoard();
+
+                        // Use timeout to ensure renderBoard is called only once
+                        setTimeout(() => {
+                            if (!isRendering) {
+                                renderBoard();
+                            }
+                        }, 50);
                     } else {
                         console.warn('Task already exists, skipping duplicate');
                     }
@@ -1906,9 +1963,12 @@
                 }
             } catch (error) {
                 console.error('❌ Error duplicating task:', error);
+                alert('Failed to duplicate task: ' + error.message);
             } finally {
-                // Always clean up the lock
-                duplicatingTasks.delete(taskId);
+                // Always clean up the lock after a delay
+                setTimeout(() => {
+                    duplicatingTasks.delete(taskId);
+                }, 100);
             }
         }
 

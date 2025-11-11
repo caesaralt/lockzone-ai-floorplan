@@ -18,6 +18,14 @@ let undoStack = [];
 let redoStack = [];
 let zoomLevel = 1;
 
+// Rendering throttle
+let lastRenderTime = 0;
+const RENDER_THROTTLE = 16; // Max 60fps
+let renderScheduled = false;
+
+// Prevent duplicate event listeners
+let canvasDropListenersAdded = false;
+
 // Default layers
 const DEFAULT_LAYERS = [
     { name: 'WALLS-ARCHITECTURAL', color: '#2C3E50', visible: true, locked: false },
@@ -290,6 +298,26 @@ function selectTool(tool) {
     console.log('Tool selected:', tool);
 }
 
+// Throttled render function to prevent infinite loops
+function throttledRender() {
+    const now = Date.now();
+
+    // If already scheduled or rendered recently, skip
+    if (renderScheduled || (now - lastRenderTime) < RENDER_THROTTLE) {
+        return;
+    }
+
+    renderScheduled = true;
+
+    requestAnimationFrame(() => {
+        if (canvas) {
+            canvas.renderAll();
+        }
+        lastRenderTime = Date.now();
+        renderScheduled = false;
+    });
+}
+
 function setupCanvasEvents() {
     // Mouse down
     canvas.on('mouse:down', (e) => {
@@ -314,8 +342,9 @@ function setupCanvasEvents() {
         }
     });
 
-    // Mouse move
+    // Mouse move with throttling
     canvas.on('mouse:move', (e) => {
+        // CRITICAL: Only process if actively drawing
         if (!isDrawing || !drawingObject) return;
 
         const pointer = canvas.getPointer(e.e);
@@ -333,17 +362,28 @@ function setupCanvasEvents() {
             drawingObject.set({ radius: radius });
         }
 
-        canvas.renderAll();
+        // Use throttled render instead of direct renderAll()
+        throttledRender();
     });
 
-    // Mouse up
+    // Mouse up - CRITICAL: Always reset isDrawing
     canvas.on('mouse:up', () => {
         if (isDrawing && drawingObject) {
             addToUndoStack();
             updateObjectCount();
         }
+        // CRITICAL: Always reset these, even if no object
         isDrawing = false;
         drawingObject = null;
+    });
+
+    // Mouse leave canvas - CRITICAL: Reset drawing state
+    canvas.on('mouse:out', () => {
+        if (isDrawing) {
+            console.log('Mouse left canvas, resetting drawing state');
+            isDrawing = false;
+            drawingObject = null;
+        }
     });
 
     // Object selected
@@ -492,20 +532,24 @@ function renderSymbols() {
         symbolsPanel.appendChild(categoryDiv);
     });
 
-    // Enable drop on canvas
-    const canvasEl = document.getElementById('cadCanvas');
-    canvasEl.addEventListener('dragover', (e) => e.preventDefault());
-    canvasEl.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const symbolData = e.dataTransfer.getData('symbol');
-        if (symbolData) {
-            const symbol = JSON.parse(symbolData);
-            const rect = canvasEl.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            addSymbolToCanvas(symbol, x, y);
-        }
-    });
+    // CRITICAL: Only add drop listeners ONCE to prevent event listener accumulation
+    if (!canvasDropListenersAdded) {
+        const canvasEl = document.getElementById('cadCanvas');
+        canvasEl.addEventListener('dragover', (e) => e.preventDefault());
+        canvasEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const symbolData = e.dataTransfer.getData('symbol');
+            if (symbolData) {
+                const symbol = JSON.parse(symbolData);
+                const rect = canvasEl.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                addSymbolToCanvas(symbol, x, y);
+            }
+        });
+        canvasDropListenersAdded = true;
+        console.log('✅ Canvas drop listeners added (one-time)');
+    }
 }
 
 function addSymbolToCanvas(symbol, x = 100, y = 100) {
