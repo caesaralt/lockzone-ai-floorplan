@@ -576,7 +576,7 @@
         </div>
         <div class="stat-item">
             <span class="stat-label">Estimated Cost:</span>
-            <span class="stat-value" id="estimatedCost">€0</span>
+            <span class="stat-value" id="estimatedCost">$0</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Power Consumption:</span>
@@ -796,7 +796,7 @@
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
-                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Cost (€)</label>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Cost ($)</label>
                         <input type="number" id="customCompCost" value="0" min="0" step="0.01" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
                     </div>
                     <div>
@@ -1093,7 +1093,7 @@
                 <div class="component-body">
                     ${inputs ? `📥 ${inputs} inputs` : ''}
                     ${outputs ? `📤 ${outputs} outputs` : ''}
-                    ${cost ? `<div style="margin-top: 5px;">€${cost}</div>` : ''}
+                    ${cost ? `<div style="margin-top: 5px;">$${cost}</div>` : ''}
                 </div>
             `;
 
@@ -1482,7 +1482,7 @@
                                    style="padding: 5px; font-size: 0.85em;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Price per m (€)</label>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Price per m ($)</label>
                             <input type="number" class="property-input" value="${connection.pricePerMeter || 0}"
                                    onchange="updateConnectionProperty('${connection.id}', 'pricePerMeter', parseFloat(this.value))" min="0" step="0.01"
                                    style="padding: 5px; font-size: 0.85em;">
@@ -1491,7 +1491,7 @@
                     <div style="margin-top: 10px;">
                         <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Total Cost</label>
                         <div style="color: #27ae60; font-size: 1.1em; font-weight: 600;">
-                            €${((connection.length || 0) * (connection.pricePerMeter || 0)).toFixed(2)}
+                            $${((connection.length || 0) * (connection.pricePerMeter || 0)).toFixed(2)}
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
@@ -1650,7 +1650,7 @@
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                         <div>
-                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Cost (€)</label>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Cost ($)</label>
                             <input type="number" class="property-input" value="${component.properties.cost !== undefined ? component.properties.cost : (spec.cost || 0)}"
                                    onchange="updateComponentSpec('${component.id}', 'cost', parseFloat(this.value))" min="0" step="0.01"
                                    style="padding: 5px; font-size: 0.85em;">
@@ -1838,7 +1838,7 @@
             }, 0);
 
             const totalCost = componentCost + cableCost;
-            document.getElementById('estimatedCost').textContent = `€${totalCost.toFixed(2)}`;
+            document.getElementById('estimatedCost').textContent = `$${totalCost.toFixed(2)}`;
 
             // Calculate total power (using editable properties)
             const totalPower = boardComponents.reduce((sum, comp) => {
@@ -2315,7 +2315,7 @@
                             addComponentToBoard('extension', 200, y + (index * 130), {
                                 name: item.name,
                                 serialNumber: item.sku || '',
-                                notes: `From CRM: €${item.price}`
+                                notes: `From CRM: $${item.price}`
                             });
                         }
                     });
@@ -2398,7 +2398,7 @@
                     boardComponents.forEach((comp, index) => {
                         const spec = COMPONENT_SPECS[comp.type];
                         doc.setFontSize(10);
-                        doc.text(`${index + 1}. ${comp.properties.name} - €${spec.cost}`, 25, y);
+                        doc.text(`${index + 1}. ${comp.properties.name} - $${spec.cost}`, 25, y);
                         y += 7;
                         if (y > 180) {
                             doc.addPage();
@@ -2414,7 +2414,7 @@
                     doc.setFontSize(12);
                     doc.text(`Total Components: ${boardComponents.length}`, 20, y);
                     y += 10;
-                    doc.text(`Total Cost: €${totalCost.toFixed(2)}`, 20, y);
+                    doc.text(`Total Cost: $${totalCost.toFixed(2)}`, 20, y);
                     y += 10;
                     doc.text(`Total Power: ${totalPower}W`, 20, y);
 
@@ -2907,7 +2907,7 @@
                             <div style="font-size: 0.85em; color: #95a5a6;">
                                 Customer: ${job.customer || 'N/A'} | Status: ${job.status || 'N/A'}
                             </div>
-                            ${job.total ? `<div style="font-size: 0.85em; color: #27ae60; margin-top: 5px;">Total: €${job.total}</div>` : ''}
+                            ${job.total ? `<div style="font-size: 0.85em; color: #27ae60; margin-top: 5px;">Total: $${job.total}</div>` : ''}
                         </div>
                     `).join('');
                 } else {
