@@ -60,13 +60,14 @@ app.config['CRM_DATA_FOLDER'] = 'crm_data'
 app.config['AI_MAPPING_FOLDER'] = 'ai_mapping'
 app.config['MAPPING_LEARNING_FOLDER'] = 'mapping_learning'
 app.config['SESSION_DATA_FOLDER'] = 'session_data'
+app.config['CAD_SESSIONS_FOLDER'] = 'cad_sessions'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'],
                app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
                app.config['SIMPRO_CONFIG_FOLDER'], app.config['CRM_DATA_FOLDER'],
                app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER'],
-               app.config['SESSION_DATA_FOLDER']]:
+               app.config['SESSION_DATA_FOLDER'], app.config['CAD_SESSIONS_FOLDER']]:
     os.makedirs(folder, exist_ok=True)
 
 # Database Models
@@ -2422,8 +2423,7 @@ def create_cad_session():
         }
 
         # Save session
-        cad_folder = os.path.join(BASE_DIR, 'cad_sessions')
-        os.makedirs(cad_folder, exist_ok=True)
+        cad_folder = app.config['CAD_SESSIONS_FOLDER']
 
         session_file = os.path.join(cad_folder, f'{session_id}.json')
         with open(session_file, 'w') as f:
@@ -2441,7 +2441,7 @@ def create_cad_session():
 def load_cad_session(session_id):
     """Load existing CAD session"""
     try:
-        cad_folder = os.path.join(BASE_DIR, 'cad_sessions')
+        cad_folder = app.config['CAD_SESSIONS_FOLDER']
         session_file = os.path.join(cad_folder, f'{session_id}.json')
 
         if not os.path.exists(session_file):
@@ -2467,8 +2467,7 @@ def save_cad_session():
         if not session_id:
             return jsonify({'success': False, 'error': 'No session_id provided'}), 400
 
-        cad_folder = os.path.join(BASE_DIR, 'cad_sessions')
-        os.makedirs(cad_folder, exist_ok=True)
+        cad_folder = app.config['CAD_SESSIONS_FOLDER']
 
         session_file = os.path.join(cad_folder, f'{session_id}.json')
 
@@ -2489,7 +2488,7 @@ def save_cad_session():
 def list_cad_sessions():
     """List all CAD sessions"""
     try:
-        cad_folder = os.path.join(BASE_DIR, 'cad_sessions')
+        cad_folder = app.config['CAD_SESSIONS_FOLDER']
         if not os.path.exists(cad_folder):
             return jsonify({'success': True, 'sessions': []})
 
