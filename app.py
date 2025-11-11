@@ -1927,6 +1927,50 @@ def generate_basic_board(automation_types):
         }
     })
 
+@app.route('/api/board-builder/available-sessions', methods=['GET'])
+def get_available_sessions():
+    """Get list of available sessions from mapping and canvas tools"""
+    try:
+        sessions = []
+        session_folder = app.config.get('SESSION_DATA_FOLDER', os.path.join(BASE_DIR, 'session_data'))
+
+        if os.path.exists(session_folder):
+            for filename in os.listdir(session_folder):
+                if filename.endswith('.json'):
+                    session_id = filename.replace('.json', '')
+                    session_file = os.path.join(session_folder, filename)
+
+                    try:
+                        with open(session_file, 'r') as f:
+                            session_data = json.load(f)
+
+                            # Determine session type
+                            session_type = 'unknown'
+                            if 'automation_data' in session_data or 'symbols' in session_data:
+                                session_type = 'mapping'
+                            elif 'canvas_data' in session_data or 'elements' in session_data:
+                                session_type = 'canvas'
+
+                            sessions.append({
+                                'id': session_id,
+                                'type': session_type,
+                                'project_name': session_data.get('project_name', 'Unnamed Project'),
+                                'created': session_data.get('timestamp', session_data.get('created', 'Unknown')),
+                                'component_count': len(session_data.get('automation_data', {}).get('symbols', [])) if session_type == 'mapping' else len(session_data.get('canvas_data', {}).get('elements', []))
+                            })
+                    except Exception as e:
+                        print(f"Error reading session {filename}: {e}")
+                        continue
+
+        return jsonify({
+            'success': True,
+            'sessions': sessions,
+            'mapping_sessions': [s for s in sessions if s['type'] == 'mapping'],
+            'canvas_sessions': [s for s in sessions if s['type'] == 'canvas']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/board-builder/import/mapping/<session_id>', methods=['GET'])
 def import_from_mapping(session_id):
     """Import electrical mapping data into board builder"""
