@@ -4059,6 +4059,73 @@ def ai_chat():
         if not user_message:
             return jsonify({'success': False, 'error': 'No message provided'}), 400
 
+        # SPECIAL CASE: Board Builder uses GPT-4 (same as board generation)
+        if current_page == '/board-builder':
+            openai_api_key = os.environ.get('OPENAI_API_KEY')
+            if not openai_api_key:
+                return jsonify({
+                    'success': False,
+                    'error': 'OpenAI API key not configured',
+                    'response': 'AI chat is not configured properly.'
+                }), 503
+
+            # Build messages for GPT-4
+            import requests
+            gpt_messages = [
+                {
+                    'role': 'system',
+                    'content': 'You are an expert Loxone system designer and assistant. You help users design, understand, and troubleshoot Loxone automation systems. You can answer questions about components, wiring, configuration, and best practices.'
+                }
+            ]
+
+            # Add conversation history
+            for msg in conversation_history:
+                gpt_messages.append({
+                    'role': msg.get('role', 'user'),
+                    'content': msg.get('content', '')
+                })
+
+            # Add current message
+            gpt_messages.append({
+                'role': 'user',
+                'content': user_message
+            })
+
+            # Call OpenAI GPT-4
+            response = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {openai_api_key}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'model': 'gpt-4',
+                    'messages': gpt_messages,
+                    'temperature': 0.7,
+                    'max_tokens': 2000
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                gpt_response = response.json()
+                assistant_message = gpt_response['choices'][0]['message']['content']
+
+                return jsonify({
+                    'success': True,
+                    'response': assistant_message,
+                    'agent_mode': False,
+                    'searches_performed': 0,
+                    'actions_taken': []
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'OpenAI API error: {response.status_code}',
+                    'response': 'Failed to get response from GPT-4.'
+                }), 500
+
+        # Default: Use Claude for other pages
         if not ANTHROPIC_AVAILABLE:
             return jsonify({
                 'success': False,

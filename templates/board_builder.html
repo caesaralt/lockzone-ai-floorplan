@@ -535,6 +535,15 @@
                     <span>Modbus Extension</span>
                 </button>
             </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Custom Components</div>
+                <button class="component-btn" onclick="openCustomComponentCreator()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); border: 2px solid #8e44ad;">
+                    <span class="component-icon">✨</span>
+                    <span>Create Custom Component</span>
+                </button>
+                <div id="customComponentsList"></div>
+            </div>
         </div>
 
         <!-- Board Canvas -->
@@ -745,6 +754,63 @@
         </div>
     </div>
 
+    <!-- Custom Component Creator Modal -->
+    <div class="modal" id="customComponentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">✨ Create Custom Component</div>
+                <button class="close-btn" onclick="closeCustomComponentModal()">✖</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Component Name</label>
+                    <input type="text" id="customCompName" placeholder="e.g., Custom Sensor Module" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Icon (Emoji or Text)</label>
+                        <input type="text" id="customCompIcon" placeholder="🔌" maxlength="2" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px; font-size: 1.5em; text-align: center;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Color</label>
+                        <input type="color" id="customCompColor" value="#3498db" style="width: 100%; height: 44px; cursor: pointer; border: 2px solid #34495e; border-radius: 4px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Width (px)</label>
+                        <input type="number" id="customCompWidth" value="150" min="80" max="300" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Height (px)</label>
+                        <input type="number" id="customCompHeight" value="80" min="60" max="200" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Number of Inputs</label>
+                        <input type="number" id="customCompInputs" value="0" min="0" max="16" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Number of Outputs</label>
+                        <input type="number" id="customCompOutputs" value="0" min="0" max="16" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Cost (€)</label>
+                        <input type="number" id="customCompCost" value="0" min="0" step="0.01" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6;">Power (W)</label>
+                        <input type="number" id="customCompPower" value="0" min="0" step="0.1" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px;">
+                    </div>
+                </div>
+                <button class="toolbar-btn ai" style="width: 100%; margin-top: 20px;" onclick="createCustomComponent()">✨ Create Component</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
@@ -761,12 +827,15 @@
         let boardComponents = [];
         let boardConnections = [];
         let selectedComponent = null;
+        let selectedConnection = null;
         let pendingComponentType = null;
         let isDragging = false;
         let dragOffset = { x: 0, y: 0 };
         let componentIdCounter = 0;
         let isConnecting = false;
         let connectionStart = null;
+        let isDraggingControlPoint = false;
+        let draggingControlPointData = null;
 
         // Component specifications and pricing
         const COMPONENT_SPECS = {
@@ -1052,14 +1121,35 @@
             } else {
                 // Complete connection
                 if (connectionStart.componentId !== componentId) {
-                    const connection = {
-                        id: `conn-${Date.now()}`,
-                        from: connectionStart,
-                        to: { componentId, portType, portIndex }
-                    };
-                    boardConnections.push(connection);
-                    renderConnection(connection);
-                    console.log('Connection created:', connection);
+                    // Calculate initial control points (midpoint)
+                    const fromComp = document.getElementById(connectionStart.componentId);
+                    const toComp = document.getElementById(componentId);
+                    if (fromComp && toComp) {
+                        const fromRect = fromComp.getBoundingClientRect();
+                        const toRect = toComp.getBoundingClientRect();
+                        const gridRect = document.getElementById('boardGrid').getBoundingClientRect();
+
+                        const x1 = fromRect.right - gridRect.left;
+                        const y1 = fromRect.top - gridRect.top + 20 + connectionStart.portIndex * 20;
+                        const x2 = toRect.left - gridRect.left;
+                        const y2 = toRect.top - gridRect.top + 20 + portIndex * 20;
+
+                        const connection = {
+                            id: `conn-${Date.now()}`,
+                            from: connectionStart,
+                            to: { componentId, portType, portIndex },
+                            color: '#3498db',  // Default wire color
+                            width: 3,  // Default wire width
+                            // Bezier curve control points
+                            cp1x: (x1 + x2) / 2,
+                            cp1y: y1,
+                            cp2x: (x1 + x2) / 2,
+                            cp2y: y2
+                        };
+                        boardConnections.push(connection);
+                        renderConnection(connection);
+                        console.log('Connection created:', connection);
+                    }
                 }
                 isConnecting = false;
                 connectionStart = null;
@@ -1083,12 +1173,120 @@
             const x2 = toRect.left - gridRect.left;
             const y2 = toRect.top - gridRect.top + 20 + connection.to.portIndex * 20;
 
+            // Use stored control points or calculate defaults
+            const cp1x = connection.cp1x !== undefined ? connection.cp1x : (x1 + x2) / 2;
+            const cp1y = connection.cp1y !== undefined ? connection.cp1y : y1;
+            const cp2x = connection.cp2x !== undefined ? connection.cp2x : (x1 + x2) / 2;
+            const cp2y = connection.cp2y !== undefined ? connection.cp2y : y2;
+
             const svg = document.getElementById('wiresLayer');
+
+            // Draw main wire path
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('class', 'wire-line');
-            path.setAttribute('d', `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`);
+            path.setAttribute('d', `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`);
             path.setAttribute('data-connection-id', connection.id);
+            path.setAttribute('stroke', connection.color || '#3498db');
+            path.setAttribute('stroke-width', connection.width || 3);
+            path.setAttribute('fill', 'none');
+            path.style.cursor = 'pointer';
+            path.style.pointerEvents = 'stroke';
+
+            // Make wires selectable
+            path.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectConnection(connection.id);
+            });
+
             svg.appendChild(path);
+
+            // Add control point handles if this connection is selected
+            if (selectedConnection === connection.id) {
+                // Control point 1
+                const cp1Handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                cp1Handle.setAttribute('cx', cp1x);
+                cp1Handle.setAttribute('cy', cp1y);
+                cp1Handle.setAttribute('r', 6);
+                cp1Handle.setAttribute('fill', '#f39c12');
+                cp1Handle.setAttribute('stroke', '#fff');
+                cp1Handle.setAttribute('stroke-width', 2);
+                cp1Handle.style.cursor = 'move';
+                cp1Handle.setAttribute('data-cp-id', `${connection.id}-cp1`);
+
+                // Control point 2
+                const cp2Handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                cp2Handle.setAttribute('cx', cp2x);
+                cp2Handle.setAttribute('cy', cp2y);
+                cp2Handle.setAttribute('r', 6);
+                cp2Handle.setAttribute('fill', '#e74c3c');
+                cp2Handle.setAttribute('stroke', '#fff');
+                cp2Handle.setAttribute('stroke-width', 2);
+                cp2Handle.style.cursor = 'move';
+                cp2Handle.setAttribute('data-cp-id', `${connection.id}-cp2`);
+
+                // Helper lines from endpoints to control points
+                const helperLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                helperLine1.setAttribute('x1', x1);
+                helperLine1.setAttribute('y1', y1);
+                helperLine1.setAttribute('x2', cp1x);
+                helperLine1.setAttribute('y2', cp1y);
+                helperLine1.setAttribute('stroke', '#95a5a6');
+                helperLine1.setAttribute('stroke-width', 1);
+                helperLine1.setAttribute('stroke-dasharray', '4,4');
+
+                const helperLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                helperLine2.setAttribute('x1', x2);
+                helperLine2.setAttribute('y1', y2);
+                helperLine2.setAttribute('x2', cp2x);
+                helperLine2.setAttribute('y2', cp2y);
+                helperLine2.setAttribute('stroke', '#95a5a6');
+                helperLine2.setAttribute('stroke-width', 1);
+                helperLine2.setAttribute('stroke-dasharray', '4,4');
+
+                svg.appendChild(helperLine1);
+                svg.appendChild(helperLine2);
+                svg.appendChild(cp1Handle);
+                svg.appendChild(cp2Handle);
+
+                // Make control points draggable
+                cp1Handle.addEventListener('mousedown', (e) => startDraggingControlPoint(e, connection.id, 'cp1'));
+                cp2Handle.addEventListener('mousedown', (e) => startDraggingControlPoint(e, connection.id, 'cp2'));
+            }
+        }
+
+        // Control point dragging
+        function startDraggingControlPoint(e, connectionId, cpType) {
+            e.stopPropagation();
+            e.preventDefault();
+            isDraggingControlPoint = true;
+            draggingControlPointData = { connectionId, cpType };
+        }
+
+        function handleControlPointDrag(e) {
+            if (!isDraggingControlPoint || !draggingControlPointData) return;
+
+            const gridRect = document.getElementById('boardGrid').getBoundingClientRect();
+            const x = e.clientX - gridRect.left + document.getElementById('boardWrapper').scrollLeft;
+            const y = e.clientY - gridRect.top + document.getElementById('boardWrapper').scrollTop;
+
+            const conn = boardConnections.find(c => c.id === draggingControlPointData.connectionId);
+            if (conn) {
+                if (draggingControlPointData.cpType === 'cp1') {
+                    conn.cp1x = x;
+                    conn.cp1y = y;
+                } else if (draggingControlPointData.cpType === 'cp2') {
+                    conn.cp2x = x;
+                    conn.cp2y = y;
+                }
+                redrawAllConnections();
+            }
+        }
+
+        function stopDraggingControlPoint() {
+            if (isDraggingControlPoint) {
+                isDraggingControlPoint = false;
+                draggingControlPointData = null;
+            }
         }
 
         // Component dragging
@@ -1116,6 +1314,13 @@
         }
 
         function handleBoardMouseMove(e) {
+            // Handle control point dragging
+            if (isDraggingControlPoint) {
+                handleControlPointDrag(e);
+                return;
+            }
+
+            // Handle component dragging
             if (!isDragging || !selectedComponent) return;
 
             const comp = document.getElementById(selectedComponent);
@@ -1140,6 +1345,7 @@
 
         function handleBoardMouseUp() {
             isDragging = false;
+            stopDraggingControlPoint();
         }
 
         // Select/deselect components
@@ -1161,7 +1367,127 @@
                 comp.classList.remove('selected');
             });
             selectedComponent = null;
+            deselectAllConnections();
             showComponentProperties(null);
+        }
+
+        // Select/deselect connections
+        function selectConnection(connectionId) {
+            deselectAllComponents();
+            deselectAllConnections();
+
+            selectedConnection = connectionId;
+            const connData = boardConnections.find(c => c.id === connectionId);
+
+            // Highlight selected wire
+            const wirePath = document.querySelector(`path[data-connection-id="${connectionId}"]`);
+            if (wirePath) {
+                wirePath.setAttribute('stroke-width', (connData.width || 3) + 2);
+                wirePath.setAttribute('filter', 'drop-shadow(0 0 4px rgba(52, 152, 219, 0.8))');
+            }
+
+            if (connData) {
+                showConnectionProperties(connData);
+            }
+        }
+
+        function deselectAllConnections() {
+            selectedConnection = null;
+            // Remove highlights from all wires
+            document.querySelectorAll('#wiresLayer path').forEach(path => {
+                const connId = path.getAttribute('data-connection-id');
+                const conn = boardConnections.find(c => c.id === connId);
+                if (conn) {
+                    path.setAttribute('stroke-width', conn.width || 3);
+                    path.removeAttribute('filter');
+                }
+            });
+        }
+
+        // Show connection properties
+        function showConnectionProperties(connection) {
+            const panel = document.getElementById('propertiesContent');
+
+            const fromComp = boardComponents.find(c => c.id === connection.from.componentId);
+            const toComp = boardComponents.find(c => c.id === connection.to.componentId);
+
+            panel.innerHTML = `
+                <div class="property-group">
+                    <div class="property-label">Connection</div>
+                    <div style="color: white; font-weight: 600;">Wire Connection</div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">From</div>
+                    <div style="color: #3498db;">${fromComp ? fromComp.properties.name : 'Unknown'}</div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">To</div>
+                    <div style="color: #3498db;">${toComp ? toComp.properties.name : 'Unknown'}</div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Wire Color</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" id="wireColorPicker" value="${connection.color || '#3498db'}"
+                               onchange="updateConnectionColor('${connection.id}', this.value)"
+                               style="width: 50px; height: 35px; cursor: pointer; border: 2px solid #34495e; border-radius: 4px;">
+                        <input type="text" class="property-input" value="${connection.color || '#3498db'}"
+                               onchange="updateConnectionColor('${connection.id}', this.value)"
+                               style="flex: 1;">
+                    </div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Wire Width</div>
+                    <input type="range" min="1" max="10" value="${connection.width || 3}"
+                           onchange="updateConnectionWidth('${connection.id}', this.value)"
+                           style="width: 100%;">
+                    <div style="color: #95a5a6; font-size: 0.85em;">${connection.width || 3}px</div>
+                </div>
+                <div class="property-group">
+                    <button onclick="deleteConnection('${connection.id}')"
+                            style="width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        🗑️ Delete Connection
+                    </button>
+                </div>
+            `;
+        }
+
+        // Update connection properties
+        function updateConnectionColor(connectionId, color) {
+            const conn = boardConnections.find(c => c.id === connectionId);
+            if (conn) {
+                conn.color = color;
+                redrawAllConnections();
+                if (selectedConnection === connectionId) {
+                    selectConnection(connectionId);
+                }
+            }
+        }
+
+        function updateConnectionWidth(connectionId, width) {
+            const conn = boardConnections.find(c => c.id === connectionId);
+            if (conn) {
+                conn.width = parseInt(width);
+                redrawAllConnections();
+                if (selectedConnection === connectionId) {
+                    selectConnection(connectionId);
+                }
+                // Update the width display
+                const panel = document.getElementById('propertiesContent');
+                const widthDisplay = panel.querySelector('.property-group:nth-last-child(2) div[style*="color: #95a5a6"]');
+                if (widthDisplay) {
+                    widthDisplay.textContent = `${width}px`;
+                }
+            }
+        }
+
+        function deleteConnection(connectionId) {
+            if (confirm('Delete this connection?')) {
+                boardConnections = boardConnections.filter(c => c.id !== connectionId);
+                selectedConnection = null;
+                redrawAllConnections();
+                showComponentProperties(null);
+                updateStats();
+            }
         }
 
         // Show component properties
@@ -1495,6 +1821,29 @@
         function applyImportedData(boardData) {
             if (boardData.components) {
                 boardData.components.forEach(comp => {
+                    // Ensure component has an ID (AI-generated components may not have one)
+                    if (!comp.id) {
+                        comp.id = `comp-${componentIdCounter++}`;
+                    }
+
+                    // Ensure component has proper properties structure
+                    const spec = COMPONENT_SPECS[comp.type];
+                    if (spec && !comp.properties) {
+                        comp.properties = {
+                            name: spec.name,
+                            serialNumber: '',
+                            notes: ''
+                        };
+                    } else if (spec && comp.properties) {
+                        // Merge with defaults if properties exist but are incomplete
+                        comp.properties = {
+                            name: comp.properties.name || spec.name,
+                            serialNumber: comp.properties.serialNumber || '',
+                            notes: comp.properties.notes || '',
+                            ...comp.properties
+                        };
+                    }
+
                     boardComponents.push(comp);
                     renderComponent(comp);
                 });
@@ -2054,6 +2403,77 @@
                 connectionStart = null;
                 updateStats();
             }
+        }
+
+        // Custom Component Creator
+        let customComponentIdCounter = 0;
+
+        function openCustomComponentCreator() {
+            document.getElementById('customComponentModal').classList.add('active');
+        }
+
+        function closeCustomComponentModal() {
+            document.getElementById('customComponentModal').classList.remove('active');
+            // Reset form
+            document.getElementById('customCompName').value = '';
+            document.getElementById('customCompIcon').value = '';
+            document.getElementById('customCompColor').value = '#3498db';
+            document.getElementById('customCompWidth').value = '150';
+            document.getElementById('customCompHeight').value = '80';
+            document.getElementById('customCompInputs').value = '0';
+            document.getElementById('customCompOutputs').value = '0';
+            document.getElementById('customCompCost').value = '0';
+            document.getElementById('customCompPower').value = '0';
+        }
+
+        function createCustomComponent() {
+            const name = document.getElementById('customCompName').value.trim();
+            const icon = document.getElementById('customCompIcon').value.trim() || '🔧';
+            const color = document.getElementById('customCompColor').value;
+            const width = parseInt(document.getElementById('customCompWidth').value);
+            const height = parseInt(document.getElementById('customCompHeight').value);
+            const inputs = parseInt(document.getElementById('customCompInputs').value);
+            const outputs = parseInt(document.getElementById('customCompOutputs').value);
+            const cost = parseFloat(document.getElementById('customCompCost').value);
+            const power = parseFloat(document.getElementById('customCompPower').value);
+
+            if (!name) {
+                alert('Please enter a component name');
+                return;
+            }
+
+            // Create unique type ID for custom component
+            const customType = `custom-${customComponentIdCounter++}`;
+
+            // Add to COMPONENT_SPECS
+            COMPONENT_SPECS[customType] = {
+                name: name,
+                icon: icon,
+                color: color,
+                width: width,
+                height: height,
+                cost: cost,
+                power: power,
+                inputs: inputs,
+                outputs: outputs,
+                isCustom: true
+            };
+
+            // Add button to custom components list
+            const listContainer = document.getElementById('customComponentsList');
+            const button = document.createElement('button');
+            button.className = 'component-btn';
+            button.onclick = () => selectComponent(customType, icon, name);
+            button.innerHTML = `
+                <span class="component-icon">${icon}</span>
+                <span>${name}</span>
+            `;
+            button.style.borderLeft = `4px solid ${color}`;
+            listContainer.appendChild(button);
+
+            closeCustomComponentModal();
+            alert(`✅ Custom component "${name}" created successfully!`);
+            console.log('Custom component created:', customType, COMPONENT_SPECS[customType]);
         }
 
         // Initialize on load
