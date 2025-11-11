@@ -39,10 +39,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function initializeCAD() {
     try {
+        // Check if Fabric.js is loaded
+        if (typeof fabric === 'undefined') {
+            throw new Error('Fabric.js library not loaded');
+        }
+
         // Initialize Fabric.js canvas
         canvas = new fabric.Canvas('cadCanvas', {
-            width: window.innerWidth - 400, // Account for sidebars
-            height: window.innerHeight - 120, // Account for header and footer
+            width: Math.min(window.innerWidth - 400, 2000), // Account for sidebars, max 2000px
+            height: Math.min(window.innerHeight - 120, 1200), // Account for header, max 1200px
             backgroundColor: '#ffffff',
             selection: true
         });
@@ -51,26 +56,45 @@ async function initializeCAD() {
         layers = [...DEFAULT_LAYERS];
         renderLayers();
 
-        // Load symbols library
-        await loadSymbols();
+        // Load symbols library (don't fail if this errors)
+        try {
+            await loadSymbols();
+        } catch (e) {
+            console.warn('Failed to load symbols:', e);
+        }
 
         // Setup event listeners
         setupCanvasEvents();
         setupKeyboardShortcuts();
 
-        // Enable grid
-        enableGrid();
+        // Enable grid (simplified)
+        try {
+            enableGrid();
+        } catch (e) {
+            console.warn('Failed to enable grid:', e);
+        }
 
         // Auto-save every 2 minutes
         setInterval(() => autoSave(), 120000);
 
-        // Create new session
-        await createNewSession();
+        // Create new session (don't fail if this errors - user can create manually)
+        try {
+            await createNewSession();
+        } catch (e) {
+            console.warn('Failed to auto-create session:', e);
+            console.log('You can create a new project manually using the "New" button');
+        }
 
         console.log('✅ CAD Designer initialized successfully');
     } catch (error) {
         console.error('❌ Initialization error:', error);
-        alert('Failed to initialize CAD Designer. Please refresh the page.');
+        document.body.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: system-ui;">
+                <h2 style="color: #e74c3c;">⚠️ Failed to Initialize CAD Designer</h2>
+                <p>Error: ${error.message}</p>
+                <button onclick="window.location.reload()" style="padding: 12px 24px; background: #556B2F; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px;">Refresh Page</button>
+            </div>
+        `;
     }
 }
 
@@ -80,7 +104,8 @@ async function initializeCAD() {
 
 async function createNewSession() {
     try {
-        const projectName = document.getElementById('projectName').value;
+        const projectNameInput = document.getElementById('projectName');
+        const projectName = projectNameInput ? projectNameInput.value : 'Untitled Project';
 
         const response = await fetch('/api/cad/new', {
             method: 'POST',
@@ -88,15 +113,23 @@ async function createNewSession() {
             body: JSON.stringify({ project_name: projectName })
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
 
         if (data.success) {
             currentSession = data.session;
             console.log('✅ Session created:', currentSession.session_id);
             updateObjectCount();
+        } else {
+            throw new Error(data.error || 'Unknown error');
         }
     } catch (error) {
         console.error('Error creating session:', error);
+        // Don't crash - user can still use the CAD designer
+        throw error; // Re-throw so initializeCAD can catch it
     }
 }
 
@@ -765,25 +798,38 @@ function updateZoomDisplay() {
 }
 
 function enableGrid() {
-    const gridSize = 20;
+    const gridSize = 50; // Larger grid = fewer lines
     const width = canvas.width;
     const height = canvas.height;
+    const maxLines = 100; // Limit total grid lines for performance
 
-    for (let i = 0; i < width / gridSize; i++) {
+    // Calculate number of lines
+    const verticalLines = Math.min(Math.floor(width / gridSize), maxLines / 2);
+    const horizontalLines = Math.min(Math.floor(height / gridSize), maxLines / 2);
+
+    // Add vertical lines
+    for (let i = 0; i <= verticalLines; i++) {
         canvas.add(new fabric.Line([i * gridSize, 0, i * gridSize, height], {
-            stroke: '#f0f0f0',
+            stroke: '#e8e8e8',
+            strokeWidth: 1,
             selectable: false,
-            evented: false
+            evented: false,
+            hoverCursor: 'default'
         }));
     }
 
-    for (let i = 0; i < height / gridSize; i++) {
+    // Add horizontal lines
+    for (let i = 0; i <= horizontalLines; i++) {
         canvas.add(new fabric.Line([0, i * gridSize, width, i * gridSize], {
-            stroke: '#f0f0f0',
+            stroke: '#e8e8e8',
+            strokeWidth: 1,
             selectable: false,
-            evented: false
+            evented: false,
+            hoverCursor: 'default'
         }));
     }
+
+    console.log(`Grid enabled: ${verticalLines + horizontalLines} lines`);
 }
 
 function toggleGrid() {
