@@ -623,10 +623,8 @@
                     <div class="import-card-desc">Load a previously saved board configuration</div>
                 </div>
             </div>
-            <div style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; color: #95a5a6; font-size: 0.9em;">Or paste session ID:</label>
-                <input type="text" id="sessionIdInput" placeholder="Enter session ID from Mapping or Canvas" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 4px; margin-bottom: 10px;">
-                <button class="toolbar-btn" style="width: 100%;" onclick="importFromSessionId()">Import from Session ID</button>
+            <div style="margin-top: 20px;" id="sessionSelectorContainer">
+                <!-- Session selector will be populated here -->
             </div>
         </div>
     </div>
@@ -1105,12 +1103,17 @@
                 selectBoardComponent(component.id);
             });
 
-            // Add connection ports (using editable inputs/outputs)
+            // Add connection ports (using editable inputs/outputs and custom colors)
+            const inputPortColor = component.properties.inputPortColor || '#3498db';  // Default blue
+            const outputPortColor = component.properties.outputPortColor || '#e74c3c';  // Default red
+
             if (inputs) {
                 for (let i = 0; i < Math.min(inputs, 32); i++) {
                     const port = document.createElement('div');
                     port.className = 'component-port input';
                     port.style.top = (20 + i * 20) + 'px';
+                    port.style.backgroundColor = inputPortColor;
+                    port.style.border = `2px solid ${inputPortColor}`;
                     port.addEventListener('click', (e) => {
                         e.stopPropagation();
                         handlePortClick(component.id, 'input', i);
@@ -1124,6 +1127,8 @@
                     const port = document.createElement('div');
                     port.className = 'component-port output';
                     port.style.top = (20 + i * 20) + 'px';
+                    port.style.backgroundColor = outputPortColor;
+                    port.style.border = `2px solid ${outputPortColor}`;
                     port.addEventListener('click', (e) => {
                         e.stopPropagation();
                         handlePortClick(component.id, 'output', i);
@@ -1665,6 +1670,28 @@
                     </div>
                 </div>
                 <div class="property-group">
+                    <div class="property-label">Port Colors</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Input Ports</label>
+                            <input type="color" class="property-input" value="${component.properties.inputPortColor || '#3498db'}"
+                                   onchange="updatePortColor('${component.id}', 'inputPortColor', this.value)"
+                                   style="width: 100%; height: 35px; cursor: pointer; padding: 2px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Output Ports</label>
+                            <input type="color" class="property-input" value="${component.properties.outputPortColor || '#e74c3c'}"
+                                   onchange="updatePortColor('${component.id}', 'outputPortColor', this.value)"
+                                   style="width: 100%; height: 35px; cursor: pointer; padding: 2px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button class="toolbar-btn" style="width: 100%; padding: 8px; font-size: 0.85em;" onclick="resetPortColors('${component.id}')">
+                            🔄 Reset to Default Colors
+                        </button>
+                    </div>
+                </div>
+                <div class="property-group">
                     <button class="toolbar-btn success" style="width: 100%; margin-bottom: 10px;" onclick="addComponentToStock('${component.id}')">
                         📦 Add to CRM Stock
                     </button>
@@ -1692,14 +1719,16 @@
                     updateStats();
                 }
 
-                // Re-render component if inputs/outputs changed
-                if (spec === 'inputs' || spec === 'outputs') {
+                // Re-render component if inputs/outputs/cost changed (visual update needed)
+                if (spec === 'inputs' || spec === 'outputs' || spec === 'cost') {
                     const oldElement = document.getElementById(componentId);
                     if (oldElement) {
                         oldElement.remove();
                     }
                     renderComponent(comp);
                     redrawAllConnections();
+                    // Reselect component to keep it selected after re-render
+                    setTimeout(() => selectBoardComponent(componentId), 10);
                 }
             }
         }
@@ -1717,6 +1746,42 @@
                     const header = compElement.querySelector('.component-header span:last-child');
                     if (header) header.textContent = value;
                 }
+            }
+        }
+
+        // Update port color
+        function updatePortColor(componentId, colorType, color) {
+            const comp = boardComponents.find(c => c.id === componentId);
+            if (comp) {
+                comp.properties[colorType] = color;
+                console.log(`Updated ${colorType} for ${componentId}:`, color);
+
+                // Re-render component to apply new port colors
+                const oldElement = document.getElementById(componentId);
+                if (oldElement) {
+                    oldElement.remove();
+                }
+                renderComponent(comp);
+                redrawAllConnections();
+                setTimeout(() => selectBoardComponent(componentId), 10);
+            }
+        }
+
+        // Reset port colors to default
+        function resetPortColors(componentId) {
+            const comp = boardComponents.find(c => c.id === componentId);
+            if (comp) {
+                comp.properties.inputPortColor = '#3498db';  // Blue for inputs
+                comp.properties.outputPortColor = '#e74c3c';  // Red for outputs
+
+                // Re-render component to apply default colors
+                const oldElement = document.getElementById(componentId);
+                if (oldElement) {
+                    oldElement.remove();
+                }
+                renderComponent(comp);
+                redrawAllConnections();
+                setTimeout(() => selectBoardComponent(componentId), 10);
             }
         }
 
@@ -1896,44 +1961,90 @@
         }
 
         async function importFromMapping() {
-            const sessionId = prompt('Enter Mapping session ID:');
-            if (!sessionId) return;
-
-            try {
-                const response = await fetch(`/api/board-builder/import/mapping/${sessionId}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    applyImportedData(data.boardData);
-                    closeImportModal();
-                    alert(`✅ Imported ${data.boardData.components.length} components from Mapping!`);
-                } else {
-                    alert('❌ Error: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Import error:', error);
-                alert('❌ Failed to import from Mapping');
-            }
+            await loadAndShowSessions('mapping');
         }
 
         async function importFromCanvas() {
-            const sessionId = prompt('Enter Canvas session ID:');
-            if (!sessionId) return;
+            await loadAndShowSessions('canvas');
+        }
+
+        async function loadAndShowSessions(type) {
+            const container = document.getElementById('sessionSelectorContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #95a5a6;">Loading available sessions...</div>';
 
             try {
-                const response = await fetch(`/api/board-builder/import/canvas/${sessionId}`);
+                const response = await fetch('/api/board-builder/available-sessions');
+                const data = await response.json();
+
+                if (data.success) {
+                    const sessions = type === 'mapping' ? data.mapping_sessions : data.canvas_sessions;
+
+                    if (sessions.length === 0) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 20px; background: #2c3e50; border: 2px solid #e74c3c; border-radius: 6px;">
+                                <div style="color: #e74c3c; font-size: 1.2em; margin-bottom: 10px;">⚠️ No sessions available</div>
+                                <div style="color: #95a5a6;">No ${type} sessions found. Please create a session in the ${type === 'mapping' ? 'Mapping and Markup Tool' : 'Canvas Editor'} first.</div>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <label style="display: block; margin-bottom: 10px; color: #95a5a6; font-size: 0.9em;">
+                                Select ${type === 'mapping' ? 'Mapping' : 'Canvas'} Session to Import:
+                            </label>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${sessions.map(session => `
+                                    <div onclick="importSession('${session.id}', '${type}')"
+                                         style="padding: 15px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s;"
+                                         onmouseover="this.style.borderColor='#3498db'; this.style.background='#34495e';"
+                                         onmouseout="this.style.borderColor='#34495e'; this.style.background='#2c3e50';">
+                                        <div style="font-weight: 600; color: white; margin-bottom: 5px;">${session.project_name}</div>
+                                        <div style="font-size: 0.85em; color: #95a5a6;">
+                                            Created: ${new Date(session.created).toLocaleString()} | Components: ${session.component_count}
+                                        </div>
+                                        <div style="font-size: 0.75em; color: #7f8c8d; margin-top: 5px;">
+                                            ID: ${session.id}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                            Error loading sessions: ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                        Failed to load sessions. Check console for details.
+                    </div>
+                `;
+            }
+        }
+
+        async function importSession(sessionId, type) {
+            try {
+                const endpoint = type === 'mapping'
+                    ? `/api/board-builder/import/mapping/${sessionId}`
+                    : `/api/board-builder/import/canvas/${sessionId}`;
+
+                const response = await fetch(endpoint);
                 const data = await response.json();
 
                 if (data.success) {
                     applyImportedData(data.boardData);
                     closeImportModal();
-                    alert(`✅ Imported ${data.boardData.components.length} components from Canvas!`);
+                    alert(`✅ Imported ${data.boardData.components.length} components from ${type === 'mapping' ? 'Mapping' : 'Canvas'}!`);
                 } else {
                     alert('❌ Error: ' + data.error);
                 }
             } catch (error) {
                 console.error('Import error:', error);
-                alert('❌ Failed to import from Canvas');
+                alert(`❌ Failed to import from ${type}`);
             }
         }
 
