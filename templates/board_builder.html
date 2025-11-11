@@ -811,6 +811,27 @@
         </div>
     </div>
 
+    <!-- Job Assignment Modal -->
+    <div class="modal" id="jobAssignmentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📋 Assign to Job</div>
+                <button class="close-btn" onclick="closeJobAssignmentModal()">✖</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 10px; color: #95a5a6;">Select Job:</label>
+                    <div id="jobsList" style="max-height: 400px; overflow-y: auto;">
+                        <div style="text-align: center; padding: 20px; color: #95a5a6;">
+                            Loading jobs...
+                        </div>
+                    </div>
+                </div>
+                <button class="toolbar-btn" style="width: 100%;" onclick="closeJobAssignmentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
@@ -1061,15 +1082,20 @@
             div.style.width = spec.width + 'px';
             div.style.borderColor = spec.color;
 
+            // Use editable properties or fallback to spec
+            const inputs = component.properties.inputs !== undefined ? component.properties.inputs : spec.inputs;
+            const outputs = component.properties.outputs !== undefined ? component.properties.outputs : spec.outputs;
+            const cost = component.properties.cost !== undefined ? component.properties.cost : spec.cost;
+
             div.innerHTML = `
                 <div class="component-header">
                     <span style="font-size: 1.5em;">${spec.icon}</span>
                     <span>${component.properties.name}</span>
                 </div>
                 <div class="component-body">
-                    ${spec.inputs ? `📥 ${spec.inputs} inputs` : ''}
-                    ${spec.outputs ? `📤 ${spec.outputs} outputs` : ''}
-                    ${spec.cost ? `<div style="margin-top: 5px;">€${spec.cost}</div>` : ''}
+                    ${inputs ? `📥 ${inputs} inputs` : ''}
+                    ${outputs ? `📤 ${outputs} outputs` : ''}
+                    ${cost ? `<div style="margin-top: 5px;">€${cost}</div>` : ''}
                 </div>
             `;
 
@@ -1079,9 +1105,9 @@
                 selectBoardComponent(component.id);
             });
 
-            // Add connection ports
-            if (spec.inputs) {
-                for (let i = 0; i < Math.min(spec.inputs, 4); i++) {
+            // Add connection ports (using editable inputs/outputs)
+            if (inputs) {
+                for (let i = 0; i < Math.min(inputs, 32); i++) {
                     const port = document.createElement('div');
                     port.className = 'component-port input';
                     port.style.top = (20 + i * 20) + 'px';
@@ -1093,8 +1119,8 @@
                 }
             }
 
-            if (spec.outputs) {
-                for (let i = 0; i < Math.min(spec.outputs, 4); i++) {
+            if (outputs) {
+                for (let i = 0; i < Math.min(outputs, 32); i++) {
                     const port = document.createElement('div');
                     port.className = 'component-port output';
                     port.style.top = (20 + i * 20) + 'px';
@@ -1413,8 +1439,8 @@
 
             panel.innerHTML = `
                 <div class="property-group">
-                    <div class="property-label">Connection</div>
-                    <div style="color: white; font-weight: 600;">Wire Connection</div>
+                    <div class="property-label">Connection Type</div>
+                    <div style="color: white; font-weight: 600;">🔌 Wire/Cable Connection</div>
                 </div>
                 <div class="property-group">
                     <div class="property-label">From</div>
@@ -1425,30 +1451,105 @@
                     <div style="color: #3498db;">${toComp ? toComp.properties.name : 'Unknown'}</div>
                 </div>
                 <div class="property-group">
-                    <div class="property-label">Wire Color</div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div class="property-label">Cable/Wire Name</div>
+                    <input type="text" class="property-input" value="${connection.name || 'Unnamed Cable'}"
+                           onchange="updateConnectionProperty('${connection.id}', 'name', this.value)"
+                           placeholder="e.g., Tree Cable A-B">
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Category</div>
+                    <select class="property-input" onchange="updateConnectionProperty('${connection.id}', 'category', this.value)">
+                        <option value="tree-cable" ${connection.category === 'tree-cable' ? 'selected' : ''}>Tree Cable</option>
+                        <option value="network-cable" ${connection.category === 'network-cable' ? 'selected' : ''}>Network Cable</option>
+                        <option value="power-cable" ${connection.category === 'power-cable' ? 'selected' : ''}>Power Cable</option>
+                        <option value="data-cable" ${connection.category === 'data-cable' ? 'selected' : ''}>Data Cable</option>
+                        <option value="analog-cable" ${connection.category === 'analog-cable' ? 'selected' : ''}>Analog Cable</option>
+                        <option value="custom" ${connection.category === 'custom' || !connection.category ? 'selected' : ''}>Custom</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Cable Specifications</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Length (m)</label>
+                            <input type="number" class="property-input" value="${connection.length || 0}"
+                                   onchange="updateConnectionProperty('${connection.id}', 'length', parseFloat(this.value))" min="0" step="0.1"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Price per m (€)</label>
+                            <input type="number" class="property-input" value="${connection.pricePerMeter || 0}"
+                                   onchange="updateConnectionProperty('${connection.id}', 'pricePerMeter', parseFloat(this.value))" min="0" step="0.01"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Total Cost</label>
+                        <div style="color: #27ae60; font-size: 1.1em; font-weight: 600;">
+                            €${((connection.length || 0) * (connection.pricePerMeter || 0)).toFixed(2)}
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Quantity</label>
+                        <input type="number" class="property-input" value="${connection.quantity || 1}"
+                               onchange="updateConnectionProperty('${connection.id}', 'quantity', parseInt(this.value))" min="1"
+                               style="padding: 5px; font-size: 0.85em;">
+                    </div>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Notes</div>
+                    <textarea class="property-input" rows="3"
+                              onchange="updateConnectionProperty('${connection.id}', 'notes', this.value)"
+                              placeholder="Additional notes about this cable...">${connection.notes || ''}</textarea>
+                </div>
+                <div class="property-group">
+                    <div class="property-label">Visual Settings</div>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
+                        <label style="color: #95a5a6; font-size: 0.85em;">Wire Color:</label>
                         <input type="color" id="wireColorPicker" value="${connection.color || '#3498db'}"
                                onchange="updateConnectionColor('${connection.id}', this.value)"
                                style="width: 50px; height: 35px; cursor: pointer; border: 2px solid #34495e; border-radius: 4px;">
                         <input type="text" class="property-input" value="${connection.color || '#3498db'}"
                                onchange="updateConnectionColor('${connection.id}', this.value)"
-                               style="flex: 1;">
+                               style="flex: 1; padding: 5px; font-size: 0.85em;">
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="color: #95a5a6; font-size: 0.85em;">Wire Width:</label>
+                        <input type="range" min="1" max="10" value="${connection.width || 3}"
+                               onchange="updateConnectionWidth('${connection.id}', this.value)"
+                               style="width: 100%;">
+                        <div style="color: #95a5a6; font-size: 0.85em;">${connection.width || 3}px</div>
                     </div>
                 </div>
                 <div class="property-group">
-                    <div class="property-label">Wire Width</div>
-                    <input type="range" min="1" max="10" value="${connection.width || 3}"
-                           onchange="updateConnectionWidth('${connection.id}', this.value)"
-                           style="width: 100%;">
-                    <div style="color: #95a5a6; font-size: 0.85em;">${connection.width || 3}px</div>
+                    <button class="toolbar-btn success" style="width: 100%; margin-bottom: 10px;" onclick="addCableToStock('${connection.id}')">
+                        📦 Add Cable to CRM Stock
+                    </button>
+                    <button class="toolbar-btn ai" style="width: 100%; margin-bottom: 10px;" onclick="assignCableToJob('${connection.id}')">
+                        📋 Assign Cable to Job
+                    </button>
                 </div>
                 <div class="property-group">
                     <button onclick="deleteConnection('${connection.id}')"
-                            style="width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            class="toolbar-btn danger" style="width: 100%;">
                         🗑️ Delete Connection
                     </button>
                 </div>
             `;
+        }
+
+        // Update connection property
+        function updateConnectionProperty(connectionId, property, value) {
+            const conn = boardConnections.find(c => c.id === connectionId);
+            if (conn) {
+                conn[property] = value;
+                console.log(`Updated ${property} for connection ${connectionId}:`, value);
+
+                // Refresh the properties panel if this connection is still selected
+                if (selectedConnection === connectionId) {
+                    selectConnection(connectionId);
+                }
+            }
         }
 
         // Update connection properties
@@ -1517,18 +1618,59 @@
                            onchange="updateComponentProperty('${component.id}', 'serialNumber', this.value)">
                 </div>
                 <div class="property-group">
+                    <div class="property-label">Category</div>
+                    <input type="text" class="property-input" value="${component.properties.category || spec.name}"
+                           onchange="updateComponentProperty('${component.id}', 'category', this.value)">
+                </div>
+                <div class="property-group">
                     <div class="property-label">Notes</div>
                     <textarea class="property-input" rows="3"
                               onchange="updateComponentProperty('${component.id}', 'notes', this.value)">${component.properties.notes || ''}</textarea>
                 </div>
                 <div class="property-group">
-                    <div class="property-label">Specifications</div>
-                    <div style="color: #bdc3c7; font-size: 0.85em;">
-                        ${spec.inputs ? `<div>Inputs: ${spec.inputs}</div>` : ''}
-                        ${spec.outputs ? `<div>Outputs: ${spec.outputs}</div>` : ''}
-                        ${spec.cost ? `<div>Cost: €${spec.cost}</div>` : ''}
-                        ${spec.power ? `<div>Power: ${spec.power}W</div>` : ''}
+                    <div class="property-label">Editable Specifications</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Inputs</label>
+                            <input type="number" class="property-input" value="${component.properties.inputs !== undefined ? component.properties.inputs : (spec.inputs || 0)}"
+                                   onchange="updateComponentSpec('${component.id}', 'inputs', parseInt(this.value))" min="0" max="32"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Outputs</label>
+                            <input type="number" class="property-input" value="${component.properties.outputs !== undefined ? component.properties.outputs : (spec.outputs || 0)}"
+                                   onchange="updateComponentSpec('${component.id}', 'outputs', parseInt(this.value))" min="0" max="32"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
                     </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Cost (€)</label>
+                            <input type="number" class="property-input" value="${component.properties.cost !== undefined ? component.properties.cost : (spec.cost || 0)}"
+                                   onchange="updateComponentSpec('${component.id}', 'cost', parseFloat(this.value))" min="0" step="0.01"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Power (W)</label>
+                            <input type="number" class="property-input" value="${component.properties.power !== undefined ? component.properties.power : (spec.power || 0)}"
+                                   onchange="updateComponentSpec('${component.id}', 'power', parseFloat(this.value))" min="0" step="0.1"
+                                   style="padding: 5px; font-size: 0.85em;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; margin-bottom: 5px; color: #95a5a6; font-size: 0.8em;">Quantity</label>
+                        <input type="number" class="property-input" value="${component.properties.quantity || 1}"
+                               onchange="updateComponentProperty('${component.id}', 'quantity', parseInt(this.value))" min="1"
+                               style="padding: 5px; font-size: 0.85em;">
+                    </div>
+                </div>
+                <div class="property-group">
+                    <button class="toolbar-btn success" style="width: 100%; margin-bottom: 10px;" onclick="addComponentToStock('${component.id}')">
+                        📦 Add to CRM Stock
+                    </button>
+                    <button class="toolbar-btn ai" style="width: 100%; margin-bottom: 10px;" onclick="assignComponentToJob('${component.id}')">
+                        📋 Assign to Job
+                    </button>
                 </div>
                 <div class="property-group">
                     <button class="toolbar-btn danger" style="width: 100%;" onclick="deleteComponent('${component.id}')">
@@ -1536,6 +1678,30 @@
                     </button>
                 </div>
             `;
+        }
+
+        // Update component specification
+        function updateComponentSpec(componentId, spec, value) {
+            const comp = boardComponents.find(c => c.id === componentId);
+            if (comp) {
+                comp.properties[spec] = value;
+                console.log(`Updated ${spec} for ${componentId}:`, value);
+
+                // Update stats if it's cost or power
+                if (spec === 'cost' || spec === 'power') {
+                    updateStats();
+                }
+
+                // Re-render component if inputs/outputs changed
+                if (spec === 'inputs' || spec === 'outputs') {
+                    const oldElement = document.getElementById(componentId);
+                    if (oldElement) {
+                        oldElement.remove();
+                    }
+                    renderComponent(comp);
+                    redrawAllConnections();
+                }
+            }
         }
 
         // Update component property
@@ -1590,15 +1756,30 @@
             document.getElementById('componentCount').textContent = boardComponents.length;
             document.getElementById('connectionCount').textContent = boardConnections.length;
 
-            const totalCost = boardComponents.reduce((sum, comp) => {
+            // Calculate total cost from components (using editable properties)
+            const componentCost = boardComponents.reduce((sum, comp) => {
                 const spec = COMPONENT_SPECS[comp.type];
-                return sum + (spec.cost || 0);
+                const cost = comp.properties.cost !== undefined ? comp.properties.cost : (spec.cost || 0);
+                const quantity = comp.properties.quantity || 1;
+                return sum + (cost * quantity);
             }, 0);
+
+            // Calculate total cost from cables
+            const cableCost = boardConnections.reduce((sum, conn) => {
+                const length = conn.length || 0;
+                const pricePerMeter = conn.pricePerMeter || 0;
+                const quantity = conn.quantity || 1;
+                return sum + (length * pricePerMeter * quantity);
+            }, 0);
+
+            const totalCost = componentCost + cableCost;
             document.getElementById('estimatedCost').textContent = `€${totalCost.toFixed(2)}`;
 
+            // Calculate total power (using editable properties)
             const totalPower = boardComponents.reduce((sum, comp) => {
                 const spec = COMPONENT_SPECS[comp.type];
-                return sum + (spec.power || 0);
+                const power = comp.properties.power !== undefined ? comp.properties.power : (spec.power || 0);
+                return sum + power;
             }, 0);
             document.getElementById('powerConsumption').textContent = `${totalPower}W`;
         }
@@ -2474,6 +2655,231 @@
             closeCustomComponentModal();
             alert(`✅ Custom component "${name}" created successfully!`);
             console.log('Custom component created:', customType, COMPONENT_SPECS[customType]);
+        }
+
+        // CRM Integration Functions
+        let currentItemForAssignment = null;
+        let currentItemType = null; // 'component' or 'cable'
+
+        // Add component to CRM stock
+        async function addComponentToStock(componentId) {
+            const comp = boardComponents.find(c => c.id === componentId);
+            if (!comp) {
+                alert('Component not found');
+                return;
+            }
+
+            const spec = COMPONENT_SPECS[comp.type];
+            const quantity = comp.properties.quantity || 1;
+            const cost = comp.properties.cost !== undefined ? comp.properties.cost : spec.cost;
+
+            try {
+                const response = await fetch('/api/crm/stock/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: comp.properties.name,
+                        category: comp.properties.category || spec.name,
+                        type: comp.type,
+                        quantity: quantity,
+                        cost: cost,
+                        serialNumber: comp.properties.serialNumber || '',
+                        notes: comp.properties.notes || '',
+                        specifications: {
+                            inputs: comp.properties.inputs !== undefined ? comp.properties.inputs : spec.inputs,
+                            outputs: comp.properties.outputs !== undefined ? comp.properties.outputs : spec.outputs,
+                            power: comp.properties.power !== undefined ? comp.properties.power : spec.power
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`✅ "${comp.properties.name}" added to CRM stock (Qty: ${quantity})`);
+                } else {
+                    alert('❌ Failed to add to stock: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error adding to stock:', error);
+                alert('❌ Error adding to stock. Check console for details.');
+            }
+        }
+
+        // Add cable to CRM stock
+        async function addCableToStock(connectionId) {
+            const conn = boardConnections.find(c => c.id === connectionId);
+            if (!conn) {
+                alert('Cable not found');
+                return;
+            }
+
+            const cableName = conn.name || 'Unnamed Cable';
+            const category = conn.category || 'custom';
+            const length = conn.length || 0;
+            const pricePerMeter = conn.pricePerMeter || 0;
+            const quantity = conn.quantity || 1;
+            const totalCost = length * pricePerMeter * quantity;
+
+            try {
+                const response = await fetch('/api/crm/stock/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: cableName,
+                        category: category,
+                        type: 'cable',
+                        quantity: quantity,
+                        cost: totalCost,
+                        notes: conn.notes || '',
+                        specifications: {
+                            length: length,
+                            pricePerMeter: pricePerMeter,
+                            color: conn.color
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`✅ "${cableName}" added to CRM stock (Qty: ${quantity}, ${length}m)`);
+                } else {
+                    alert('❌ Failed to add cable to stock: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error adding cable to stock:', error);
+                alert('❌ Error adding cable to stock. Check console for details.');
+            }
+        }
+
+        // Assign component to job
+        async function assignComponentToJob(componentId) {
+            currentItemForAssignment = componentId;
+            currentItemType = 'component';
+            await openJobAssignmentModal();
+        }
+
+        // Assign cable to job
+        async function assignCableToJob(connectionId) {
+            currentItemForAssignment = connectionId;
+            currentItemType = 'cable';
+            await openJobAssignmentModal();
+        }
+
+        // Open job assignment modal and load jobs
+        async function openJobAssignmentModal() {
+            document.getElementById('jobAssignmentModal').classList.add('active');
+            await loadJobsList();
+        }
+
+        function closeJobAssignmentModal() {
+            document.getElementById('jobAssignmentModal').classList.remove('active');
+            currentItemForAssignment = null;
+            currentItemType = null;
+        }
+
+        // Load jobs from CRM
+        async function loadJobsList() {
+            const jobsList = document.getElementById('jobsList');
+            jobsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #95a5a6;">Loading jobs...</div>';
+
+            try {
+                const response = await fetch('/api/crm/jobs');
+                const result = await response.json();
+
+                if (result.success && result.jobs && result.jobs.length > 0) {
+                    jobsList.innerHTML = result.jobs.map(job => `
+                        <div onclick="selectJobForAssignment('${job.id}')"
+                             style="padding: 15px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s;"
+                             onmouseover="this.style.borderColor='#3498db'; this.style.background='#34495e';"
+                             onmouseout="this.style.borderColor='#34495e'; this.style.background='#2c3e50';">
+                            <div style="font-weight: 600; color: white; margin-bottom: 5px;">${job.name}</div>
+                            <div style="font-size: 0.85em; color: #95a5a6;">
+                                Customer: ${job.customer || 'N/A'} | Status: ${job.status || 'N/A'}
+                            </div>
+                            ${job.total ? `<div style="font-size: 0.85em; color: #27ae60; margin-top: 5px;">Total: €${job.total}</div>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    jobsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #95a5a6;">No jobs available. Create a job in the CRM first.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                jobsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Error loading jobs. Check console for details.</div>';
+            }
+        }
+
+        // Select job and assign item
+        async function selectJobForAssignment(jobId) {
+            if (!currentItemForAssignment || !currentItemType) {
+                alert('No item selected for assignment');
+                return;
+            }
+
+            let itemData = null;
+
+            if (currentItemType === 'component') {
+                const comp = boardComponents.find(c => c.id === currentItemForAssignment);
+                if (!comp) {
+                    alert('Component not found');
+                    return;
+                }
+
+                const spec = COMPONENT_SPECS[comp.type];
+                itemData = {
+                    type: 'component',
+                    name: comp.properties.name,
+                    category: comp.properties.category || spec.name,
+                    componentType: comp.type,
+                    quantity: comp.properties.quantity || 1,
+                    cost: comp.properties.cost !== undefined ? comp.properties.cost : spec.cost,
+                    serialNumber: comp.properties.serialNumber || '',
+                    notes: comp.properties.notes || '',
+                    specifications: {
+                        inputs: comp.properties.inputs !== undefined ? comp.properties.inputs : spec.inputs,
+                        outputs: comp.properties.outputs !== undefined ? comp.properties.outputs : spec.outputs,
+                        power: comp.properties.power !== undefined ? comp.properties.power : spec.power
+                    }
+                };
+            } else if (currentItemType === 'cable') {
+                const conn = boardConnections.find(c => c.id === currentItemForAssignment);
+                if (!conn) {
+                    alert('Cable not found');
+                    return;
+                }
+
+                itemData = {
+                    type: 'cable',
+                    name: conn.name || 'Unnamed Cable',
+                    category: conn.category || 'custom',
+                    quantity: conn.quantity || 1,
+                    cost: (conn.length || 0) * (conn.pricePerMeter || 0),
+                    notes: conn.notes || '',
+                    specifications: {
+                        length: conn.length || 0,
+                        pricePerMeter: conn.pricePerMeter || 0,
+                        color: conn.color
+                    }
+                };
+            }
+
+            try {
+                const response = await fetch(`/api/crm/jobs/${jobId}/assign-item`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(itemData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`✅ Item assigned to job successfully!`);
+                    closeJobAssignmentModal();
+                } else {
+                    alert('❌ Failed to assign item: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error assigning item to job:', error);
+                alert('❌ Error assigning item. Check console for details.');
+            }
         }
 
         // Initialize on load

@@ -2179,6 +2179,146 @@ def get_crm_stock():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/crm/stock/add', methods=['POST'])
+def add_to_crm_stock():
+    """Add item to CRM stock"""
+    try:
+        data = request.get_json()
+        name = data.get('name', 'Unnamed Item')
+        category = data.get('category', 'general')
+        item_type = data.get('type', 'component')
+        quantity = data.get('quantity', 1)
+        cost = data.get('cost', 0)
+        serial_number = data.get('serialNumber', '')
+        notes = data.get('notes', '')
+        specifications = data.get('specifications', {})
+
+        # Load CRM data
+        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
+        if os.path.exists(crm_file):
+            with open(crm_file, 'r') as f:
+                crm_data = json.load(f)
+        else:
+            crm_data = {'jobs': [], 'stock': [], 'customers': []}
+
+        # Check if item already exists in stock
+        existing_item = None
+        for item in crm_data.get('stock', []):
+            if item.get('name') == name and item.get('category') == category:
+                existing_item = item
+                break
+
+        if existing_item:
+            # Update quantity and cost
+            existing_item['quantity'] = existing_item.get('quantity', 0) + quantity
+            existing_item['cost'] = cost  # Update to latest cost
+            existing_item['lastUpdated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            # Add new item
+            new_item = {
+                'id': f"STOCK-{len(crm_data.get('stock', [])) + 1:04d}",
+                'name': name,
+                'category': category,
+                'type': item_type,
+                'quantity': quantity,
+                'cost': cost,
+                'serialNumber': serial_number,
+                'notes': notes,
+                'specifications': specifications,
+                'dateAdded': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            if 'stock' not in crm_data:
+                crm_data['stock'] = []
+            crm_data['stock'].append(new_item)
+
+        # Save CRM data
+        with open(crm_file, 'w') as f:
+            json.dump(crm_data, f, indent=2)
+
+        return jsonify({
+            'success': True,
+            'message': f'Added {quantity}x {name} to stock'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/crm/jobs', methods=['GET'])
+def get_crm_jobs():
+    """Get all CRM jobs"""
+    try:
+        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
+        if os.path.exists(crm_file):
+            with open(crm_file, 'r') as f:
+                crm_data = json.load(f)
+                return jsonify({
+                    'success': True,
+                    'jobs': crm_data.get('jobs', [])
+                })
+        else:
+            return jsonify({
+                'success': True,
+                'jobs': []
+            })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/crm/jobs/<job_id>/assign-item', methods=['POST'])
+def assign_item_to_job(job_id):
+    """Assign component or cable to a job"""
+    try:
+        item_data = request.get_json()
+
+        # Load CRM data
+        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
+        if os.path.exists(crm_file):
+            with open(crm_file, 'r') as f:
+                crm_data = json.load(f)
+        else:
+            crm_data = {'jobs': [], 'stock': [], 'customers': []}
+
+        # Find the job
+        job = None
+        for j in crm_data.get('jobs', []):
+            if j.get('id') == job_id:
+                job = j
+                break
+
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'})
+
+        # Initialize components list if it doesn't exist
+        if 'components' not in job:
+            job['components'] = []
+
+        # Add item to job
+        job['components'].append({
+            'name': item_data.get('name'),
+            'category': item_data.get('category'),
+            'type': item_data.get('type'),
+            'quantity': item_data.get('quantity', 1),
+            'cost': item_data.get('cost', 0),
+            'notes': item_data.get('notes', ''),
+            'specifications': item_data.get('specifications', {}),
+            'assignedAt': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+        # Update job total
+        if 'total' in job:
+            job['total'] += item_data.get('cost', 0) * item_data.get('quantity', 1)
+        else:
+            job['total'] = item_data.get('cost', 0) * item_data.get('quantity', 1)
+
+        # Save CRM data
+        with open(crm_file, 'w') as f:
+            json.dump(crm_data, f, indent=2)
+
+        return jsonify({
+            'success': True,
+            'message': f"Item assigned to job {job.get('name')}"
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""
