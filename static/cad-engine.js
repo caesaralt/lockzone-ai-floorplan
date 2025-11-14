@@ -95,8 +95,8 @@ async function initializeCAD() {
             console.warn('Failed to enable grid:', e);
         }
 
-        // Auto-save every 2 minutes
-        setInterval(() => autoSave(), 120000);
+        // Auto-save disabled - user must save manually with Ctrl+S or Save button
+        console.log('💾 Auto-save disabled. Use Ctrl+S or Save button to save your work.');
 
         // Create new session (don't fail if this errors - user can create manually)
         try {
@@ -267,12 +267,11 @@ async function loadSession(sessionId) {
     }
 }
 
-function autoSave() {
-    if (currentSession && canvas.getObjects().length > 0) {
-        console.log('Auto-saving...');
-        saveProject();
-    }
-}
+// Auto-save function removed - manual save only
+// User can save with:
+// - Ctrl+S keyboard shortcut
+// - "💾 Save" button in header
+// - saveProject() function
 
 function newProject() {
     if (confirm('Create new project? Unsaved changes will be lost.')) {
@@ -1737,6 +1736,12 @@ function updateMetadata() {
 
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+        // Prevent delete when editing text
+        const activeElement = document.activeElement;
+        const isTextInput = activeElement.tagName === 'INPUT' ||
+                           activeElement.tagName === 'TEXTAREA' ||
+                           activeElement.isContentEditable;
+
         // Ctrl+Z - Undo
         if (e.ctrlKey && e.key === 'z') {
             e.preventDefault();
@@ -1752,14 +1757,31 @@ function setupKeyboardShortcuts() {
             e.preventDefault();
             saveProject();
         }
-        // Delete - Remove selected
-        if (e.key === 'Delete') {
+        // Delete or Backspace - Remove selected object (but not when typing)
+        if ((e.key === 'Delete' || e.key === 'Backspace') && !isTextInput) {
+            e.preventDefault(); // Prevent browser back navigation
             const activeObject = canvas.getActiveObject();
             if (activeObject) {
-                canvas.remove(activeObject);
+                // Check if it's a group selection
+                if (activeObject.type === 'activeSelection') {
+                    // Delete all objects in selection
+                    activeObject.forEachObject((obj) => {
+                        canvas.remove(obj);
+                    });
+                    canvas.discardActiveObject();
+                } else {
+                    // Delete single object
+                    canvas.remove(activeObject);
+                }
                 addToUndoStack();
                 updateObjectCount();
+                canvas.renderAll();
             }
+        }
+        // F8 - Toggle Ortho Mode
+        if (e.key === 'F8') {
+            e.preventDefault();
+            toggleOrtho();
         }
     });
 }

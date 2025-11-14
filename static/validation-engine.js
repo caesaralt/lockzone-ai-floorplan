@@ -10,27 +10,31 @@ let validationResults = {
     info: []
 };
 
-let validationEnabled = true;
+let validationEnabled = false; // Changed to false - manual validation only
 let validationInterval = null;
 
-// Start real-time validation
-function startValidation() {
-    console.log('✅ Starting real-time validation engine...');
-    validationEnabled = true;
-
-    // Run validation every 5 seconds
-    if (validationInterval) {
-        clearInterval(validationInterval);
+// Manual validation - run once when requested
+function analyzeDrawing() {
+    console.log('🔍 Analyzing drawing for AS/NZS 3000 compliance...');
+    if (!canvas) {
+        alert('Canvas not ready. Please try again.');
+        return;
     }
 
-    validationInterval = setInterval(() => {
-        if (validationEnabled && canvas) {
-            runValidation();
-        }
-    }, 5000);
-
-    // Run initial validation
     runValidation();
+
+    // Show notification
+    const totalIssues = validationResults.errors.length + validationResults.warnings.length;
+    if (totalIssues === 0) {
+        showValidationNotification('✅ No compliance issues found!', 'success');
+    } else {
+        showValidationNotification(`⚠️ Found ${validationResults.errors.length} errors and ${validationResults.warnings.length} warnings`, 'warning');
+    }
+}
+
+// Deprecated - kept for compatibility but not used
+function startValidation() {
+    console.log('⚠️ Auto-validation disabled. Use "Analyze Drawing" button instead.');
 }
 
 function stopValidation() {
@@ -38,6 +42,15 @@ function stopValidation() {
     if (validationInterval) {
         clearInterval(validationInterval);
     }
+}
+
+function showValidationNotification(message, type) {
+    const bgColor = type === 'success' ? '#27ae60' : '#f39c12';
+    const notification = document.createElement('div');
+    notification.style.cssText = `position: fixed; top: 20px; right: 20px; background: ${bgColor}; color: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10001; font-size: 14px;`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 4000);
 }
 
 function runValidation() {
@@ -409,9 +422,6 @@ function closeValidationPanel() {
     }
 }
 
-// Auto-start validation when CAD is initialized
-setTimeout(() => {
-    if (typeof canvas !== 'undefined' && canvas) {
-        startValidation();
-    }
-}, 2000);
+// Auto-start disabled - validation is now manual only
+// User must click "Analyze Drawing" button to run validation
+console.log('✅ Validation engine loaded (manual mode)');
