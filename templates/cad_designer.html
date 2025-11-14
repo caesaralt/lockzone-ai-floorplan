@@ -6,6 +6,7 @@
     <title>⚡ Electrical CAD Designer - Integratd Living</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -465,9 +466,17 @@
             <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" style="display: none;" onchange="handleFileUpload(event)">
             <button class="header-btn" onclick="loadProject()">📂 Open</button>
             <button class="header-btn" onclick="saveProject()">💾 Save</button>
+            <button class="header-btn" onclick="showImportMenu()" title="Import from other modules">📥 Import</button>
             <button class="header-btn" onclick="addTitleBlock()">📋 Title Block</button>
+            <button class="header-btn" onclick="generatePanelSchedule()">📊 Panel Schedule</button>
+            <button class="header-btn" onclick="generateCableSchedule()">📋 Cable Schedule</button>
+            <button class="header-btn" onclick="showWireLabelMenu()" title="Wire Labeling Tools">🏷️ Label Wires</button>
+            <button class="header-btn" onclick="showMeasurementMenu()" title="Measurement Tools">📏 Measure</button>
+            <button class="header-btn" onclick="showHatchDialog()" title="Hatching & Area Fills">🎨 Hatch</button>
+            <button class="header-btn" onclick="toggleSchematicView()" id="schematicToggle" title="Toggle Schematic View">📊 Schematic</button>
+            <button class="header-btn" onclick="toggleOrtho()" id="orthoToggle" title="Ortho Mode (F8)">⊥ Ortho</button>
             <button class="header-btn ai" onclick="openAIModal()">🤖 AI Auto-Generate</button>
-            <button class="header-btn" onclick="exportDrawing()">📤 Export</button>
+            <button class="header-btn" onclick="showExportMenu()" title="Export Options">📤 Export</button>
         </div>
     </div>
 
@@ -652,5 +661,222 @@
     </div>
 
     <script src="/static/cad-engine.js"></script>
+    <script src="/static/panel-schedule.js"></script>
+    <script src="/static/cable-schedule.js"></script>
+    <script src="/static/validation-engine.js"></script>
+    <script src="/static/wire-labeling.js"></script>
+    <script src="/static/measurement-tools.js"></script>
+    <script src="/static/hatching-patterns.js"></script>
+    <script src="/static/pdf-export.js"></script>
+    <script src="/static/schematic-view.js"></script>
+    <script>
+        // Wire labeling menu
+        function showWireLabelMenu() {
+            const menu = document.createElement('div');
+            menu.style.cssText = 'position: fixed; top: 70px; right: 20px; background: #2c3e50; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; min-width: 200px;';
+            menu.id = 'wireLabelMenu';
+
+            menu.innerHTML = `
+                <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">🏷️ Wire Labeling</div>
+                <button onclick="autoNumberWires(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">🔢 Auto-Number All Wires</button>
+                <button onclick="labelSelectedWires(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">✏️ Label Selected Wire</button>
+                <button onclick="labelWireWithCircuit(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">⚡ Circuit Label</button>
+                <button onclick="toggleWireLabels(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer;">👁️ Toggle Visibility</button>
+                <button onclick="exportWireList(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #34495e; color: white; border: none; border-radius: 4px; cursor: pointer;">📋 Wire List</button>
+                <button onclick="changeLabelPrefix(); closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #556B2F; color: white; border: none; border-radius: 4px; cursor: pointer;">🔤 Change Prefix</button>
+                <button onclick="closeMenu('wireLabelMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+
+            // Remove existing menu
+            const existing = document.getElementById('wireLabelMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        // Measurement tools menu
+        function showMeasurementMenu() {
+            const menu = document.createElement('div');
+            menu.style.cssText = 'position: fixed; top: 70px; right: 20px; background: #2c3e50; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; min-width: 200px;';
+            menu.id = 'measurementMenu';
+
+            menu.innerHTML = `
+                <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">📏 Measurement Tools</div>
+                <button onclick="startDistanceMeasurement(); closeMenu('measurementMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">📏 Distance</button>
+                <button onclick="startAreaMeasurement(); closeMenu('measurementMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">📐 Area</button>
+                <button onclick="startAngleMeasurement(); closeMenu('measurementMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer;">📐 Angle</button>
+                <button onclick="showMeasurementsList(); closeMenu('measurementMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">📋 List All</button>
+                <button onclick="clearAllMeasurements(); closeMenu('measurementMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Clear All</button>
+                <button onclick="closeMenu('measurementMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+
+            // Remove existing menu
+            const existing = document.getElementById('measurementMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        function closeMenu(menuId) {
+            const menu = document.getElementById(menuId);
+            if (menu) menu.remove();
+        }
+
+        // Export menu
+        function showExportMenu() {
+            const menu = document.createElement('div');
+            menu.style.cssText = 'position: fixed; top: 70px; right: 20px; background: #2c3e50; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; min-width: 250px;';
+            menu.id = 'exportMenu';
+
+            menu.innerHTML = `
+                <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">📤 Export Options</div>
+                <button onclick="exportCurrentSheetToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">📄 Current Sheet to PDF</button>
+                <button onclick="exportAllSheetsToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">📚 All Sheets to PDF</button>
+                <button onclick="exportSchematicToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Schematic to PDF</button>
+                <button onclick="exportDrawing(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">📦 DXF/PNG/SVG Export</button>
+                <button onclick="closeMenu('exportMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+
+            // Remove existing menu
+            const existing = document.getElementById('exportMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        // Import menu
+        function showImportMenu() {
+            const menu = document.createElement('div');
+            menu.style.cssText = 'position: fixed; top: 70px; right: 20px; background: #2c3e50; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; min-width: 250px;';
+            menu.id = 'importMenu';
+
+            menu.innerHTML = `
+                <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">📥 Import Data</div>
+                <button onclick="showBoardImportDialog(); closeMenu('importMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">🔧 Board Builder</button>
+                <button onclick="showQuoteImportDialog(); closeMenu('importMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">💰 Quote Tool</button>
+                <button onclick="closeMenu('importMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+
+            // Remove existing menu
+            const existing = document.getElementById('importMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        // Import from Board Builder
+        async function showBoardImportDialog() {
+            const boardId = prompt('Enter Board Builder Session ID:');
+            if (!boardId) return;
+
+            try {
+                const response = await fetch(`/api/cad/import-board/${boardId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Load the CAD objects onto canvas
+                    data.objects.forEach(obj => {
+                        if (typeof addObjectToCanvas === 'function') {
+                            addObjectToCanvas(obj);
+                        }
+                    });
+
+                    alert(`✅ Imported ${data.objects.length} objects from Board Builder`);
+                    canvas.renderAll();
+                } else {
+                    alert('❌ Failed to import: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Board import error:', error);
+                alert('❌ Error importing board: ' + error.message);
+            }
+        }
+
+        // Import from Quote Tool
+        async function showQuoteImportDialog() {
+            const quoteId = prompt('Enter Quote/Mapping Session ID:');
+            if (!quoteId) return;
+
+            try {
+                const response = await fetch(`/api/cad/import-quote/${quoteId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Load floor plan image if available
+                    if (data.floor_plan_url) {
+                        loadFloorPlanBackground(data.floor_plan_url);
+                    }
+
+                    // Load the CAD objects onto canvas
+                    data.objects.forEach(obj => {
+                        if (typeof addObjectToCanvas === 'function') {
+                            addObjectToCanvas(obj);
+                        }
+                    });
+
+                    // Update project name
+                    if (data.project_name && document.getElementById('projectName')) {
+                        document.getElementById('projectName').value = data.project_name;
+                    }
+
+                    alert(`✅ Imported ${data.objects.length} devices from Quote Tool`);
+                    canvas.renderAll();
+                } else {
+                    alert('❌ Failed to import: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Quote import error:', error);
+                alert('❌ Error importing quote: ' + error.message);
+            }
+        }
+
+        // Helper function to load floor plan background
+        function loadFloorPlanBackground(imageUrl) {
+            fabric.Image.fromURL(imageUrl, function(img) {
+                img.set({
+                    left: 0,
+                    top: 0,
+                    selectable: false,
+                    evented: false,
+                    opacity: 0.3
+                });
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            });
+        }
+
+        // Helper function to add object to canvas (converts JSON to Fabric object)
+        function addObjectToCanvas(objData) {
+            if (objData.type === 'rect') {
+                const rect = new fabric.Rect({
+                    left: objData.left,
+                    top: objData.top,
+                    width: objData.width,
+                    height: objData.height,
+                    fill: objData.fill,
+                    stroke: objData.stroke,
+                    strokeWidth: objData.strokeWidth,
+                    customType: objData.customType,
+                    layer: objData.layer
+                });
+                canvas.add(rect);
+            } else if (objData.type === 'text') {
+                const text = new fabric.Text(objData.text, {
+                    left: objData.left,
+                    top: objData.top,
+                    fontSize: objData.fontSize,
+                    fontWeight: objData.fontWeight,
+                    fill: objData.fill,
+                    customType: objData.customType,
+                    layer: objData.layer
+                });
+                canvas.add(text);
+            } else if (objData.type === 'group' && objData.symbolId) {
+                // Load symbol from library
+                if (typeof loadSymbolFromLibrary === 'function') {
+                    loadSymbolFromLibrary(objData.symbolId, objData.left, objData.top);
+                }
+            }
+        }
+    </script>
 </body>
 </html>

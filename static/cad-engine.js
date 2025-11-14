@@ -18,6 +18,19 @@ let undoStack = [];
 let redoStack = [];
 let zoomLevel = 1;
 
+// Multi-sheet support
+let sheets = [];
+let currentSheetIndex = 0;
+
+// Advanced snapping
+let snapEnabled = true;
+let orthoMode = false;
+let polarTrackingEnabled = false;
+let objectSnapEnabled = true;
+const SNAP_DISTANCE = 10; // pixels
+const POLAR_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]; // degrees
+let snapIndicator = null;
+
 // Rendering throttle
 let lastRenderTime = 0;
 const RENDER_THROTTLE = 16; // Max 60fps
@@ -1398,6 +1411,159 @@ async function generateWithAI() {
 }
 
 // ============================================================================
+// MULTI-SHEET SUPPORT
+// ============================================================================
+
+function initializeSheets() {
+    // Initialize with one default sheet
+    if (sheets.length === 0) {
+        sheets.push({
+            id: 'sheet1',
+            name: 'Sheet 1 - Main Floor Plan',
+            canvasState: canvas.toJSON(),
+            metadata: {
+                drawing_number: 'E-001',
+                title: 'Main Floor Plan'
+            }
+        });
+    }
+    updateSheetNavigation();
+}
+
+function addNewSheet() {
+    // Save current sheet
+    saveCurrentSheet();
+
+    // Create new sheet
+    const newSheetNum = sheets.length + 1;
+    const newSheet = {
+        id: `sheet${newSheetNum}`,
+        name: `Sheet ${newSheetNum}`,
+        canvasState: null,
+        metadata: {
+            drawing_number: `E-${String(newSheetNum).padStart(3, '0')}`,
+            title: `Sheet ${newSheetNum}`
+        }
+    };
+
+    sheets.push(newSheet);
+    currentSheetIndex = sheets.length - 1;
+
+    // Clear canvas for new sheet
+    canvas.clear();
+    canvas.backgroundColor = '#ffffff';
+
+    updateSheetNavigation();
+    console.log(`✅ Added new sheet: ${newSheet.name}`);
+}
+
+function switchToSheet(index) {
+    if (index < 0 || index >= sheets.length) return;
+
+    // Save current sheet
+    saveCurrentSheet();
+
+    // Switch to new sheet
+    currentSheetIndex = index;
+    const sheet = sheets[index];
+
+    // Clear and load sheet canvas
+    canvas.clear();
+    if (sheet.canvasState) {
+        canvas.loadFromJSON(sheet.canvasState, () => {
+            canvas.renderAll();
+            console.log(`✅ Switched to ${sheet.name}`);
+        });
+    } else {
+        canvas.backgroundColor = '#ffffff';
+        canvas.renderAll();
+    }
+
+    updateSheetNavigation();
+}
+
+function saveCurrentSheet() {
+    if (currentSheetIndex >= 0 && currentSheetIndex < sheets.length) {
+        sheets[currentSheetIndex].canvasState = canvas.toJSON();
+    }
+}
+
+function deleteSheet(index) {
+    if (sheets.length === 1) {
+        alert('Cannot delete the last sheet!');
+        return;
+    }
+
+    const sheet = sheets[index];
+    if (confirm(`Delete "${sheet.name}"?`)) {
+        sheets.splice(index, 1);
+
+        // Adjust current index if needed
+        if (currentSheetIndex >= sheets.length) {
+            currentSheetIndex = sheets.length - 1;
+        }
+
+        switchToSheet(currentSheetIndex);
+        console.log(`✅ Deleted sheet: ${sheet.name}`);
+    }
+}
+
+function renameSheet(index) {
+    const sheet = sheets[index];
+    const newName = prompt('Enter new sheet name:', sheet.name);
+
+    if (newName && newName.trim()) {
+        sheet.name = newName.trim();
+        updateSheetNavigation();
+        console.log(`✅ Renamed sheet to: ${newName}`);
+    }
+}
+
+function updateSheetNavigation() {
+    // Update sheet tabs UI (if exists)
+    const sheetNav = document.getElementById('sheetNavigation');
+    if (!sheetNav) return;
+
+    sheetNav.innerHTML = '';
+
+    sheets.forEach((sheet, index) => {
+        const tab = document.createElement('div');
+        tab.className = `sheet-tab ${index === currentSheetIndex ? 'active' : ''}`;
+        tab.innerHTML = `
+            <span onclick="switchToSheet(${index})">${sheet.name}</span>
+            <button onclick="renameSheet(${index})" title="Rename">✏️</button>
+            <button onclick="deleteSheet(${index})" title="Delete">🗑️</button>
+        `;
+        sheetNav.appendChild(tab);
+    });
+
+    // Add new sheet button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-sheet-btn';
+    addBtn.innerHTML = '➕ Add Sheet';
+    addBtn.onclick = addNewSheet;
+    sheetNav.appendChild(addBtn);
+}
+
+function exportAllSheets() {
+    // Export all sheets to a multi-page PDF or separate DXF files
+    saveCurrentSheet();
+
+    const exportData = {
+        project: currentSession?.project_name || 'Multi-Sheet Project',
+        sheets: sheets.map((sheet, idx) => ({
+            sheet_number: idx + 1,
+            name: sheet.name,
+            drawing_number: sheet.metadata.drawing_number,
+            canvas_state: sheet.canvasState
+        }))
+    };
+
+    console.log('Exporting all sheets:', exportData);
+    alert(`Ready to export ${sheets.length} sheets (feature coming soon)`);
+}
+
+// ============================================================================
 // EXPORT
 // ============================================================================
 
@@ -1639,5 +1805,279 @@ function switchTab(tab) {
     document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
     event.target.classList.add('active');
 }
+
+// ============================================================================
+// ADVANCED SNAPPING SYSTEM
+// ============================================================================
+
+function toggleSnap() {
+    snapEnabled = !snapEnabled;
+    console.log(`Snap: ${snapEnabled ? 'ON' : 'OFF'}`);
+    updateSnapUI();
+}
+
+function toggleOrtho() {
+    orthoMode = !orthoMode;
+    console.log(`Ortho Mode: ${orthoMode ? 'ON' : 'OFF'}`);
+    updateSnapUI();
+}
+
+function togglePolarTracking() {
+    polarTrackingEnabled = !polarTrackingEnabled;
+    console.log(`Polar Tracking: ${polarTrackingEnabled ? 'ON' : 'OFF'}`);
+    updateSnapUI();
+}
+
+function toggleObjectSnap() {
+    objectSnapEnabled = !objectSnapEnabled;
+    console.log(`Object Snap: ${objectSnapEnabled ? 'ON' : 'OFF'}`);
+    updateSnapUI();
+}
+
+function getSnapPoint(x, y) {
+    if (!snapEnabled) return { x, y };
+
+    let snapPoint = { x, y };
+    let snapType = null;
+
+    // 1. Grid snap (if grid is visible)
+    if (canvas.backgroundImage) {
+        const gridSize = 20; // Grid spacing in pixels
+        snapPoint.x = Math.round(x / gridSize) * gridSize;
+        snapPoint.y = Math.round(y / gridSize) * gridSize;
+        snapType = 'grid';
+    }
+
+    // 2. Object snap (endpoint, midpoint, center)
+    if (objectSnapEnabled) {
+        const objectSnap = findNearestObjectSnapPoint(x, y);
+        if (objectSnap) {
+            snapPoint = objectSnap.point;
+            snapType = objectSnap.type;
+        }
+    }
+
+    // 3. Ortho mode (force horizontal or vertical)
+    if (orthoMode && isDrawing && startX !== undefined && startY !== undefined) {
+        const dx = Math.abs(snapPoint.x - startX);
+        const dy = Math.abs(snapPoint.y - startY);
+
+        if (dx > dy) {
+            // Lock to horizontal
+            snapPoint.y = startY;
+            snapType = 'ortho-h';
+        } else {
+            // Lock to vertical
+            snapPoint.x = startX;
+            snapType = 'ortho-v';
+        }
+    }
+
+    // 4. Polar tracking (snap to polar angles)
+    if (polarTrackingEnabled && isDrawing && startX !== undefined && startY !== undefined) {
+        const polarSnap = snapToPolarAngle(startX, startY, snapPoint.x, snapPoint.y);
+        if (polarSnap) {
+            snapPoint = polarSnap.point;
+            snapType = `polar-${polarSnap.angle}°`;
+        }
+    }
+
+    // Show snap indicator
+    showSnapIndicator(snapPoint.x, snapPoint.y, snapType);
+
+    return snapPoint;
+}
+
+function findNearestObjectSnapPoint(x, y) {
+    const objects = canvas.getObjects();
+    let nearest = null;
+    let minDistance = SNAP_DISTANCE;
+
+    objects.forEach(obj => {
+        // Get snap points for this object
+        const snapPoints = getObjectSnapPoints(obj);
+
+        snapPoints.forEach(sp => {
+            const dx = sp.x - x;
+            const dy = sp.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = {
+                    point: { x: sp.x, y: sp.y },
+                    type: sp.type
+                };
+            }
+        });
+    });
+
+    return nearest;
+}
+
+function getObjectSnapPoints(obj) {
+    const points = [];
+
+    if (obj.type === 'line') {
+        // Endpoint snap
+        points.push({ x: obj.x1, y: obj.y1, type: 'endpoint' });
+        points.push({ x: obj.x2, y: obj.y2, type: 'endpoint' });
+
+        // Midpoint snap
+        points.push({
+            x: (obj.x1 + obj.x2) / 2,
+            y: (obj.y1 + obj.y2) / 2,
+            type: 'midpoint'
+        });
+    } else if (obj.type === 'rect') {
+        // Corner snaps
+        points.push({ x: obj.left, y: obj.top, type: 'corner' });
+        points.push({ x: obj.left + obj.width, y: obj.top, type: 'corner' });
+        points.push({ x: obj.left, y: obj.top + obj.height, type: 'corner' });
+        points.push({ x: obj.left + obj.width, y: obj.top + obj.height, type: 'corner' });
+
+        // Center snap
+        points.push({
+            x: obj.left + obj.width / 2,
+            y: obj.top + obj.height / 2,
+            type: 'center'
+        });
+    } else if (obj.type === 'circle') {
+        // Center snap
+        points.push({ x: obj.left + obj.radius, y: obj.top + obj.radius, type: 'center' });
+
+        // Quadrant snaps
+        const cx = obj.left + obj.radius;
+        const cy = obj.top + obj.radius;
+        const r = obj.radius;
+        points.push({ x: cx + r, y: cy, type: 'quadrant' }); // Right
+        points.push({ x: cx - r, y: cy, type: 'quadrant' }); // Left
+        points.push({ x: cx, y: cy + r, type: 'quadrant' }); // Bottom
+        points.push({ x: cx, y: cy - r, type: 'quadrant' }); // Top
+    } else if (obj.type === 'group') {
+        // Center of group
+        points.push({ x: obj.left, y: obj.top, type: 'center' });
+    }
+
+    return points;
+}
+
+function snapToPolarAngle(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const currentAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    // Find nearest polar angle
+    let nearestAngle = POLAR_ANGLES[0];
+    let minDiff = 360;
+
+    POLAR_ANGLES.forEach(angle => {
+        const diff = Math.abs(currentAngle - angle);
+        const altDiff = Math.abs(currentAngle - angle + 360);
+        const minAngleDiff = Math.min(diff, altDiff);
+
+        if (minAngleDiff < minDiff && minAngleDiff < 5) { // 5 degree tolerance
+            minDiff = minAngleDiff;
+            nearestAngle = angle;
+        }
+    });
+
+    if (minDiff < 5) {
+        const radAngle = nearestAngle * Math.PI / 180;
+        return {
+            point: {
+                x: x1 + distance * Math.cos(radAngle),
+                y: y1 + distance * Math.sin(radAngle)
+            },
+            angle: nearestAngle
+        };
+    }
+
+    return null;
+}
+
+function showSnapIndicator(x, y, type) {
+    // Remove previous indicator
+    if (snapIndicator) {
+        canvas.remove(snapIndicator);
+        snapIndicator = null;
+    }
+
+    if (!type) return;
+
+    // Create snap indicator
+    const indicators = {
+        'endpoint': { symbol: '□', color: '#00ff00' },
+        'midpoint': { symbol: '△', color: '#00ffff' },
+        'center': { symbol: '○', color: '#ff00ff' },
+        'corner': { symbol: '□', color: '#ffff00' },
+        'quadrant': { symbol: '◇', color: '#ff8800' },
+        'grid': { symbol: '+', color: '#888888' },
+        'ortho-h': { symbol: '—', color: '#0088ff' },
+        'ortho-v': { symbol: '|', color: '#0088ff' }
+    };
+
+    const indicator = indicators[type] || { symbol: '+', color: '#888888' };
+
+    snapIndicator = new fabric.Text(indicator.symbol, {
+        left: x,
+        top: y - 10,
+        fontSize: 16,
+        fill: indicator.color,
+        selectable: false,
+        evented: false,
+        opacity: 0.8
+    });
+
+    canvas.add(snapIndicator);
+    canvas.renderAll();
+
+    // Auto-remove after 500ms
+    setTimeout(() => {
+        if (snapIndicator) {
+            canvas.remove(snapIndicator);
+            snapIndicator = null;
+            canvas.renderAll();
+        }
+    }, 500);
+}
+
+function updateSnapUI() {
+    // Update snap status indicators (if UI elements exist)
+    const snapBtn = document.getElementById('snapToggle');
+    const orthoBtn = document.getElementById('orthoToggle');
+    const polarBtn = document.getElementById('polarToggle');
+    const objSnapBtn = document.getElementById('objSnapToggle');
+
+    if (snapBtn) snapBtn.classList.toggle('active', snapEnabled);
+    if (orthoBtn) orthoBtn.classList.toggle('active', orthoMode);
+    if (polarBtn) polarBtn.classList.toggle('active', polarTrackingEnabled);
+    if (objSnapBtn) objSnapBtn.classList.toggle('active', objectSnapEnabled);
+}
+
+// Integrate snapping into mouse move event
+const originalMouseMove = canvas.on;
+canvas.on('mouse:move', function(e) {
+    if (isDrawing && drawingObject) {
+        const pointer = canvas.getPointer(e.e);
+        const snapped = getSnapPoint(pointer.x, pointer.y);
+
+        // Update drawing object with snapped coordinates
+        if (currentTool === 'line' || currentTool === 'wire') {
+            drawingObject.set({ x2: snapped.x, y2: snapped.y });
+        } else if (currentTool === 'rectangle') {
+            const width = snapped.x - startX;
+            const height = snapped.y - startY;
+            drawingObject.set({ width: Math.abs(width), height: Math.abs(height) });
+            if (width < 0) drawingObject.set({ left: snapped.x });
+            if (height < 0) drawingObject.set({ top: snapped.y });
+        } else if (currentTool === 'dimension') {
+            updateDimension(drawingObject, startX, startY, snapped.x, snapped.y);
+        }
+
+        throttledRender();
+    }
+});
 
 console.log('✅ CAD Engine loaded successfully');
