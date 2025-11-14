@@ -466,6 +466,7 @@
             <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" style="display: none;" onchange="handleFileUpload(event)">
             <button class="header-btn" onclick="loadProject()">📂 Open</button>
             <button class="header-btn" onclick="saveProject()">💾 Save</button>
+            <button class="header-btn" onclick="showImportMenu()" title="Import from other modules">📥 Import</button>
             <button class="header-btn" onclick="addTitleBlock()">📋 Title Block</button>
             <button class="header-btn" onclick="generatePanelSchedule()">📊 Panel Schedule</button>
             <button class="header-btn" onclick="generateCableSchedule()">📋 Cable Schedule</button>
@@ -741,6 +742,140 @@
             if (existing) existing.remove();
 
             document.body.appendChild(menu);
+        }
+
+        // Import menu
+        function showImportMenu() {
+            const menu = document.createElement('div');
+            menu.style.cssText = 'position: fixed; top: 70px; right: 20px; background: #2c3e50; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; min-width: 250px;';
+            menu.id = 'importMenu';
+
+            menu.innerHTML = `
+                <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">📥 Import Data</div>
+                <button onclick="showBoardImportDialog(); closeMenu('importMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">🔧 Board Builder</button>
+                <button onclick="showQuoteImportDialog(); closeMenu('importMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">💰 Quote Tool</button>
+                <button onclick="closeMenu('importMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+
+            // Remove existing menu
+            const existing = document.getElementById('importMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        // Import from Board Builder
+        async function showBoardImportDialog() {
+            const boardId = prompt('Enter Board Builder Session ID:');
+            if (!boardId) return;
+
+            try {
+                const response = await fetch(`/api/cad/import-board/${boardId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Load the CAD objects onto canvas
+                    data.objects.forEach(obj => {
+                        if (typeof addObjectToCanvas === 'function') {
+                            addObjectToCanvas(obj);
+                        }
+                    });
+
+                    alert(`✅ Imported ${data.objects.length} objects from Board Builder`);
+                    canvas.renderAll();
+                } else {
+                    alert('❌ Failed to import: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Board import error:', error);
+                alert('❌ Error importing board: ' + error.message);
+            }
+        }
+
+        // Import from Quote Tool
+        async function showQuoteImportDialog() {
+            const quoteId = prompt('Enter Quote/Mapping Session ID:');
+            if (!quoteId) return;
+
+            try {
+                const response = await fetch(`/api/cad/import-quote/${quoteId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Load floor plan image if available
+                    if (data.floor_plan_url) {
+                        loadFloorPlanBackground(data.floor_plan_url);
+                    }
+
+                    // Load the CAD objects onto canvas
+                    data.objects.forEach(obj => {
+                        if (typeof addObjectToCanvas === 'function') {
+                            addObjectToCanvas(obj);
+                        }
+                    });
+
+                    // Update project name
+                    if (data.project_name && document.getElementById('projectName')) {
+                        document.getElementById('projectName').value = data.project_name;
+                    }
+
+                    alert(`✅ Imported ${data.objects.length} devices from Quote Tool`);
+                    canvas.renderAll();
+                } else {
+                    alert('❌ Failed to import: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Quote import error:', error);
+                alert('❌ Error importing quote: ' + error.message);
+            }
+        }
+
+        // Helper function to load floor plan background
+        function loadFloorPlanBackground(imageUrl) {
+            fabric.Image.fromURL(imageUrl, function(img) {
+                img.set({
+                    left: 0,
+                    top: 0,
+                    selectable: false,
+                    evented: false,
+                    opacity: 0.3
+                });
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            });
+        }
+
+        // Helper function to add object to canvas (converts JSON to Fabric object)
+        function addObjectToCanvas(objData) {
+            if (objData.type === 'rect') {
+                const rect = new fabric.Rect({
+                    left: objData.left,
+                    top: objData.top,
+                    width: objData.width,
+                    height: objData.height,
+                    fill: objData.fill,
+                    stroke: objData.stroke,
+                    strokeWidth: objData.strokeWidth,
+                    customType: objData.customType,
+                    layer: objData.layer
+                });
+                canvas.add(rect);
+            } else if (objData.type === 'text') {
+                const text = new fabric.Text(objData.text, {
+                    left: objData.left,
+                    top: objData.top,
+                    fontSize: objData.fontSize,
+                    fontWeight: objData.fontWeight,
+                    fill: objData.fill,
+                    customType: objData.customType,
+                    layer: objData.layer
+                });
+                canvas.add(text);
+            } else if (objData.type === 'group' && objData.symbolId) {
+                // Load symbol from library
+                if (typeof loadSymbolFromLibrary === 'function') {
+                    loadSymbolFromLibrary(objData.symbolId, objData.left, objData.top);
+                }
+            }
         }
     </script>
 </body>
