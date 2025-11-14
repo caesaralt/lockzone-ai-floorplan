@@ -2527,43 +2527,301 @@ def list_cad_sessions():
 
 @app.route('/api/cad/import-board/<board_id>', methods=['GET'])
 def import_board_to_cad(board_id):
-    """Import board builder data into CAD"""
+    """
+    Import Loxone board builder data into CAD Designer
+    Converts board components to CAD symbols and creates panel layout
+    """
     try:
-        # Load board data from board builder
-        # For now, return sample data structure
-        # TODO: Implement actual board data loading
+        # Try to load saved board data
+        board_sessions_dir = 'board_builder_sessions'
+        os.makedirs(board_sessions_dir, exist_ok=True)
 
-        board_data = {
-            'success': True,
-            'components': [],
-            'connections': [],
-            'metadata': {
-                'board_name': 'Sample Board',
-                'device_count': 0
+        board_file = os.path.join(board_sessions_dir, f'{board_id}.json')
+
+        if os.path.exists(board_file):
+            with open(board_file, 'r') as f:
+                board_data = json.load(f)
+        else:
+            # If no saved board, return empty structure
+            board_data = {
+                'components': [],
+                'connections': []
             }
+
+        # Convert board components to CAD objects
+        cad_objects = []
+        symbols_map = {
+            'miniserver': 'loxone-miniserver',
+            'dimmer-extension': 'loxone-dimmer',
+            'relay-extension': 'loxone-relay',
+            'extension': 'loxone-extension',
+            'power-supply': 'switchboard',
+            'digital-input': 'data-outlet',
+            'modbus': 'meter',
+            'air-base': 'exhaust-fan'
         }
 
-        return jsonify(board_data)
+        # Calculate panel layout position (centered on canvas)
+        panel_start_x = 500
+        panel_start_y = 300
+
+        # Add panel border
+        components = board_data.get('components', [])
+        if components:
+            panel_width = 600
+            panel_height = len(components) * 80 + 100
+
+            cad_objects.append({
+                'type': 'rect',
+                'left': panel_start_x - 50,
+                'top': panel_start_y - 50,
+                'width': panel_width,
+                'height': panel_height,
+                'fill': '#f5f5f5',
+                'stroke': '#2C3E50',
+                'strokeWidth': 3,
+                'layer': 'DEVICES-SYMBOLS',
+                'customType': 'rectangle'
+            })
+
+            # Add panel title
+            cad_objects.append({
+                'type': 'text',
+                'left': panel_start_x,
+                'top': panel_start_y - 30,
+                'text': 'LOXONE CONTROL PANEL',
+                'fontSize': 18,
+                'fontWeight': 'bold',
+                'fill': '#2C3E50',
+                'layer': 'TEXT-LABELS',
+                'customType': 'text'
+            })
+
+        # Convert each component to CAD symbol
+        y_offset = panel_start_y + 20
+        for idx, component in enumerate(components):
+            comp_type = component.get('type', 'extension')
+            symbol_id = symbols_map.get(comp_type, 'loxone-extension')
+            comp_name = component.get('properties', {}).get('name', f'Component {idx+1}')
+            comp_notes = component.get('properties', {}).get('notes', '')
+
+            # Add symbol
+            cad_objects.append({
+                'type': 'group',
+                'left': panel_start_x + 50,
+                'top': y_offset,
+                'layer': 'DEVICES-SYMBOLS',
+                'customType': 'symbol',
+                'symbolId': symbol_id,
+                'selectable': True
+            })
+
+            # Add label
+            cad_objects.append({
+                'type': 'text',
+                'left': panel_start_x + 150,
+                'top': y_offset,
+                'text': comp_name,
+                'fontSize': 12,
+                'fill': '#2C3E50',
+                'layer': 'TEXT-LABELS',
+                'customType': 'text'
+            })
+
+            # Add notes if present
+            if comp_notes:
+                cad_objects.append({
+                    'type': 'text',
+                    'left': panel_start_x + 150,
+                    'top': y_offset + 20,
+                    'text': comp_notes,
+                    'fontSize': 10,
+                    'fill': '#7f8c8d',
+                    'layer': 'TEXT-LABELS',
+                    'customType': 'text'
+                })
+
+            y_offset += 70
+
+        # Add wiring connections as lines
+        connections = board_data.get('connections', [])
+        for conn in connections:
+            # Draw connection lines between components
+            from_idx = conn.get('from', 0)
+            to_idx = conn.get('to', 0)
+
+            if from_idx < len(components) and to_idx < len(components):
+                from_y = panel_start_y + 20 + (from_idx * 70) + 25
+                to_y = panel_start_y + 20 + (to_idx * 70) + 25
+
+                cad_objects.append({
+                    'type': 'line',
+                    'x1': panel_start_x + 40,
+                    'y1': from_y,
+                    'x2': panel_start_x + 40,
+                    'y2': to_y,
+                    'stroke': '#3498DB',
+                    'strokeWidth': 2,
+                    'layer': 'NEUTRAL-WIRING-BLUE',
+                    'customType': 'line'
+                })
+
+        return jsonify({
+            'success': True,
+            'objects': cad_objects,
+            'metadata': {
+                'board_id': board_id,
+                'board_name': board_data.get('name', 'Loxone Board'),
+                'component_count': len(components),
+                'imported': True
+            },
+            'message': f'Imported {len(components)} components from Loxone Board Builder'
+        })
+
     except Exception as e:
+        print(f"Board import error: {e}")
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cad/import-quote/<quote_id>', methods=['GET'])
 def import_quote_to_cad(quote_id):
-    """Import quote data into CAD"""
+    """
+    Import quote data into CAD Designer
+    Loads floor plan image and device placements from quotes
+    """
     try:
-        # Load quote data
-        # TODO: Implement actual quote data loading
+        # Try to load quote/mapping session data
+        mapping_folder = app.config.get('AI_MAPPING_FOLDER', 'ai_mapping_sessions')
+        os.makedirs(mapping_folder, exist_ok=True)
 
-        quote_data = {
-            'success': True,
-            'project_name': 'Sample Project',
-            'customer': 'John Doe',
-            'devices': [],
-            'floorplan_data': {}
+        quote_file = os.path.join(mapping_folder, f'{quote_id}.json')
+
+        devices = []
+        floor_plan_url = None
+        project_name = 'Imported Project'
+
+        if os.path.exists(quote_file):
+            with open(quote_file, 'r') as f:
+                quote_data = json.load(f)
+
+            # Extract devices from mapping data
+            devices_data = quote_data.get('devices', [])
+            project_name = quote_data.get('project_name', project_name)
+
+            # Check for floor plan image
+            floor_plan_file = quote_data.get('floor_plan', '')
+            if floor_plan_file and os.path.exists(os.path.join(mapping_folder, floor_plan_file)):
+                floor_plan_url = f'/api/ai-mapping/download/{floor_plan_file}'
+
+        # Convert devices to CAD objects
+        cad_objects = []
+
+        # Device type to symbol mapping
+        device_symbol_map = {
+            'power_outlet': 'power-outlet-double',
+            'socket': 'power-outlet-single',
+            'switch': 'switch-single',
+            'light': 'light-ceiling',
+            'downlight': 'light-downlight',
+            'dimmer': 'switch-dimmer',
+            'data': 'data-outlet',
+            'tv': 'tv-outlet',
+            'smoke_detector': 'smoke-detector',
+            'exhaust_fan': 'exhaust-fan'
         }
 
-        return jsonify(quote_data)
+        # Place devices on canvas
+        for idx, device in enumerate(devices_data):
+            device_type = device.get('type', 'power_outlet').lower()
+            device_name = device.get('name', f'Device {idx+1}')
+            quantity = device.get('quantity', 1)
+
+            # Get position (if available from mapping data)
+            x = device.get('x', 200 + (idx % 5) * 150)
+            y = device.get('y', 200 + (idx // 5) * 100)
+
+            # Find matching symbol
+            symbol_id = None
+            for key, symbol in device_symbol_map.items():
+                if key in device_type:
+                    symbol_id = symbol
+                    break
+
+            if not symbol_id:
+                symbol_id = 'power-outlet-single'  # Default
+
+            # Add symbol for each quantity
+            for q in range(min(quantity, 1)):  # Add at least one
+                cad_objects.append({
+                    'type': 'group',
+                    'left': x + (q * 50),
+                    'top': y,
+                    'layer': 'DEVICES-SYMBOLS',
+                    'customType': 'symbol',
+                    'symbolId': symbol_id,
+                    'selectable': True
+                })
+
+            # Add label
+            label_text = f'{device_name}'
+            if quantity > 1:
+                label_text += f' (x{quantity})'
+
+            cad_objects.append({
+                'type': 'text',
+                'left': x,
+                'top': y + 40,
+                'text': label_text,
+                'fontSize': 10,
+                'fill': '#2C3E50',
+                'layer': 'TEXT-LABELS',
+                'customType': 'text'
+            })
+
+        return jsonify({
+            'success': True,
+            'objects': cad_objects,
+            'floor_plan_url': floor_plan_url,
+            'metadata': {
+                'quote_id': quote_id,
+                'project_name': project_name,
+                'device_count': len(devices_data),
+                'imported': True
+            },
+            'message': f'Imported {len(devices_data)} devices from quote'
+        })
+
     except Exception as e:
+        print(f"Quote import error: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cad/calculate-circuit', methods=['POST'])
+def calculate_circuit_parameters():
+    """
+    Calculate electrical circuit parameters
+    Uses electrical_calculations module
+    """
+    try:
+        from electrical_calculations import calculate_circuit
+
+        data = request.get_json()
+        devices = data.get('devices', [])
+        length_meters = data.get('length_meters', 20)
+        circuit_type = data.get('circuit_type', 'power')
+        location = data.get('location', 'general')
+
+        # Calculate circuit parameters
+        result = calculate_circuit(devices, length_meters, circuit_type, location)
+
+        return jsonify({
+            'success': True,
+            **result
+        })
+
+    except Exception as e:
+        print(f"Circuit calculation error: {e}")
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cad/symbols', methods=['GET'])

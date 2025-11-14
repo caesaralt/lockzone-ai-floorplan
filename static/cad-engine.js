@@ -18,6 +18,10 @@ let undoStack = [];
 let redoStack = [];
 let zoomLevel = 1;
 
+// Multi-sheet support
+let sheets = [];
+let currentSheetIndex = 0;
+
 // Rendering throttle
 let lastRenderTime = 0;
 const RENDER_THROTTLE = 16; // Max 60fps
@@ -1395,6 +1399,159 @@ async function generateWithAI() {
     } finally {
         document.getElementById('loadingOverlay').classList.remove('active');
     }
+}
+
+// ============================================================================
+// MULTI-SHEET SUPPORT
+// ============================================================================
+
+function initializeSheets() {
+    // Initialize with one default sheet
+    if (sheets.length === 0) {
+        sheets.push({
+            id: 'sheet1',
+            name: 'Sheet 1 - Main Floor Plan',
+            canvasState: canvas.toJSON(),
+            metadata: {
+                drawing_number: 'E-001',
+                title: 'Main Floor Plan'
+            }
+        });
+    }
+    updateSheetNavigation();
+}
+
+function addNewSheet() {
+    // Save current sheet
+    saveCurrentSheet();
+
+    // Create new sheet
+    const newSheetNum = sheets.length + 1;
+    const newSheet = {
+        id: `sheet${newSheetNum}`,
+        name: `Sheet ${newSheetNum}`,
+        canvasState: null,
+        metadata: {
+            drawing_number: `E-${String(newSheetNum).padStart(3, '0')}`,
+            title: `Sheet ${newSheetNum}`
+        }
+    };
+
+    sheets.push(newSheet);
+    currentSheetIndex = sheets.length - 1;
+
+    // Clear canvas for new sheet
+    canvas.clear();
+    canvas.backgroundColor = '#ffffff';
+
+    updateSheetNavigation();
+    console.log(`✅ Added new sheet: ${newSheet.name}`);
+}
+
+function switchToSheet(index) {
+    if (index < 0 || index >= sheets.length) return;
+
+    // Save current sheet
+    saveCurrentSheet();
+
+    // Switch to new sheet
+    currentSheetIndex = index;
+    const sheet = sheets[index];
+
+    // Clear and load sheet canvas
+    canvas.clear();
+    if (sheet.canvasState) {
+        canvas.loadFromJSON(sheet.canvasState, () => {
+            canvas.renderAll();
+            console.log(`✅ Switched to ${sheet.name}`);
+        });
+    } else {
+        canvas.backgroundColor = '#ffffff';
+        canvas.renderAll();
+    }
+
+    updateSheetNavigation();
+}
+
+function saveCurrentSheet() {
+    if (currentSheetIndex >= 0 && currentSheetIndex < sheets.length) {
+        sheets[currentSheetIndex].canvasState = canvas.toJSON();
+    }
+}
+
+function deleteSheet(index) {
+    if (sheets.length === 1) {
+        alert('Cannot delete the last sheet!');
+        return;
+    }
+
+    const sheet = sheets[index];
+    if (confirm(`Delete "${sheet.name}"?`)) {
+        sheets.splice(index, 1);
+
+        // Adjust current index if needed
+        if (currentSheetIndex >= sheets.length) {
+            currentSheetIndex = sheets.length - 1;
+        }
+
+        switchToSheet(currentSheetIndex);
+        console.log(`✅ Deleted sheet: ${sheet.name}`);
+    }
+}
+
+function renameSheet(index) {
+    const sheet = sheets[index];
+    const newName = prompt('Enter new sheet name:', sheet.name);
+
+    if (newName && newName.trim()) {
+        sheet.name = newName.trim();
+        updateSheetNavigation();
+        console.log(`✅ Renamed sheet to: ${newName}`);
+    }
+}
+
+function updateSheetNavigation() {
+    // Update sheet tabs UI (if exists)
+    const sheetNav = document.getElementById('sheetNavigation');
+    if (!sheetNav) return;
+
+    sheetNav.innerHTML = '';
+
+    sheets.forEach((sheet, index) => {
+        const tab = document.createElement('div');
+        tab.className = `sheet-tab ${index === currentSheetIndex ? 'active' : ''}`;
+        tab.innerHTML = `
+            <span onclick="switchToSheet(${index})">${sheet.name}</span>
+            <button onclick="renameSheet(${index})" title="Rename">✏️</button>
+            <button onclick="deleteSheet(${index})" title="Delete">🗑️</button>
+        `;
+        sheetNav.appendChild(tab);
+    });
+
+    // Add new sheet button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-sheet-btn';
+    addBtn.innerHTML = '➕ Add Sheet';
+    addBtn.onclick = addNewSheet;
+    sheetNav.appendChild(addBtn);
+}
+
+function exportAllSheets() {
+    // Export all sheets to a multi-page PDF or separate DXF files
+    saveCurrentSheet();
+
+    const exportData = {
+        project: currentSession?.project_name || 'Multi-Sheet Project',
+        sheets: sheets.map((sheet, idx) => ({
+            sheet_number: idx + 1,
+            name: sheet.name,
+            drawing_number: sheet.metadata.drawing_number,
+            canvas_state: sheet.canvasState
+        }))
+    };
+
+    console.log('Exporting all sheets:', exportData);
+    alert(`Ready to export ${sheets.length} sheets (feature coming soon)`);
 }
 
 // ============================================================================
