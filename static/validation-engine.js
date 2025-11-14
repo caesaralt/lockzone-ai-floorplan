@@ -249,6 +249,22 @@ function validateDocumentation() {
 }
 
 // Helper functions
+function calculateLineLength(lineObj) {
+    const x1 = lineObj.x1 || lineObj.left || 0;
+    const y1 = lineObj.y1 || lineObj.top || 0;
+    const x2 = lineObj.x2 || (lineObj.left + (lineObj.width || 0));
+    const y2 = lineObj.y2 || (lineObj.top + (lineObj.height || 0));
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthPixels = Math.sqrt(dx * dx + dy * dy);
+
+    // Convert pixels to meters (assuming 100 pixels = 1 meter)
+    const lengthMeters = lengthPixels / 100;
+
+    return lengthMeters;
+}
+
 function devicesOverlap(dev1, dev2) {
     const threshold = 20; // pixels
     const dx = dev1.left - dev2.left;

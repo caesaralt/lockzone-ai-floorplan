@@ -45,7 +45,7 @@ async function exportAllSheetsToPDF() {
 
             // Switch to this sheet temporarily to export it
             const originalSheet = currentSheetIndex;
-            switchSheet(i);
+            switchToSheet(i);
 
             // Wait for canvas to render
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -54,7 +54,7 @@ async function exportAllSheetsToPDF() {
             await addSheetToPDF(pdf, sheet, i + 1, sheets.length);
 
             // Restore original sheet
-            switchSheet(originalSheet);
+            switchToSheet(originalSheet);
         }
 
         // Add panel schedule if exists
