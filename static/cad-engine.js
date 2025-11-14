@@ -271,6 +271,141 @@ function newProject() {
 }
 
 // ============================================================================
+// FILE UPLOAD (PDF/IMAGES)
+// ============================================================================
+
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    console.log('📎 Uploading file:', file.name, file.type);
+
+    // Check file type
+    const isPDF = file.type === 'application/pdf';
+    const isImage = file.type.startsWith('image/');
+
+    if (!isPDF && !isImage) {
+        alert('Please upload a PDF or image file (.pdf, .png, .jpg, .jpeg, .gif, .bmp)');
+        return;
+    }
+
+    try {
+        if (isImage) {
+            // Handle image upload
+            await loadImageToCanvas(file);
+        } else if (isPDF) {
+            // Handle PDF upload
+            await loadPDFToCanvas(file);
+        }
+
+        // Clear the file input so the same file can be uploaded again if needed
+        event.target.value = '';
+
+        console.log('✅ File uploaded successfully');
+    } catch (error) {
+        console.error('❌ Error uploading file:', error);
+        alert('Failed to upload file: ' + error.message);
+    }
+}
+
+function loadImageToCanvas(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            fabric.Image.fromURL(e.target.result, (img) => {
+                // Scale image to fit canvas if it's too large
+                const maxWidth = canvas.width * 0.8;
+                const maxHeight = canvas.height * 0.8;
+
+                if (img.width > maxWidth || img.height > maxHeight) {
+                    const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+                    img.scale(scale);
+                }
+
+                // Center the image
+                img.set({
+                    left: (canvas.width - img.getScaledWidth()) / 2,
+                    top: (canvas.height - img.getScaledHeight()) / 2,
+                    selectable: true,
+                    layer: 'WALLS-ARCHITECTURAL',
+                    customType: 'uploaded-image'
+                });
+
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                canvas.renderAll();
+
+                addToUndoStack();
+                updateObjectCount();
+
+                resolve();
+            }, { crossOrigin: 'anonymous' });
+        };
+
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function loadPDFToCanvas(file) {
+    // For PDF files, we'll use a simple approach: send to backend to convert to image
+    // Or use PDF.js library if available
+
+    // For now, let's create a FormData and send to backend
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/cad/upload-pdf', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.image_url) {
+            // Load the converted image onto canvas
+            fabric.Image.fromURL(data.image_url, (img) => {
+                // Scale image to fit canvas if it's too large
+                const maxWidth = canvas.width * 0.8;
+                const maxHeight = canvas.height * 0.8;
+
+                if (img.width > maxWidth || img.height > maxHeight) {
+                    const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+                    img.scale(scale);
+                }
+
+                // Center the image
+                img.set({
+                    left: (canvas.width - img.getScaledWidth()) / 2,
+                    top: (canvas.height - img.getScaledHeight()) / 2,
+                    selectable: true,
+                    layer: 'WALLS-ARCHITECTURAL',
+                    customType: 'uploaded-pdf'
+                });
+
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                canvas.renderAll();
+
+                addToUndoStack();
+                updateObjectCount();
+            });
+        } else {
+            throw new Error(data.error || 'Failed to convert PDF');
+        }
+    } catch (error) {
+        console.error('PDF upload error:', error);
+        alert('PDF upload failed. You can still upload image files (.png, .jpg).');
+    }
+}
+
+// ============================================================================
 // DRAWING TOOLS
 // ============================================================================
 

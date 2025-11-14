@@ -461,6 +461,8 @@
         <div class="header-actions">
             <button class="header-btn" onclick="window.location.href='/'">← Main Menu</button>
             <button class="header-btn" onclick="newProject()">📄 New</button>
+            <button class="header-btn" onclick="document.getElementById('fileUpload').click()">📎 Upload PDF/Image</button>
+            <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" style="display: none;" onchange="handleFileUpload(event)">
             <button class="header-btn" onclick="loadProject()">📂 Open</button>
             <button class="header-btn" onclick="saveProject()">💾 Save</button>
             <button class="header-btn ai" onclick="openAIModal()">🤖 AI Auto-Generate</button>

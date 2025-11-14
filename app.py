@@ -2766,6 +2766,70 @@ def validate_cad():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/cad/upload-pdf', methods=['POST'])
+def upload_pdf_to_cad():
+    """Upload PDF file and convert to image for CAD canvas"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+        # Check if it's a PDF
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({'success': False, 'error': 'File must be a PDF'}), 400
+
+        # Save the uploaded PDF
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        pdf_filename = f'cad_upload_{timestamp}_{filename}'
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
+        file.save(pdf_path)
+
+        # Convert PDF to image using PyMuPDF (fitz)
+        try:
+            pdf_document = fitz.open(pdf_path)
+
+            # Get first page
+            page = pdf_document[0]
+
+            # Render page to image (300 DPI for good quality)
+            mat = fitz.Matrix(300/72, 300/72)  # 300 DPI scaling
+            pix = page.get_pixmap(matrix=mat)
+
+            # Save as PNG
+            png_filename = f'cad_pdf_{timestamp}.png'
+            png_path = os.path.join(app.config['OUTPUT_FOLDER'], png_filename)
+            pix.save(png_path)
+
+            pdf_document.close()
+
+            # Return the URL to the converted image
+            image_url = f'/outputs/{png_filename}'
+
+            return jsonify({
+                'success': True,
+                'image_url': image_url,
+                'original_filename': filename,
+                'pages': len(pdf_document)
+            })
+
+        except Exception as pdf_error:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to convert PDF: {str(pdf_error)}'
+            }), 500
+        finally:
+            # Clean up the uploaded PDF
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/ai-mapping/history', methods=['GET'])
 def ai_mapping_history():
     """Get analysis history"""
@@ -5327,6 +5391,16 @@ def handle_kanban_task(task_id):
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# STATIC FILE SERVING
+# ============================================================================
+
+@app.route('/outputs/<path:filename>')
+def serve_output_file(filename):
+    """Serve files from the outputs folder"""
+    from flask import send_from_directory
+    return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
 
 if __name__ == '__main__':
