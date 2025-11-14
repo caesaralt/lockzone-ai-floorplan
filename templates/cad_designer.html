@@ -472,6 +472,7 @@
             <button class="header-btn" onclick="showWireLabelMenu()" title="Wire Labeling Tools">🏷️ Label Wires</button>
             <button class="header-btn" onclick="showMeasurementMenu()" title="Measurement Tools">📏 Measure</button>
             <button class="header-btn" onclick="showHatchDialog()" title="Hatching & Area Fills">🎨 Hatch</button>
+            <button class="header-btn" onclick="toggleSchematicView()" id="schematicToggle" title="Toggle Schematic View">📊 Schematic</button>
             <button class="header-btn" onclick="toggleOrtho()" id="orthoToggle" title="Ortho Mode (F8)">⊥ Ortho</button>
             <button class="header-btn ai" onclick="openAIModal()">🤖 AI Auto-Generate</button>
             <button class="header-btn" onclick="showExportMenu()" title="Export Options">📤 Export</button>
@@ -666,6 +667,7 @@
     <script src="/static/measurement-tools.js"></script>
     <script src="/static/hatching-patterns.js"></script>
     <script src="/static/pdf-export.js"></script>
+    <script src="/static/schematic-view.js"></script>
     <script>
         // Wire labeling menu
         function showWireLabelMenu() {
@@ -729,6 +731,7 @@
                 <div style="color: white; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #556B2F; padding-bottom: 8px;">📤 Export Options</div>
                 <button onclick="exportCurrentSheetToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">📄 Current Sheet to PDF</button>
                 <button onclick="exportAllSheetsToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">📚 All Sheets to PDF</button>
+                <button onclick="exportSchematicToPDF(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer;">📊 Schematic to PDF</button>
                 <button onclick="exportDrawing(); closeMenu('exportMenu')" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">📦 DXF/PNG/SVG Export</button>
                 <button onclick="closeMenu('exportMenu')" style="width: 100%; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
             `;
