@@ -2373,6 +2373,11 @@ def download_file(filename):
         if os.path.exists(file_path):
             return send_file(file_path, as_attachment=True)
 
+        # Check in exports folder (CAD exports)
+        file_path = os.path.join('exports', filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True)
+
         # Check in AI mapping folder
         file_path = os.path.join(app.config['AI_MAPPING_FOLDER'], filename)
         if os.path.exists(file_path):
@@ -2563,35 +2568,318 @@ def import_quote_to_cad(quote_id):
 
 @app.route('/api/cad/symbols', methods=['GET'])
 def get_cad_symbols():
-    """Get electrical symbol library"""
+    """Get professional AS/NZS 3000 electrical symbol library"""
     try:
-        # Return comprehensive symbol library
+        # Import the professional symbol library
+        symbols_file = os.path.join('static', 'electrical-symbols.js')
+
+        # Define comprehensive professional symbol library
+        # Organized by category for easy access
         symbols = {
-            'loxone': [
-                {'id': 'miniserver', 'name': 'Miniserver', 'category': 'loxone', 'icon': '🖥️', 'width': 100, 'height': 80},
-                {'id': 'relay-ext', 'name': 'Relay Extension', 'category': 'loxone', 'icon': '🔌', 'width': 80, 'height': 60},
-                {'id': 'dimmer-ext', 'name': 'Dimmer Extension', 'category': 'loxone', 'icon': '💡', 'width': 80, 'height': 60},
-            ],
-            'power': [
-                {'id': 'circuit-breaker', 'name': 'Circuit Breaker', 'category': 'power', 'icon': '⚡', 'width': 40, 'height': 60},
-                {'id': 'rcd', 'name': 'RCD', 'category': 'power', 'icon': '🛡️', 'width': 40, 'height': 60},
-                {'id': 'main-panel', 'name': 'Main Panel', 'category': 'power', 'icon': '📊', 'width': 120, 'height': 200},
+            'outlets': [
+                {
+                    'id': 'power-outlet-single',
+                    'name': 'Power Outlet (Single)',
+                    'category': 'outlets',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<circle cx="10" cy="10" r="8" fill="none" stroke="black" stroke-width="1.5"/><line x1="10" y1="4" x2="10" y2="7" stroke="black" stroke-width="1.5"/><line x1="10" y1="13" x2="10" y2="16" stroke="black" stroke-width="1.5"/>',
+                    'description': 'Single phase power outlet 230V',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 10}
+                },
+                {
+                    'id': 'power-outlet-double',
+                    'name': 'Power Outlet (Double)',
+                    'category': 'outlets',
+                    'width': 30,
+                    'height': 20,
+                    'svg': '<circle cx="8" cy="10" r="6" fill="none" stroke="black" stroke-width="1.5"/><line x1="8" y1="5" x2="8" y2="7" stroke="black" stroke-width="1.5"/><line x1="8" y1="13" x2="8" y2="15" stroke="black" stroke-width="1.5"/><circle cx="22" cy="10" r="6" fill="none" stroke="black" stroke-width="1.5"/><line x1="22" y1="5" x2="22" y2="7" stroke="black" stroke-width="1.5"/><line x1="22" y1="13" x2="22" y2="15" stroke="black" stroke-width="1.5"/>',
+                    'description': 'Double power outlet 230V',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 10}
+                },
+                {
+                    'id': 'power-outlet-switched',
+                    'name': 'Power Outlet (Switched)',
+                    'category': 'outlets',
+                    'width': 20,
+                    'height': 25,
+                    'svg': '<circle cx="10" cy="12" r="8" fill="none" stroke="black" stroke-width="1.5"/><line x1="10" y1="6" x2="10" y2="9" stroke="black" stroke-width="1.5"/><line x1="10" y1="15" x2="10" y2="18" stroke="black" stroke-width="1.5"/><text x="10" y="4" font-size="6" text-anchor="middle" fill="black">S</text>',
+                    'description': 'Switched power outlet 230V',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 10}
+                },
             ],
             'lighting': [
-                {'id': 'ceiling-light', 'name': 'Ceiling Light', 'category': 'lighting', 'icon': '💡', 'width': 30, 'height': 30},
-                {'id': 'downlight', 'name': 'Downlight', 'category': 'lighting', 'icon': '🔅', 'width': 25, 'height': 25},
-                {'id': 'wall-sconce', 'name': 'Wall Sconce', 'category': 'lighting', 'icon': '🕯️', 'width': 20, 'height': 30},
-            ],
-            'outlets': [
-                {'id': 'power-outlet', 'name': 'Power Outlet', 'category': 'outlets', 'icon': '🔌', 'width': 30, 'height': 30},
-                {'id': 'usb-outlet', 'name': 'USB Outlet', 'category': 'outlets', 'icon': '🔋', 'width': 30, 'height': 30},
-                {'id': 'data-outlet', 'name': 'Data Outlet', 'category': 'outlets', 'icon': '🌐', 'width': 30, 'height': 30},
+                {
+                    'id': 'light-ceiling',
+                    'name': 'Ceiling Light',
+                    'category': 'lighting',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<circle cx="10" cy="10" r="7" fill="none" stroke="black" stroke-width="1.5"/><line x1="3" y1="10" x2="6" y2="10" stroke="black" stroke-width="1"/><line x1="14" y1="10" x2="17" y2="10" stroke="black" stroke-width="1"/><line x1="10" y1="3" x2="10" y2="6" stroke="black" stroke-width="1"/><line x1="10" y1="14" x2="10" y2="17" stroke="black" stroke-width="1"/>',
+                    'description': 'Ceiling mounted light fitting',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.5}
+                },
+                {
+                    'id': 'light-downlight',
+                    'name': 'Downlight',
+                    'category': 'lighting',
+                    'width': 18,
+                    'height': 18,
+                    'svg': '<circle cx="9" cy="9" r="6" fill="none" stroke="black" stroke-width="1.5"/><circle cx="9" cy="9" r="3" fill="black"/>',
+                    'description': 'Recessed downlight',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.3}
+                },
+                {
+                    'id': 'light-wall',
+                    'name': 'Wall Light',
+                    'category': 'lighting',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<circle cx="10" cy="10" r="7" fill="none" stroke="black" stroke-width="1.5"/><line x1="3" y1="10" x2="6" y2="10" stroke="black" stroke-width="1.5"/><text x="10" y="13" font-size="6" text-anchor="middle" fill="black">W</text>',
+                    'description': 'Wall mounted light fitting',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.5}
+                },
+                {
+                    'id': 'light-emergency',
+                    'name': 'Emergency Light',
+                    'category': 'lighting',
+                    'width': 22,
+                    'height': 22,
+                    'svg': '<circle cx="11" cy="11" r="8" fill="none" stroke="black" stroke-width="1.5"/><line x1="4" y1="11" x2="7" y2="11" stroke="black" stroke-width="1"/><line x1="15" y1="11" x2="18" y2="11" stroke="black" stroke-width="1"/><line x1="11" y1="4" x2="11" y2="7" stroke="black" stroke-width="1"/><line x1="11" y1="15" x2="11" y2="18" stroke="black" stroke-width="1"/><text x="11" y="14" font-size="5" text-anchor="middle" fill="black">EM</text>',
+                    'description': 'Emergency light with battery backup',
+                    'standards': 'AS/NZS 3000, AS/NZS 2293',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.2}
+                },
             ],
             'switches': [
-                {'id': 'single-switch', 'name': 'Single Switch', 'category': 'switches', 'icon': '◻️', 'width': 25, 'height': 40},
-                {'id': 'double-switch', 'name': 'Double Switch', 'category': 'switches', 'icon': '◼️', 'width': 25, 'height': 60},
-                {'id': 'dimmer-switch', 'name': 'Dimmer Switch', 'category': 'switches', 'icon': '🎚️', 'width': 25, 'height': 40},
-            ]
+                {
+                    'id': 'switch-single',
+                    'name': 'Switch (1-Gang)',
+                    'category': 'switches',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<rect x="3" y="3" width="14" height="14" fill="none" stroke="black" stroke-width="1.5"/><text x="10" y="13" font-size="8" text-anchor="middle" fill="black">S</text>',
+                    'description': 'Single gang light switch',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 10}
+                },
+                {
+                    'id': 'switch-double',
+                    'name': 'Switch (2-Gang)',
+                    'category': 'switches',
+                    'width': 30,
+                    'height': 20,
+                    'svg': '<rect x="3" y="3" width="24" height="14" fill="none" stroke="black" stroke-width="1.5"/><line x1="15" y1="3" x2="15" y2="17" stroke="black" stroke-width="1"/><text x="9" y="13" font-size="6" text-anchor="middle" fill="black">S</text><text x="21" y="13" font-size="6" text-anchor="middle" fill="black">S</text>',
+                    'description': 'Two gang light switch',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 10}
+                },
+                {
+                    'id': 'switch-triple',
+                    'name': 'Switch (3-Gang)',
+                    'category': 'switches',
+                    'width': 40,
+                    'height': 20,
+                    'svg': '<rect x="3" y="3" width="34" height="14" fill="none" stroke="black" stroke-width="1.5"/><line x1="13.3" y1="3" x2="13.3" y2="17" stroke="black" stroke-width="1"/><line x1="26.6" y1="3" x2="26.6" y2="17" stroke="black" stroke-width="1"/><text x="8" y="12" font-size="5" text-anchor="middle" fill="black">S</text><text x="20" y="12" font-size="5" text-anchor="middle" fill="black">S</text><text x="32" y="12" font-size="5" text-anchor="middle" fill="black">S</text>',
+                    'description': 'Three gang light switch',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 10}
+                },
+                {
+                    'id': 'switch-dimmer',
+                    'name': 'Dimmer Switch',
+                    'category': 'switches',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<rect x="3" y="3" width="14" height="14" fill="none" stroke="black" stroke-width="1.5"/><text x="10" y="13" font-size="7" text-anchor="middle" fill="black">D</text>',
+                    'description': 'Dimmer switch for lighting control',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 10}
+                },
+                {
+                    'id': 'switch-two-way',
+                    'name': 'Switch (2-Way)',
+                    'category': 'switches',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<rect x="3" y="3" width="14" height="14" fill="none" stroke="black" stroke-width="1.5"/><text x="10" y="10" font-size="6" text-anchor="middle" fill="black">2</text><text x="10" y="15" font-size="6" text-anchor="middle" fill="black">W</text>',
+                    'description': 'Two-way switch for multi-point control',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 10}
+                },
+            ],
+            'distribution': [
+                {
+                    'id': 'switchboard',
+                    'name': 'Switchboard',
+                    'category': 'distribution',
+                    'width': 60,
+                    'height': 80,
+                    'svg': '<rect x="5" y="5" width="50" height="70" fill="none" stroke="black" stroke-width="2"/><line x1="5" y1="20" x2="55" y2="20" stroke="black" stroke-width="1"/><text x="30" y="15" font-size="8" text-anchor="middle" fill="black">MSB</text><rect x="10" y="25" width="15" height="20" fill="none" stroke="black" stroke-width="1"/><rect x="10" y="50" width="15" height="20" fill="none" stroke="black" stroke-width="1"/><rect x="35" y="25" width="15" height="20" fill="none" stroke="black" stroke-width="1"/><rect x="35" y="50" width="15" height="20" fill="none" stroke="black" stroke-width="1"/>',
+                    'description': 'Main switchboard/distribution board',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'mainRating': 63}
+                },
+                {
+                    'id': 'meter',
+                    'name': 'Electricity Meter',
+                    'category': 'distribution',
+                    'width': 40,
+                    'height': 50,
+                    'svg': '<rect x="5" y="5" width="30" height="40" rx="2" fill="none" stroke="black" stroke-width="1.5"/><rect x="8" y="8" width="24" height="15" fill="black" opacity="0.2"/><text x="20" y="18" font-size="8" text-anchor="middle" fill="black">kWh</text><circle cx="12" cy="32" r="3" fill="none" stroke="black" stroke-width="1"/><circle cx="28" cy="32" r="3" fill="none" stroke="black" stroke-width="1"/><text x="20" y="43" font-size="5" text-anchor="middle" fill="black">METER</text>',
+                    'description': 'Electricity meter (revenue grade)',
+                    'standards': 'AS/NZS 3000, NMI',
+                    'electrical': {'voltage': 230, 'phases': 1, 'maxRating': 100}
+                },
+            ],
+            'protection': [
+                {
+                    'id': 'circuit-breaker',
+                    'name': 'Circuit Breaker',
+                    'category': 'protection',
+                    'width': 25,
+                    'height': 35,
+                    'svg': '<rect x="5" y="5" width="15" height="25" fill="none" stroke="black" stroke-width="1.5"/><line x1="5" y1="15" x2="20" y2="15" stroke="black" stroke-width="1"/><line x1="5" y1="20" x2="20" y2="20" stroke="black" stroke-width="1"/><text x="12.5" y="13" font-size="6" text-anchor="middle" fill="black">CB</text>',
+                    'description': 'Miniature circuit breaker (MCB)',
+                    'standards': 'AS/NZS 3000, AS/NZS 60898',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 16, 'breakingCapacity': 6000}
+                },
+                {
+                    'id': 'rcd',
+                    'name': 'RCD',
+                    'category': 'protection',
+                    'width': 25,
+                    'height': 35,
+                    'svg': '<rect x="5" y="5" width="15" height="25" fill="none" stroke="black" stroke-width="1.5"/><circle cx="12.5" cy="17.5" r="6" fill="none" stroke="black" stroke-width="1"/><text x="12.5" y="13" font-size="5" text-anchor="middle" fill="black">RCD</text>',
+                    'description': 'Residual current device (safety switch)',
+                    'standards': 'AS/NZS 3000, AS/NZS 61008',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 40, 'sensitivity': 30}
+                },
+                {
+                    'id': 'rcbo',
+                    'name': 'RCBO',
+                    'category': 'protection',
+                    'width': 25,
+                    'height': 35,
+                    'svg': '<rect x="5" y="5" width="15" height="25" fill="none" stroke="black" stroke-width="1.5"/><line x1="5" y1="15" x2="20" y2="15" stroke="black" stroke-width="1"/><circle cx="12.5" cy="22" r="4" fill="none" stroke="black" stroke-width="1"/><text x="12.5" y="10" font-size="4" text-anchor="middle" fill="black">RCBO</text>',
+                    'description': 'RCD with overcurrent protection',
+                    'standards': 'AS/NZS 3000, AS/NZS 61009',
+                    'electrical': {'voltage': 230, 'phases': 1, 'rating': 16, 'sensitivity': 30}
+                },
+            ],
+            'communication': [
+                {
+                    'id': 'data-outlet',
+                    'name': 'Data Outlet',
+                    'category': 'communication',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<rect x="3" y="5" width="14" height="10" fill="none" stroke="black" stroke-width="1.5"/><line x1="6" y1="8" x2="6" y2="12" stroke="black" stroke-width="1"/><line x1="8.5" y1="8" x2="8.5" y2="12" stroke="black" stroke-width="1"/><line x1="11" y1="8" x2="11" y2="12" stroke="black" stroke-width="1"/><line x1="13.5" y1="8" x2="13.5" y2="12" stroke="black" stroke-width="1"/><text x="10" y="4" font-size="4" text-anchor="middle" fill="black">DATA</text>',
+                    'description': 'Data outlet (Cat6/Cat6A)',
+                    'standards': 'AS/NZS 3000, AS/CA S009',
+                    'electrical': {'type': 'low-voltage', 'category': 'Cat6A'}
+                },
+                {
+                    'id': 'phone-outlet',
+                    'name': 'Phone Outlet',
+                    'category': 'communication',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<circle cx="10" cy="10" r="7" fill="none" stroke="black" stroke-width="1.5"/><path d="M 7 12 Q 7 8 10 8 Q 13 8 13 12" fill="none" stroke="black" stroke-width="1"/><text x="10" y="16" font-size="4" text-anchor="middle" fill="black">TEL</text>',
+                    'description': 'Telephone outlet',
+                    'standards': 'AS/NZS 3000, AS/CA S009',
+                    'electrical': {'type': 'low-voltage'}
+                },
+                {
+                    'id': 'tv-outlet',
+                    'name': 'TV Outlet',
+                    'category': 'communication',
+                    'width': 20,
+                    'height': 20,
+                    'svg': '<rect x="4" y="5" width="12" height="9" fill="none" stroke="black" stroke-width="1.5"/><line x1="9" y1="14" x2="11" y2="14" stroke="black" stroke-width="1.5"/><line x1="7" y1="16" x2="13" y2="16" stroke="black" stroke-width="1.5"/><text x="10" y="11" font-size="5" text-anchor="middle" fill="black">TV</text>',
+                    'description': 'TV antenna outlet',
+                    'standards': 'AS/NZS 3000, AS/CA S009',
+                    'electrical': {'type': 'low-voltage'}
+                },
+            ],
+            'loxone': [
+                {
+                    'id': 'loxone-miniserver',
+                    'name': 'Loxone Miniserver',
+                    'category': 'loxone',
+                    'width': 80,
+                    'height': 60,
+                    'svg': '<rect x="5" y="5" width="70" height="50" rx="3" fill="none" stroke="black" stroke-width="2"/><rect x="10" y="10" width="20" height="15" fill="black" opacity="0.3"/><circle cx="65" cy="17.5" r="3" fill="#00ff00"/><text x="40" y="38" font-size="10" text-anchor="middle" fill="black">Miniserver</text><text x="40" y="48" font-size="6" text-anchor="middle" fill="black">Gen 2</text>',
+                    'description': 'Loxone Miniserver Gen 2',
+                    'standards': 'CE, Loxone',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.3, 'powerSupply': '24VDC'}
+                },
+                {
+                    'id': 'loxone-extension',
+                    'name': 'Loxone Extension',
+                    'category': 'loxone',
+                    'width': 60,
+                    'height': 50,
+                    'svg': '<rect x="5" y="5" width="50" height="40" rx="2" fill="none" stroke="black" stroke-width="1.5"/><rect x="10" y="10" width="15" height="10" fill="black" opacity="0.3"/><circle cx="48" cy="15" r="2" fill="#00ff00"/><line x1="10" y1="25" x2="50" y2="25" stroke="black" stroke-width="0.5"/><text x="30" y="37" font-size="7" text-anchor="middle" fill="black">Extension</text>',
+                    'description': 'Loxone Extension module',
+                    'standards': 'CE, Loxone',
+                    'electrical': {'voltage': 24, 'type': 'DC', 'loadEstimate': 0.1}
+                },
+                {
+                    'id': 'loxone-relay',
+                    'name': 'Relay Extension',
+                    'category': 'loxone',
+                    'width': 60,
+                    'height': 50,
+                    'svg': '<rect x="5" y="5" width="50" height="40" rx="2" fill="none" stroke="black" stroke-width="1.5"/><rect x="12" y="12" width="8" height="8" fill="none" stroke="black" stroke-width="1"/><rect x="26" y="12" width="8" height="8" fill="none" stroke="black" stroke-width="1"/><rect x="40" y="12" width="8" height="8" fill="none" stroke="black" stroke-width="1"/><text x="30" y="35" font-size="6" text-anchor="middle" fill="black">Relay Ext</text>',
+                    'description': 'Loxone Relay Extension (14x relays)',
+                    'standards': 'CE, Loxone',
+                    'electrical': {'voltage': 24, 'type': 'DC', 'relayRating': 16}
+                },
+                {
+                    'id': 'loxone-dimmer',
+                    'name': 'Dimmer Extension',
+                    'category': 'loxone',
+                    'width': 60,
+                    'height': 50,
+                    'svg': '<rect x="5" y="5" width="50" height="40" rx="2" fill="none" stroke="black" stroke-width="1.5"/><path d="M 15 15 L 20 25 L 15 25 Z" fill="black" opacity="0.5"/><path d="M 25 15 L 30 25 L 25 25 Z" fill="black" opacity="0.7"/><path d="M 35 15 L 40 25 L 35 25 Z" fill="black" opacity="0.9"/><text x="30" y="37" font-size="6" text-anchor="middle" fill="black">Dimmer Ext</text>',
+                    'description': 'Loxone Dimmer Extension (4 channels)',
+                    'standards': 'CE, Loxone',
+                    'electrical': {'voltage': 230, 'phases': 1, 'channelRating': 16}
+                },
+            ],
+            'safety': [
+                {
+                    'id': 'smoke-detector',
+                    'name': 'Smoke Detector',
+                    'category': 'safety',
+                    'width': 22,
+                    'height': 22,
+                    'svg': '<circle cx="11" cy="11" r="9" fill="none" stroke="black" stroke-width="1.5"/><path d="M 8 8 Q 11 6 14 8 Q 11 10 8 8" fill="black" opacity="0.5"/><path d="M 8 12 Q 11 10 14 12 Q 11 14 8 12" fill="black" opacity="0.5"/><text x="11" y="20" font-size="4" text-anchor="middle" fill="black">SD</text>',
+                    'description': 'Smoke detector (photoelectric)',
+                    'standards': 'AS/NZS 3000, AS 3786',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.02}
+                },
+            ],
+            'ventilation': [
+                {
+                    'id': 'exhaust-fan',
+                    'name': 'Exhaust Fan',
+                    'category': 'ventilation',
+                    'width': 24,
+                    'height': 24,
+                    'svg': '<circle cx="12" cy="12" r="10" fill="none" stroke="black" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="black"/><path d="M 12 6 L 15 10 L 9 10 Z" fill="black" opacity="0.7"/><path d="M 18 12 L 14 15 L 14 9 Z" fill="black" opacity="0.7"/><path d="M 12 18 L 9 14 L 15 14 Z" fill="black" opacity="0.7"/><path d="M 6 12 L 10 9 L 10 15 Z" fill="black" opacity="0.7"/>',
+                    'description': 'Exhaust fan (bathroom/kitchen)',
+                    'standards': 'AS/NZS 3000',
+                    'electrical': {'voltage': 230, 'phases': 1, 'loadEstimate': 0.8}
+                },
+            ],
         }
 
         return jsonify({
@@ -2601,9 +2889,118 @@ def get_cad_symbols():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def execute_cad_tool(tool_name, tool_input):
+    """
+    Execute a CAD drawing tool and return Fabric.js-compatible object
+
+    Args:
+        tool_name: Name of the tool (add_line, add_symbol, etc.)
+        tool_input: Dictionary of tool parameters
+
+    Returns:
+        Dictionary representing a Fabric.js object
+    """
+    try:
+        if tool_name == "add_line":
+            # Get layer color
+            layer_colors = {
+                'WALLS-ARCHITECTURAL': '#2C3E50',
+                'POWER-WIRING-RED': '#E74C3C',
+                'NEUTRAL-WIRING-BLUE': '#3498DB',
+                'GROUND-WIRING-GREEN': '#27AE60',
+                'DEVICES-SYMBOLS': '#F39C12',
+                'TEXT-LABELS': '#34495E'
+            }
+            layer = tool_input.get('layer', 'WALLS-ARCHITECTURAL')
+            color = layer_colors.get(layer, '#000000')
+
+            return {
+                'type': 'line',
+                'x1': tool_input['x1'],
+                'y1': tool_input['y1'],
+                'x2': tool_input['x2'],
+                'y2': tool_input['y2'],
+                'stroke': color,
+                'strokeWidth': tool_input.get('strokeWidth', 2),
+                'layer': layer,
+                'customType': 'line',
+                'selectable': True
+            }
+
+        elif tool_name == "add_symbol":
+            return {
+                'type': 'group',
+                'left': tool_input['x'],
+                'top': tool_input['y'],
+                'layer': 'DEVICES-SYMBOLS',
+                'customType': 'symbol',
+                'symbolId': tool_input['symbol_id'],
+                'label': tool_input.get('label', ''),
+                'selectable': True
+            }
+
+        elif tool_name == "add_text":
+            return {
+                'type': 'text',
+                'left': tool_input['x'],
+                'top': tool_input['y'],
+                'text': tool_input['text'],
+                'fontSize': tool_input.get('fontSize', 14),
+                'fill': '#2C3E50',
+                'layer': tool_input.get('layer', 'TEXT-LABELS'),
+                'customType': 'text',
+                'selectable': True
+            }
+
+        elif tool_name == "add_dimension":
+            return {
+                'type': 'group',
+                'left': tool_input['x1'],
+                'top': tool_input['y1'],
+                'customType': 'dimension',
+                'dimensionStart': {'x': tool_input['x1'], 'y': tool_input['y1']},
+                'dimensionEnd': {'x': tool_input['x2'], 'y': tool_input['y2']},
+                'label': tool_input['label'],
+                'layer': 'TEXT-LABELS',
+                'selectable': True
+            }
+
+        elif tool_name == "add_rectangle":
+            layer_colors = {
+                'WALLS-ARCHITECTURAL': '#2C3E50',
+                'POWER-WIRING-RED': '#E74C3C',
+                'NEUTRAL-WIRING-BLUE': '#3498DB',
+                'GROUND-WIRING-GREEN': '#27AE60',
+                'DEVICES-SYMBOLS': '#F39C12',
+                'TEXT-LABELS': '#34495E'
+            }
+            layer = tool_input.get('layer', 'WALLS-ARCHITECTURAL')
+            color = layer_colors.get(layer, '#000000')
+
+            return {
+                'type': 'rect',
+                'left': tool_input['x'],
+                'top': tool_input['y'],
+                'width': tool_input['width'],
+                'height': tool_input['height'],
+                'fill': tool_input.get('fill', 'transparent'),
+                'stroke': color,
+                'strokeWidth': 2,
+                'layer': layer,
+                'customType': 'rectangle',
+                'selectable': True
+            }
+
+        return None
+
+    except Exception as e:
+        print(f"Error executing CAD tool {tool_name}: {e}")
+        return None
+
+
 @app.route('/api/cad/ai-generate', methods=['POST'])
 def ai_generate_cad():
-    """AI auto-generate complete electrical CAD drawings"""
+    """AI auto-generate complete electrical CAD drawings with agentic tool use"""
     try:
         data = request.get_json()
 
@@ -2629,46 +3026,181 @@ def ai_generate_cad():
         # TODO: Load actual floor plan image and board data
         # For now, generate sample CAD data
 
-        # Use Claude API to generate CAD drawing data
+        # Use Claude API with tool use for agentic CAD generation
         client = anthropic.Anthropic(api_key=api_key)
+
+        # Define CAD drawing tools for the AI
+        tools = [
+            {
+                "name": "add_line",
+                "description": "Add a line to the drawing (for walls, wire routes, etc.)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "x1": {"type": "number", "description": "Start X coordinate"},
+                        "y1": {"type": "number", "description": "Start Y coordinate"},
+                        "x2": {"type": "number", "description": "End X coordinate"},
+                        "y2": {"type": "number", "description": "End Y coordinate"},
+                        "layer": {"type": "string", "description": "Layer name (WALLS-ARCHITECTURAL, POWER-WIRING-RED, etc.)"},
+                        "strokeWidth": {"type": "number", "description": "Line thickness", "default": 2}
+                    },
+                    "required": ["x1", "y1", "x2", "y2", "layer"]
+                }
+            },
+            {
+                "name": "add_symbol",
+                "description": "Add an electrical symbol to the drawing (outlet, switch, light, etc.)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol_id": {"type": "string", "description": "Symbol ID (power-outlet-single, switch-single, light-ceiling, etc.)"},
+                        "x": {"type": "number", "description": "X position"},
+                        "y": {"type": "number", "description": "Y position"},
+                        "label": {"type": "string", "description": "Optional label for the symbol"}
+                    },
+                    "required": ["symbol_id", "x", "y"]
+                }
+            },
+            {
+                "name": "add_text",
+                "description": "Add text annotation to the drawing",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "Text content"},
+                        "x": {"type": "number", "description": "X position"},
+                        "y": {"type": "number", "description": "Y position"},
+                        "fontSize": {"type": "number", "description": "Font size", "default": 14},
+                        "layer": {"type": "string", "description": "Layer name", "default": "TEXT-LABELS"}
+                    },
+                    "required": ["text", "x", "y"]
+                }
+            },
+            {
+                "name": "add_dimension",
+                "description": "Add dimension line to show measurements",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "x1": {"type": "number", "description": "Start X"},
+                        "y1": {"type": "number", "description": "Start Y"},
+                        "x2": {"type": "number", "description": "End X"},
+                        "y2": {"type": "number", "description": "End Y"},
+                        "label": {"type": "string", "description": "Measurement text (e.g., '3.5m')"}
+                    },
+                    "required": ["x1", "y1", "x2", "y2", "label"]
+                }
+            },
+            {
+                "name": "add_rectangle",
+                "description": "Add a rectangle (for rooms, equipment, etc.)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "x": {"type": "number", "description": "Left position"},
+                        "y": {"type": "number", "description": "Top position"},
+                        "width": {"type": "number", "description": "Width"},
+                        "height": {"type": "number", "description": "Height"},
+                        "layer": {"type": "string", "description": "Layer name"},
+                        "fill": {"type": "string", "description": "Fill color", "default": "transparent"}
+                    },
+                    "required": ["x", "y", "width", "height", "layer"]
+                }
+            }
+        ]
 
         prompt = f"""You are an expert electrical engineer creating professional CAD drawings for a home automation project.
 
 Project Requirements:
 {requirements}
 
-Generate a complete electrical CAD drawing with the following components:
-1. Floor plan layout with rooms and dimensions
-2. Electrical device placements (outlets, switches, lights)
-3. Wiring routes between devices
-4. Main distribution panel location
-5. Loxone Miniserver and extensions
-6. Proper wire color coding (Red=Live, Blue=Neutral, Green/Yellow=Earth)
+Generate a complete electrical CAD drawing using the available tools. Create:
 
-Return the drawing as JSON with these objects:
-- Walls (lines with coordinates)
-- Rooms (polygons with labels)
-- Devices (symbols with types and positions)
-- Wires (paths with colors and terminal numbers)
-- Annotations (text labels with positions)
-- Layers (organized by type)
+1. Floor plan layout (use add_line for walls, add_rectangle for rooms)
+2. Electrical devices (use add_symbol with appropriate symbol IDs)
+3. Wiring routes (use add_line on appropriate wiring layers)
+4. Dimensions (use add_dimension to show measurements)
+5. Text annotations (use add_text for room names, labels, etc.)
 
-Make it professional and compliant with AS/NZS 3000 electrical standards."""
+Available symbol IDs:
+- Outlets: power-outlet-single, power-outlet-double, power-outlet-switched
+- Switches: switch-single, switch-double, switch-dimmer, switch-two-way
+- Lighting: light-ceiling, light-downlight, light-wall, light-emergency
+- Distribution: switchboard, circuit-breaker, rcd, rcbo, meter
+- Loxone: loxone-miniserver, loxone-relay, loxone-dimmer, loxone-extension
+- Communication: data-outlet, phone-outlet, tv-outlet
+- Safety: smoke-detector
+- Ventilation: exhaust-fan
 
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=16000,
-            temperature=0.3,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
+Available layers:
+- WALLS-ARCHITECTURAL (for building structure)
+- POWER-WIRING-RED (for live wires)
+- NEUTRAL-WIRING-BLUE (for neutral wires)
+- GROUND-WIRING-GREEN (for earth wires)
+- DEVICES-SYMBOLS (for electrical devices)
+- TEXT-LABELS (for annotations)
 
-        # Parse AI response
-        ai_response = message.content[0].text
+Use realistic coordinates (canvas is 3000x2000 pixels). Create a professional, code-compliant drawing following AS/NZS 3000 standards."""
 
-        # Generate structured CAD data
+        # Agentic loop - let AI use tools to build drawing
+        messages = [{"role": "user", "content": prompt}]
+        objects = []
+        ai_summary = ""
+
+        max_iterations = 50  # Safety limit
+        iteration = 0
+
+        while iteration < max_iterations:
+            iteration += 1
+
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=16000,
+                temperature=0.3,
+                tools=tools,
+                messages=messages
+            )
+
+            # Check stop reason
+            if response.stop_reason == "end_turn":
+                # AI is done using tools
+                if response.content:
+                    for block in response.content:
+                        if hasattr(block, 'text'):
+                            ai_summary += block.text
+                break
+
+            # Process tool uses
+            if response.stop_reason == "tool_use":
+                # Add assistant's response to conversation
+                messages.append({"role": "assistant", "content": response.content})
+
+                # Process each tool use
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        tool_name = block.name
+                        tool_input = block.input
+
+                        # Execute tool and create object
+                        obj = execute_cad_tool(tool_name, tool_input)
+                        if obj:
+                            objects.append(obj)
+
+                        # Send result back to AI
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": f"Added {tool_name} successfully"
+                        })
+
+                # Add tool results to conversation
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                # Unexpected stop reason
+                break
+
+        # Generate structured CAD data with real objects
         cad_data = {
             'success': True,
             'layers': [
@@ -2679,12 +3211,14 @@ Make it professional and compliant with AS/NZS 3000 electrical standards."""
                 {'name': 'DEVICES-SYMBOLS', 'color': '#F39C12', 'visible': True, 'locked': False},
                 {'name': 'TEXT-LABELS', 'color': '#34495E', 'visible': True, 'locked': False},
             ],
-            'objects': [],
-            'ai_analysis': ai_response,
+            'objects': objects,
+            'ai_analysis': ai_summary or f"Generated {len(objects)} CAD objects using AI tool calls",
             'metadata': {
-                'generated_by': 'AI',
+                'generated_by': 'AI Agentic System',
                 'generated_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'standard': 'AS/NZS 3000:2018'
+                'standard': 'AS/NZS 3000:2018',
+                'tool_calls': len(objects),
+                'iterations': iteration
             }
         }
 
@@ -2697,7 +3231,7 @@ Make it professional and compliant with AS/NZS 3000 electrical standards."""
 
 @app.route('/api/cad/export', methods=['POST'])
 def export_cad():
-    """Export CAD drawing to various formats"""
+    """Export CAD drawing to various formats (DXF, PDF, PNG)"""
     try:
         data = request.get_json()
         format_type = data.get('format', 'dxf').lower()
@@ -2706,12 +3240,28 @@ def export_cad():
 
         # Export based on format
         if format_type == 'dxf':
-            # TODO: Implement DXF export using dxf-writer library
-            # For now, return success
+            # Import DXF exporter
+            from dxf_exporter import export_to_dxf
+
+            # Generate DXF content
+            dxf_content = export_to_dxf(cad_data)
+
+            # Save to file
+            export_filename = f'cad_export_{session_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.dxf'
+            export_path = os.path.join('exports', export_filename)
+
+            # Create exports directory if it doesn't exist
+            os.makedirs('exports', exist_ok=True)
+
+            # Write DXF file
+            with open(export_path, 'w', encoding='utf-8') as f:
+                f.write(dxf_content)
+
             return jsonify({
                 'success': True,
                 'format': 'dxf',
-                'download_url': f'/api/download/cad_export_{session_id}.dxf'
+                'download_url': f'/api/download/{export_filename}',
+                'filename': export_filename
             })
 
         elif format_type == 'pdf':
