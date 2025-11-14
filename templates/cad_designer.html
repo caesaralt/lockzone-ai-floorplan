@@ -465,6 +465,7 @@
             <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" style="display: none;" onchange="handleFileUpload(event)">
             <button class="header-btn" onclick="loadProject()">📂 Open</button>
             <button class="header-btn" onclick="saveProject()">💾 Save</button>
+            <button class="header-btn" onclick="addTitleBlock()">📋 Title Block</button>
             <button class="header-btn ai" onclick="openAIModal()">🤖 AI Auto-Generate</button>
             <button class="header-btn" onclick="exportDrawing()">📤 Export</button>
         </div>
@@ -497,6 +498,10 @@
             <div class="tool-btn" onclick="selectTool('wire')" data-tool="wire">
                 <div>〰️</div>
                 <div class="tool-label">Wire</div>
+            </div>
+            <div class="tool-btn" onclick="selectTool('dimension')" data-tool="dimension">
+                <div>📐</div>
+                <div class="tool-label">Dimension</div>
             </div>
             <div class="tool-btn" onclick="selectTool('pan')" data-tool="pan">
                 <div>✋</div>

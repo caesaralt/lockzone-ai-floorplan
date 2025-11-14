@@ -472,6 +472,8 @@ function setupCanvasEvents() {
             startDrawingCircle(startX, startY);
         } else if (currentTool === 'wire') {
             startDrawingWire(startX, startY);
+        } else if (currentTool === 'dimension') {
+            startDrawingDimension(startX, startY);
         } else if (currentTool === 'text') {
             addText(startX, startY);
         }
@@ -495,6 +497,8 @@ function setupCanvasEvents() {
         } else if (currentTool === 'circle') {
             const radius = Math.sqrt(Math.pow(pointer.x - startX, 2) + Math.pow(pointer.y - startY, 2));
             drawingObject.set({ radius: radius });
+        } else if (currentTool === 'dimension') {
+            updateDimension(drawingObject, startX, startY, pointer.x, pointer.y);
         }
 
         // Use throttled render instead of direct renderAll()
@@ -605,6 +609,490 @@ function addText(x, y) {
 }
 
 // ============================================================================
+// DIMENSION TOOLS
+// ============================================================================
+
+function startDrawingDimension(x, y) {
+    const currentLayer = getCurrentLayer();
+
+    // Create dimension as a group with line, arrows, and text
+    const dimensionLine = new fabric.Line([x, y, x, y], {
+        stroke: currentLayer.color || '#2C3E50',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    const dimensionText = new fabric.Text('0.00m', {
+        fontSize: 12,
+        left: x,
+        top: y - 15,
+        fill: currentLayer.color || '#2C3E50',
+        selectable: false,
+        backgroundColor: 'white',
+        padding: 2
+    });
+
+    // Create arrow heads
+    const arrow1 = createArrowHead(x, y, 0, currentLayer.color);
+    const arrow2 = createArrowHead(x, y, 180, currentLayer.color);
+
+    // Group all dimension elements
+    const group = new fabric.Group([dimensionLine, arrow1, arrow2, dimensionText], {
+        layer: currentLayer.name,
+        customType: 'dimension',
+        selectable: true,
+        dimensionStart: { x, y },
+        dimensionEnd: { x, y }
+    });
+
+    drawingObject = group;
+    canvas.add(group);
+}
+
+function updateDimension(dimensionGroup, x1, y1, x2, y2) {
+    if (!dimensionGroup || !dimensionGroup._objects) return;
+
+    // Calculate distance and angle
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    // Convert pixels to meters (assuming 1 meter = 100 pixels for display)
+    const distanceMeters = (distance / 100).toFixed(2);
+
+    // Update dimension line
+    const line = dimensionGroup._objects[0];
+    line.set({
+        x1: 0,
+        y1: 0,
+        x2: dx,
+        y2: dy
+    });
+
+    // Update arrows
+    const arrow1 = dimensionGroup._objects[1];
+    const arrow2 = dimensionGroup._objects[2];
+
+    arrow1.set({
+        left: 0,
+        top: 0,
+        angle: angle
+    });
+
+    arrow2.set({
+        left: dx,
+        top: dy,
+        angle: angle + 180
+    });
+
+    // Update text
+    const text = dimensionGroup._objects[3];
+    const midX = dx / 2;
+    const midY = dy / 2;
+
+    // Offset text perpendicular to dimension line
+    const textAngle = angle * Math.PI / 180;
+    const offsetX = -Math.sin(textAngle) * 15;
+    const offsetY = Math.cos(textAngle) * 15;
+
+    text.set({
+        left: midX + offsetX,
+        top: midY + offsetY,
+        text: `${distanceMeters}m`,
+        angle: (Math.abs(angle) > 90 && Math.abs(angle) < 270) ? angle + 180 : angle
+    });
+
+    dimensionGroup.set({
+        left: x1,
+        top: y1,
+        dimensionEnd: { x: x2, y: y2 }
+    });
+
+    dimensionGroup.setCoords();
+}
+
+function createArrowHead(x, y, angle, color) {
+    // Create triangle arrow head
+    const arrowSize = 8;
+    const arrow = new fabric.Triangle({
+        left: x,
+        top: y,
+        width: arrowSize,
+        height: arrowSize,
+        fill: color || '#2C3E50',
+        angle: angle,
+        originX: 'center',
+        originY: 'center',
+        selectable: false
+    });
+    return arrow;
+}
+
+// Add angular dimension between two lines
+function addAngularDimension(line1, line2) {
+    // Calculate angle between two lines
+    const angle1 = Math.atan2(line1.y2 - line1.y1, line1.x2 - line1.x1);
+    const angle2 = Math.atan2(line2.y2 - line2.y1, line2.x2 - line2.x1);
+    let angleDiff = (angle2 - angle1) * 180 / Math.PI;
+
+    // Normalize angle to 0-360
+    if (angleDiff < 0) angleDiff += 360;
+    if (angleDiff > 180) angleDiff = 360 - angleDiff;
+
+    // Create arc to show angle
+    const radius = 30;
+    const startAngle = angle1;
+    const endAngle = angle2;
+
+    const arc = new fabric.Circle({
+        left: line1.x1,
+        top: line1.y1,
+        radius: radius,
+        startAngle: startAngle,
+        endAngle: endAngle,
+        stroke: '#2C3E50',
+        strokeWidth: 1,
+        fill: 'transparent',
+        selectable: true
+    });
+
+    const angleText = new fabric.Text(`${angleDiff.toFixed(1)}°`, {
+        left: line1.x1 + radius + 10,
+        top: line1.y1 - 10,
+        fontSize: 12,
+        fill: '#2C3E50'
+    });
+
+    const group = new fabric.Group([arc, angleText], {
+        selectable: true,
+        customType: 'angular-dimension'
+    });
+
+    canvas.add(group);
+    addToUndoStack();
+    updateObjectCount();
+}
+
+// Add radius dimension for circles
+function addRadiusDimension(circle) {
+    const radius = circle.radius;
+    const centerX = circle.left + radius;
+    const centerY = circle.top + radius;
+
+    // Create radius line
+    const radiusLine = new fabric.Line([centerX, centerY, centerX + radius, centerY], {
+        stroke: '#2C3E50',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    const radiusText = new fabric.Text(`R ${(radius / 100).toFixed(2)}m`, {
+        left: centerX + radius / 2,
+        top: centerY - 15,
+        fontSize: 12,
+        fill: '#2C3E50',
+        backgroundColor: 'white',
+        padding: 2
+    });
+
+    const group = new fabric.Group([radiusLine, radiusText], {
+        selectable: true,
+        customType: 'radius-dimension'
+    });
+
+    canvas.add(group);
+    addToUndoStack();
+    updateObjectCount();
+}
+
+// ============================================================================
+// TITLE BLOCK & TEMPLATES (AS/NZS Standards)
+// ============================================================================
+
+function addTitleBlock(position = 'bottom-right') {
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    // Title block dimensions (AS/NZS standard for A1 sheet)
+    const tbWidth = 400;
+    const tbHeight = 150;
+
+    // Position calculation
+    let left, top;
+    if (position === 'bottom-right') {
+        left = canvasWidth - tbWidth - 20;
+        top = canvasHeight - tbHeight - 20;
+    } else {
+        left = 20;
+        top = canvasHeight - tbHeight - 20;
+    }
+
+    // Main border
+    const border = new fabric.Rect({
+        left: 0,
+        top: 0,
+        width: tbWidth,
+        height: tbHeight,
+        fill: 'white',
+        stroke: '#000000',
+        strokeWidth: 2,
+        selectable: false
+    });
+
+    // Horizontal dividers
+    const div1 = new fabric.Line([0, 30, tbWidth, 30], {
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    const div2 = new fabric.Line([0, 70, tbWidth, 70], {
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    const div3 = new fabric.Line([0, 110, tbWidth, 110], {
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    // Vertical dividers
+    const divV1 = new fabric.Line([200, 30, 200, tbHeight], {
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    const divV2 = new fabric.Line([300, 30, 300, tbHeight], {
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false
+    });
+
+    // Company/Project header
+    const companyText = new fabric.Text('INTEGRATED LIVING', {
+        left: 10,
+        top: 8,
+        fontSize: 14,
+        fontWeight: 'bold',
+        fill: '#000000',
+        selectable: false
+    });
+
+    // Drawing title
+    const titleLabel = new fabric.Text('DRAWING TITLE:', {
+        left: 10,
+        top: 38,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const titleText = new fabric.IText(currentSession?.project_name || 'Electrical Layout', {
+        left: 10,
+        top: 52,
+        fontSize: 16,
+        fontWeight: 'bold',
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Drawing number
+    const dwgNumLabel = new fabric.Text('DWG NO:', {
+        left: 210,
+        top: 38,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const dwgNumText = new fabric.IText(currentSession?.metadata?.drawing_number || 'E-001', {
+        left: 210,
+        top: 52,
+        fontSize: 14,
+        fontWeight: 'bold',
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Scale
+    const scaleLabel = new fabric.Text('SCALE:', {
+        left: 310,
+        top: 38,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const scaleText = new fabric.IText(currentSession?.metadata?.scale || '1:100', {
+        left: 310,
+        top: 52,
+        fontSize: 14,
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Date
+    const dateLabel = new fabric.Text('DATE:', {
+        left: 210,
+        top: 78,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const dateText = new fabric.Text(new Date().toLocaleDateString(), {
+        left: 210,
+        top: 92,
+        fontSize: 12,
+        fill: '#000000',
+        selectable: false
+    });
+
+    // Revision
+    const revLabel = new fabric.Text('REV:', {
+        left: 310,
+        top: 78,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const revText = new fabric.IText(currentSession?.metadata?.revision || 'A', {
+        left: 310,
+        top: 92,
+        fontSize: 14,
+        fontWeight: 'bold',
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Designer/Engineer
+    const designerLabel = new fabric.Text('DESIGNED:', {
+        left: 10,
+        top: 78,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const designerText = new fabric.IText('Engineer Name', {
+        left: 10,
+        top: 92,
+        fontSize: 12,
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Standards compliance notice
+    const standardsText = new fabric.Text('Designed in accordance with AS/NZS 3000:2018', {
+        left: 10,
+        top: 118,
+        fontSize: 9,
+        fill: '#666666',
+        selectable: false
+    });
+
+    // Sheet number
+    const sheetLabel = new fabric.Text('SHEET:', {
+        left: 310,
+        top: 118,
+        fontSize: 10,
+        fill: '#666666',
+        selectable: false
+    });
+
+    const sheetText = new fabric.IText('1 of 1', {
+        left: 350,
+        top: 118,
+        fontSize: 10,
+        fill: '#000000',
+        selectable: true
+    });
+
+    // Create group
+    const titleBlock = new fabric.Group([
+        border, div1, div2, div3, divV1, divV2,
+        companyText, titleLabel, titleText,
+        dwgNumLabel, dwgNumText, scaleLabel, scaleText,
+        dateLabel, dateText, revLabel, revText,
+        designerLabel, designerText, standardsText,
+        sheetLabel, sheetText
+    ], {
+        left: left,
+        top: top,
+        selectable: true,
+        customType: 'titleBlock',
+        lockRotation: true,
+        hasControls: false
+    });
+
+    canvas.add(titleBlock);
+    canvas.sendToBack(titleBlock); // Keep title block behind other objects
+    addToUndoStack();
+    updateObjectCount();
+
+    console.log('✅ Professional title block added');
+    return titleBlock;
+}
+
+// Add border/frame for professional drawings
+function addDrawingFrame(paperSize = 'A1') {
+    // Paper sizes in mm (at 1:1 scale)
+    const paperSizes = {
+        'A0': { width: 841, height: 1189 },
+        'A1': { width: 594, height: 841 },
+        'A2': { width: 420, height: 594 },
+        'A3': { width: 297, height: 420 },
+        'A4': { width: 210, height: 297 }
+    };
+
+    const size = paperSizes[paperSize] || paperSizes['A1'];
+
+    // Convert mm to pixels (assuming 96 DPI, 1mm = 3.78 pixels)
+    const scale = 3.78;
+    const width = size.width * scale;
+    const height = size.height * scale;
+
+    // Outer border (page edge)
+    const outerBorder = new fabric.Rect({
+        left: 20,
+        top: 20,
+        width: width,
+        height: height,
+        fill: 'transparent',
+        stroke: '#000000',
+        strokeWidth: 3,
+        selectable: false,
+        customType: 'frame-outer'
+    });
+
+    // Inner border (drawing area - 10mm inside)
+    const margin = 10 * scale;
+    const innerBorder = new fabric.Rect({
+        left: 20 + margin,
+        top: 20 + margin,
+        width: width - (margin * 2),
+        height: height - (margin * 2),
+        fill: 'transparent',
+        stroke: '#000000',
+        strokeWidth: 1,
+        selectable: false,
+        customType: 'frame-inner'
+    });
+
+    canvas.add(outerBorder);
+    canvas.add(innerBorder);
+    canvas.sendToBack(innerBorder);
+    canvas.sendToBack(outerBorder);
+
+    console.log(`✅ ${paperSize} drawing frame added`);
+}
+
+// ============================================================================
 // SYMBOLS LIBRARY
 // ============================================================================
 
@@ -646,8 +1134,13 @@ function renderSymbols() {
             item.dataset.symbolId = symbol.id;
             item.dataset.symbolData = JSON.stringify(symbol);
 
+            // Render SVG symbol if available, otherwise fallback to icon
+            const symbolDisplay = symbol.svg
+                ? `<div class="symbol-icon-svg" style="width: ${symbol.width * 2}px; height: ${symbol.height * 2}px;">${symbol.svg.replace(/stroke="black"/g, 'stroke="currentColor"').replace(/fill="black"/g, 'fill="currentColor"')}</div>`
+                : `<div class="symbol-icon">${symbol.icon || '⚡'}</div>`;
+
             item.innerHTML = `
-                <div class="symbol-icon">${symbol.icon}</div>
+                ${symbolDisplay}
                 <div class="symbol-name">${symbol.name}</div>
             `;
 
@@ -688,45 +1181,81 @@ function renderSymbols() {
 }
 
 function addSymbolToCanvas(symbol, x = 100, y = 100) {
-    // Create symbol as a group with text
-    const text = new fabric.Text(symbol.icon, {
-        fontSize: 40,
-        originX: 'center',
-        originY: 'center'
-    });
+    // If symbol has SVG, load and render it professionally
+    if (symbol.svg) {
+        // Wrap SVG in proper container with viewBox
+        const svgString = `<svg width="${symbol.width}" height="${symbol.height}" viewBox="0 0 ${symbol.width} ${symbol.height}" xmlns="http://www.w3.org/2000/svg">${symbol.svg}</svg>`;
 
-    const rect = new fabric.Rect({
-        width: symbol.width || 60,
-        height: symbol.height || 60,
-        fill: 'transparent',
-        stroke: '#556B2F',
-        strokeWidth: 2,
-        originX: 'center',
-        originY: 'center'
-    });
+        fabric.loadSVGFromString(svgString, (objects, options) => {
+            const svgGroup = fabric.util.groupSVGElements(objects, options);
 
-    const label = new fabric.Text(symbol.name, {
-        fontSize: 10,
-        originX: 'center',
-        originY: 'top',
-        top: (symbol.height || 60) / 2 + 5
-    });
+            // Add label below symbol
+            const label = new fabric.Text(symbol.name, {
+                fontSize: 10,
+                originX: 'center',
+                originY: 'top',
+                top: symbol.height / 2 + 10,
+                fill: '#2C3E50'
+            });
 
-    const group = new fabric.Group([rect, text, label], {
-        left: x,
-        top: y,
-        layer: 'DEVICES-SYMBOLS',
-        customType: 'symbol',
-        symbolId: symbol.id,
-        symbolData: symbol
-    });
+            // Create group with symbol and label
+            const group = new fabric.Group([svgGroup, label], {
+                left: x,
+                top: y,
+                layer: 'DEVICES-SYMBOLS',
+                customType: 'symbol',
+                symbolId: symbol.id,
+                symbolData: symbol
+            });
 
-    canvas.add(group);
-    canvas.setActiveObject(group);
-    addToUndoStack();
-    updateObjectCount();
+            canvas.add(group);
+            canvas.setActiveObject(group);
+            addToUndoStack();
+            updateObjectCount();
 
-    console.log('Symbol added:', symbol.name);
+            console.log('✅ Professional symbol added:', symbol.name);
+        });
+    } else {
+        // Fallback for old emoji-based symbols
+        const text = new fabric.Text(symbol.icon || '⚡', {
+            fontSize: 40,
+            originX: 'center',
+            originY: 'center'
+        });
+
+        const rect = new fabric.Rect({
+            width: symbol.width || 60,
+            height: symbol.height || 60,
+            fill: 'transparent',
+            stroke: '#556B2F',
+            strokeWidth: 2,
+            originX: 'center',
+            originY: 'center'
+        });
+
+        const label = new fabric.Text(symbol.name, {
+            fontSize: 10,
+            originX: 'center',
+            originY: 'top',
+            top: (symbol.height || 60) / 2 + 5
+        });
+
+        const group = new fabric.Group([rect, text, label], {
+            left: x,
+            top: y,
+            layer: 'DEVICES-SYMBOLS',
+            customType: 'symbol',
+            symbolId: symbol.id,
+            symbolData: symbol
+        });
+
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        addToUndoStack();
+        updateObjectCount();
+
+        console.log('Symbol added:', symbol.name);
+    }
 }
 
 // ============================================================================
@@ -932,20 +1461,29 @@ async function executeExport() {
 
             alert('✅ SVG exported successfully!');
         } else if (format === 'dxf') {
-            // DXF export (call backend)
+            // DXF export (call backend with full CAD data)
+            const cadData = {
+                canvas_state: canvas.toJSON(),
+                layers: layers,
+                metadata: currentSession?.metadata || {},
+                project_name: currentSession?.project_name || 'Electrical Layout'
+            };
+
             const response = await fetch('/api/cad/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     format: 'dxf',
-                    session_id: currentSession?.session_id,
-                    cad_data: canvas.toJSON()
+                    session_id: currentSession?.session_id || 'temp',
+                    cad_data: cadData
                 })
             });
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ DXF export prepared! (Full DXF export coming in Phase 2)');
+                // Download the DXF file
+                window.location.href = data.download_url;
+                alert('✅ DXF file exported successfully! Compatible with AutoCAD.');
             }
         }
 
