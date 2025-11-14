@@ -5,145 +5,614 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simpro Integration - Integratd Living</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        .top-nav {
             background: white;
-            border-bottom: 1px solid #d2d2d7;
-            padding: 0 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        .nav-container {
-            max-width: 1400px;
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .nav-bar {
+            background: #f5f5f5;
+            padding: 15px 30px;
+            border-bottom: 2px solid #ddd;
             display: flex;
+            gap: 15px;
             align-items: center;
-            height: 60px;
-            gap: 40px;
         }
 
-        .logo {
-            font-size: 20px;
-            font-weight: 700;
+        .nav-link {
+            text-decoration: none;
             color: #556B2F;
-            text-decoration: none;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-            flex: 1;
-        }
-
-        .nav-item {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
+            font-weight: 600;
             padding: 8px 16px;
             border-radius: 8px;
             transition: all 0.2s;
         }
 
-        .nav-item:hover {
-            background: rgba(85, 107, 47, 0.1);
+        .nav-link:hover {
+            background: #e0e0e0;
         }
 
-        .nav-item.active {
-            background: #556B2F;
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #556B2F;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
             color: white;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 60px auto;
-            padding: 0 40px;
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(85, 107, 47, 0.3);
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
+        .btn-success {
+            background: #4CAF50;
+            color: white;
         }
 
-        h1 {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 16px;
+        .btn-warning {
+            background: #FF9800;
+            color: white;
         }
 
-        .subtitle {
-            font-size: 20px;
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .card p {
             color: #666;
+            margin-bottom: 15px;
         }
 
-        .content-card {
-            background: white;
-            border-radius: 16px;
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected {
+            background: #4CAF50;
+        }
+
+        .status-indicator.disconnected {
+            background: #f44336;
+        }
+
+        .loading {
+            text-align: center;
             padding: 40px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            text-align: center;
         }
 
-        .icon {
-            font-size: 64px;
-            margin-bottom: 24px;
-        }
-
-        .coming-soon {
-            font-size: 24px;
-            font-weight: 600;
-            color: #556B2F;
-            margin-bottom: 16px;
-        }
-
-        .description {
-            font-size: 16px;
-            color: #666;
-            line-height: 1.6;
-            max-width: 600px;
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #556B2F;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
             margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #556B2F;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
-    <nav class="top-nav">
-        <div class="nav-container">
-            <a href="/" class="logo">🏠 Integratd Living</a>
-            <ul class="nav-menu">
-                <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
-                <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
-                <li><a href="/canvas" class="nav-item">Floor Plan Canvas</a></li>
-                <li><a href="/learning" class="nav-item">AI Learning</a></li>
-                <li><a href="/simpro" class="nav-item active">Simpro Integration</a></li>
-            </ul>
-        </div>
-    </nav>
-
     <div class="container">
         <div class="header">
-            <h1>Simpro Integration</h1>
-            <p class="subtitle">Connect your Simpro account for seamless data sync</p>
+            <h1>🔗 Simpro Integration</h1>
+            <p>Connect your Simpro account for seamless data synchronization</p>
         </div>
 
-        <div class="content-card">
-            <div class="icon">🔗</div>
-            <div class="coming-soon">Feature Coming Soon</div>
-            <p class="description">
-                The Simpro Integration module will allow you to connect your Simpro account 
-                for seamless data synchronization. Automatically sync customers, projects, 
-                quotes, and inventory between Integratd Living and your Simpro workspace.
-            </p>
+        <div class="nav-bar">
+            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/crm" class="nav-link">CRM</a>
+            <a href="/quotes" class="nav-link">Quote Automation</a>
+        </div>
+
+        <div class="content">
+            <div class="info-box">
+                <strong>Connect to Simpro:</strong> Integrate with your Simpro account to pull real pricing, labor rates, jobs, and create quotes directly in Simpro.
+            </div>
+
+            <!-- Connection Status -->
+            <div class="card">
+                <h4>Connection Status</h4>
+                <p>
+                    <span class="status-indicator disconnected" id="simproStatus"></span>
+                    <span id="simproStatusText">Not Connected</span>
+                </p>
+            </div>
+
+            <!-- Configuration Form -->
+            <div style="margin-top: 30px;">
+                <h3>📝 Simpro Configuration</h3>
+                <form id="simproConfigForm">
+                    <div class="form-group">
+                        <label for="simproUrl">Simpro Base URL</label>
+                        <input type="text" id="simproUrl" name="base_url" placeholder="https://yourcompany.simprosuite.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="simproCompanyId">Company ID</label>
+                        <input type="text" id="simproCompanyId" name="company_id" value="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="simproClientId">Client ID</label>
+                        <input type="text" id="simproClientId" name="client_id" placeholder="Your Simpro Client ID" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="simproClientSecret">Client Secret</label>
+                        <input type="password" id="simproClientSecret" name="client_secret" placeholder="Your Simpro Client Secret" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Configuration</button>
+                    <button type="button" class="btn btn-success" onclick="testSimproConnection()">Test Connection</button>
+                    <button type="button" class="btn btn-warning" onclick="testSimproEndpoints()" style="margin-left: 10px;">🔍 Test Which Endpoints Work</button>
+                </form>
+            </div>
+
+            <!-- Data Fetching Options -->
+            <div style="margin-top: 40px;">
+                <h3>📥 Fetch Data from Simpro</h3>
+
+                <div class="grid">
+                    <div class="card">
+                        <h4>📦 Catalog Items</h4>
+                        <p>Get all catalog items with pricing</p>
+                        <button class="btn btn-secondary" onclick="fetchSimproData('catalogs')">Fetch Catalogs</button>
+                    </div>
+
+                    <div class="card">
+                        <h4>⏱️ Labor Rates</h4>
+                        <p>Get all labor rates and costs</p>
+                        <button class="btn btn-secondary" onclick="fetchSimproData('labor-rates')">Fetch Labor Rates</button>
+                    </div>
+
+                    <div class="card">
+                        <h4>🏗️ Jobs</h4>
+                        <p>Get all jobs from Simpro</p>
+                        <button class="btn btn-secondary" onclick="fetchSimproData('jobs')">Fetch Jobs</button>
+                    </div>
+
+                    <div class="card">
+                        <h4>👥 Customers</h4>
+                        <p>Get all customers</p>
+                        <button class="btn btn-secondary" onclick="fetchSimproData('customers')">Fetch Customers</button>
+                    </div>
+
+                    <div class="card">
+                        <h4>📄 Quotes</h4>
+                        <p>Get all quotes from Simpro</p>
+                        <button class="btn btn-secondary" onclick="fetchSimproData('quotes')">Fetch Quotes</button>
+                    </div>
+                </div>
+
+            <!-- IMPORT ALL DATA -->
+            <div style="margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; text-align: center; color: white;">
+                <h2 style="margin: 0 0 15px 0; font-size: 2em;">🚀 ONE-CLICK IMPORT</h2>
+                <p style="font-size: 1.2em; margin-bottom: 25px; opacity: 0.95;">
+                    Import ALL your Simpro data at once: Customers, Jobs, Quotes, Catalog, Staff, and Sites!<br>
+                    AI will automatically categorize and organize everything into your CRM.
+                </p>
+                <button id="importAllBtn" class="btn" onclick="importAllSimpro()" style="
+                    background: white;
+                    color: #667eea;
+                    font-size: 1.5em;
+                    padding: 20px 50px;
+                    border: none;
+                    border-radius: 12px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+                    transition: all 0.3s ease;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    🚀 IMPORT EVERYTHING FROM SIMPRO
+                </button>
+
+                <div id="importProgress" style="display:none; margin-top:25px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 10px;">
+                    <div style="width: 100%; height: 30px; background: rgba(255,255,255,0.3); border-radius: 15px; overflow: hidden; margin-bottom: 15px;">
+                        <div id="progressBar" style="width: 0%; height: 100%; background: white; transition: width 0.5s ease;"></div>
+                    </div>
+                    <p id="importStatus" style="font-size: 1.1em; margin: 0;">Importing...</p>
+                </div>
+
+                <div id="importResults" style="margin-top: 25px;"></div>
+            </div>
+
+            </div>
+
+            <!-- Data Display Area -->
+            <div id="simproDataDisplay" style="margin-top: 30px;"></div>
         </div>
     </div>
+
+    <script>
+        // Load Simpro configuration on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSimproConfig();
+        });
+
+        async function loadSimproConfig() {
+            try {
+                const response = await fetch('/api/simpro/config');
+                const data = await response.json();
+
+                if (data.success && data.config) {
+                    document.getElementById('simproUrl').value = data.config.base_url || '';
+                    document.getElementById('simproCompanyId').value = data.config.company_id || '0';
+                    document.getElementById('simproClientId').value = data.config.client_id || '';
+                    document.getElementById('simproClientSecret').value = data.config.client_secret || '';
+
+                    updateConnectionStatus(data.config.connected);
+                }
+            } catch (error) {
+                console.error('Failed to load Simpro config:', error);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('simproStatus');
+            const text = document.getElementById('simproStatusText');
+
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                text.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                text.textContent = 'Not Connected';
+            }
+        }
+
+        document.getElementById('simproConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const config = {
+                base_url: document.getElementById('simproUrl').value,
+                company_id: document.getElementById('simproCompanyId').value,
+                client_id: document.getElementById('simproClientId').value,
+                client_secret: document.getElementById('simproClientSecret').value
+            };
+
+            try {
+                const response = await fetch('/api/simpro/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Configuration saved successfully!');
+                    updateConnectionStatus(false);
+                } else {
+                    alert('Failed to save configuration: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error saving configuration: ' + error.message);
+            }
+        });
+
+        async function testSimproConnection() {
+            try {
+                const response = await fetch('/api/simpro/connect', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Connection successful!\n\n' + JSON.stringify(data.data, null, 2));
+                    updateConnectionStatus(true);
+                } else {
+                    alert('❌ Connection failed: ' + data.error);
+                    updateConnectionStatus(false);
+                }
+            } catch (error) {
+                alert('Error testing connection: ' + error.message);
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function testSimproEndpoints() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div><p>Testing all Simpro endpoints...</p>';
+
+            const display = document.getElementById('simproDataDisplay');
+            display.innerHTML = '';
+            display.appendChild(loadingDiv);
+
+            try {
+                const response = await fetch('/api/simpro/test-endpoints', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displaySimproData('Endpoint Test Results', data.results);
+                } else {
+                    display.innerHTML = `<div class="error">Failed to test endpoints: ${data.error}</div>`;
+                }
+            } catch (error) {
+                display.innerHTML = `<div class="error">Error testing endpoints: ${error.message}</div>`;
+            }
+        }
+
+        async function fetchSimproData(dataType) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div><p>Fetching data from Simpro...</p>';
+
+            const display = document.getElementById('simproDataDisplay');
+            display.innerHTML = '';
+            display.appendChild(loadingDiv);
+
+            try {
+                const response = await fetch(`/api/simpro/${dataType}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displaySimproData(dataType, data.data);
+                } else {
+                    display.innerHTML = `<div class="error">Failed to fetch ${dataType}: ${data.error}</div>`;
+                }
+            } catch (error) {
+                display.innerHTML = `<div class="error">Error fetching ${dataType}: ${error.message}</div>`;
+            }
+        }
+
+        function displaySimproData(title, data) {
+            const display = document.getElementById('simproDataDisplay');
+
+            let html = `
+                <div class="card">
+                    <h3>${title}</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow: auto; max-height: 500px;">
+                        ${JSON.stringify(data, null, 2)}
+                    </pre>
+                </div>
+            `;
+
+            display.innerHTML = html;
+        }
+
+        async function importAllSimpro() {
+            const btn = document.getElementById('importAllBtn');
+            const progress = document.getElementById('importProgress');
+            const progressBar = document.getElementById('progressBar');
+            const status = document.getElementById('importStatus');
+            const results = document.getElementById('importResults');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Importing...';
+            progress.style.display = 'block';
+            progressBar.style.width = '0%';
+            results.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/simpro/import-all', {
+                    method: 'POST'
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+
+                                if (data.progress !== undefined) {
+                                    progressBar.style.width = data.progress + '%';
+                                }
+
+                                if (data.message) {
+                                    status.textContent = data.message;
+                                }
+
+                                if (data.complete) {
+                                    btn.textContent = '✅ Import Complete!';
+                                    btn.style.background = '#4CAF50';
+
+                                    results.innerHTML = `
+                                        <div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 10px; color: #333; text-align: left;">
+                                            <h3 style="color: #4CAF50; margin-bottom: 15px;">✅ Import Successful!</h3>
+                                            <p><strong>Customers:</strong> ${data.summary?.customers || 0} imported</p>
+                                            <p><strong>Jobs:</strong> ${data.summary?.jobs || 0} imported</p>
+                                            <p><strong>Quotes:</strong> ${data.summary?.quotes || 0} imported</p>
+                                            <p><strong>Catalog Items:</strong> ${data.summary?.catalog || 0} imported</p>
+                                            <p><strong>Staff:</strong> ${data.summary?.staff || 0} imported</p>
+                                            <p><strong>Sites:</strong> ${data.summary?.sites || 0} imported</p>
+                                            <div style="margin-top: 20px;">
+                                                <a href="/crm" style="background: #556B2F; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">
+                                                    View in CRM →
+                                                </a>
+                                            </div>
+                                        </div>
+                                    `;
+
+                                    setTimeout(() => {
+                                        btn.disabled = false;
+                                        btn.textContent = '🚀 IMPORT EVERYTHING FROM SIMPRO';
+                                        btn.style.background = 'white';
+                                    }, 3000);
+                                }
+
+                                if (data.error) {
+                                    throw new Error(data.error);
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = '🚀 IMPORT EVERYTHING FROM SIMPRO';
+                results.innerHTML = `
+                    <div style="background: rgba(255,0,0,0.2); padding: 20px; border-radius: 10px;">
+                        <h3 style="color: #f44336;">❌ Import Failed</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                progress.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
