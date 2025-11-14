@@ -298,31 +298,46 @@
                     <div class="card">
                         <h4>📦 Catalog Items</h4>
                         <p>Get all catalog items with pricing</p>
-                        <button class="btn btn-secondary" onclick="fetchSimproData('catalogs')">Fetch Catalogs</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="fetchSimproData('catalogs')">📋 View</button>
+                            <button class="btn btn-primary" onclick="saveSimproDataToCRM('catalogs')">💾 Save to CRM</button>
+                        </div>
                     </div>
 
                     <div class="card">
                         <h4>⏱️ Labor Rates</h4>
                         <p>Get all labor rates and costs</p>
-                        <button class="btn btn-secondary" onclick="fetchSimproData('labor-rates')">Fetch Labor Rates</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="fetchSimproData('labor-rates')">📋 View</button>
+                            <span style="font-size: 0.85em; color: #999; display: block; margin-top: 8px;">(Display only)</span>
+                        </div>
                     </div>
 
                     <div class="card">
                         <h4>🏗️ Jobs</h4>
                         <p>Get all jobs from Simpro</p>
-                        <button class="btn btn-secondary" onclick="fetchSimproData('jobs')">Fetch Jobs</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="fetchSimproData('jobs')">📋 View</button>
+                            <button class="btn btn-primary" onclick="saveSimproDataToCRM('jobs')">💾 Save to CRM</button>
+                        </div>
                     </div>
 
                     <div class="card">
                         <h4>👥 Customers</h4>
                         <p>Get all customers</p>
-                        <button class="btn btn-secondary" onclick="fetchSimproData('customers')">Fetch Customers</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="fetchSimproData('customers')">📋 View</button>
+                            <button class="btn btn-primary" onclick="saveSimproDataToCRM('customers')">💾 Save to CRM</button>
+                        </div>
                     </div>
 
                     <div class="card">
                         <h4>📄 Quotes</h4>
                         <p>Get all quotes from Simpro</p>
-                        <button class="btn btn-secondary" onclick="fetchSimproData('quotes')">Fetch Quotes</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="fetchSimproData('quotes')">📋 View</button>
+                            <span style="font-size: 0.85em; color: #999; display: block; margin-top: 8px;">(Linked to jobs)</span>
+                        </div>
                     </div>
                 </div>
 
@@ -517,6 +532,50 @@
             `;
 
             display.innerHTML = html;
+        }
+
+        async function saveSimproDataToCRM(dataType) {
+            if (!confirm(`Save ${dataType} data to CRM? This will import all ${dataType} from Simpro into your CRM.`)) {
+                return;
+            }
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div><p>Saving data to CRM...</p>';
+
+            const display = document.getElementById('simproDataDisplay');
+            display.innerHTML = '';
+            display.appendChild(loadingDiv);
+
+            try {
+                const response = await fetch(`/api/simpro/${dataType}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    display.innerHTML = `
+                        <div class="card" style="background: #d4edda; border-color: #c3e6cb;">
+                            <h3 style="color: #155724;">✅ Saved to CRM Successfully!</h3>
+                            <div style="margin-top: 15px;">
+                                <p><strong>Total items fetched:</strong> ${data.total || 0}</p>
+                                <p><strong>New items saved:</strong> ${data.saved_count || 0}</p>
+                                ${data.categorized_count !== undefined ? `<p><strong>AI categorized:</strong> ${data.categorized_count}</p>` : ''}
+                                <p style="margin-top: 15px; color: #155724;">
+                                    🎉 Data has been successfully imported into your CRM!
+                                </p>
+                                <button class="btn btn-success" onclick="window.location.href='/crm'" style="margin-top: 15px;">
+                                    📊 View in CRM
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    display.innerHTML = `<div class="error">Failed to save ${dataType}: ${data.error}</div>`;
+                }
+            } catch (error) {
+                display.innerHTML = `<div class="error">Error saving ${dataType}: ${error.message}</div>`;
+            }
         }
 
         async function importAllSimpro() {

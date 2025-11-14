@@ -4834,16 +4834,267 @@ def simpro_sync():
         data = request.json
         quote = data.get('quote', {})
         config = load_simpro_config()
-        
+
         if not config.get('connected'):
             return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
-        
+
         return jsonify({
             'success': True,
             'message': 'Quote synced successfully',
             'simpro_job_id': f"SIM-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         })
-    
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# INDIVIDUAL SIMPRO DATA ENDPOINTS (with CRM save option)
+# ============================================================================
+
+@app.route('/api/simpro/customers', methods=['GET', 'POST'])
+def simpro_customers():
+    """Fetch customers from Simpro, optionally save to CRM"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
+
+        # Fetch from Simpro
+        resp = make_simpro_api_request('/customers/companies/', params={'pageSize': 250, 'display': 'all'})
+
+        if 'error' in resp:
+            return jsonify({'success': False, 'error': resp['error']}), 400
+
+        customers_data = resp.get('Results', []) if isinstance(resp, dict) else resp
+
+        # If POST request, save to CRM
+        if request.method == 'POST':
+            existing_customers = load_json_file(CUSTOMERS_FILE, [])
+            saved_count = 0
+
+            for sc in customers_data:
+                # Skip if already exists
+                if any(c.get('simpro_id') == sc.get('ID') for c in existing_customers):
+                    continue
+
+                existing_customers.append({
+                    'id': str(uuid.uuid4()),
+                    'simpro_id': sc.get('ID'),
+                    'name': sc.get('CompanyName') or f"{sc.get('GivenName','')} {sc.get('FamilyName','')}".strip() or 'Unknown',
+                    'email': sc.get('Email', ''),
+                    'phone': sc.get('Mobile') or sc.get('Phone', ''),
+                    'address': sc.get('PostalAddress', {}).get('Address', '') if isinstance(sc.get('PostalAddress'), dict) else '',
+                    'status': 'active' if sc.get('Active') else 'inactive',
+                    'created_at': sc.get('DateCreated', datetime.now().isoformat()),
+                    'updated_at': datetime.now().isoformat(),
+                    'source': 'simpro_import'
+                })
+                saved_count += 1
+
+            save_json_file(CUSTOMERS_FILE, existing_customers)
+
+            return jsonify({
+                'success': True,
+                'data': customers_data,
+                'saved_to_crm': True,
+                'saved_count': saved_count,
+                'total': len(customers_data)
+            })
+
+        # GET request - just return data
+        return jsonify({'success': True, 'data': customers_data, 'total': len(customers_data)})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/jobs', methods=['GET', 'POST'])
+def simpro_jobs():
+    """Fetch jobs from Simpro, optionally save to CRM"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
+
+        # Fetch from Simpro
+        resp = make_simpro_api_request('/jobs/', params={'pageSize': 250, 'display': 'all'})
+
+        if 'error' in resp:
+            return jsonify({'success': False, 'error': resp['error']}), 400
+
+        jobs_data = resp.get('Results', []) if isinstance(resp, dict) else resp
+
+        # If POST request, save to CRM
+        if request.method == 'POST':
+            existing_projects = load_json_file(PROJECTS_FILE, [])
+            existing_customers = load_json_file(CUSTOMERS_FILE, [])
+            customer_map = {c.get('simpro_id'): c['id'] for c in existing_customers if c.get('simpro_id')}
+            saved_count = 0
+
+            for sj in jobs_data:
+                # Skip if already exists
+                if any(p.get('simpro_id') == sj.get('ID') for p in existing_projects):
+                    continue
+
+                customer_id = customer_map.get(sj.get('Customer', {}).get('ID') if isinstance(sj.get('Customer'), dict) else None)
+
+                existing_projects.append({
+                    'id': str(uuid.uuid4()),
+                    'simpro_id': sj.get('ID'),
+                    'customer_id': customer_id,
+                    'title': sj.get('Name', 'Untitled'),
+                    'description': sj.get('Description', ''),
+                    'status': sj.get('Stage', 'pending').lower(),
+                    'priority': 'medium',
+                    'quote_amount': float(sj.get('TotalAmount', 0) or 0),
+                    'actual_amount': float(sj.get('ActualAmount', 0) or 0),
+                    'due_date': sj.get('DueDate'),
+                    'created_at': sj.get('DateCreated', datetime.now().isoformat()),
+                    'updated_at': datetime.now().isoformat(),
+                    'source': 'simpro_import'
+                })
+                saved_count += 1
+
+            save_json_file(PROJECTS_FILE, existing_projects)
+
+            return jsonify({
+                'success': True,
+                'data': jobs_data,
+                'saved_to_crm': True,
+                'saved_count': saved_count,
+                'total': len(jobs_data)
+            })
+
+        # GET request - just return data
+        return jsonify({'success': True, 'data': jobs_data, 'total': len(jobs_data)})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/quotes', methods=['GET', 'POST'])
+def simpro_quotes():
+    """Fetch quotes from Simpro, optionally save to CRM"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
+
+        # Fetch from Simpro
+        resp = make_simpro_api_request('/quotes/', params={'pageSize': 250, 'display': 'all'})
+
+        if 'error' in resp:
+            return jsonify({'success': False, 'error': resp['error']}), 400
+
+        quotes_data = resp.get('Results', []) if isinstance(resp, dict) else resp
+
+        # For now, quotes are just displayed, not saved separately
+        # They're linked to jobs/projects
+        return jsonify({'success': True, 'data': quotes_data, 'total': len(quotes_data)})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/catalogs', methods=['GET', 'POST'])
+def simpro_catalogs():
+    """Fetch catalog items from Simpro, optionally save to CRM inventory"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
+
+        # Fetch from Simpro
+        resp = make_simpro_api_request('/catalogs/', params={'pageSize': 500})
+
+        if 'error' in resp:
+            return jsonify({'success': False, 'error': resp['error']}), 400
+
+        catalog_data = resp.get('Results', []) if isinstance(resp, dict) else resp
+
+        # If POST request, save to CRM inventory
+        if request.method == 'POST':
+            existing_inventory = load_json_file(INVENTORY_FILE, [])
+            saved_count = 0
+            categorized_count = 0
+
+            for item in catalog_data:
+                # Skip if already exists
+                if any(i.get('simpro_id') == item.get('ID') for i in existing_inventory):
+                    continue
+
+                # Use AI to categorize the item
+                category_info = categorize_with_ai(item, 'catalog_item')
+                base_cost = float(item.get('CostPrice', 0) or 0)
+
+                existing_inventory.append({
+                    'id': str(uuid.uuid4()),
+                    'simpro_id': item.get('ID'),
+                    'name': item.get('Name', 'Unknown'),
+                    'description': item.get('Description', ''),
+                    'sku': item.get('Code', ''),
+                    'automation_type': category_info.get('automation_type', 'other'),
+                    'tier': category_info.get('tier', 'basic'),
+                    'price': {
+                        'basic': base_cost,
+                        'premium': base_cost * 1.5,
+                        'deluxe': base_cost * 2.5
+                    },
+                    'stock_quantity': int(item.get('Quantity', 0) or 0),
+                    'supplier': item.get('Supplier', {}).get('Name', '') if isinstance(item.get('Supplier'), dict) else '',
+                    'ai_notes': category_info.get('notes', ''),
+                    'created_at': item.get('DateCreated', datetime.now().isoformat()),
+                    'updated_at': datetime.now().isoformat(),
+                    'source': 'simpro_import'
+                })
+                saved_count += 1
+                if category_info.get('automation_type') != 'other':
+                    categorized_count += 1
+
+            save_json_file(INVENTORY_FILE, existing_inventory)
+
+            return jsonify({
+                'success': True,
+                'data': catalog_data,
+                'saved_to_crm': True,
+                'saved_count': saved_count,
+                'categorized_count': categorized_count,
+                'total': len(catalog_data)
+            })
+
+        # GET request - just return data
+        return jsonify({'success': True, 'data': catalog_data, 'total': len(catalog_data)})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simpro/labor-rates', methods=['GET'])
+def simpro_labor_rates():
+    """Fetch labor rates from Simpro (display only, not saved to CRM)"""
+    try:
+        config = load_simpro_config()
+        if not config.get('connected'):
+            return jsonify({'success': False, 'error': 'Not connected to Simpro'}), 400
+
+        # Fetch from Simpro
+        resp = make_simpro_api_request('/employees/', params={'pageSize': 200})
+
+        if 'error' in resp:
+            return jsonify({'success': False, 'error': resp['error']}), 400
+
+        labor_data = resp.get('Results', []) if isinstance(resp, dict) else resp
+
+        # Extract labor rate information
+        rates = []
+        for emp in labor_data:
+            if emp.get('CostRate') or emp.get('ChargeRate'):
+                rates.append({
+                    'id': emp.get('ID'),
+                    'name': f"{emp.get('GivenName','')} {emp.get('FamilyName','')}".strip(),
+                    'role': emp.get('EmployeeType', 'Technician'),
+                    'cost_rate': emp.get('CostRate', 0),
+                    'charge_rate': emp.get('ChargeRate', 0)
+                })
+
+        return jsonify({'success': True, 'data': rates, 'total': len(rates)})
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
