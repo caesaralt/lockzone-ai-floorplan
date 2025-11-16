@@ -1,699 +1,418 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floor Plan Editor - {{ project_name }}</title>
+    <title>Canvas Editor - {{ project_name }} | Integratd Living</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        olive: {
+                            50: '#f6f7f4',
+                            100: '#e8ebe1',
+                            200: '#d1d7c3',
+                            300: '#b5bfa0',
+                            400: '#9aa67e',
+                            500: '#6B8E23',
+                            600: '#556B2F',
+                            700: '#455826',
+                            800: '#3a4821',
+                            900: '#323d1e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.95)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0e14;
-            overflow: hidden;
-            color: #ecf0f1;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-
-        .top-toolbar {
-            background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
-            padding: 10px 20px;
-            border-bottom: 2px solid #e74c3c;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
         }
-
-        .toolbar-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .project-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: #e74c3c;
-        }
-
-        .toolbar-btn {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-            border: 2px solid transparent;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            font-weight: 600;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-
-        .toolbar-btn:hover {
-            background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
-            border-color: #3498db;
-        }
-
-        .toolbar-btn.primary {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        }
-
-        .toolbar-btn.success {
-            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-        }
-
-        .toolbar-btn input[type="file"] {
-            display: none;
-        }
-
-        .zoom-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .zoom-btn {
-            padding: 6px 12px;
-            background: #2c3e50;
-            border: none;
-            color: white;
+        ::-webkit-scrollbar-thumb {
+            background: #6B8E23;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 1.1em;
         }
-
-        .zoom-btn:hover {
-            background: #34495e;
-        }
-
-        .zoom-level {
-            color: #95a5a6;
-            font-size: 0.9em;
-            min-width: 60px;
-            text-align: center;
-        }
-
-        .app-container {
-            display: flex;
-            height: calc(100vh - 52px);
-        }
-
-        .left-panel {
-            width: 300px;
-            background: #16213e;
-            padding: 15px;
-            overflow-y: auto;
-            border-right: 2px solid #2c3e50;
-        }
-
-        .panel-section {
-            margin-bottom: 20px;
-        }
-
-        .panel-section h3 {
-            color: #e74c3c;
-            margin-bottom: 10px;
-            font-size: 1em;
-            border-bottom: 2px solid #e74c3c;
-            padding-bottom: 5px;
-        }
-
-        .tool-btn {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            padding: 10px 12px;
-            margin-bottom: 6px;
-            background: #2c3e50;
-            border: 2px solid transparent;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.3s;
-        }
-
-        .tool-btn:hover {
-            background: #34495e;
-            border-color: #3498db;
-        }
-
-        .tool-btn.active {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            border-color: #2ecc71;
-        }
-
-        .tool-emoji {
-            font-size: 1.3em;
-            margin-right: 10px;
-        }
-
-        .canvas-area {
-            flex: 1;
-            background: #0f1419;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .canvas-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            cursor: grab;
-        }
-
-        .canvas-container.panning {
-            cursor: grabbing;
-        }
-
-        #mainCanvas {
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform-origin: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-        }
-
-        .upload-zone {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 3px dashed #3498db;
-            border-radius: 12px;
-            padding: 60px 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: rgba(26, 37, 62, 0.95);
-        }
-
-        .upload-zone:hover {
-            border-color: #2ecc71;
-            background: rgba(26, 37, 62, 1);
-        }
-
-        .upload-zone.drag-over {
-            border-color: #2ecc71;
-            background: rgba(46, 204, 113, 0.2);
-        }
-
-        .right-panel {
-            width: 360px;
-            background: #16213e;
-            padding: 15px;
-            overflow-y: auto;
-            border-left: 2px solid #2c3e50;
-        }
-
-        .price-summary {
-            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-            padding: 18px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-
-        .price-summary h3 {
-            color: white;
-            margin-bottom: 12px;
-            font-size: 1.1em;
-        }
-
-        .price-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            font-size: 0.95em;
-        }
-
-        .price-item:last-child {
-            border-bottom: none;
-            font-weight: bold;
-            font-size: 1.2em;
-            padding-top: 12px;
-            border-top: 2px solid white;
-            margin-top: 8px;
-        }
-
-        .properties-panel {
-            background: #1a252f;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .properties-panel h3 {
-            color: #e74c3c;
-            margin-bottom: 12px;
-            font-size: 1em;
-        }
-
-        .prop-group {
-            margin-bottom: 12px;
-        }
-
-        .prop-group label {
-            display: block;
-            margin-bottom: 4px;
-            color: #95a5a6;
-            font-size: 0.85em;
-            font-weight: 600;
-        }
-
-        .prop-group input,
-        .prop-group select,
-        .prop-group textarea {
-            width: 100%;
-            padding: 8px;
-            background: #2c3e50;
-            border: 2px solid #34495e;
-            border-radius: 4px;
-            color: white;
-            font-size: 0.85em;
-        }
-
-        .prop-group input:focus,
-        .prop-group select:focus,
-        .prop-group textarea:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-
-        .action-btn {
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            border: none;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 700;
-            margin-top: 8px;
-            transition: all 0.3s;
-            font-size: 0.9em;
-        }
-
-        .action-btn:hover {
-            background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
-        }
-
-        .action-btn.danger {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        }
-
-        .symbol-list {
-            max-height: 350px;
-            overflow-y: auto;
-        }
-
-        .symbol-item {
-            background: #2c3e50;
-            padding: 10px;
-            margin-bottom: 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .symbol-item:hover {
-            background: #34495e;
-            border-color: #3498db;
-        }
-
-        .symbol-item.selected {
-            border-color: #2ecc71;
-            background: #1abc9c;
-        }
-
-        .symbol-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 700;
-            color: #f39c12;
-            font-size: 0.9em;
-        }
-
-        .item-entry {
-            background: #34495e;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .item-info {
-            flex: 1;
-        }
-
-        .item-name {
-            font-weight: 600;
-            color: #ecf0f1;
-            font-size: 0.9em;
-        }
-
-        .item-details {
-            color: #95a5a6;
-            font-size: 0.8em;
-            margin-top: 2px;
-        }
-
-        .item-price {
-            color: #2ecc71;
-            font-size: 0.85em;
-            margin-top: 2px;
-        }
-
-        .delete-item-btn {
-            background: #e74c3c;
-            border: none;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-        }
-
-        .inventory-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.85);
-            z-index: 10000;
-            padding: 40px;
-        }
-
-        .inventory-modal-content {
-            background: #16213e;
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 30px;
-            border-radius: 12px;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-
-        .inventory-search {
-            width: 100%;
-            padding: 12px;
-            background: #2c3e50;
-            border: 2px solid #34495e;
-            border-radius: 6px;
-            color: white;
-            font-size: 1em;
-            margin-bottom: 20px;
-        }
-
-        .inventory-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .inventory-item {
-            background: #2c3e50;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .inventory-item:hover {
-            background: #34495e;
-            border-color: #3498db;
-        }
-
-        .inventory-item-name {
-            font-weight: 700;
-            color: #ecf0f1;
-            font-size: 1em;
-            margin-bottom: 4px;
-        }
-
-        .inventory-item-details {
-            color: #95a5a6;
-            font-size: 0.85em;
-        }
-
-        .stock-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75em;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-
-        .stock-badge.in-stock {
-            background: #27ae60;
-            color: white;
-        }
-
-        .stock-badge.low-stock {
-            background: #f39c12;
-            color: white;
-        }
-
-        .stock-badge.out-of-stock {
-            background: #e74c3c;
-            color: white;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #556B2F;
         }
     </style>
 </head>
-<body>
-    <div class="top-toolbar">
-        <div class="toolbar-left">
-            <div class="project-title">🎨 {{ project_name }}</div>
-            <label class="toolbar-btn">
-                📁 Upload PDF
-                <input type="file" id="pdfUpload" accept=".pdf,image/*">
-            </label>
-        </div>
-        <div class="zoom-controls">
-            <button class="zoom-btn" onclick="zoomIn()">+</button>
-            <span class="zoom-level" id="zoomLevel">100%</span>
-            <button class="zoom-btn" onclick="zoomOut()">−</button>
-            <button class="zoom-btn" onclick="resetView()">Reset</button>
-        </div>
-        <div>
-            <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
-            <button class="toolbar-btn" onclick="saveProgress()" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">💾 Save Progress</button>
-            <button class="toolbar-btn" onclick="loadProgress()" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">📂 Load Progress</button>
-            <button class="toolbar-btn ai" onclick="runAIMapping()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">🤖 AI Mapping</button>
-            <button class="toolbar-btn" onclick="showLinkProjectModal()" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);">🔗 Link to Project</button>
-            <button class="toolbar-btn success" onclick="exportToMapping()">Export to Mapping →</button>
-            <button class="toolbar-btn primary" onclick="exportQuote()">💾 Export Quote</button>
-        </div>
-        <div id="linkedProjectInfo" style="background: #2ecc71; color: white; padding: 8px 16px; border-radius: 8px; font-size: 14px; display: none; margin-top: 10px;">
-            📋 Linked to: <span id="linkedProjectName"></span>
-        </div>
-    </div>
+<body class="h-full overflow-hidden bg-gray-50">
 
-    <div class="app-container">
-        <!-- LEFT PANEL -->
-        <div class="left-panel">
-            <div class="panel-section">
-                <h3>🛠️ Tools</h3>
-                <button class="tool-btn active" id="selectTool" onclick="setTool('select')">
-                    <span class="tool-emoji">🖱️</span> Select & Pan
-                </button>
-                <button class="tool-btn" id="placeTool" onclick="setTool('place')">
-                    <span class="tool-emoji">📍</span> Place Symbol
-                </button>
-            </div>
-
-            <div class="panel-section">
-                <h3>➕ Add Symbols</h3>
-                {% for key, automation in automation_data.automation_types.items() %}
-                <button class="tool-btn" onclick="selectSymbolType('{{ key }}', '{{ automation.name }}')">
-                    <span class="tool-emoji">{{ automation.symbols[0] }}</span> {{ automation.name }}
-                </button>
-                {% endfor %}
-            </div>
-
-            <div class="panel-section">
-                <h3>⚙️ Actions</h3>
-                <button class="tool-btn" onclick="deleteSelected()">
-                    <span class="tool-emoji">🗑️</span> Delete Selected
-                </button>
-                <button class="tool-btn" onclick="duplicateSelected()">
-                    <span class="tool-emoji">📋</span> Duplicate
-                </button>
-                <button class="tool-btn" onclick="selectAll()">
-                    <span class="tool-emoji">☑️</span> Select All
-                </button>
-            </div>
-        </div>
-
-        <!-- CENTER: Canvas -->
-        <div class="canvas-area">
-            <div id="uploadZone" class="upload-zone">
-                <h2 style="color: #3498db; margin-bottom: 15px; font-size: 2em;">📄 Upload Floor Plan</h2>
-                <p style="color: #95a5a6; font-size: 1.1em; line-height: 1.6;">
-                    Drag & drop a PDF or image here<br>
-                    or click "Upload PDF" button above
-                </p>
-            </div>
-            <div class="canvas-container" id="canvasContainer" style="display: none;">
-                <canvas id="mainCanvas"></canvas>
-            </div>
-        </div>
-
-        <!-- RIGHT PANEL -->
-        <div class="right-panel">
-            <div class="price-summary">
-                <h3>💰 Project Total</h3>
-                <div class="price-item">
-                    <span>Subtotal:</span>
-                    <span id="priceSubtotal">$0.00</span>
+    <!-- Top Toolbar -->
+    <header class="bg-gradient-to-r from-olive-600 to-olive-500 shadow-lg border-b-2 border-olive-700">
+        <div class="px-4 py-3">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <!-- Left: Project Title & Upload -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                        </svg>
+                    </div>
+                    <h1 class="text-xl font-bold text-white">{{ project_name }}</h1>
+                    <label class="inline-flex items-center px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all cursor-pointer text-sm font-semibold">
+                        📁 Upload PDF
+                        <input type="file" id="pdfUpload" accept=".pdf,image/*" class="hidden">
+                    </label>
                 </div>
-                <div class="price-item">
-                    <span>Markup:</span>
-                    <span id="priceMarkup">$0.00</span>
+
+                <!-- Center: Zoom Controls -->
+                <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                    <button onclick="zoomOut()" class="p-1.5 bg-white/20 hover:bg-white/30 rounded text-white font-bold transition-all">−</button>
+                    <span class="text-white font-semibold min-w-[60px] text-center text-sm" id="zoomLevel">100%</span>
+                    <button onclick="zoomIn()" class="p-1.5 bg-white/20 hover:bg-white/30 rounded text-white font-bold transition-all">+</button>
+                    <button onclick="resetView()" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-white text-sm font-semibold transition-all">Reset</button>
                 </div>
-                <div class="price-item">
-                    <span>TOTAL:</span>
-                    <span id="priceTotal">$0.00</span>
+
+                <!-- Right: Action Buttons -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="window.location.href='/'" class="inline-flex items-center px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all text-sm font-semibold">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        Home
+                    </button>
+                    <button onclick="saveProgress()" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        💾 Save
+                    </button>
+                    <button onclick="loadProgress()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        📂 Load
+                    </button>
+                    <button onclick="runAIMapping()" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        🤖 AI Mapping
+                    </button>
+                    <button onclick="showLinkProjectModal()" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        🔗 Link Project
+                    </button>
+                    <button onclick="exportToMapping()" class="px-3 py-2 bg-olive-700 hover:bg-olive-800 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        Export to Mapping →
+                    </button>
+                    <button onclick="exportQuote()" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all text-sm font-semibold shadow-md">
+                        💾 Export Quote
+                    </button>
                 </div>
             </div>
 
-            <div class="properties-panel">
-                <h3>📋 Symbols on Plan</h3>
-                <div class="symbol-list" id="symbolList">
-                    <p style="color: #95a5a6; font-size: 0.85em; padding: 10px; text-align: center;">
-                        No symbols placed yet
+            <!-- Linked Project Info -->
+            <div id="linkedProjectInfo" class="hidden mt-3 bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-semibold animate-slide-down">
+                📋 Linked to: <span id="linkedProjectName"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex h-[calc(100vh-88px)]">
+        <!-- LEFT PANEL: Tools -->
+        <aside class="w-72 bg-white border-r border-gray-200 overflow-y-auto shadow-lg">
+            <div class="p-4 space-y-6">
+                <!-- Tools Section -->
+                <div class="animate-fade-in">
+                    <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">🛠️ Tools</h3>
+                    <div class="space-y-2">
+                        <button id="selectTool" onclick="setTool('select')" class="w-full flex items-center px-3 py-2.5 bg-gradient-to-r from-olive-500 to-olive-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all font-semibold text-sm">
+                            <span class="text-lg mr-3">🖱️</span> Select & Pan
+                        </button>
+                        <button id="placeTool" onclick="setTool('place')" class="w-full flex items-center px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all font-semibold text-sm border-2 border-transparent hover:border-olive-300">
+                            <span class="text-lg mr-3">📍</span> Place Symbol
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Symbols Section -->
+                <div class="animate-fade-in">
+                    <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">➕ Add Symbols</h3>
+                    <div class="space-y-2">
+                        {% for key, automation in automation_data.automation_types.items() %}
+                        <button onclick="selectSymbolType('{{ key }}', '{{ automation.name }}')" class="w-full flex items-center px-3 py-2.5 bg-gray-50 hover:bg-olive-50 text-gray-700 hover:text-olive-700 rounded-lg transition-all font-medium text-sm border-2 border-transparent hover:border-olive-300">
+                            <span class="text-lg mr-3">{{ automation.symbols[0] }}</span> {{ automation.name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div class="animate-fade-in">
+                    <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">⚙️ Actions</h3>
+                    <div class="space-y-2">
+                        <button onclick="deleteSelected()" class="w-full flex items-center px-3 py-2.5 bg-gray-50 hover:bg-red-50 text-gray-700 hover:text-red-700 rounded-lg transition-all font-medium text-sm border-2 border-transparent hover:border-red-300">
+                            <span class="text-lg mr-3">🗑️</span> Delete Selected
+                        </button>
+                        <button onclick="duplicateSelected()" class="w-full flex items-center px-3 py-2.5 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 rounded-lg transition-all font-medium text-sm border-2 border-transparent hover:border-blue-300">
+                            <span class="text-lg mr-3">📋</span> Duplicate
+                        </button>
+                        <button onclick="selectAll()" class="w-full flex items-center px-3 py-2.5 bg-gray-50 hover:bg-olive-50 text-gray-700 hover:text-olive-700 rounded-lg transition-all font-medium text-sm border-2 border-transparent hover:border-olive-300">
+                            <span class="text-lg mr-3">☑️</span> Select All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER: Canvas Area -->
+        <main class="flex-1 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+            <!-- Upload Zone -->
+            <div id="uploadZone" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="bg-white rounded-2xl shadow-2xl p-12 border-4 border-dashed border-olive-300 hover:border-olive-500 transition-all cursor-pointer text-center max-w-lg mx-4 hover:scale-105 transform duration-300">
+                    <div class="mb-4">
+                        <svg class="w-20 h-20 mx-auto text-olive-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">📄 Upload Floor Plan</h2>
+                    <p class="text-gray-600 text-lg leading-relaxed">
+                        Drag & drop a PDF or image here<br>
+                        or click <span class="text-olive-600 font-semibold">"Upload PDF"</span> button above
                     </p>
                 </div>
             </div>
 
-            <div class="properties-panel" id="editPanel" style="display: none;">
-                <h3>✏️ Edit: <span id="editSymbolId"></span></h3>
-
-                <div class="prop-group">
-                    <label>Symbol Type</label>
-                    <select id="editSymbolType" onchange="updateSymbolPreview()">
-                        {% for key, automation in automation_data.automation_types.items() %}
-                        <option value="{{ key }}">{{ automation.symbols[0] }} {{ automation.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="prop-group">
-                    <label>Custom Image</label>
-                    <input type="file" id="editSymbolImage" accept="image/*" onchange="uploadCustomImage()">
-                </div>
-
-                <div class="prop-group">
-                    <label>Room/Location</label>
-                    <input type="text" id="editSymbolRoom" placeholder="e.g., Living Room">
-                </div>
-
-                <div class="prop-group">
-                    <label>Items from CRM Inventory</label>
-                    <div id="itemList">
-                        <!-- Dynamic items -->
-                    </div>
-                    <button class="action-btn" onclick="showInventoryModal()">📦 Add from Inventory</button>
-                    <button class="action-btn" onclick="showCreateItemModal()">➕ Create New Item</button>
-                    <button class="action-btn success" onclick="exportItemsToCRM()">💾 Export Items to CRM</button>
-                </div>
-
-                <button class="action-btn" onclick="saveSymbolChanges()">💾 Save Changes</button>
-                <button class="action-btn danger" onclick="deleteSymbol()">🗑️ Delete Symbol</button>
+            <!-- Canvas Container -->
+            <div id="canvasContainer" class="hidden w-full h-full relative cursor-grab active:cursor-grabbing">
+                <canvas id="mainCanvas" class="absolute shadow-2xl"></canvas>
             </div>
-        </div>
+        </main>
+
+        <!-- RIGHT PANEL: Properties & Pricing -->
+        <aside class="w-96 bg-white border-l border-gray-200 overflow-y-auto shadow-lg">
+            <div class="p-4 space-y-4">
+                <!-- Price Summary -->
+                <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-5 text-white animate-scale-in">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Project Total
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center pb-2 border-b border-white/30">
+                            <span class="text-green-100">Subtotal:</span>
+                            <span id="priceSubtotal" class="font-bold">$0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-white/30">
+                            <span class="text-green-100">Markup:</span>
+                            <span id="priceMarkup" class="font-bold">$0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t-2 border-white">
+                            <span class="text-lg font-bold">TOTAL:</span>
+                            <span id="priceTotal" class="text-2xl font-bold">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Symbols List -->
+                <div class="bg-gray-50 rounded-xl shadow-md p-4 border border-gray-200">
+                    <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">📋 Symbols on Plan</h3>
+                    <div id="symbolList" class="max-h-80 overflow-y-auto space-y-2">
+                        <p class="text-gray-500 text-sm text-center py-8">No symbols placed yet</p>
+                    </div>
+                </div>
+
+                <!-- Edit Panel -->
+                <div id="editPanel" class="hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md p-4 border-2 border-blue-200 animate-slide-down">
+                    <h3 class="text-blue-700 font-bold text-base mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edit: <span id="editSymbolId" class="ml-1"></span>
+                    </h3>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Symbol Type</label>
+                            <select id="editSymbolType" onchange="updateSymbolPreview()" class="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent transition-all">
+                                {% for key, automation in automation_data.automation_types.items() %}
+                                <option value="{{ key }}">{{ automation.symbols[0] }} {{ automation.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Custom Image</label>
+                            <input type="file" id="editSymbolImage" accept="image/*" onchange="uploadCustomImage()" class="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-olive-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-olive-50 file:text-olive-700 hover:file:bg-olive-100">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Room/Location</label>
+                            <input type="text" id="editSymbolRoom" placeholder="e.g., Living Room" class="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent transition-all">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Items from CRM Inventory</label>
+                            <div id="itemList" class="space-y-2 mb-2">
+                                <!-- Dynamic items -->
+                            </div>
+                            <div class="space-y-2">
+                                <button onclick="showInventoryModal()" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md">
+                                    📦 Add from Inventory
+                                </button>
+                                <button onclick="showCreateItemModal()" class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md">
+                                    ➕ Create New Item
+                                </button>
+                                <button onclick="exportItemsToCRM()" class="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md">
+                                    💾 Export Items to CRM
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 space-y-2">
+                            <button onclick="saveSymbolChanges()" class="w-full px-4 py-2.5 bg-olive-600 hover:bg-olive-700 text-white rounded-lg transition-all font-bold shadow-md">
+                                💾 Save Changes
+                            </button>
+                            <button onclick="deleteSymbol()" class="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-bold shadow-md">
+                                🗑️ Delete Symbol
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
 
     <!-- Inventory Modal -->
-    <div class="inventory-modal" id="inventoryModal">
-        <div class="inventory-modal-content">
-            <h2 style="color: #e74c3c; margin-bottom: 20px; font-size: 1.5em;">📦 CRM Inventory</h2>
-            <input type="text" class="inventory-search" id="inventorySearch" placeholder="🔍 Search inventory...">
-            <div class="inventory-list" id="inventoryList">
-                <p style="color: #95a5a6; text-align: center; padding: 40px;">Loading inventory...</p>
+    <div id="inventoryModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden animate-scale-in">
+            <div class="bg-gradient-to-r from-red-600 to-red-500 p-6">
+                <h2 class="text-2xl font-bold text-white">📦 CRM Inventory</h2>
             </div>
-            <button class="action-btn" style="margin-top: 20px;" onclick="closeInventoryModal()">Cancel</button>
+            <div class="p-6">
+                <input type="text" id="inventorySearch" placeholder="🔍 Search inventory..." class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent mb-4">
+                <div id="inventoryList" class="max-h-96 overflow-y-auto space-y-2">
+                    <p class="text-gray-500 text-center py-12">Loading inventory...</p>
+                </div>
+                <button onclick="closeInventoryModal()" class="w-full mt-4 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all font-bold">
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Create Item Modal -->
-    <div class="inventory-modal" id="createItemModal">
-        <div class="inventory-modal-content">
-            <h2 style="color: #2ecc71; margin-bottom: 20px; font-size: 1.5em;">➕ Create New Item</h2>
-            <div class="prop-group">
-                <label>Item Name *</label>
-                <input type="text" id="newItemName" placeholder="e.g., LED Smart Bulb" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
+    <div id="createItemModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto animate-scale-in">
+            <div class="bg-gradient-to-r from-green-600 to-green-500 p-6">
+                <h2 class="text-2xl font-bold text-white">➕ Create New Item</h2>
             </div>
-            <div class="prop-group">
-                <label>SKU / Part Number</label>
-                <input type="text" id="newItemSku" placeholder="e.g., LED-001" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
-            </div>
-            <div class="prop-group">
-                <label>Category</label>
-                <input type="text" id="newItemCategory" placeholder="e.g., Lighting" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
-            </div>
-            <div class="prop-group">
-                <label>Unit Price ($) *</label>
-                <input type="number" id="newItemPrice" placeholder="0.00" step="0.01" min="0" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
-            </div>
-            <div class="prop-group">
-                <label>Quantity for This Symbol *</label>
-                <input type="number" id="newItemQuantity" placeholder="1" min="1" value="1" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white;">
-            </div>
-            <div class="prop-group">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="newItemSaveToCRM" checked>
-                    <span>Save to CRM Inventory for future reuse</span>
-                </label>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="action-btn success" onclick="createAndAddItem()">✅ Create & Add to Symbol</button>
-                <button class="action-btn" onclick="closeCreateItemModal()">Cancel</button>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Item Name *</label>
+                    <input type="text" id="newItemName" placeholder="e.g., LED Smart Bulb" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">SKU / Part Number</label>
+                    <input type="text" id="newItemSku" placeholder="e.g., LED-001" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Category</label>
+                    <input type="text" id="newItemCategory" placeholder="e.g., Lighting" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Unit Price ($) *</label>
+                    <input type="number" id="newItemPrice" placeholder="0.00" step="0.01" min="0" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity for This Symbol *</label>
+                    <input type="number" id="newItemQuantity" placeholder="1" min="1" value="1" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="newItemSaveToCRM" checked class="w-4 h-4 text-olive-600 bg-gray-100 border-gray-300 rounded focus:ring-olive-500">
+                    <label for="newItemSaveToCRM" class="ml-2 text-sm font-medium text-gray-700">Save to CRM Inventory for future reuse</label>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="createAndAddItem()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold shadow-md">
+                        ✅ Create & Add to Symbol
+                    </button>
+                    <button onclick="closeCreateItemModal()" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all font-bold shadow-md">
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Link to Project Modal -->
-    <div class="inventory-modal" id="linkProjectModal">
-        <div class="inventory-modal-content">
-            <h2 style="color: #e67e22; margin-bottom: 20px; font-size: 1.5em;">🔗 Link to CRM Project</h2>
-
-            <div class="prop-group">
-                <label>Select Existing Project</label>
-                <select id="selectProject" style="width: 100%; padding: 10px; background: #2c3e50; border: 2px solid #34495e; border-radius: 6px; color: white; font-size: 1em;">
-                    <option value="">-- Select a Project --</option>
-                </select>
+    <div id="linkProjectModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto animate-scale-in">
+            <div class="bg-gradient-to-r from-orange-600 to-orange-500 p-6">
+                <h2 class="text-2xl font-bold text-white">🔗 Link to CRM Project</h2>
             </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Select Existing Project</label>
+                    <select id="selectProject" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                        <option value="">-- Select a Project --</option>
+                    </select>
+                </div>
 
-            <div style="text-align: center; margin: 20px 0; color: #95a5a6;">- OR -</div>
+                <div class="text-center text-gray-500 font-semibold py-2">- OR -</div>
 
-            <div class="prop-group">
-                <label>Create New Project</label>
-                <input type="text" id="newProjectTitle" placeholder="Project Title" style="margin-bottom: 10px;">
-                <select id="newProjectCustomer" style="margin-bottom: 10px;">
-                    <option value="">-- Select Customer --</option>
-                </select>
-                <textarea id="newProjectDesc" placeholder="Project Description" rows="3"></textarea>
-            </div>
+                <div class="space-y-3">
+                    <label class="block text-sm font-semibold text-gray-700">Create New Project</label>
+                    <input type="text" id="newProjectTitle" placeholder="Project Title" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                    <select id="newProjectCustomer" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                        <option value="">-- Select Customer --</option>
+                    </select>
+                    <textarea id="newProjectDesc" placeholder="Project Description" rows="3" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent"></textarea>
+                </div>
 
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="action-btn success" onclick="linkToExistingProject()">Link to Selected</button>
-                <button class="action-btn" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);" onclick="createAndLinkProject()">Create & Link New</button>
-                <button class="action-btn" onclick="closeLinkProjectModal()">Cancel</button>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="linkToExistingProject()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold shadow-md">
+                        Link to Selected
+                    </button>
+                    <button onclick="createAndLinkProject()" class="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all font-bold shadow-md">
+                        Create & Link New
+                    </button>
+                    <button onclick="closeLinkProjectModal()" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all font-bold shadow-md">
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -747,14 +466,14 @@
         const uploadZone = document.getElementById('uploadZone');
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadZone.classList.add('drag-over');
+            uploadZone.querySelector('div').classList.add('scale-110', 'border-olive-600');
         });
         uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('drag-over');
+            uploadZone.querySelector('div').classList.remove('scale-110', 'border-olive-600');
         });
         uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadZone.classList.remove('drag-over');
+            uploadZone.querySelector('div').classList.remove('scale-110', 'border-olive-600');
             if (e.dataTransfer.files.length > 0) {
                 handleFile(e.dataTransfer.files[0]);
             }
@@ -803,8 +522,8 @@
                 canvas.width = floorplanImage.width;
                 canvas.height = floorplanImage.height;
                 resetView();
-                document.getElementById('uploadZone').style.display = 'none';
-                document.getElementById('canvasContainer').style.display = 'block';
+                document.getElementById('uploadZone').classList.add('hidden');
+                document.getElementById('canvasContainer').classList.remove('hidden');
                 render();
             };
             floorplanImage.src = src;
@@ -888,13 +607,22 @@
 
         function setTool(tool) {
             currentTool = tool;
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.tool-btn').classList.add('active');
+            const selectBtn = document.getElementById('selectTool');
+            const placeBtn = document.getElementById('placeTool');
+
+            if (tool === 'select') {
+                selectBtn.className = 'w-full flex items-center px-3 py-2.5 bg-gradient-to-r from-olive-500 to-olive-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all font-semibold text-sm';
+                placeBtn.className = 'w-full flex items-center px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all font-semibold text-sm border-2 border-transparent hover:border-olive-300';
+            } else {
+                placeBtn.className = 'w-full flex items-center px-3 py-2.5 bg-gradient-to-r from-olive-500 to-olive-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all font-semibold text-sm';
+                selectBtn.className = 'w-full flex items-center px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all font-semibold text-sm border-2 border-transparent hover:border-olive-300';
+            }
         }
 
         function selectSymbolType(type, name) {
             pendingSymbolType = type;
             currentTool = 'place';
+            setTool('place');
             alert(`Click on floor plan to place: ${name}`);
         }
 
@@ -911,7 +639,7 @@
 
         function resetView() {
             scale = 1;
-            const container = document.querySelector('.canvas-area');
+            const container = document.querySelector('main');
             panX = (container.clientWidth - canvas.width) / 2;
             panY = (container.clientHeight - canvas.height) / 2;
             updateTransform();
@@ -950,7 +678,6 @@
                     isPanning = true;
                     lastPanX = e.clientX;
                     lastPanY = e.clientY;
-                    canvasContainer.classList.add('panning');
                 }
             } else if (currentTool === 'place' && pendingSymbolType && floorplanImage) {
                 const newSymbol = {
@@ -995,7 +722,6 @@
         canvasContainer.addEventListener('mouseup', () => {
             isPanning = false;
             isDragging = false;
-            canvasContainer.classList.remove('panning');
         });
 
         canvasContainer.addEventListener('wheel', (e) => {
@@ -1042,14 +768,14 @@
         function updateSymbolList() {
             const list = document.getElementById('symbolList');
             if (symbols.length === 0) {
-                list.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em; padding: 10px; text-align: center;">No symbols placed yet</p>';
+                list.innerHTML = '<p class="text-gray-500 text-sm text-center py-8">No symbols placed yet</p>';
                 return;
             }
 
             list.innerHTML = '';
             symbols.forEach(symbol => {
                 const div = document.createElement('div');
-                div.className = 'symbol-item' + (selectedSymbols.has(symbol.id) ? ' selected' : '');
+                div.className = 'bg-white rounded-lg p-3 border-2 cursor-pointer transition-all hover:shadow-md ' + (selectedSymbols.has(symbol.id) ? 'border-green-500 shadow-lg bg-green-50' : 'border-gray-200 hover:border-olive-300');
                 div.onclick = () => {
                     selectedSymbols.clear();
                     selectedSymbols.add(symbol.id);
@@ -1058,13 +784,14 @@
                 div.ondblclick = () => editSymbol(symbol);
 
                 const itemCount = symbol.items ? symbol.items.length : 0;
+                const config = getSymbolConfig(symbol.type || symbol.automation_category);
                 div.innerHTML = `
-                    <div class="symbol-item-header">
-                        <span>${symbol.id}</span>
-                        <span style="color: #95a5a6; font-size: 0.8em;">${symbol.type || symbol.automation_category}</span>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-gray-800">${config.emoji} ${symbol.id}</span>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">${symbol.type || symbol.automation_category}</span>
                     </div>
-                    <div style="color: #3498db; font-size: 0.8em; margin-top: 4px;">${symbol.room || 'Unassigned'}</div>
-                    ${itemCount > 0 ? `<div style="color: #2ecc71; font-size: 0.75em; margin-top: 2px;">📦 ${itemCount} item(s)</div>` : ''}
+                    <div class="text-sm text-blue-600 mt-1">${symbol.room || 'Unassigned'}</div>
+                    ${itemCount > 0 ? `<div class="text-xs text-green-600 mt-1 font-semibold">📦 ${itemCount} item(s)</div>` : ''}
                 `;
                 list.appendChild(div);
             });
@@ -1077,7 +804,7 @@
             render();
 
             const panel = document.getElementById('editPanel');
-            panel.style.display = 'block';
+            panel.classList.remove('hidden');
 
             document.getElementById('editSymbolId').textContent = symbol.id;
             document.getElementById('editSymbolType').value = symbol.automation_category || symbol.type;
@@ -1093,19 +820,23 @@
             if (editingSymbol.items && editingSymbol.items.length > 0) {
                 editingSymbol.items.forEach((item, index) => {
                     const div = document.createElement('div');
-                    div.className = 'item-entry';
+                    div.className = 'bg-white rounded-lg p-3 border border-gray-200 shadow-sm';
                     const quantity = item.quantity || 1;
                     const price = parseFloat(item.price) || 0;
                     const total = quantity * price;
 
                     div.innerHTML = `
-                        <div class="item-info">
-                            <div class="item-name">${item.name}</div>
-                            <div class="item-details">Qty: ${quantity} | Unit: $${price.toFixed(2)}</div>
-                            <div class="item-price">Total: $${total.toFixed(2)}</div>
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-semibold text-gray-800">${item.name}</div>
+                                <div class="text-sm text-gray-600 mt-1">Qty: ${quantity} | Unit: $${price.toFixed(2)}</div>
+                                <div class="text-sm text-green-600 font-semibold mt-1">Total: $${total.toFixed(2)}</div>
+                            </div>
+                            <div class="flex gap-1 ml-2">
+                                <button onclick="editItem(${index})" class="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-semibold transition-all">✏️</button>
+                                <button onclick="deleteItem(${index})" class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-semibold transition-all">✖</button>
+                            </div>
                         </div>
-                        <button class="delete-item-btn" onclick="editItem(${index})" style="background: #3498db; margin-right: 5px;">✏️</button>
-                        <button class="delete-item-btn" onclick="deleteItem(${index})">✖</button>
                     `;
                     itemList.appendChild(div);
                 });
@@ -1152,7 +883,7 @@
                 symbols = symbols.filter(s => s !== editingSymbol);
                 editingSymbol = null;
                 selectedSymbols.clear();
-                document.getElementById('editPanel').style.display = 'none';
+                document.getElementById('editPanel').classList.add('hidden');
                 render();
             }
         }
@@ -1163,12 +894,12 @@
 
             list.innerHTML = '';
             if (inventory.length === 0) {
-                list.innerHTML = '<p style="color: #95a5a6; padding: 40px; text-align: center;">No inventory items in CRM</p>';
+                list.innerHTML = '<p class="text-gray-500 text-center py-12">No inventory items in CRM</p>';
             } else {
                 renderInventoryList(inventory);
             }
 
-            modal.style.display = 'block';
+            modal.classList.remove('hidden');
         }
 
         function renderInventoryList(items) {
@@ -1177,19 +908,19 @@
 
             items.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'inventory-item';
+                div.className = 'bg-gray-50 hover:bg-olive-50 rounded-lg p-4 cursor-pointer transition-all border-2 border-transparent hover:border-olive-300';
                 div.onclick = () => addItemFromInventory(item);
 
                 const stock = item.quantity || 0;
-                const stockClass = stock > 10 ? 'in-stock' : stock > 0 ? 'low-stock' : 'out-of-stock';
+                const stockClass = stock > 10 ? 'bg-green-100 text-green-800' : stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
                 const stockText = stock > 10 ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock';
 
                 div.innerHTML = `
-                    <div class="inventory-item-name">
-                        ${item.name}
-                        <span class="stock-badge ${stockClass}">${stockText}</span>
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-bold text-gray-800">${item.name}</div>
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold ${stockClass}">${stockText}</span>
                     </div>
-                    <div class="inventory-item-details">
+                    <div class="text-sm text-gray-600">
                         Price: $${item.price || 0} | Available: ${stock} units
                     </div>
                 `;
@@ -1198,7 +929,7 @@
         }
 
         function closeInventoryModal() {
-            document.getElementById('inventoryModal').style.display = 'none';
+            document.getElementById('inventoryModal').classList.add('hidden');
         }
 
         function addItemFromInventory(item) {
@@ -1226,7 +957,7 @@
                 alert('Please select a symbol first!');
                 return;
             }
-            document.getElementById('createItemModal').style.display = 'block';
+            document.getElementById('createItemModal').classList.remove('hidden');
             // Clear previous values
             document.getElementById('newItemName').value = '';
             document.getElementById('newItemSku').value = '';
@@ -1237,7 +968,7 @@
         }
 
         function closeCreateItemModal() {
-            document.getElementById('createItemModal').style.display = 'none';
+            document.getElementById('createItemModal').classList.add('hidden');
         }
 
         async function createAndAddItem() {
@@ -1617,8 +1348,8 @@
                         floorplanImage = img;
                         canvas.width = img.width;
                         canvas.height = img.height;
-                        document.getElementById('uploadZone').style.display = 'none';
-                        document.getElementById('canvasContainer').style.display = 'block';
+                        document.getElementById('uploadZone').classList.add('hidden');
+                        document.getElementById('canvasContainer').classList.remove('hidden');
                         updateTransform();
                         render();
                         updatePricing();
@@ -1845,7 +1576,7 @@
             // Escape - Deselect
             else if (e.key === 'Escape') {
                 selectedSymbols.clear();
-                document.getElementById('editPanel').style.display = 'none';
+                document.getElementById('editPanel').classList.add('hidden');
                 render();
             }
             // +/= - Zoom in
@@ -1864,9 +1595,6 @@
                 resetView();
             }
         });
-
-        // Save state before making changes
-        const originalSymbolsPush = Array.prototype.push;
 
         // Initialize
         if (floorplanImage) render();
@@ -1937,19 +1665,19 @@
                 if (sessionData.project_id) {
                     const linkedProj = allProjects.find(p => p.id === sessionData.project_id);
                     if (linkedProj) {
-                        document.getElementById('linkedProjectInfo').style.display = 'block';
+                        document.getElementById('linkedProjectInfo').classList.remove('hidden');
                         document.getElementById('linkedProjectName').textContent = linkedProj.title;
                     }
                 }
 
-                document.getElementById('linkProjectModal').style.display = 'block';
+                document.getElementById('linkProjectModal').classList.remove('hidden');
             } catch (error) {
                 alert('Failed to load projects: ' + error.message);
             }
         }
 
         function closeLinkProjectModal() {
-            document.getElementById('linkProjectModal').style.display = 'none';
+            document.getElementById('linkProjectModal').classList.add('hidden');
         }
 
         async function linkToExistingProject() {
@@ -1974,7 +1702,7 @@
                 if (data.success) {
                     sessionData.project_id = projectId;
                     const linkedProj = allProjects.find(p => p.id === projectId);
-                    document.getElementById('linkedProjectInfo').style.display = 'block';
+                    document.getElementById('linkedProjectInfo').classList.remove('hidden');
                     document.getElementById('linkedProjectName').textContent = linkedProj.title;
                     alert('✅ Linked to project: ' + linkedProj.title);
                     closeLinkProjectModal();
@@ -2032,7 +1760,7 @@
                 const linkData = await linkRes.json();
                 if (linkData.success) {
                     sessionData.project_id = newProject.id;
-                    document.getElementById('linkedProjectInfo').style.display = 'block';
+                    document.getElementById('linkedProjectInfo').classList.remove('hidden');
                     document.getElementById('linkedProjectName').textContent = newProject.title;
                     alert('✅ Created and linked to new project: ' + newProject.title);
                     closeLinkProjectModal();
@@ -2056,7 +1784,7 @@
                 .then(data => {
                     const linkedProj = data.projects.find(p => p.id === sessionData.project_id);
                     if (linkedProj) {
-                        document.getElementById('linkedProjectInfo').style.display = 'block';
+                        document.getElementById('linkedProjectInfo').classList.remove('hidden');
                         document.getElementById('linkedProjectName').textContent = linkedProj.title;
                     }
                 })
