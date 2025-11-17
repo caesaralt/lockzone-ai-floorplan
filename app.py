@@ -5874,7 +5874,7 @@ def ai_chat():
             # Call Anthropic with tool use capability
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=4096,
+                max_tokens=16000,  # Must be greater than thinking budget (10000)
                 thinking={
                     "type": "enabled",
                     "budget_tokens": 10000  # High budget for deep reasoning
