@@ -58,3 +58,34 @@ ai_mapping/*.png
 
 # Logs
 *.log
+logs/
+flask_session/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Sensitive data
+*.key
+*.pem
+*.p12
+credentials.json
+token.json
+
+# Session data (contains user data)
+session_data/
+cad_sessions/
+
+# Learning data (may contain customer info)
+learning_data/
+mapping_learning/
+
+# CRM data (contains customer info)
+crm_data/
+
+# Simpro config (may contain OAuth tokens)
+simpro_config/

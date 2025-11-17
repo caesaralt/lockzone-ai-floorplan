@@ -3,11 +3,28 @@ services:
     name: lockzone-ai-floorplan
     runtime: python
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "gunicorn app:app --workers 2 --timeout 300 --worker-class sync --access-logfile - --error-logfile -"
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
       - key: WEB_CONCURRENCY
         value: 2
+      - key: LOG_LEVEL
+        value: INFO
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://lockzone-ai-floorplan.onrender.com
+      - key: USE_DATABASE
+        value: false
+      - key: RATELIMIT_ENABLED
+        value: true

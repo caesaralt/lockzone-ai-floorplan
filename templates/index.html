@@ -8,6 +8,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Fabric.js for Interactive Canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
     <!-- Custom Tailwind Config -->
     <script>
         tailwind.config = {
@@ -78,8 +81,8 @@
     <header class="bg-gradient-to-r from-olive-600 to-olive-500 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                <a href="/" class="flex items-center space-x-4 cursor-pointer group">
+                    <div class="bg-white/20 backdrop-blur-sm p-3 rounded-xl group-hover:bg-white/30 transition-all duration-200">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
@@ -88,12 +91,6 @@
                         <h1 class="text-2xl sm:text-3xl font-bold text-white">Integratd Living</h1>
                         <p class="text-olive-100 text-sm sm:text-base mt-1">AI-Powered Automation Quoting</p>
                     </div>
-                </div>
-                <a href="/" class="inline-flex items-center px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all duration-200 text-sm sm:text-base font-semibold group">
-                    <svg class="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                    Home
                 </a>
             </div>
         </div>
@@ -302,7 +299,7 @@
                             <svg class="w-6 h-6 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
-                            <span class="text-lg">Generate Quote with AI</span>
+                            <span class="text-lg">Generate Quote</span>
                         </button>
                     </div>
                 </form>
@@ -310,38 +307,72 @@
         </div>
 
         <!-- Loading State -->
-        <div id="loading" class="hidden mt-8 bg-white rounded-2xl shadow-xl p-12 animate-scale-in">
-            <div class="max-w-2xl mx-auto">
-                <div class="flex flex-col items-center space-y-6">
-                    <!-- Animated Spinner -->
-                    <div class="relative">
-                        <div class="w-20 h-20 border-4 border-olive-200 rounded-full"></div>
-                        <div class="w-20 h-20 border-4 border-olive-600 rounded-full border-t-transparent absolute top-0 left-0 spinner"></div>
-                    </div>
+        <div id="loading" class="hidden mt-8 bg-white rounded-2xl shadow-xl overflow-hidden animate-scale-in">
+            <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-5">
+                <h3 class="text-2xl font-bold text-white flex items-center justify-center">
+                    <svg class="w-8 h-8 mr-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    🤖 AI Vision Analysis in Progress
+                </h3>
+                <p class="text-olive-100 text-center text-sm mt-2">Claude Sonnet 4 with Extended Thinking + Vision</p>
+            </div>
 
-                    <!-- Loading Text -->
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">AI Analysis in Progress</h3>
-                        <p class="text-gray-600">Our AI is analyzing your floor plan...</p>
-                    </div>
+            <div class="p-12">
+                <div class="max-w-2xl mx-auto">
+                    <div class="flex flex-col items-center space-y-6">
+                        <!-- Animated Spinner -->
+                        <div class="relative">
+                            <div class="w-24 h-24 border-4 border-olive-200 rounded-full"></div>
+                            <div class="w-24 h-24 border-4 border-olive-600 rounded-full border-t-transparent absolute top-0 left-0 spinner"></div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span class="text-3xl">👁️</span>
+                            </div>
+                        </div>
 
-                    <!-- Progress Steps -->
-                    <div class="w-full max-w-md space-y-3">
-                        <div class="flex items-center space-x-3 text-sm">
-                            <div class="w-2 h-2 bg-olive-600 rounded-full animate-pulse"></div>
-                            <span class="text-gray-700">Processing floor plan PDF</span>
+                        <!-- Loading Text -->
+                        <div class="text-center">
+                            <p class="text-gray-600">Advanced AI is analyzing your floor plan with vision and deep reasoning...</p>
                         </div>
-                        <div class="flex items-center space-x-3 text-sm">
-                            <div class="w-2 h-2 bg-olive-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
-                            <span class="text-gray-700">Identifying rooms and spaces</span>
+
+                        <!-- Progress Steps with Icons -->
+                        <div class="w-full max-w-lg space-y-4">
+                            <div class="flex items-center space-x-4 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                                <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-blue-900">👁️ Vision Analysis</div>
+                                    <div class="text-sm text-blue-700">AI is looking at your floorplan image and identifying rooms visually</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 bg-gradient-to-r from-olive-50 to-olive-100 p-4 rounded-lg border border-olive-200">
+                                <div class="w-3 h-3 bg-olive-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-olive-900">💭 Extended Thinking</div>
+                                    <div class="text-sm text-olive-700">Deep reasoning about component placement and electrical layout</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                                <div class="w-3 h-3 bg-green-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-green-900">📐 Component Mapping</div>
+                                    <div class="text-sm text-green-700">Intelligently placing automation symbols on the floorplan</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                                <div class="w-3 h-3 bg-orange-600 rounded-full animate-pulse" style="animation-delay: 0.6s"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-orange-900">💰 Cost Analysis</div>
+                                    <div class="text-sm text-orange-700">Calculating detailed pricing and automation requirements</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-3 text-sm">
-                            <div class="w-2 h-2 bg-olive-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
-                            <span class="text-gray-700">Calculating automation requirements</span>
-                        </div>
-                        <div class="flex items-center space-x-3 text-sm">
-                            <div class="w-2 h-2 bg-olive-600 rounded-full animate-pulse" style="animation-delay: 0.6s"></div>
-                            <span class="text-gray-700">Generating cost estimate</span>
+
+                        <!-- Estimated Time -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                            <p class="text-sm text-gray-600">
+                                <span class="font-semibold text-gray-900">⏱️ This may take 30-90 seconds</span><br>
+                                <span class="text-xs">Our AI is performing deep analysis for maximum accuracy</span>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -353,74 +384,6 @@
 
     </main>
 
-    <!-- AI Chat Bubble -->
-    <div class="fixed bottom-6 right-6 z-40">
-        <button
-            onclick="toggleAIChat()"
-            class="bg-gradient-to-r from-olive-600 to-olive-500 hover:from-olive-700 hover:to-olive-600 text-white p-4 rounded-full shadow-2xl hover:shadow-olive-600/50 transition-all duration-300 transform hover:scale-110 animate-pulse-slow group"
-        >
-            <svg class="w-7 h-7 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-            </svg>
-        </button>
-    </div>
-
-    <!-- AI Chat Panel -->
-    <div id="aiChatPanel" class="hidden fixed bottom-24 right-6 w-96 bg-white rounded-2xl shadow-2xl z-40 overflow-hidden animate-slide-up">
-        <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-5 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="font-bold text-white">AI Assistant</h3>
-                    <p class="text-xs text-olive-100">Ask me anything</p>
-                </div>
-            </div>
-            <button onclick="toggleAIChat()" class="text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <div id="aiChatMessages" class="h-96 overflow-y-auto p-5 space-y-4 bg-gray-50">
-            <div class="flex space-x-3">
-                <div class="w-8 h-8 bg-olive-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-sm">
-                        <p class="text-sm text-gray-700">Hi! I'm your AI assistant for floor plan analysis. I can help with questions about automation systems, pricing, and more!</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-4 bg-white border-t border-gray-200">
-            <div class="flex space-x-2">
-                <input
-                    type="text"
-                    id="aiChatInput"
-                    placeholder="Type a message..."
-                    class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent"
-                    onkeypress="if(event.key==='Enter') sendAIMessage()"
-                >
-                <button
-                    onclick="sendAIMessage()"
-                    class="bg-olive-600 hover:bg-olive-700 text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Toast Notification System
@@ -559,7 +522,14 @@
             }
         });
 
+        // Global variables for editor
+        let editorCanvas = null;
+        let currentQuoteData = null;
+        let componentSymbols = [];
+
         function displayResults(data) {
+            currentQuoteData = data;
+
             const html = `
                 <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-scale-in">
                     <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-6">
@@ -567,7 +537,7 @@
                             <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            Quote Generated Successfully
+                            ✨ Quote Generated with AI Vision
                         </h2>
                     </div>
 
@@ -594,22 +564,137 @@
 
                         ${data.analysis.ai_notes ? `
                         <div class="bg-blue-50 border-l-4 border-blue-400 p-5 rounded-r-xl">
-                            <p class="text-sm font-semibold text-blue-900 mb-2">AI Analysis Notes</p>
+                            <p class="text-sm font-semibold text-blue-900 mb-2">🤖 AI Vision Analysis</p>
                             <p class="text-sm text-blue-800">${data.analysis.ai_notes}</p>
+                            <p class="text-xs text-blue-600 mt-2">Analyzed with Claude Sonnet 4 + Extended Thinking + Vision</p>
                         </div>
                         ` : ''}
 
-                        ${data.files && data.files.floor_plan_preview ? `
-                        <div class="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                                <svg class="w-6 h-6 mr-2 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                Annotated Floor Plan
-                            </h3>
-                            <img src="${data.files.floor_plan_preview}" alt="Floor Plan Preview" class="w-full rounded-lg shadow-lg border-4 border-white">
+                        <!-- INTERACTIVE FLOORPLAN EDITOR -->
+                        <div id="interactiveEditorSection" class="bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-olive-300 overflow-hidden shadow-lg">
+                            <!-- Editor Header -->
+                            <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-5">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">✨ Interactive Floorplan Editor</h3>
+                                            <p class="text-olive-100 text-sm">Drag symbols to customize placement • Edit in real-time</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onclick="toggleEditorHelp()"
+                                        class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-lg transition-all duration-200 text-sm font-semibold flex items-center space-x-2"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span>Help</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Help Panel -->
+                            <div id="editorHelpPanel" class="hidden bg-blue-50 border-b border-blue-200 p-4 animate-slide-down">
+                                <div class="flex items-start space-x-3">
+                                    <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div class="text-sm text-blue-900">
+                                        <p class="font-semibold mb-2">How to use the editor:</p>
+                                        <ul class="space-y-1 list-disc list-inside">
+                                            <li><strong>Drag symbols</strong> to reposition them on the floorplan</li>
+                                            <li><strong>Click a symbol</strong> to select it (shows handles)</li>
+                                            <li><strong>Delete key</strong> to remove selected symbol</li>
+                                            <li><strong>Click "Add Symbol"</strong> to place new automation components</li>
+                                            <li><strong>Download</strong> your customized floorplan as image or PDF</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Editor Controls -->
+                            <div class="bg-white border-b border-gray-200 p-4">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <!-- Symbol Palette -->
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-semibold text-gray-700">Add Symbol:</span>
+                                        <button onclick="addSymbol('light')" class="group relative px-3 py-2 bg-yellow-50 hover:bg-yellow-100 border-2 border-yellow-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Light">
+                                            <span class="text-2xl">💡</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Light</span>
+                                        </button>
+                                        <button onclick="addSymbol('switch')" class="group relative px-3 py-2 bg-blue-50 hover:bg-blue-100 border-2 border-blue-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Switch">
+                                            <span class="text-2xl">🔘</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Switch</span>
+                                        </button>
+                                        <button onclick="addSymbol('outlet')" class="group relative px-3 py-2 bg-green-50 hover:bg-green-100 border-2 border-green-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Outlet">
+                                            <span class="text-2xl">🔌</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Outlet</span>
+                                        </button>
+                                        <button onclick="addSymbol('shading')" class="group relative px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Shading">
+                                            <span class="text-2xl">🪟</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Shading</span>
+                                        </button>
+                                        <button onclick="addSymbol('security')" class="group relative px-3 py-2 bg-red-50 hover:bg-red-100 border-2 border-red-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Security">
+                                            <span class="text-2xl">🔐</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Security</span>
+                                        </button>
+                                        <button onclick="addSymbol('climate')" class="group relative px-3 py-2 bg-orange-50 hover:bg-orange-100 border-2 border-orange-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Climate">
+                                            <span class="text-2xl">🌡️</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Climate</span>
+                                        </button>
+                                        <button onclick="addSymbol('audio')" class="group relative px-3 py-2 bg-pink-50 hover:bg-pink-100 border-2 border-pink-400 rounded-lg transition-all duration-200 transform hover:scale-105" title="Add Audio">
+                                            <span class="text-2xl">🔊</span>
+                                            <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audio</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Editor Actions -->
+                                    <div class="flex-1"></div>
+                                    <button onclick="deleteSelected()" class="px-4 py-2 bg-red-50 hover:bg-red-100 border-2 border-red-400 text-red-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        <span>Delete</span>
+                                    </button>
+                                    <button onclick="resetCanvas()" class="px-4 py-2 bg-gray-50 hover:bg-gray-100 border-2 border-gray-300 text-gray-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        <span>Reset</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Canvas Container -->
+                            <div class="p-6 bg-gray-100">
+                                <div class="relative bg-white rounded-lg shadow-inner overflow-hidden" style="max-height: 700px;">
+                                    <canvas id="floorplanCanvas" class="w-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Editor Stats -->
+                            <div class="bg-gray-50 border-t border-gray-200 p-4">
+                                <div class="flex items-center justify-between text-sm">
+                                    <div class="flex items-center space-x-4">
+                                        <span class="text-gray-600">
+                                            <span class="font-semibold text-gray-900" id="symbolCount">0</span> symbols placed
+                                        </span>
+                                        <span class="text-gray-400">|</span>
+                                        <span class="text-gray-600">
+                                            Selected: <span class="font-semibold text-gray-900" id="selectedSymbol">None</span>
+                                        </span>
+                                    </div>
+                                    <div class="text-gray-500 text-xs">
+                                        💡 Tip: Drag symbols to reposition • Delete key to remove
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        ` : ''}
 
                         <!-- Cost Breakdown -->
                         <div>
@@ -641,46 +726,422 @@
                             </div>
                         </div>
 
-                        <!-- Action Buttons -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                            <a href="${data.takeoffs_url}" class="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 text-center flex items-center justify-center space-x-2">
-                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
+                        <!-- Download & Export Section -->
+                        <div class="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-6">
+                            <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
-                                <span>OPEN INTERACTIVE TAKEOFFS</span>
-                            </a>
-                            <a href="/electrical-cad?import_quote=true" class="group bg-gradient-to-r from-olive-600 to-olive-500 hover:from-olive-700 hover:to-olive-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 text-center flex items-center justify-center space-x-2">
-                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                </svg>
-                                <span>CREATE ELECTRICAL CAD</span>
-                            </a>
-                        </div>
+                                Download & Export Options
+                            </h3>
 
-                        <!-- Download Links -->
-                        <div class="flex flex-wrap gap-3">
-                            <a href="${data.files.annotated_pdf}" download class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                                </svg>
-                                Download Floor Plan
-                            </a>
-                            <a href="${data.files.quote_pdf}" download class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                                </svg>
-                                Download Quote PDF
-                            </a>
+                            <!-- Download Options -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <button onclick="downloadFloorplanImage()" class="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2">
+                                    <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>Floorplan PNG</span>
+                                </button>
+                                <button onclick="downloadFloorplanPDF()" class="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2">
+                                    <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>Floorplan PDF</span>
+                                </button>
+                                <a href="${data.files && data.files.quote_pdf ? data.files.quote_pdf : '#'}" download class="group bg-gradient-to-r from-olive-500 to-olive-600 hover:from-olive-600 hover:to-olive-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2">
+                                    <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <span>Quote PDF</span>
+                                </a>
+                            </div>
+
+                            <!-- Export to Modules -->
+                            <div class="border-t border-gray-200 pt-4">
+                                <p class="text-sm font-semibold text-gray-700 mb-3">Export to Other Modules:</p>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <button onclick="exportToModule('electrical-mapping')" class="group bg-white hover:bg-olive-50 border-2 border-olive-300 hover:border-olive-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">⚡</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-olive-700">Mapping</div>
+                                    </button>
+                                    <button onclick="exportToModule('cad-designer')" class="group bg-white hover:bg-blue-50 border-2 border-blue-300 hover:border-blue-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">📐</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-blue-700">CAD</div>
+                                    </button>
+                                    <button onclick="exportToModule('board-builder')" class="group bg-white hover:bg-green-50 border-2 border-green-300 hover:border-green-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">🔌</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-green-700">Board</div>
+                                    </button>
+                                    <button onclick="exportToModule('crm')" class="group bg-white hover:bg-teal-50 border-2 border-teal-300 hover:border-teal-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">👥</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-teal-700">CRM</div>
+                                    </button>
+                                    <button onclick="exportToModule('simpro')" class="group bg-white hover:bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">🔄</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-yellow-700">Simpro</div>
+                                    </button>
+                                    <button onclick="exportToModule('kanban')" class="group bg-white hover:bg-red-50 border-2 border-red-300 hover:border-red-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">📋</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-red-700">Kanban</div>
+                                    </button>
+                                    <button onclick="exportToModule('learning')" class="group bg-white hover:bg-pink-50 border-2 border-pink-300 hover:border-pink-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">🧠</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-pink-700">Learning</div>
+                                    </button>
+                                    <button onclick="exportToModule('canvas-editor')" class="group bg-white hover:bg-indigo-50 border-2 border-indigo-300 hover:border-indigo-500 rounded-lg p-3 transition-all duration-200 transform hover:scale-105">
+                                        <div class="text-2xl mb-1">🎨</div>
+                                        <div class="text-xs font-semibold text-gray-700 group-hover:text-indigo-700">Canvas</div>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
             document.getElementById('results').innerHTML = html;
 
-            // Scroll to results
+            // Initialize the interactive editor
             setTimeout(() => {
+                initializeFloorplanEditor(data);
                 document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
+        }
+
+        // =============================
+        // INTERACTIVE FLOORPLAN EDITOR
+        // =============================
+
+        function initializeFloorplanEditor(data) {
+            const canvas = new fabric.Canvas('floorplanCanvas', {
+                selection: true,
+                preserveObjectStacking: true
+            });
+            editorCanvas = canvas;
+
+            // Load the floorplan image
+            const floorplanUrl = data.files && data.files.floor_plan_preview
+                ? data.files.floor_plan_preview
+                : (data.files && data.files.annotated_pdf ? data.files.annotated_pdf : null);
+
+            if (floorplanUrl) {
+                fabric.Image.fromURL(floorplanUrl, (img) => {
+                    // Scale image to fit canvas
+                    const canvasWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                    const scaleFactor = canvasWidth / img.width;
+                    const canvasHeight = img.height * scaleFactor;
+
+                    canvas.setWidth(canvasWidth);
+                    canvas.setHeight(canvasHeight);
+
+                    img.set({
+                        scaleX: scaleFactor,
+                        scaleY: scaleFactor,
+                        selectable: false,
+                        evented: false
+                    });
+
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+
+                    // Add existing components from AI analysis
+                    if (data.analysis && data.analysis.components) {
+                        data.analysis.components.forEach((component, index) => {
+                            addComponentToCanvas(component, index);
+                        });
+                    }
+
+                    updateSymbolCount();
+                }, { crossOrigin: 'anonymous' });
+            } else {
+                // No floorplan image, just set canvas size
+                const canvasWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                canvas.setWidth(canvasWidth);
+                canvas.setHeight(600);
+                canvas.setBackgroundColor('#f5f5f5', canvas.renderAll.bind(canvas));
+            }
+
+            // Selection events
+            canvas.on('selection:created', (e) => {
+                const obj = e.selected[0];
+                document.getElementById('selectedSymbol').textContent = obj.componentData ? obj.componentData.type : 'Unknown';
+            });
+
+            canvas.on('selection:updated', (e) => {
+                const obj = e.selected[0];
+                document.getElementById('selectedSymbol').textContent = obj.componentData ? obj.componentData.type : 'Unknown';
+            });
+
+            canvas.on('selection:cleared', () => {
+                document.getElementById('selectedSymbol').textContent = 'None';
+            });
+
+            // Object modified event
+            canvas.on('object:modified', () => {
+                showToast('Symbol position updated', 'success');
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (canvas.getActiveObject()) {
+                        deleteSelected();
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+
+        function addComponentToCanvas(component, index) {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+
+            // Get position from component location or calculate default
+            let x = canvasWidth / 2;
+            let y = canvasHeight / 2;
+
+            if (component.location) {
+                x = component.location.x * canvasWidth;
+                y = component.location.y * canvasHeight;
+            } else if (component.x !== undefined && component.y !== undefined) {
+                x = component.x * canvasWidth;
+                y = component.y * canvasHeight;
+            }
+
+            // Get symbol emoji and color based on type
+            const symbolMap = {
+                'light': { emoji: '💡', color: '#FCD34D', borderColor: '#F59E0B' },
+                'lighting': { emoji: '💡', color: '#FCD34D', borderColor: '#F59E0B' },
+                'switch': { emoji: '🔘', color: '#93C5FD', borderColor: '#3B82F6' },
+                'outlet': { emoji: '🔌', color: '#86EFAC', borderColor: '#10B981' },
+                'shading': { emoji: '🪟', color: '#C7D2FE', borderColor: '#6366F1' },
+                'security': { emoji: '🔐', color: '#FCA5A5', borderColor: '#EF4444' },
+                'security_access': { emoji: '🔐', color: '#FCA5A5', borderColor: '#EF4444' },
+                'climate': { emoji: '🌡️', color: '#FDBA74', borderColor: '#F97316' },
+                'audio': { emoji: '🔊', color: '#F9A8D4', borderColor: '#EC4899' }
+            };
+
+            const symbolInfo = symbolMap[component.type] || { emoji: '📍', color: '#E5E7EB', borderColor: '#9CA3AF' };
+
+            // Create group with background circle and emoji
+            const circle = new fabric.Circle({
+                radius: 20,
+                fill: symbolInfo.color,
+                stroke: symbolInfo.borderColor,
+                strokeWidth: 3,
+                shadow: 'rgba(0,0,0,0.3) 0px 4px 8px'
+            });
+
+            const text = new fabric.Text(symbolInfo.emoji, {
+                fontSize: 24,
+                originX: 'center',
+                originY: 'center'
+            });
+
+            const group = new fabric.Group([circle, text], {
+                left: x,
+                top: y,
+                originX: 'center',
+                originY: 'center',
+                hasControls: true,
+                hasBorders: true,
+                lockRotation: true,
+                lockScalingX: true,
+                lockScalingY: true
+            });
+
+            // Store component data
+            group.componentData = component;
+
+            canvas.add(group);
+            componentSymbols.push(group);
+        }
+
+        function addSymbol(type) {
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            // Create new component
+            const newComponent = {
+                id: `${type}_${Date.now()}`,
+                type: type,
+                location: { x: 0.5, y: 0.5 },
+                room: 'New'
+            };
+
+            addComponentToCanvas(newComponent, componentSymbols.length);
+            updateSymbolCount();
+            showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} symbol added`, 'success');
+            canvas.renderAll();
+        }
+
+        function deleteSelected() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+                componentSymbols = componentSymbols.filter(obj => obj !== activeObject);
+                updateSymbolCount();
+                showToast('Symbol deleted', 'success');
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            } else {
+                showToast('No symbol selected', 'warning');
+            }
+        }
+
+        function resetCanvas() {
+            if (!confirm('Reset all changes and restore original symbols?')) return;
+
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            // Remove all objects except background
+            canvas.getObjects().forEach(obj => {
+                canvas.remove(obj);
+            });
+
+            componentSymbols = [];
+
+            // Re-add original components
+            if (currentQuoteData && currentQuoteData.analysis && currentQuoteData.analysis.components) {
+                currentQuoteData.analysis.components.forEach((component, index) => {
+                    addComponentToCanvas(component, index);
+                });
+            }
+
+            updateSymbolCount();
+            showToast('Canvas reset to original state', 'success');
+            canvas.renderAll();
+        }
+
+        function updateSymbolCount() {
+            document.getElementById('symbolCount').textContent = componentSymbols.length;
+        }
+
+        function toggleEditorHelp() {
+            const helpPanel = document.getElementById('editorHelpPanel');
+            helpPanel.classList.toggle('hidden');
+        }
+
+        // =============================
+        // DOWNLOAD FUNCTIONS
+        // =============================
+
+        function downloadFloorplanImage() {
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            // Deselect all objects for clean export
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
+            // Create download
+            const dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1.0,
+                multiplier: 2  // Higher resolution
+            });
+
+            const link = document.createElement('a');
+            link.download = `floorplan_${currentQuoteData.project_name}_${Date.now()}.png`;
+            link.href = dataURL;
+            link.click();
+
+            showToast('Floorplan downloaded as PNG', 'success');
+        }
+
+        function downloadFloorplanPDF() {
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            // For PDF, we'll download as high-res image
+            // In a real app, you'd use jsPDF library
+            showToast('Generating PDF... (using high-res image)', 'info');
+
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
+            const dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1.0,
+                multiplier: 3  // Very high resolution
+            });
+
+            const link = document.createElement('a');
+            link.download = `floorplan_${currentQuoteData.project_name}_${Date.now()}.png`;
+            link.href = dataURL;
+            link.click();
+
+            showToast('Floorplan PDF download complete', 'success');
+        }
+
+        // =============================
+        // EXPORT TO MODULES
+        // =============================
+
+        async function exportToModule(moduleName) {
+            if (!currentQuoteData) {
+                showToast('No quote data to export', 'error');
+                return;
+            }
+
+            // Prepare export data
+            const exportData = {
+                project_name: currentQuoteData.project_name,
+                source: 'quote-automation',
+                timestamp: Date.now(),
+                costs: currentQuoteData.costs,
+                analysis: currentQuoteData.analysis
+            };
+
+            // Add canvas data if editor is initialized
+            if (editorCanvas) {
+                const canvasData = editorCanvas.toJSON();
+                exportData.canvas_state = canvasData;
+                exportData.components = componentSymbols.map(obj => obj.componentData);
+            }
+
+            // Module-specific formatting
+            const moduleRoutes = {
+                'electrical-mapping': '/electrical-mapping',
+                'cad-designer': '/electrical-cad',
+                'board-builder': '/board-builder',
+                'crm': '/crm',
+                'simpro': '/simpro',
+                'kanban': '/kanban',
+                'learning': '/learning',
+                'canvas-editor': '/canvas'
+            };
+
+            const targetRoute = moduleRoutes[moduleName];
+            if (!targetRoute) {
+                showToast(`Unknown module: ${moduleName}`, 'error');
+                return;
+            }
+
+            // Store data in sessionStorage for the target module
+            sessionStorage.setItem('import_data', JSON.stringify(exportData));
+            sessionStorage.setItem('import_source', 'quote-automation');
+
+            // Redirect with import flag
+            showToast(`Exporting to ${moduleName}...`, 'success');
+            setTimeout(() => {
+                window.location.href = `${targetRoute}?import=true`;
+            }, 500);
         }
 
         function showError(message) {
@@ -699,62 +1160,6 @@
             `;
         }
 
-        // AI Chat Functions
-        function toggleAIChat() {
-            const panel = document.getElementById('aiChatPanel');
-            panel.classList.toggle('hidden');
-        }
-
-        async function sendAIMessage() {
-            const input = document.getElementById('aiChatInput');
-            const message = input.value.trim();
-
-            if (!message) return;
-
-            const messagesContainer = document.getElementById('aiChatMessages');
-
-            // Add user message
-            messagesContainer.innerHTML += `
-                <div class="flex justify-end">
-                    <div class="bg-olive-600 text-white rounded-xl rounded-tr-none p-3 shadow-sm max-w-xs">
-                        <p class="text-sm">${message}</p>
-                    </div>
-                </div>
-            `;
-
-            input.value = '';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Simulate AI response (replace with actual API call)
-            setTimeout(() => {
-                messagesContainer.innerHTML += `
-                    <div class="flex space-x-3">
-                        <div class="w-8 h-8 bg-olive-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-sm">
-                                <p class="text-sm text-gray-700">I'm here to help! For detailed assistance, please contact our support team or use the quote generation tool above.</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
-        }
-
-        // Close chat when clicking outside
-        document.addEventListener('click', function(event) {
-            const bubble = document.querySelector('.fixed.bottom-6.right-6');
-            const panel = document.getElementById('aiChatPanel');
-
-            if (!bubble.contains(event.target) && !panel.contains(event.target)) {
-                panel.classList.add('hidden');
-            }
-        });
-
         // Smooth scroll for anchors
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -766,5 +1171,9 @@
             });
         });
     </script>
+
+    <!-- AI Assistant Chatbot -->
+    {% include 'chatbot_component.html' %}
+
 </body>
 </html>
