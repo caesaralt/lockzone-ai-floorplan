@@ -1,6 +1,8 @@
+"""
+Lockzone AI Floorplan Application
+Million-dollar quality electrical automation platform with AI-powered features
+"""
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, make_response
-from flask_cors import CORS
-# from flask_sqlalchemy import SQLAlchemy  # Disabled - using JSON files
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -24,6 +26,20 @@ import base64
 import requests
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
+import logging
+
+# Import new infrastructure
+from app_init import create_app, get_ai_service
+from validators import (
+    validate_quote_request,
+    validate_ai_chat_request,
+    validate_mapping_request,
+    validate_image_upload,
+    validate_document_upload,
+    sanitize_string,
+    format_validation_error,
+    format_success_response
+)
 
 # Try to import anthropic, but don't fail if not available
 try:
@@ -31,7 +47,7 @@ try:
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
-    print("WARNING: anthropic package not installed. AI features will use fallback mode.")
+    logging.warning("anthropic package not installed. AI features will use fallback mode.")
 
 # Try to import tavily for web search
 try:
@@ -39,36 +55,16 @@ try:
     TAVILY_AVAILABLE = True
 except ImportError:
     TAVILY_AVAILABLE = False
-    print("WARNING: tavily-python package not installed. Web search features will be limited.")
+    logging.warning("tavily-python package not installed. Web search features will be limited.")
 
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
-CORS(app)
+# Initialize Flask app with new infrastructure
+app = create_app()
+logger = logging.getLogger(__name__)
 
 # Database disabled temporarily - using JSON files for stability
-# Will re-enable database support once fully tested
-USE_DATABASE = False
+USE_DATABASE = app.config.get('USE_DATABASE', False)
 db = None
-print("INFO: Using JSON file storage for all data.")
-
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
-app.config['DATA_FOLDER'] = 'data'
-app.config['LEARNING_FOLDER'] = 'learning_data'
-app.config['SIMPRO_CONFIG_FOLDER'] = 'simpro_config'
-app.config['CRM_DATA_FOLDER'] = 'crm_data'
-app.config['AI_MAPPING_FOLDER'] = 'ai_mapping'
-app.config['MAPPING_LEARNING_FOLDER'] = 'mapping_learning'
-app.config['SESSION_DATA_FOLDER'] = 'session_data'
-app.config['CAD_SESSIONS_FOLDER'] = 'cad_sessions'
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-
-for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'],
-               app.config['DATA_FOLDER'], app.config['LEARNING_FOLDER'],
-               app.config['SIMPRO_CONFIG_FOLDER'], app.config['CRM_DATA_FOLDER'],
-               app.config['AI_MAPPING_FOLDER'], app.config['MAPPING_LEARNING_FOLDER'],
-               app.config['SESSION_DATA_FOLDER'], app.config['CAD_SESSIONS_FOLDER']]:
-    os.makedirs(folder, exist_ok=True)
+logger.info("Using JSON file storage for all data")
 
 # Database Models
 if USE_DATABASE:
