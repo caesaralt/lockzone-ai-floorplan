@@ -5,7 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Operations Board - Kanban</title>
+    <title>Operations Board - Kanban | Integratd Living</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        olive: {
+                            50: '#f6f7f4',
+                            100: '#e8ebe1',
+                            200: '#d1d7c3',
+                            300: '#b5bfa0',
+                            400: '#9aa67e',
+                            500: '#6B8E23',
+                            600: '#556B2F',
+                            700: '#455826',
+                            800: '#3a4821',
+                            900: '#323d1e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -44,11 +72,11 @@
         }
 
         .home-btn {
-            background: white;
-            color: #556B2F;
-            border: 2px solid #556B2F;
-            padding: 10px 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -57,14 +85,13 @@
             gap: 8px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 2px 8px rgba(85,107,47,0.08);
+            box-shadow: 0 2px 8px rgba(107,142,35,0.3), 0 4px 16px rgba(107,142,35,0.15);
             letter-spacing: -0.2px;
         }
 
         .home-btn:hover {
-            background: #f5f5f7;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 8px 20px rgba(85,107,47,0.12);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 16px rgba(107,142,35,0.4), 0 8px 24px rgba(107,142,35,0.25);
         }
 
         .header-title {
@@ -103,23 +130,22 @@
         }
 
         .add-task-btn {
-            background: #2ecc71;
+            background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
+            padding: 12px 24px;
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(46,204,113,0.3), 0 4px 16px rgba(46,204,113,0.15);
+            box-shadow: 0 2px 8px rgba(107,142,35,0.3), 0 4px 16px rgba(107,142,35,0.15);
             letter-spacing: -0.2px;
         }
 
         .add-task-btn:hover {
-            background: #27ae60;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(46,204,113,0.4), 0 8px 24px rgba(46,204,113,0.25);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 16px rgba(107,142,35,0.4), 0 8px 24px rgba(107,142,35,0.25);
         }
 
         /* KANBAN BOARD */
