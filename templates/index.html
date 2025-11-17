@@ -653,6 +653,37 @@
                                         </button>
                                     </div>
 
+                                    <!-- Zoom Controls -->
+                                    <div class="flex items-center space-x-2 border-l border-gray-300 pl-3">
+                                        <span class="text-sm font-semibold text-gray-700">Zoom:</span>
+                                        <button onclick="zoomIn()" class="px-3 py-2 bg-olive-50 hover:bg-olive-100 border-2 border-olive-400 text-olive-700 rounded-lg transition-all duration-200 font-semibold text-sm" title="Zoom In">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="zoomOut()" class="px-3 py-2 bg-olive-50 hover:bg-olive-100 border-2 border-olive-400 text-olive-700 rounded-lg transition-all duration-200 font-semibold text-sm" title="Zoom Out">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="resetZoom()" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 border-2 border-gray-300 text-gray-700 rounded-lg transition-all duration-200 font-semibold text-sm" title="Reset Zoom">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                            </svg>
+                                        </button>
+                                        <span id="zoomLevel" class="text-xs text-gray-600 font-mono">100%</span>
+                                    </div>
+
+                                    <!-- Maximize Button -->
+                                    <div class="flex items-center space-x-2 border-l border-gray-300 pl-3">
+                                        <button onclick="toggleMaximize()" id="maximizeBtn" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 border-2 border-blue-400 text-blue-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2" title="Maximize Editor">
+                                            <svg id="maximizeIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                            </svg>
+                                            <span id="maximizeText">Maximize</span>
+                                        </button>
+                                    </div>
+
                                     <!-- Editor Actions -->
                                     <div class="flex-1"></div>
                                     <button onclick="deleteSelected()" class="px-4 py-2 bg-red-50 hover:bg-red-100 border-2 border-red-400 text-red-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2">
@@ -671,8 +702,8 @@
                             </div>
 
                             <!-- Canvas Container -->
-                            <div class="p-6 bg-gray-100">
-                                <div class="relative bg-white rounded-lg shadow-inner overflow-hidden" style="max-height: 700px;">
+                            <div id="canvasContainer" class="p-6 bg-gray-100" style="flex: 1; overflow: auto;">
+                                <div class="relative bg-white rounded-lg shadow-inner" style="min-height: 800px; max-height: 1200px; overflow: auto;">
                                     <canvas id="floorplanCanvas" class="w-full"></canvas>
                                 </div>
                             </div>
@@ -688,13 +719,99 @@
                                         <span class="text-gray-600">
                                             Selected: <span class="font-semibold text-gray-900" id="selectedSymbol">None</span>
                                         </span>
+                                        <span class="text-gray-400">|</span>
+                                        <span class="text-gray-600">
+                                            Total Quote: <span class="font-semibold text-olive-700" id="liveQuoteTotal">$0</span>
+                                        </span>
                                     </div>
                                     <div class="text-gray-500 text-xs">
-                                        💡 Tip: Drag symbols to reposition • Delete key to remove
+                                        💡 Tip: Double-click symbols to edit • Drag to move • Resize with corners • Delete key to remove
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Symbol Editing Modal (Hidden by default) -->
+                        <div id="symbolEditModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target === this) closeSymbolModal()">
+                            <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                                <!-- Modal Header -->
+                                <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-6 rounded-t-2xl">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-2xl font-bold text-white">Edit Symbol</h3>
+                                                <p class="text-olive-100 text-sm">Modify components and pricing</p>
+                                            </div>
+                                        </div>
+                                        <button onclick="closeSymbolModal()" class="text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Modal Body -->
+                                <div class="p-6">
+                                    <!-- Symbol Info -->
+                                    <div class="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-4 mb-6">
+                                        <div class="flex items-center space-x-4">
+                                            <div id="modalSymbolEmoji" class="text-5xl"></div>
+                                            <div class="flex-1">
+                                                <h4 class="text-lg font-bold text-gray-900" id="modalSymbolType">Symbol Type</h4>
+                                                <p class="text-sm text-gray-600">Location: <span id="modalSymbolLocation" class="font-mono">x: 0, y: 0</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Components Section -->
+                                    <div class="mb-6">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h4 class="text-xl font-bold text-gray-900 flex items-center">
+                                                <svg class="w-5 h-5 mr-2 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                                </svg>
+                                                Components
+                                            </h4>
+                                            <button onclick="addComponentRow()" class="bg-gradient-to-r from-olive-500 to-olive-600 hover:from-olive-600 hover:to-olive-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center space-x-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                </svg>
+                                                <span>Add Component</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Components List Container -->
+                                        <div id="componentsListContainer" class="space-y-3">
+                                            <!-- Component rows will be added here dynamically -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Total Price Display -->
+                                    <div class="bg-gradient-to-r from-olive-50 to-olive-100 rounded-xl border-2 border-olive-300 p-4 mb-6">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-lg font-bold text-olive-900">Symbol Total:</span>
+                                            <span id="modalSymbolTotal" class="text-2xl font-bold text-olive-700">$0.00</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="flex items-center justify-end space-x-3">
+                                        <button onclick="closeSymbolModal()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all duration-200">
+                                            Cancel
+                                        </button>
+                                        <button onclick="saveSymbolChanges()" class="px-6 py-3 bg-gradient-to-r from-olive-500 to-olive-600 hover:from-olive-600 hover:to-olive-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                                        </div>
 
                         <!-- Cost Breakdown -->
                         <div>
@@ -948,12 +1065,28 @@
                 hasControls: true,
                 hasBorders: true,
                 lockRotation: true,
-                lockScalingX: true,
-                lockScalingY: true
+                lockScalingX: false,  // Allow resizing
+                lockScalingY: false   // Allow resizing
             });
 
-            // Store component data
+            // Store component data with enhanced structure
+            if (!component.components) {
+                component.components = [{
+                    name: component.type || 'Main Component',
+                    quantity: component.quantity || 1,
+                    price: component.price || 0
+                }];
+            }
+            if (!component.totalPrice) {
+                component.totalPrice = component.components.reduce((sum, comp) =>
+                    sum + (comp.quantity * comp.price), 0);
+            }
             group.componentData = component;
+
+            // Add double-click event to open edit modal
+            group.on('mousedblclick', () => {
+                editSymbol(group);
+            });
 
             canvas.add(group);
             componentSymbols.push(group);
@@ -1029,6 +1162,383 @@
         function toggleEditorHelp() {
             const helpPanel = document.getElementById('editorHelpPanel');
             helpPanel.classList.toggle('hidden');
+        }
+
+        // =============================
+        // ZOOM CONTROLS
+        // =============================
+
+        let currentZoom = 1.0;
+        const zoomStep = 0.2;
+        const minZoom = 0.5;
+        const maxZoom = 3.0;
+
+        function zoomIn() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+            canvas.setZoom(currentZoom);
+            canvas.renderAll();
+            updateZoomDisplay();
+            showToast(`Zoomed to ${Math.round(currentZoom * 100)}%`, 'info');
+        }
+
+        function zoomOut() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            currentZoom = Math.max(currentZoom - zoomStep, minZoom);
+            canvas.setZoom(currentZoom);
+            canvas.renderAll();
+            updateZoomDisplay();
+            showToast(`Zoomed to ${Math.round(currentZoom * 100)}%`, 'info');
+        }
+
+        function resetZoom() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            currentZoom = 1.0;
+            canvas.setZoom(currentZoom);
+            canvas.renderAll();
+            updateZoomDisplay();
+            showToast('Zoom reset to 100%', 'success');
+        }
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        // =============================
+        // MAXIMIZE/FULLSCREEN CONTROLS
+        // =============================
+
+        let isMaximized = false;
+
+        function toggleMaximize() {
+            const editorSection = document.getElementById('interactiveEditorSection');
+            const maximizeBtn = document.getElementById('maximizeBtn');
+            const maximizeIcon = document.getElementById('maximizeIcon');
+            const maximizeText = document.getElementById('maximizeText');
+            const canvas = editorCanvas;
+
+            if (!editorSection) return;
+
+            isMaximized = !isMaximized;
+
+            if (isMaximized) {
+                // Enter fullscreen mode
+                editorSection.style.position = 'fixed';
+                editorSection.style.top = '0';
+                editorSection.style.left = '0';
+                editorSection.style.width = '100vw';
+                editorSection.style.height = '100vh';
+                editorSection.style.zIndex = '9999';
+                editorSection.style.margin = '0';
+                editorSection.style.borderRadius = '0';
+                editorSection.style.display = 'flex';
+                editorSection.style.flexDirection = 'column';
+
+                // Make canvas container fill available space
+                const canvasContainer = document.getElementById('canvasContainer');
+                if (canvasContainer) {
+                    const innerDiv = canvasContainer.querySelector('div');
+                    if (innerDiv) {
+                        innerDiv.style.minHeight = 'calc(100vh - 250px)';
+                        innerDiv.style.maxHeight = 'calc(100vh - 250px)';
+                    }
+                }
+
+                // Update button appearance
+                maximizeBtn.classList.remove('bg-blue-50', 'hover:bg-blue-100', 'border-blue-400', 'text-blue-700');
+                maximizeBtn.classList.add('bg-red-50', 'hover:bg-red-100', 'border-red-400', 'text-red-700');
+                maximizeText.textContent = 'Exit Fullscreen';
+
+                // Update icon to minimize icon
+                maximizeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>';
+
+                // Resize canvas to fit new container
+                if (canvas) {
+                    setTimeout(() => {
+                        const newWidth = window.innerWidth - 120; // Account for padding
+                        canvas.setWidth(newWidth);
+                        canvas.setHeight(window.innerHeight - 250); // Account for toolbar and stats
+                        canvas.renderAll();
+                    }, 100);
+                }
+
+                showToast('Fullscreen mode activated - Press ESC to exit', 'success');
+
+                // Add ESC key listener
+                document.addEventListener('keydown', escToExitFullscreen);
+
+            } else {
+                // Exit fullscreen mode
+                editorSection.style.position = '';
+                editorSection.style.top = '';
+                editorSection.style.left = '';
+                editorSection.style.width = '';
+                editorSection.style.height = '';
+                editorSection.style.zIndex = '';
+                editorSection.style.margin = '';
+                editorSection.style.borderRadius = '';
+                editorSection.style.display = '';
+                editorSection.style.flexDirection = '';
+
+                // Restore canvas container
+                const canvasContainer = document.getElementById('canvasContainer');
+                if (canvasContainer) {
+                    const innerDiv = canvasContainer.querySelector('div');
+                    if (innerDiv) {
+                        innerDiv.style.minHeight = '800px';
+                        innerDiv.style.maxHeight = '1200px';
+                    }
+                }
+
+                // Restore button appearance
+                maximizeBtn.classList.remove('bg-red-50', 'hover:bg-red-100', 'border-red-400', 'text-red-700');
+                maximizeBtn.classList.add('bg-blue-50', 'hover:bg-blue-100', 'border-blue-400', 'text-blue-700');
+                maximizeText.textContent = 'Maximize';
+
+                // Restore icon
+                maximizeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>';
+
+                // Resize canvas back to normal
+                if (canvas) {
+                    setTimeout(() => {
+                        const containerWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                        canvas.setWidth(containerWidth);
+                        canvas.renderAll();
+                    }, 100);
+                }
+
+                showToast('Exited fullscreen mode', 'info');
+
+                // Remove ESC key listener
+                document.removeEventListener('keydown', escToExitFullscreen);
+            }
+        }
+
+        function escToExitFullscreen(e) {
+            if (e.key === 'Escape' && isMaximized) {
+                toggleMaximize();
+            }
+        }
+
+        // =============================
+        // SYMBOL EDITING MODAL
+        // =============================
+
+        let currentEditingSymbol = null;
+
+        function editSymbol(symbolObject) {
+            if (!symbolObject || !symbolObject.componentData) return;
+
+            currentEditingSymbol = symbolObject;
+            const data = symbolObject.componentData;
+
+            // Get symbol info
+            const symbolMap = {
+                'light': { emoji: '💡', name: 'Lighting' },
+                'lighting': { emoji: '💡', name: 'Lighting' },
+                'switch': { emoji: '🔘', name: 'Switch' },
+                'outlet': { emoji: '🔌', name: 'Outlet' },
+                'shading': { emoji: '🪟', name: 'Shading' },
+                'security': { emoji: '🔐', name: 'Security' },
+                'security_access': { emoji: '🔐', name: 'Security Access' },
+                'climate': { emoji: '🌡️', name: 'Climate Control' },
+                'audio': { emoji: '🔊', name: 'Audio System' }
+            };
+
+            const symbolInfo = symbolMap[data.type] || { emoji: '📍', name: data.type };
+
+            // Populate modal
+            document.getElementById('modalSymbolEmoji').textContent = symbolInfo.emoji;
+            document.getElementById('modalSymbolType').textContent = symbolInfo.name;
+            document.getElementById('modalSymbolLocation').textContent =
+                `x: ${Math.round(symbolObject.left)}, y: ${Math.round(symbolObject.top)}`;
+
+            // Populate components list
+            const container = document.getElementById('componentsListContainer');
+            container.innerHTML = '';
+
+            if (!data.components || data.components.length === 0) {
+                data.components = [{
+                    name: symbolInfo.name,
+                    quantity: 1,
+                    price: 100
+                }];
+            }
+
+            data.components.forEach((comp, index) => {
+                addComponentRowToModal(comp, index);
+            });
+
+            updateModalTotal();
+
+            // Show modal
+            document.getElementById('symbolEditModal').classList.remove('hidden');
+        }
+
+        function closeSymbolModal() {
+            document.getElementById('symbolEditModal').classList.add('hidden');
+            currentEditingSymbol = null;
+        }
+
+        function addComponentRow(componentData = null) {
+            const data = componentData || { name: '', quantity: 1, price: 0 };
+            const index = document.getElementById('componentsListContainer').children.length;
+            addComponentRowToModal(data, index);
+            updateModalTotal();
+        }
+
+        function addComponentRowToModal(data, index) {
+            const container = document.getElementById('componentsListContainer');
+
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-olive-300 transition-all duration-200';
+            rowDiv.dataset.index = index;
+
+            rowDiv.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Component Name</label>
+                        <input type="text" value="${data.name || ''}"
+                            onchange="updateModalTotal()"
+                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-olive-500 focus:outline-none text-sm"
+                            placeholder="e.g., LED Bulb, Motion Sensor">
+                    </div>
+                    <div class="w-24">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Qty</label>
+                        <input type="number" value="${data.quantity || 1}" min="1"
+                            onchange="updateModalTotal()"
+                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-olive-500 focus:outline-none text-sm text-center">
+                    </div>
+                    <div class="w-32">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Price ($)</label>
+                        <input type="number" value="${data.price || 0}" min="0" step="0.01"
+                            onchange="updateModalTotal()"
+                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-olive-500 focus:outline-none text-sm">
+                    </div>
+                    <div class="pt-6">
+                        <button onclick="removeComponentRow(${index})"
+                            class="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200"
+                            title="Remove component">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(rowDiv);
+        }
+
+        function removeComponentRow(index) {
+            const container = document.getElementById('componentsListContainer');
+            const rows = Array.from(container.children);
+
+            if (rows.length <= 1) {
+                showToast('Cannot remove the last component', 'error');
+                return;
+            }
+
+            rows[index].remove();
+
+            // Re-index remaining rows
+            Array.from(container.children).forEach((row, newIndex) => {
+                row.dataset.index = newIndex;
+                const deleteBtn = row.querySelector('button[onclick^="removeComponentRow"]');
+                if (deleteBtn) {
+                    deleteBtn.setAttribute('onclick', `removeComponentRow(${newIndex})`);
+                }
+            });
+
+            updateModalTotal();
+            showToast('Component removed', 'success');
+        }
+
+        function updateModalTotal() {
+            const container = document.getElementById('componentsListContainer');
+            const rows = Array.from(container.children);
+
+            let total = 0;
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                const quantity = parseFloat(inputs[1].value) || 0;
+                const price = parseFloat(inputs[2].value) || 0;
+                total += quantity * price;
+            });
+
+            document.getElementById('modalSymbolTotal').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function saveSymbolChanges() {
+            if (!currentEditingSymbol) return;
+
+            const container = document.getElementById('componentsListContainer');
+            const rows = Array.from(container.children);
+
+            // Collect component data
+            const components = rows.map(row => {
+                const inputs = row.querySelectorAll('input');
+                return {
+                    name: inputs[0].value,
+                    quantity: parseFloat(inputs[1].value) || 1,
+                    price: parseFloat(inputs[2].value) || 0
+                };
+            });
+
+            // Calculate total
+            const totalPrice = components.reduce((sum, comp) =>
+                sum + (comp.quantity * comp.price), 0);
+
+            // Update symbol data
+            currentEditingSymbol.componentData.components = components;
+            currentEditingSymbol.componentData.totalPrice = totalPrice;
+
+            // Close modal
+            closeSymbolModal();
+
+            // Recalculate quote
+            recalculateQuote();
+
+            showToast('Symbol updated successfully', 'success');
+        }
+
+        // =============================
+        // QUOTE RECALCULATION
+        // =============================
+
+        function recalculateQuote() {
+            let grandTotal = 0;
+
+            // Sum up all symbol totals
+            componentSymbols.forEach(symbol => {
+                if (symbol.componentData && symbol.componentData.totalPrice) {
+                    grandTotal += symbol.componentData.totalPrice;
+                }
+            });
+
+            // Update live quote total in editor
+            document.getElementById('liveQuoteTotal').textContent = `$${grandTotal.toFixed(2)}`;
+
+            // Update main quote breakdown if it exists
+            const costBreakdown = document.querySelector('.bg-gradient-to-r.from-olive-50.to-olive-100 .text-3xl.font-bold.text-olive-600');
+            if (costBreakdown) {
+                costBreakdown.textContent = `$${grandTotal.toFixed(2)}`;
+            }
+
+            // Store updated total in currentQuoteData
+            if (currentQuoteData && currentQuoteData.costs) {
+                currentQuoteData.costs.grand_total = grandTotal;
+                currentQuoteData.costs.subtotal = grandTotal * 0.8; // Approximate
+                currentQuoteData.costs.markup = grandTotal * 0.2;
+            }
+
+            showToast('Quote totals updated', 'info');
         }
 
         // =============================
@@ -1112,7 +1622,24 @@
             if (editorCanvas) {
                 const canvasData = editorCanvas.toJSON();
                 exportData.canvas_state = canvasData;
-                exportData.components = componentSymbols.map(obj => obj.componentData);
+
+                // Export enhanced component data with all modifications
+                exportData.components = componentSymbols.map(obj => ({
+                    ...obj.componentData,
+                    position: { x: obj.left, y: obj.top },
+                    scale: { x: obj.scaleX, y: obj.scaleY },
+                    components: obj.componentData.components || [],
+                    totalPrice: obj.componentData.totalPrice || 0
+                }));
+
+                // Export updated totals
+                let exportTotal = 0;
+                componentSymbols.forEach(symbol => {
+                    if (symbol.componentData && symbol.componentData.totalPrice) {
+                        exportTotal += symbol.componentData.totalPrice;
+                    }
+                });
+                exportData.updated_grand_total = exportTotal;
             }
 
             // Module-specific formatting
