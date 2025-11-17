@@ -397,11 +397,7 @@
 <body>
     <div class="top-toolbar">
         <div class="toolbar-left">
-            <div class="project-title">🎨 Canvas Editor</div>
-            <label class="toolbar-btn">
-                📁 Upload PDF
-                <input type="file" id="pdfUpload" accept=".pdf,image/*">
-            </label>
+            <a href="/" class="project-title" style="text-decoration: none; cursor: pointer;" title="Go to Home">🎨 Canvas Editor</a>
         </div>
         <div class="zoom-controls">
             <button class="zoom-btn" onclick="zoomIn()">+</button>
@@ -409,11 +405,50 @@
             <button class="zoom-btn" onclick="zoomOut()">-</button>
             <button class="zoom-btn" onclick="resetView()">Reset</button>
         </div>
-        <div>
-            <button class="toolbar-btn" onclick="window.location.href='/'">← Home</button>
-            <button class="toolbar-btn primary" onclick="exportCanvas()">💾 Export</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <!-- Collapsible Menu Button -->
+            <div style="position: relative;">
+                <button id="menuToggleBtn" onclick="toggleToolbarMenu()" class="toolbar-btn" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); font-size: 1.2em; padding: 6px 12px;">
+                    <span id="menuIcon">+</span>
+                </button>
+                <!-- Dropdown Menu -->
+                <div id="toolbarMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #1a252f; border: 2px solid #34495e; border-radius: 8px; padding: 10px; min-width: 180px; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                    <label class="toolbar-btn" style="width: 100%; margin-bottom: 6px; justify-content: flex-start; display: flex; cursor: pointer;">
+                        📁 Upload PDF
+                        <input type="file" id="pdfUpload" accept=".pdf,image/*" style="display: none;">
+                    </label>
+                    <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
+                    <button class="toolbar-btn" onclick="window.location.href='/'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🏠 Home</button>
+                    <button class="toolbar-btn" onclick="window.location.href='/mapping'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">⚡ Mapping</button>
+                    <button class="toolbar-btn" onclick="window.location.href='/board-builder'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🔌 Board Builder</button>
+                    <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
+                    <button class="toolbar-btn primary" onclick="exportCanvas(); toggleToolbarMenu();" style="width: 100%; justify-content: flex-start;">💾 Export</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+        function toggleToolbarMenu() {
+            const menu = document.getElementById('toolbarMenu');
+            const icon = document.getElementById('menuIcon');
+            if (menu.style.display === 'none') {
+                menu.style.display = 'block';
+                icon.textContent = '×';
+            } else {
+                menu.style.display = 'none';
+                icon.textContent = '+';
+            }
+        }
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('toolbarMenu');
+            const btn = document.getElementById('menuToggleBtn');
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+                document.getElementById('menuIcon').textContent = '+';
+            }
+        });
+    </script>
 
     <div class="app-container">
         <!-- LEFT PANEL -->
