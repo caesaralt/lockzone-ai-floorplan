@@ -353,74 +353,6 @@
 
     </main>
 
-    <!-- AI Chat Bubble -->
-    <div class="fixed bottom-6 right-6 z-40">
-        <button
-            onclick="toggleAIChat()"
-            class="bg-gradient-to-r from-olive-600 to-olive-500 hover:from-olive-700 hover:to-olive-600 text-white p-4 rounded-full shadow-2xl hover:shadow-olive-600/50 transition-all duration-300 transform hover:scale-110 animate-pulse-slow group"
-        >
-            <svg class="w-7 h-7 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-            </svg>
-        </button>
-    </div>
-
-    <!-- AI Chat Panel -->
-    <div id="aiChatPanel" class="hidden fixed bottom-24 right-6 w-96 bg-white rounded-2xl shadow-2xl z-40 overflow-hidden animate-slide-up">
-        <div class="bg-gradient-to-r from-olive-600 to-olive-500 p-5 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="font-bold text-white">AI Assistant</h3>
-                    <p class="text-xs text-olive-100">Ask me anything</p>
-                </div>
-            </div>
-            <button onclick="toggleAIChat()" class="text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <div id="aiChatMessages" class="h-96 overflow-y-auto p-5 space-y-4 bg-gray-50">
-            <div class="flex space-x-3">
-                <div class="w-8 h-8 bg-olive-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-sm">
-                        <p class="text-sm text-gray-700">Hi! I'm your AI assistant for floor plan analysis. I can help with questions about automation systems, pricing, and more!</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-4 bg-white border-t border-gray-200">
-            <div class="flex space-x-2">
-                <input
-                    type="text"
-                    id="aiChatInput"
-                    placeholder="Type a message..."
-                    class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent"
-                    onkeypress="if(event.key==='Enter') sendAIMessage()"
-                >
-                <button
-                    onclick="sendAIMessage()"
-                    class="bg-olive-600 hover:bg-olive-700 text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Toast Notification System
@@ -698,62 +630,6 @@
                 </div>
             `;
         }
-
-        // AI Chat Functions
-        function toggleAIChat() {
-            const panel = document.getElementById('aiChatPanel');
-            panel.classList.toggle('hidden');
-        }
-
-        async function sendAIMessage() {
-            const input = document.getElementById('aiChatInput');
-            const message = input.value.trim();
-
-            if (!message) return;
-
-            const messagesContainer = document.getElementById('aiChatMessages');
-
-            // Add user message
-            messagesContainer.innerHTML += `
-                <div class="flex justify-end">
-                    <div class="bg-olive-600 text-white rounded-xl rounded-tr-none p-3 shadow-sm max-w-xs">
-                        <p class="text-sm">${message}</p>
-                    </div>
-                </div>
-            `;
-
-            input.value = '';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Simulate AI response (replace with actual API call)
-            setTimeout(() => {
-                messagesContainer.innerHTML += `
-                    <div class="flex space-x-3">
-                        <div class="w-8 h-8 bg-olive-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-olive-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-sm">
-                                <p class="text-sm text-gray-700">I'm here to help! For detailed assistance, please contact our support team or use the quote generation tool above.</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
-        }
-
-        // Close chat when clicking outside
-        document.addEventListener('click', function(event) {
-            const bubble = document.querySelector('.fixed.bottom-6.right-6');
-            const panel = document.getElementById('aiChatPanel');
-
-            if (!bubble.contains(event.target) && !panel.contains(event.target)) {
-                panel.classList.add('hidden');
-            }
-        });
 
         // Smooth scroll for anchors
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

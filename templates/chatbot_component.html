@@ -20,14 +20,16 @@
         <div class="chatbot-messages" id="chatbotMessages">
             <div class="chatbot-message assistant">
                 <div class="message-content">
-                    👋 Hi! I'm your AI assistant with advanced capabilities:
+                    👋 Hi! I'm your AI assistant with <strong>premium capabilities</strong>:
                     <ul style="margin: 8px 0; padding-left: 20px;">
                         <li>💭 <strong>Extended Thinking</strong> - Deep reasoning for complex questions</li>
                         <li>🌐 <strong>Web Search</strong> - Real-time information from the internet</li>
-                        <li>🔧 <strong>Agentic Actions</strong> - Can help with tasks in this app</li>
+                        <li>🤖 <strong>Agentic Mode</strong> - Autonomous task execution & iterative research</li>
+                        <li>👁️ <strong>Vision</strong> - Analyze floorplans, diagrams, and images</li>
+                        <li>📚 <strong>Learning</strong> - Learns from your projects to improve</li>
                         <li>📊 <strong>Data Analysis</strong> - Analyze your projects and quotes</li>
                     </ul>
-                    Ask me anything! I can help with electrical codes, pricing, components, troubleshooting, and more.
+                    Ask me anything! Upload images with 📎, and I'll analyze electrical codes, pricing, components, floorplans & more.
                 </div>
             </div>
         </div>
@@ -42,8 +44,25 @@
                     <input type="checkbox" id="useWebSearch">
                     <span>🌐 Web Search</span>
                 </label>
+                <label class="chatbot-option">
+                    <input type="checkbox" id="useAgenticMode" checked>
+                    <span>🤖 Agentic Mode</span>
+                </label>
             </div>
+
+            <!-- Image Upload Preview -->
+            <div id="imagePreviewContainer" style="display: none;" class="image-preview-container">
+                <div class="image-preview-wrapper">
+                    <img id="imagePreview" class="image-preview" />
+                    <button class="image-remove-btn" onclick="removeImage()">✖️</button>
+                </div>
+            </div>
+
             <div class="chatbot-input-row">
+                <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                <button class="chatbot-attachment-btn" onclick="document.getElementById('imageUpload').click()" title="Upload image">
+                    📎
+                </button>
                 <textarea
                     id="chatbotInput"
                     class="chatbot-input"
@@ -274,6 +293,63 @@
     cursor: not-allowed;
 }
 
+.chatbot-attachment-btn {
+    background: rgba(155, 89, 182, 0.2);
+    border: 2px solid #9b59b6;
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.3em;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.chatbot-attachment-btn:hover {
+    background: rgba(155, 89, 182, 0.4);
+    transform: scale(1.05);
+}
+
+.image-preview-container {
+    padding: 12px;
+    background: #16213e;
+    border-top: 1px solid #2c3e50;
+}
+
+.image-preview-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    border: 2px solid #9b59b6;
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #e74c3c;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.2s;
+}
+
+.image-remove-btn:hover {
+    background: #c0392b;
+    transform: scale(1.1);
+}
+
 /* Loading animation */
 @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -288,6 +364,8 @@
 <script>
 let chatHistory = [];
 let isProcessing = false;
+let uploadedImage = null;
+let learningContext = null;
 
 function toggleChatbot() {
     const panel = document.getElementById('chatbotPanel');
@@ -336,6 +414,48 @@ function formatMessage(content) {
         .replace(/\n/g, '<br>');
 }
 
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('❌ Image too large. Max size is 5MB.');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedImage = e.target.result;
+        document.getElementById('imagePreview').src = uploadedImage;
+        document.getElementById('imagePreviewContainer').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeImage() {
+    uploadedImage = null;
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('imageUpload').value = '';
+}
+
+async function loadLearningContext() {
+    try {
+        const response = await fetch('/api/learning/history');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.patterns) {
+                learningContext = {
+                    total_projects: data.patterns.length,
+                    recent_patterns: data.patterns.slice(0, 5)
+                };
+            }
+        }
+    } catch (error) {
+        console.log('Learning context not available:', error);
+    }
+}
+
 async function sendMessage() {
     const input = document.getElementById('chatbotInput');
     const message = input.value.trim();
@@ -344,38 +464,62 @@ async function sendMessage() {
 
     const useExtendedThinking = document.getElementById('useExtendedThinking').checked;
     const useWebSearch = document.getElementById('useWebSearch').checked;
+    const useAgenticMode = document.getElementById('useAgenticMode').checked;
 
-    // Add user message
-    addMessage('user', message);
+    // Add user message (with image if present)
+    let userMessageHTML = message;
+    if (uploadedImage) {
+        userMessageHTML = `<img src="${uploadedImage}" style="max-width: 100%; border-radius: 8px; margin-bottom: 8px;"><br>${message}`;
+    }
+    addMessage('user', userMessageHTML);
     chatHistory.push({ role: 'user', content: message });
 
     input.value = '';
     isProcessing = true;
 
     // Update UI
-    document.getElementById('chatbotStatus').textContent = useExtendedThinking ? 'Thinking deeply...' : 'Processing...';
+    const statusText = useAgenticMode ? 'Agent working...' : (useExtendedThinking ? 'Thinking deeply...' : 'Processing...');
+    document.getElementById('chatbotStatus').textContent = statusText;
     document.getElementById('sendIcon').innerHTML = '⏳';
     document.querySelector('.chatbot-send-btn').classList.add('chatbot-loading');
+
+    // Prepare request payload
+    const payload = {
+        message: message,
+        conversation_history: chatHistory,
+        agent_mode: useAgenticMode || useExtendedThinking,
+        web_search: useWebSearch,
+        current_page: window.location.pathname,
+        learning_context: learningContext
+    };
+
+    // Add image if present
+    if (uploadedImage) {
+        payload.images = [uploadedImage];
+    }
 
     try {
         const response = await fetch('/api/ai-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: message,
-                conversation_history: chatHistory,
-                agent_mode: useExtendedThinking,
-                web_search: useWebSearch,
-                current_page: window.location.pathname
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
 
         if (data.success) {
-            // Add message with thinking if available
-            const thinkingText = data.agent_mode && data.searches_performed > 0 ?
-                `Performed ${data.searches_performed} web search(es) to find the best answer` : null;
+            // Build thinking text
+            let thinkingParts = [];
+            if (data.agent_mode && data.searches_performed > 0) {
+                thinkingParts.push(`🌐 ${data.searches_performed} web search(es)`);
+            }
+            if (data.images && data.images.length > 0) {
+                thinkingParts.push(`👁️ Vision analysis`);
+            }
+            if (data.learning_used) {
+                thinkingParts.push(`📚 Learning context`);
+            }
+            const thinkingText = thinkingParts.length > 0 ? thinkingParts.join(' • ') : null;
 
             addMessage('assistant', data.response, thinkingText);
             chatHistory.push({ role: 'assistant', content: data.response });
@@ -390,6 +534,11 @@ async function sendMessage() {
             }
         } else {
             addMessage('assistant', '❌ Error: ' + (data.error || 'Unknown error occurred'));
+        }
+
+        // Clear uploaded image after sending
+        if (uploadedImage) {
+            removeImage();
         }
     } catch (error) {
         console.error('Chat error:', error);
@@ -427,7 +576,7 @@ async function executeAction(action) {
     }
 }
 
-// Auto-resize textarea
+// Auto-resize textarea and initialize
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('chatbotInput');
     if (input) {
@@ -444,5 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Load learning context on startup
+    loadLearningContext();
 });
 </script>
