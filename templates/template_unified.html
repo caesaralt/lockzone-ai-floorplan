@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Integratd Living - Complete Platform</title>
+    <title>{{ config.logo_text if config else 'Integratd Living' }} - Complete Platform</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f7;
+            background: {{ config.background_color if config else '#f5f5f7' }};
             color: #1d1d1f;
         }
 
@@ -35,7 +35,7 @@
         .logo {
             font-size: 20px;
             font-weight: 700;
-            color: #556B2F;
+            color: {{ config.logo_color if config else '#556B2F' }};
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -139,15 +139,16 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="logo">🏠 Integratd Living</a>
+            <a href="/" class="logo">{{ config.logo_icon if config else '🏠' }} {{ config.logo_text if config else 'Integratd Living' }}</a>
             <ul class="nav-menu">
                 <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
                 <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
                 <li><a href="/canvas" class="nav-item">Canvas Editor</a></li>
                 <li><a href="/mapping" class="nav-item">Electrical Mapping</a></li>
                 <li><a href="/board-builder" class="nav-item">Board Builder</a></li>
-                <li><a href="/electrical-cad" class="nav-item">📟 Electrical CAD</a></li>
+                <li><a href="/electrical-cad" class="nav-item">Electrical CAD</a></li>
                 <li><a href="/learning" class="nav-item">AI Learning</a></li>
+                <li><a href="/admin/page-editor" class="nav-item" style="color: #666; font-size: 12px;">Admin</a></li>
             </ul>
         </div>
     </nav>
@@ -155,11 +156,20 @@
     <!-- WELCOME CONTENT -->
     <div class="welcome-container">
         <div class="welcome-header">
-            <h1 class="welcome-title">Welcome to Integratd Living</h1>
-            <p class="welcome-subtitle">Your complete business automation platform</p>
+            <h1 class="welcome-title">{{ config.welcome_title if config else 'Welcome to Integratd Living' }}</h1>
+            <p class="welcome-subtitle">{{ config.welcome_subtitle if config else 'Your complete business automation platform' }}</p>
         </div>
 
         <div class="modules-grid">
+            {% if config and config.modules %}
+                {% for module in config.modules %}
+                <a href="{{ module.href }}" class="module-card">
+                    <div class="module-icon">{{ module.icon }}</div>
+                    <h2 class="module-title">{{ module.title }}</h2>
+                    <p class="module-description">{{ module.description }}</p>
+                </a>
+                {% endfor %}
+            {% else %}
             <a href="/crm" class="module-card">
                 <div class="module-icon">📊</div>
                 <h2 class="module-title">CRM Dashboard</h2>
@@ -207,6 +217,7 @@
                 <h2 class="module-title">Operations Board</h2>
                 <p class="module-description">Kanban task management system for team workflow and project tracking.</p>
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -221,6 +232,11 @@
             });
         });
     </script>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        © 2025 Integratd Living. All rights reserved.
+    </footer>
 
     <!-- AI Assistant Chatbot -->
     {% include 'chatbot_component.html' %}
