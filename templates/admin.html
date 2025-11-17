@@ -572,6 +572,9 @@
 
                 <div class="form-group">
                     <label class="form-label">Permissions</label>
+                    <small style="color: #666; font-size: 12px; display: block; margin-bottom: 8px;">
+                        Select role above to auto-fill permissions, or customize individually
+                    </small>
                     <div class="checkbox-group" id="permissionsCheckboxes">
                         <!-- Populated by JavaScript -->
                     </div>
@@ -719,7 +722,7 @@
         // Update permissions based on role
         function updatePermissionsFromRole() {
             const role = document.getElementById('userRole').value;
-            
+
             const rolePermissions = {
                 'admin': ['crm', 'quotes', 'canvas', 'mapping', 'board_builder', 'electrical_cad', 'learning', 'kanban', 'ai_mapping', 'simpro', 'admin'],
                 'manager': ['crm', 'quotes', 'canvas', 'mapping', 'board_builder', 'electrical_cad', 'kanban'],
@@ -727,11 +730,12 @@
                 'viewer': ['crm', 'quotes']
             };
 
+            // Pre-fill permissions based on role, but always keep them editable for admins
             if (role !== 'custom') {
                 const permissions = rolePermissions[role] || [];
                 document.querySelectorAll('input[name="permission"]').forEach(cb => {
                     cb.checked = permissions.includes(cb.value);
-                    cb.disabled = true;
+                    cb.disabled = false; // Always allow editing for admins
                 });
             } else {
                 document.querySelectorAll('input[name="permission"]').forEach(cb => {
@@ -796,16 +800,11 @@
                     document.getElementById('userRole').value = user.role;
                     document.getElementById('userActive').checked = user.active;
 
-                    // Set permissions
+                    // Set permissions (always editable for admins)
                     document.querySelectorAll('input[name="permission"]').forEach(cb => {
                         cb.checked = user.permissions.includes(cb.value);
+                        cb.disabled = false; // Always allow editing for admins
                     });
-
-                    if (user.role !== 'custom') {
-                        document.querySelectorAll('input[name="permission"]').forEach(cb => {
-                            cb.disabled = true;
-                        });
-                    }
 
                     document.getElementById('userModal').classList.add('active');
                 }
