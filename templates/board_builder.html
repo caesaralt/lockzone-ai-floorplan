@@ -439,23 +439,57 @@
     <!-- Top Toolbar -->
     <div class="top-toolbar">
         <div class="toolbar-left">
-            <div class="project-title">🔌 {{ project_name | default('Loxone Board Builder') }}</div>
-            <button class="toolbar-btn" onclick="newBoard()">🆕 New Board</button>
-            <button class="toolbar-btn" onclick="openImportModal()">📥 Import Data</button>
-            <button class="toolbar-btn ai" onclick="generateBoardWithAI()">🤖 AI Generate Board</button>
+            <a href="/" class="project-title" style="text-decoration: none; cursor: pointer;" title="Go to Home">🔌 {{ project_name | default('Loxone Board Builder') }}</a>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="toolbar-btn" onclick="window.location.href='/'">🏠 Home</button>
-            <button class="toolbar-btn" onclick="window.location.href='/mapping'">⚡ Mapping</button>
-            <button class="toolbar-btn" onclick="window.location.href='/canvas'">🎨 Canvas</button>
-            <button class="toolbar-btn" onclick="openCustomizeModal()">🎨 Customize</button>
-            <button class="toolbar-btn" onclick="saveBoard()">💾 Save</button>
-            <button class="toolbar-btn" onclick="loadBoard()">📂 Load</button>
-            <button class="toolbar-btn success" onclick="openExportModal()">📤 Export</button>
-            <button class="toolbar-btn" onclick="generateCADDrawings()" style="background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);">⚡ Generate CAD Drawings →</button>
-            <button class="toolbar-btn danger" onclick="clearBoard()">🗑️ Clear</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <!-- Collapsible Menu Button -->
+            <div style="position: relative;">
+                <button id="menuToggleBtn" onclick="toggleToolbarMenu()" class="toolbar-btn" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); font-size: 1.2em; padding: 8px 14px;">
+                    <span id="menuIcon">+</span>
+                </button>
+                <!-- Dropdown Menu -->
+                <div id="toolbarMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #1a252f; border: 2px solid #34495e; border-radius: 8px; padding: 10px; min-width: 200px; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                    <button class="toolbar-btn" onclick="newBoard(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🆕 New Board</button>
+                    <button class="toolbar-btn" onclick="openImportModal(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">📥 Import Data</button>
+                    <button class="toolbar-btn ai" onclick="generateBoardWithAI(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🤖 AI Generate Board</button>
+                    <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
+                    <button class="toolbar-btn" onclick="window.location.href='/'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🏠 Home</button>
+                    <button class="toolbar-btn" onclick="window.location.href='/mapping'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">⚡ Mapping</button>
+                    <button class="toolbar-btn" onclick="window.location.href='/canvas'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🎨 Canvas</button>
+                    <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
+                    <button class="toolbar-btn" onclick="openCustomizeModal(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🎨 Customize</button>
+                    <button class="toolbar-btn" onclick="saveBoard(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">💾 Save</button>
+                    <button class="toolbar-btn" onclick="loadBoard(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">📂 Load</button>
+                    <button class="toolbar-btn success" onclick="openExportModal(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">📤 Export</button>
+                    <button class="toolbar-btn" onclick="generateCADDrawings(); toggleToolbarMenu();" style="width: 100%; margin-bottom: 6px; justify-content: flex-start; background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);">⚡ Generate CAD Drawings</button>
+                    <button class="toolbar-btn danger" onclick="clearBoard(); toggleToolbarMenu();" style="width: 100%; justify-content: flex-start;">🗑️ Clear</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+        function toggleToolbarMenu() {
+            const menu = document.getElementById('toolbarMenu');
+            const icon = document.getElementById('menuIcon');
+            if (menu.style.display === 'none') {
+                menu.style.display = 'block';
+                icon.textContent = '×';
+            } else {
+                menu.style.display = 'none';
+                icon.textContent = '+';
+            }
+        }
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('toolbarMenu');
+            const btn = document.getElementById('menuToggleBtn');
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+                document.getElementById('menuIcon').textContent = '+';
+            }
+        });
+    </script>
 
     <!-- Main Container -->
     <div class="main-container">
@@ -856,6 +890,33 @@
         let connectionStart = null;
         let isDraggingControlPoint = false;
         let draggingControlPointData = null;
+
+        // Check for imported data on page load
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        console.log('Imported data to Board Builder:', data);
+                        showImportToast(`Data imported: ${data.project_name}`, 'success');
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                    } catch (e) {
+                        console.error('Import error:', e);
+                    }
+                }
+            }
+        })();
+
+        function showImportToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
 
         // Component specifications and pricing
         const COMPONENT_SPECS = {

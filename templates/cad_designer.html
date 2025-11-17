@@ -109,8 +109,8 @@
     <header class="bg-gradient-to-r from-olive-600 via-olive-500 to-olive-600 shadow-2xl border-b-4 border-olive-700">
         <div class="px-4 py-3">
             <!-- Title Row -->
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between">
+                <a href="/" class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-all" title="Go to Home">
                     <div class="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl shadow-lg">
                         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -118,88 +118,86 @@
                     </div>
                     <h1 class="text-2xl font-bold text-white tracking-wide">Electrical CAD Designer</h1>
                     <span class="hidden lg:inline-block px-3 py-1 bg-purple-500 text-white text-xs font-bold rounded-full shadow-md">PROFESSIONAL</span>
-                </div>
-                <button onclick="window.location.href='/'" class="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all font-semibold shadow-md flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                    Main Menu
-                </button>
-            </div>
+                </a>
 
-            <!-- Action Buttons Row -->
-            <div class="flex items-center gap-2 flex-wrap">
-                <!-- File Operations -->
-                <div class="flex gap-2">
-                    <button onclick="newProject()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📄</span> New
+                <!-- Collapsible Menu Button -->
+                <div class="relative">
+                    <button id="cadMenuToggleBtn" onclick="toggleCadMenu()" class="px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all font-bold text-xl shadow-lg">
+                        <span id="cadMenuIcon">+</span>
                     </button>
-                    <label class="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md cursor-pointer flex items-center gap-1.5">
-                        <span>📎</span> Upload
-                        <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" class="hidden" onchange="handleFileUpload(event)">
-                    </label>
-                    <button onclick="loadProject()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📂</span> Open
-                    </button>
-                    <button onclick="saveProject()" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>💾</span> Save
-                    </button>
-                </div>
+                    <!-- Dropdown Menu -->
+                    <div id="cadToolbarMenu" class="hidden absolute right-0 top-full mt-2 bg-gray-800 border-2 border-gray-600 rounded-xl p-4 min-w-72 z-50 shadow-2xl max-h-96 overflow-y-auto">
+                        <!-- File Operations -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">File</div>
+                        <button onclick="newProject(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg mb-2 text-sm font-semibold">📄 New Project</button>
+                        <label class="block w-full text-left px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg mb-2 text-sm font-semibold cursor-pointer">
+                            📎 Upload File
+                            <input type="file" id="fileUpload" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp" class="hidden" onchange="handleFileUpload(event)">
+                        </label>
+                        <button onclick="loadProject(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg mb-2 text-sm font-semibold">📂 Open Project</button>
+                        <button onclick="saveProject(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg mb-2 text-sm font-semibold">💾 Save Project</button>
 
-                <!-- CAD Tools -->
-                <div class="flex gap-2 pl-2 border-l-2 border-white/30">
-                    <button onclick="addTitleBlock()" class="px-3 py-2 bg-olive-700 hover:bg-olive-800 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📋</span> Title Block
-                    </button>
-                    <button onclick="generatePanelSchedule()" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📊</span> Panel Schedule
-                    </button>
-                    <button onclick="generateCableSchedule()" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📋</span> Cable Schedule
-                    </button>
-                </div>
+                        <div class="border-t border-gray-600 my-3"></div>
 
-                <!-- Advanced Tools -->
-                <div class="flex gap-2 pl-2 border-l-2 border-white/30">
-                    <button onclick="showWireLabelMenu()" title="Wire Labeling Tools" class="px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>🏷️</span> Label Wires
-                    </button>
-                    <button onclick="showMeasurementMenu()" title="Measurement Tools" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📏</span> Measure
-                    </button>
-                    <button onclick="showHatchDialog()" title="Hatching & Area Fills" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>🎨</span> Hatch
-                    </button>
-                </div>
+                        <!-- CAD Tools -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">CAD Tools</div>
+                        <button onclick="addTitleBlock(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-olive-700 hover:bg-olive-800 text-white rounded-lg mb-2 text-sm font-semibold">📋 Title Block</button>
+                        <button onclick="generatePanelSchedule(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg mb-2 text-sm font-semibold">📊 Panel Schedule</button>
+                        <button onclick="generateCableSchedule(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg mb-2 text-sm font-semibold">📋 Cable Schedule</button>
 
-                <!-- Analysis & Export -->
-                <div class="flex gap-2 pl-2 border-l-2 border-white/30">
-                    <button onclick="analyzeDrawing()" title="AS/NZS 3000 Compliance" class="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>🔍</span> Analyze
-                    </button>
-                    <button onclick="toggleSchematicView()" id="schematicToggle" title="Toggle Schematic View" class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📊</span> Schematic
-                    </button>
-                    <button onclick="toggleOrtho()" id="orthoToggle" title="Ortho Mode (F8)" class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>⊥</span> Ortho
-                    </button>
-                </div>
+                        <div class="border-t border-gray-600 my-3"></div>
 
-                <!-- AI & Import/Export -->
-                <div class="flex gap-2 pl-2 border-l-2 border-white/30">
-                    <button onclick="openAIModal()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg transition-all font-bold text-sm shadow-lg flex items-center gap-2 animate-pulse-soft">
-                        <span>🤖</span> AI Auto-Generate
-                    </button>
-                    <button onclick="showImportMenu()" title="Import from other modules" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📥</span> Import
-                    </button>
-                    <button onclick="showExportMenu()" title="Export Options" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-semibold text-sm shadow-md flex items-center gap-1.5">
-                        <span>📤</span> Export
-                    </button>
+                        <!-- Advanced Tools -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">Advanced</div>
+                        <button onclick="showWireLabelMenu(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg mb-2 text-sm font-semibold">🏷️ Label Wires</button>
+                        <button onclick="showMeasurementMenu(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg mb-2 text-sm font-semibold">📏 Measure</button>
+                        <button onclick="showHatchDialog(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg mb-2 text-sm font-semibold">🎨 Hatch</button>
+
+                        <div class="border-t border-gray-600 my-3"></div>
+
+                        <!-- Analysis -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">Analysis</div>
+                        <button onclick="analyzeDrawing(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg mb-2 text-sm font-semibold">🔍 Analyze (AS/NZS 3000)</button>
+                        <button onclick="toggleSchematicView(); toggleCadMenu();" id="schematicToggle" class="w-full text-left px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg mb-2 text-sm font-semibold">📊 Schematic View</button>
+                        <button onclick="toggleOrtho(); toggleCadMenu();" id="orthoToggle" class="w-full text-left px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg mb-2 text-sm font-semibold">⊥ Ortho Mode (F8)</button>
+
+                        <div class="border-t border-gray-600 my-3"></div>
+
+                        <!-- AI & Export -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">AI & Export</div>
+                        <button onclick="openAIModal(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg mb-2 text-sm font-bold">🤖 AI Auto-Generate</button>
+                        <button onclick="showImportMenu(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg mb-2 text-sm font-semibold">📥 Import</button>
+                        <button onclick="showExportMenu(); toggleCadMenu();" class="w-full text-left px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg mb-2 text-sm font-semibold">📤 Export</button>
+
+                        <div class="border-t border-gray-600 my-3"></div>
+
+                        <!-- Navigation -->
+                        <div class="text-xs text-gray-400 uppercase font-bold mb-2">Navigation</div>
+                        <button onclick="window.location.href='/'" class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg mb-2 text-sm font-semibold">🏠 Home</button>
+                        <button onclick="window.location.href='/mapping'" class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg mb-2 text-sm font-semibold">⚡ Mapping</button>
+                        <button onclick="window.location.href='/board-builder'" class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold">🔌 Board Builder</button>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
+
+    <script>
+        function toggleCadMenu() {
+            const menu = document.getElementById('cadToolbarMenu');
+            const icon = document.getElementById('cadMenuIcon');
+            menu.classList.toggle('hidden');
+            icon.textContent = menu.classList.contains('hidden') ? '+' : '×';
+        }
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('cadToolbarMenu');
+            const btn = document.getElementById('cadMenuToggleBtn');
+            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.add('hidden');
+                document.getElementById('cadMenuIcon').textContent = '+';
+            }
+        });
+    </script>
 
     <!-- Main Container -->
     <div class="flex h-[calc(100vh-138px)]">
@@ -480,6 +478,33 @@
     <script src="/static/schematic-view.js"></script>
 
     <script>
+        // Check for imported data on page load
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        console.log('Imported data to CAD Designer:', data);
+                        setTimeout(() => showImportToast(`Data imported: ${data.project_name}`, 'success'), 500);
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                    } catch (e) {
+                        console.error('Import error:', e);
+                    }
+                }
+            }
+        })();
+
+        function showImportToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
         // Tool selection with visual feedback
         function selectTool(tool) {
             // Remove active class from all tools
