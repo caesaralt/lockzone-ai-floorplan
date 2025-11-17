@@ -1,0 +1,3316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electrical Mapping - {{ project_name | default('New Project') }}</title>
+    <!-- PDF.js CDN - defer to ensure proper loading order -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer onload="initPDFJS()" onerror="console.error('❌ Failed to load PDF.js from CDN')"></script>
+    <script>
+        // Configure PDF.js worker after library loads - with error handling
+        window.initPDFJS = function() {
+            try {
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+                    console.log('✅ PDF.js loaded and configured successfully');
+                    window.pdfJSReady = true;
+                } else {
+                    console.error('❌ PDF.js library failed to load! PDF uploads will not work.');
+                    console.error('Please check your internet connection or try refreshing the page.');
+                    window.pdfJSReady = false;
+                }
+            } catch (error) {
+                console.error('❌ Error configuring PDF.js:', error);
+                window.pdfJSReady = false;
+            }
+        };
+
+        // Fallback: try to initialize on DOMContentLoaded if onload doesn't fire
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (window.pdfJSReady === undefined && typeof pdfjsLib !== 'undefined') {
+                    console.log('🔄 Initializing PDF.js via fallback...');
+                    window.initPDFJS();
+                }
+            }, 500);
+        });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e14;
+            overflow: hidden;
+            color: #ecf0f1;
+        }
+
+        .top-toolbar {
+            background: linear-gradient(135deg, #1a252f 0%, #0f1419 100%);
+            padding: 10px 20px;
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .project-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .toolbar-btn input[type="file"] {
+            display: none;
+        }
+
+        .toolbar-btn:hover {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+            border-color: #3498db;
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn.success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .toolbar-btn.ai {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #16213e;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 2px solid #2c3e50;
+        }
+
+        .zoom-btn {
+            background: #2c3e50;
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background: #34495e;
+            transform: scale(1.1);
+        }
+
+        .zoom-level {
+            color: #3498db;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .app-container {
+            display: flex;
+            height: calc(100vh - 52px);
+        }
+
+        .left-panel, .right-panel {
+            width: 280px;
+            background: #16213e;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 2px solid #2c3e50;
+        }
+
+        .right-panel {
+            border-right: none;
+            border-left: 2px solid #2c3e50;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .layer-item, .component-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            background: #2c3e50;
+            border: 2px solid transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+
+        .component-btn:hover, .layer-item:hover {
+            background: #34495e;
+            border-color: #3498db;
+            transform: translateX(4px);
+        }
+
+        .component-btn.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #3498db;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f1419;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #mappingCanvas {
+            cursor: crosshair;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        .canvas-wrapper.panning #mappingCanvas {
+            cursor: grab;
+        }
+
+        .canvas-wrapper.panning:active #mappingCanvas {
+            cursor: grabbing;
+        }
+
+        .properties-panel {
+            background: #2c3e50;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .properties-panel h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .prop-group {
+            margin-bottom: 12px;
+        }
+
+        .prop-group label {
+            display: block;
+            color: #95a5a6;
+            font-size: 0.8em;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .prop-group input, .prop-group select {
+            width: 100%;
+            padding: 8px;
+            background: #34495e;
+            border: 2px solid #2c3e50;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .prop-group input:focus, .prop-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .circuit-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .circuit-item {
+            background: #34495e;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .circuit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            gap: 8px;
+        }
+
+        .circuit-name {
+            font-weight: 600;
+            color: #3498db;
+            flex: 1;
+        }
+
+        .circuit-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .circuit-btn {
+            padding: 2px 6px;
+            border: none;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .circuit-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .circuit-btn.edit {
+            background: #3498db;
+        }
+
+        .circuit-btn.delete {
+            background: #e74c3c;
+        }
+
+        .circuit-info {
+            font-size: 0.8em;
+            color: #95a5a6;
+        }
+
+        .legend {
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 3px;
+            margin-right: 8px;
+        }
+
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: #2c3e50;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            z-index: 1000;
+            min-width: 180px;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+
+        .context-menu-item:hover {
+            background: #3498db;
+        }
+
+        .ai-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #9b59b6;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+
+        .ai-loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(155, 89, 182, 0.3);
+            border-top: 4px solid #9b59b6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-toolbar">
+        <div class="toolbar-left">
+            <div class="project-title">⚡ {{ project_name | default('Electrical Mapping') }}</div>
+            <label class="toolbar-btn">
+                📁 Upload Floor Plan
+                <input type="file" id="floorplanUpload" accept=".pdf,image/*">
+            </label>
+        </div>
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+            <button class="zoom-btn" onclick="resetView()">⟲</button>
+        </div>
+        <div class="page-controls" id="pageControls" style="display: none; align-items: center; gap: 8px; background: #16213e; padding: 5px 12px; border-radius: 6px; border: 2px solid #2c3e50;">
+            <button class="zoom-btn" id="prevPage" onclick="changePage(currentPage - 1)">◀</button>
+            <span style="color: white; font-size: 0.9em;">Page <input type="number" id="pageInput" value="1" min="1" max="1" onchange="jumpToPage(this.value)" style="width: 50px; padding: 4px; background: #2c3e50; border: 1px solid #34495e; border-radius: 4px; color: white; text-align: center;"> of <span id="totalPages">1</span></span>
+            <button class="zoom-btn" id="nextPage" onclick="changePage(currentPage + 1)">▶</button>
+        </div>
+        <div>
+            <button class="toolbar-btn" onclick="window.location.href='/'">🏠 Home</button>
+            <button class="toolbar-btn" onclick="window.location.href='/canvas'">🎨 Canvas</button>
+            <button class="toolbar-btn" onclick="window.location.href='/board-builder'">🔌 Board Builder</button>
+            <button class="toolbar-btn" onclick="importFromTakeoffs()">📥 Import from Takeoffs</button>
+            <button class="toolbar-btn" onclick="saveProgress()">💾 Save Progress</button>
+            <button class="toolbar-btn" onclick="loadProgress()">📂 Load Progress</button>
+            <button class="toolbar-btn" onclick="undoAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
+            <button class="toolbar-btn" onclick="redoAction()" title="Redo (Ctrl+Y)">↷ Redo</button>
+            <button class="toolbar-btn" id="snapGridBtn" onclick="toggleSnapGrid()">📐 Snap: OFF</button>
+            <button class="toolbar-btn ai" onclick="runAIMapping()">🤖 AI Mapping</button>
+            <button class="toolbar-btn success" onclick="exportMapping()">📄 Export PDF</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- LEFT PANEL: Layers & Components -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <h3>📁 Layers</h3>
+                <div class="layer-item active">
+                    <span><input type="checkbox" id="layerFloorplan" class="layer-checkbox" checked> Floor Plan</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" id="layerComponents" class="layer-checkbox" checked> Components</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" id="layerWiring" class="layer-checkbox" checked> Wiring</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" id="layerCircuits" class="layer-checkbox" checked> Circuits</span>
+                </div>
+                <div class="layer-item active">
+                    <span><input type="checkbox" id="layerAnnotations" class="layer-checkbox" checked> Annotations</span>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>🔧 Components</h3>
+                <button class="component-btn" onclick="selectComponent('light')">
+                    💡 Light Fixture
+                </button>
+                <button class="component-btn" onclick="selectComponent('switch')">
+                    🔘 Switch
+                </button>
+                <button class="component-btn" onclick="selectComponent('outlet')">
+                    ⚡ Outlet
+                </button>
+                <button class="component-btn" onclick="selectComponent('panel')">
+                    ⚙️ Electrical Panel
+                </button>
+                <button class="component-btn" onclick="selectComponent('junction')">
+                    📦 Junction Box
+                </button>
+                <button class="component-btn" onclick="selectComponent('sensor')">
+                    📡 Sensor/Detector
+                </button>
+                <button class="component-btn" onclick="selectComponent('dimmer')">
+                    🎚️ Dimmer
+                </button>
+                <button class="component-btn" onclick="selectComponent('fan')">
+                    🌀 Ceiling Fan
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <h3>🛠️ Tools</h3>
+                <button class="component-btn active" id="selectTool" onclick="setTool('select')">
+                    🖱️ Select & Pan
+                </button>
+                <button class="component-btn" id="wireTool" onclick="setTool('wire')">
+                    🔌 Draw Wire
+                </button>
+                <button class="component-btn" id="measureTool" onclick="setTool('measure')">
+                    📏 Measure
+                </button>
+                <button class="component-btn" id="annotateTool" onclick="setTool('annotate')">
+                    📝 Annotate
+                </button>
+            </div>
+        </div>
+
+        <!-- CENTER: Canvas -->
+        <div class="canvas-area">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="mappingCanvas"></canvas>
+            </div>
+            <div class="ai-loading" id="aiLoading">
+                <div class="spinner"></div>
+                <p style="color: #9b59b6; font-weight: 600; font-size: 1.1em;">🤖 AI is analyzing your floor plan...</p>
+                <p style="color: #95a5a6; font-size: 0.9em; margin-top: 8px;">This may take a few moments</p>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Properties & Circuits -->
+        <div class="right-panel">
+            <div class="properties-panel">
+                <h3>⚙️ Properties</h3>
+                <div id="propertiesContent">
+                    <p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>
+                </div>
+            </div>
+
+            <div class="properties-panel">
+                <h3>🔌 Circuits</h3>
+                <button class="toolbar-btn" style="width: 100%; margin-bottom: 10px;" onclick="createCircuit()">➕ New Circuit</button>
+                <div class="circuit-list" id="circuitList">
+                    <p style="color: #95a5a6; font-size: 0.85em;">No circuits created yet</p>
+                </div>
+            </div>
+
+            <div class="properties-panel">
+                <h3>📊 Wire Types</h3>
+                <button class="toolbar-btn" style="width: 100%; margin-bottom: 10px; font-size: 0.85em;" onclick="addWireType()">➕ Add Wire Type</button>
+                <div class="legend" id="wireTypesLegend">
+                    <div class="legend-item" style="cursor: pointer;" onclick="editWireType(0)">
+                        <div class="legend-color" style="background: #e74c3c;"></div>
+                        <span>120V Power</span>
+                    </div>
+                    <div class="legend-item" style="cursor: pointer;" onclick="editWireType(1)">
+                        <div class="legend-color" style="background: #9b59b6;"></div>
+                        <span>240V Power</span>
+                    </div>
+                    <div class="legend-item" style="cursor: pointer;" onclick="editWireType(2)">
+                        <div class="legend-color" style="background: #3498db;"></div>
+                        <span>Control/Signal</span>
+                    </div>
+                    <div class="legend-item" style="cursor: pointer;" onclick="editWireType(3)">
+                        <div class="legend-color" style="background: #2ecc71;"></div>
+                        <span>Low Voltage</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editComponent()">✏️ Edit Properties</div>
+        <div class="context-menu-item" onclick="duplicateComponent()">📋 Duplicate</div>
+        <div class="context-menu-item" onclick="assignCircuitToComp()">🔌 Assign to Circuit</div>
+        <div class="context-menu-item" onclick="deleteComponent()">🗑️ Delete</div>
+    </div>
+
+    <script>
+        console.log('🚀 DEBUG: Mapping tool script loading...');
+        console.log('🚀 DEBUG: PDF.js library available:', typeof pdfjsLib !== 'undefined');
+
+        const canvas = document.getElementById('mappingCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+
+        console.log('✅ DEBUG: Canvas element found:', canvas);
+        console.log('✅ DEBUG: Canvas context:', ctx);
+
+        // Initialize canvas size
+        canvas.width = 1400;
+        canvas.height = 900;
+
+        console.log('✅ DEBUG: Canvas initialized with size:', canvas.width, 'x', canvas.height);
+
+        // Pan & Zoom state
+        let panX = 0, panY = 0;
+        let scale = 1;
+        let isPanning = false;
+        let lastPanX = 0, lastPanY = 0;
+        let spacebarPressed = false; // For spacebar + drag pan
+
+        // Snap-to-grid state
+        let snapToGrid = false;
+        let gridSize = 20; // pixels
+
+        // Multi-page PDF state
+        let pdfDocument = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let pageData = {}; // Store per-page components, wires, etc.
+
+        // State
+        let floorplanImage = null;
+        let components = [];
+        let wires = [];
+        let circuits = [];
+        let selectedComponent = null;
+        let currentTool = 'select';
+        let pendingComponentType = null;
+        let wireStart = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let isResizing = false;
+        let resizeHandle = null;
+        let measureStart = null;
+        let measureEnd = null;
+        let annotations = [];
+        let selectedWire = null;
+        let selectedAnnotation = null;
+        let selectedWireForMove = null;
+        let draggingAnnotation = false;
+        let draggingEntireWire = false;
+        let wireMoveDragOffset = { x: 0, y: 0 };
+
+        // Undo/Redo system
+        let undoStack = [];
+        let redoStack = [];
+        const MAX_UNDO_STACK = 50;
+
+        // Auto-save
+        let autoSaveInterval = null;
+        let lastSaveTime = Date.now();
+
+        // Wire types configuration
+        let wireTypes = [
+            { id: 'power120', name: '120V Power', color: '#e74c3c' },
+            { id: 'power240', name: '240V Power', color: '#9b59b6' },
+            { id: 'control', name: 'Control/Signal', color: '#3498db' },
+            { id: 'lowvoltage', name: 'Low Voltage', color: '#2ecc71' }
+        ];
+
+        // Layer visibility
+        let layers = {
+            floorplan: true,
+            components: true,
+            wiring: true,
+            circuits: true,
+            annotations: true
+        };
+
+        // Component types configuration
+        const componentConfig = {
+            light: { symbol: '💡', color: '#FFD700', size: 20, name: 'Light Fixture', width: 40, height: 40 },
+            switch: { symbol: '🔘', color: '#4169E1', size: 16, name: 'Switch', width: 32, height: 32 },
+            outlet: { symbol: '⚡', color: '#32CD32', size: 16, name: 'Outlet', width: 32, height: 32 },
+            panel: { symbol: '⚙️', color: '#FF4500', size: 28, name: 'Electrical Panel', width: 56, height: 56 },
+            junction: { symbol: '📦', color: '#FFA500', size: 18, name: 'Junction Box', width: 36, height: 36 },
+            sensor: { symbol: '📡', color: '#9370DB', size: 18, name: 'Sensor', width: 36, height: 36 },
+            dimmer: { symbol: '🎚️', color: '#00CED1', size: 18, name: 'Dimmer', width: 36, height: 36 },
+            fan: { symbol: '🌀', color: '#4682B4', size: 22, name: 'Ceiling Fan', width: 44, height: 44 }
+        };
+
+        // Pan & Zoom Functions
+        function zoomIn() {
+            console.log('🔍 DEBUG: zoomIn() called');
+            scale = Math.min(scale * 1.2, 5);
+            updateTransform();
+        }
+
+        function zoomOut() {
+            console.log('🔍 DEBUG: zoomOut() called');
+            scale = Math.max(scale / 1.2, 0.2);
+            updateTransform();
+        }
+
+        function resetView() {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        }
+
+        function updateTransform() {
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+        }
+
+        // ========================================
+        // MULTI-PAGE PDF FUNCTIONS
+        // ========================================
+
+        async function loadPDFPage(pageNum) {
+            if (!pdfDocument) return;
+
+            try {
+                const page = await pdfDocument.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 5.0 }); // Highest quality PDF rendering
+
+                // Create temporary canvas to render PDF
+                const tempCanvas = document.createElement('canvas');
+                const tempContext = tempCanvas.getContext('2d');
+                tempCanvas.width = viewport.width;
+                tempCanvas.height = viewport.height;
+
+                // Render PDF page to canvas
+                await page.render({
+                    canvasContext: tempContext,
+                    viewport: viewport
+                }).promise;
+
+                // Convert canvas to image
+                const img = new Image();
+                img.onload = function() {
+                    floorplanImage = img;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    loadPageState(pageNum);
+                    render();
+                };
+                img.src = tempCanvas.toDataURL();
+
+            } catch (error) {
+                console.error(`Error loading page ${pageNum}:`, error);
+                alert(`Failed to load page ${pageNum}`);
+            }
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+
+            // Save current page state
+            savePageState(currentPage);
+
+            // Load new page
+            currentPage = newPage;
+            loadPDFPage(currentPage);
+            updatePageNavigation();
+
+            console.log(`📄 Switched to page ${currentPage}/${totalPages}`);
+        }
+
+        function jumpToPage(pageNum) {
+            const num = parseInt(pageNum);
+            if (isNaN(num) || num < 1 || num > totalPages) {
+                alert(`Invalid page number. Enter a number between 1 and ${totalPages}`);
+                document.getElementById('pageInput').value = currentPage;
+                return;
+            }
+            changePage(num);
+        }
+
+        function updatePageNavigation() {
+            document.getElementById('pageInput').value = currentPage;
+            document.getElementById('prevPage').disabled = (currentPage <= 1);
+            document.getElementById('nextPage').disabled = (currentPage >= totalPages);
+        }
+
+        function savePageState(pageNum) {
+            pageData[pageNum] = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                viewport: { panX, panY, scale }
+            };
+        }
+
+        function loadPageState(pageNum) {
+            if (!pageData[pageNum]) {
+                // Initialize empty page
+                pageData[pageNum] = {
+                    components: [],
+                    wires: [],
+                    circuits: [],
+                    annotations: [],
+                    viewport: { panX: 0, panY: 0, scale: 1 }
+                };
+            }
+
+            const state = pageData[pageNum];
+            components = JSON.parse(JSON.stringify(state.components));
+            wires = JSON.parse(JSON.stringify(state.wires));
+            circuits = JSON.parse(JSON.stringify(state.circuits));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            panX = state.viewport.panX;
+            panY = state.viewport.panY;
+            scale = state.viewport.scale;
+
+            updateTransform();
+        }
+
+        // ========================================
+        // UNDO/REDO SYSTEM
+        // ========================================
+
+        function saveState() {
+            const state = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+
+            undoStack.push(state);
+            if (undoStack.length > MAX_UNDO_STACK) {
+                undoStack.shift(); // Remove oldest
+            }
+            redoStack = []; // Clear redo stack on new action
+        }
+
+        function undoAction() {
+            if (undoStack.length === 0) {
+                console.log('Nothing to undo');
+                return;
+            }
+
+            // Save current state to redo stack
+            const currentState = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            redoStack.push(currentState);
+
+            // Restore previous state
+            const prevState = undoStack.pop();
+            restoreState(prevState);
+
+            console.log('↶ Undo performed');
+        }
+
+        function redoAction() {
+            if (redoStack.length === 0) {
+                console.log('Nothing to redo');
+                return;
+            }
+
+            // Save current state to undo stack
+            const currentState = {
+                components: JSON.parse(JSON.stringify(components.map(c => ({...c, customImageObj: null})))),
+                wires: JSON.parse(JSON.stringify(wires)),
+                circuits: JSON.parse(JSON.stringify(circuits)),
+                annotations: JSON.parse(JSON.stringify(annotations)),
+                currentPage,
+                pageData: JSON.parse(JSON.stringify(pageData))
+            };
+            undoStack.push(currentState);
+
+            // Restore next state
+            const nextState = redoStack.pop();
+            restoreState(nextState);
+
+            console.log('↷ Redo performed');
+        }
+
+        function restoreState(state) {
+            components = JSON.parse(JSON.stringify(state.components));
+            wires = JSON.parse(JSON.stringify(state.wires));
+            circuits = JSON.parse(JSON.stringify(state.circuits));
+            annotations = JSON.parse(JSON.stringify(state.annotations));
+            pageData = JSON.parse(JSON.stringify(state.pageData));
+
+            if (state.currentPage && state.currentPage !== currentPage && pdfDocument) {
+                changePage(state.currentPage);
+            } else {
+                render();
+            }
+        }
+
+        // ========================================
+        // AUTO-SAVE FUNCTIONALITY
+        // ========================================
+
+        function startAutoSave() {
+            // Auto-save every 30 seconds
+            autoSaveInterval = setInterval(() => {
+                autoSaveToLocalStorage();
+            }, 30000);
+            console.log('✅ Auto-save enabled (every 30 seconds)');
+        }
+
+        function toggleSnapGrid() {
+            snapToGrid = !snapToGrid;
+            const btn = document.getElementById('snapGridBtn');
+            if (snapToGrid) {
+                btn.textContent = '📐 Snap: ON';
+                btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+                console.log(`✅ Snap-to-grid enabled (${gridSize}px)`);
+            } else {
+                btn.textContent = '📐 Snap: OFF';
+                btn.style.background = '';
+                console.log('❌ Snap-to-grid disabled');
+            }
+            render();
+        }
+
+        function snapToGridPoint(x, y) {
+            if (!snapToGrid) return { x, y };
+            return {
+                x: Math.round(x / gridSize) * gridSize,
+                y: Math.round(y / gridSize) * gridSize
+            };
+        }
+
+        function autoSaveToLocalStorage() {
+            try {
+                // Save current page first
+                if (currentPage && pageData[currentPage]) {
+                    savePageState(currentPage);
+                }
+
+                const autoSaveData = {
+                    pageData: pageData,
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    timestamp: Date.now(),
+                    version: '2.0'
+                };
+
+                const jsonString = JSON.stringify(autoSaveData);
+                if (jsonString.length < 5000000) { // 5MB limit
+                    localStorage.setItem('mapping_autosave', jsonString);
+                    lastSaveTime = Date.now();
+                    console.log('💾 Auto-saved at ' + new Date().toLocaleTimeString());
+                }
+            } catch (e) {
+                console.warn('Auto-save failed:', e.message);
+            }
+        }
+
+        function loadAutoSave() {
+            try {
+                const savedData = localStorage.getItem('mapping_autosave');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    const savedTime = new Date(data.timestamp).toLocaleString();
+                    if (confirm(`Found auto-saved data from ${savedTime}. Restore it?`)) {
+                        pageData = data.pageData || {};
+                        totalPages = data.totalPages || 1;
+                        currentPage = data.currentPage || 1;
+                        loadPageState(currentPage);
+                        console.log('✅ Auto-save restored');
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load auto-save:', e.message);
+            }
+        }
+
+        // Layer toggle
+        document.querySelectorAll('.layer-checkbox').forEach((checkbox, index) => {
+            checkbox.addEventListener('change', (e) => {
+                const layerNames = ['floorplan', 'components', 'wiring', 'circuits', 'annotations'];
+                layers[layerNames[index]] = e.target.checked;
+                render();
+            });
+        });
+
+        // Render function
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw floor plan if loaded and layer is visible
+            if (floorplanImage && layers.floorplan) {
+                ctx.globalAlpha = 0.7;
+                ctx.drawImage(floorplanImage, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            }
+
+            // Draw grid if snap-to-grid is enabled
+            if (snapToGrid) {
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw wires (behind components)
+            if (layers.wiring) {
+                wires.forEach((wire, wireIdx) => {
+                    const isWireSelected = selectedWireForMove === wire;
+                    const wireColor = wire.color || (wire.type === 'power120' ? '#e74c3c' :
+                                     wire.type === 'power240' ? '#9b59b6' :
+                                     wire.type === 'control' ? '#3498db' : '#2ecc71');
+
+                    // Draw selection highlight if selected
+                    if (isWireSelected) {
+                        ctx.strokeStyle = '#3498db';
+                        ctx.lineWidth = 8;
+                        ctx.globalAlpha = 0.3;
+                        ctx.setLineDash([]);
+                        ctx.beginPath();
+                        ctx.moveTo(wire.from.x, wire.from.y);
+
+                        // ENHANCED: Draw curved selection highlight
+                        if (wire.controlPoints && wire.controlPoints.length > 0) {
+                            for (let i = 0; i < wire.controlPoints.length; i++) {
+                                const cp = wire.controlPoints[i];
+                                if (i === wire.controlPoints.length - 1) {
+                                    ctx.quadraticCurveTo(cp.x, cp.y, wire.to.x, wire.to.y);
+                                } else {
+                                    const nextCp = wire.controlPoints[i + 1];
+                                    const midX = (cp.x + nextCp.x) / 2;
+                                    const midY = (cp.y + nextCp.y) / 2;
+                                    ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+                                }
+                            }
+                        } else {
+                            ctx.lineTo(wire.to.x, wire.to.y);
+                        }
+
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }
+
+                    ctx.strokeStyle = wireColor;
+                    ctx.lineWidth = isWireSelected ? 5 : 4;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(wire.from.x, wire.from.y);
+
+                    // ENHANCED: Draw curved path with Bezier curves
+                    if (wire.controlPoints && wire.controlPoints.length > 0) {
+                        // Create smooth curve through control points
+                        for (let i = 0; i < wire.controlPoints.length; i++) {
+                            const cp = wire.controlPoints[i];
+                            if (i === wire.controlPoints.length - 1) {
+                                // Last control point: curve to endpoint
+                                ctx.quadraticCurveTo(cp.x, cp.y, wire.to.x, wire.to.y);
+                            } else {
+                                // Curve to midpoint between this and next control point
+                                const nextCp = wire.controlPoints[i + 1];
+                                const midX = (cp.x + nextCp.x) / 2;
+                                const midY = (cp.y + nextCp.y) / 2;
+                                ctx.quadraticCurveTo(cp.x, cp.y, midX, midY);
+                            }
+                        }
+                    } else {
+                        // Straight line if no control points
+                        ctx.lineTo(wire.to.x, wire.to.y);
+                    }
+                    ctx.stroke();
+
+                    // Draw control point handles if wire is selected
+                    if (isWireSelected && wire.controlPoints && wire.controlPoints.length > 0) {
+                        wire.controlPoints.forEach((pt, idx) => {
+                            // Draw draggable handle
+                            ctx.fillStyle = '#3498db';
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            // Draw handle number
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 10px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText((idx + 1).toString(), pt.x, pt.y);
+                        });
+                    } else if (wire.controlPoints && wire.controlPoints.length > 0) {
+                        // Show small circles when not selected
+                        wire.controlPoints.forEach((pt) => {
+                            ctx.fillStyle = '#3498db';
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.stroke();
+                        });
+                    }
+
+                    // Draw circuit label and cable type
+                    const midX = wire.controlPoints && wire.controlPoints.length > 0 ?
+                                wire.controlPoints[0].x : (wire.from.x + wire.to.x) / 2;
+                    const midY = wire.controlPoints && wire.controlPoints.length > 0 ?
+                                wire.controlPoints[0].y : (wire.from.y + wire.to.y) / 2;
+
+                    if (wire.circuit && layers.circuits) {
+                        ctx.font = 'bold 12px Arial';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 3;
+                        ctx.strokeText(`C${wire.circuit}`, midX, midY - 10);
+                        ctx.fillText(`C${wire.circuit}`, midX, midY - 10);
+                    }
+
+                    if (wire.cableType) {
+                        ctx.font = 'bold 10px Arial';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.strokeText(wire.cableType, midX, midY + 10);
+                        ctx.fillText(wire.cableType, midX, midY + 10);
+                    }
+                });
+            }
+
+            // Draw components
+            if (layers.components) {
+                components.forEach(comp => {
+                    const config = componentConfig[comp.type] || componentConfig.light;
+                    const isSelected = selectedComponent === comp;
+                    const compWidth = comp.width || config.width || config.size * 2;
+                    const compHeight = comp.height || config.height || config.size * 2;
+                    const radius = Math.max(compWidth, compHeight) / 2;
+
+                    // Draw background circle
+                    ctx.beginPath();
+                    ctx.arc(comp.x, comp.y, isSelected ? radius + 6 : radius, 0, 2 * Math.PI);
+                    ctx.fillStyle = isSelected ? 'rgba(52, 152, 219, 0.3)' : 'rgba(255, 255, 255, 0.9)';
+                    ctx.fill();
+                    ctx.strokeStyle = config.color;
+                    ctx.lineWidth = isSelected ? 4 : 3;
+                    ctx.stroke();
+
+                    // Draw custom image or symbol
+                    if (comp.customImage && comp.customImageObj) {
+                        // Draw custom image
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(comp.x, comp.y, radius - 4, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(comp.customImageObj, comp.x - radius + 4, comp.y - radius + 4, (radius - 4) * 2, (radius - 4) * 2);
+                        ctx.restore();
+                    } else {
+                        // Draw symbol
+                        ctx.font = `${config.size + 4}px Arial`;
+                        const symbolWidth = ctx.measureText(config.symbol).width;
+                        ctx.fillText(config.symbol, comp.x - symbolWidth / 2, comp.y + (config.size / 2));
+                    }
+
+                    // Draw resize handles if selected
+                    if (isSelected) {
+                        const handleSize = 8;
+                        const handles = [
+                            { x: comp.x - radius, y: comp.y - radius, type: 'nw' },
+                            { x: comp.x + radius, y: comp.y - radius, type: 'ne' },
+                            { x: comp.x - radius, y: comp.y + radius, type: 'sw' },
+                            { x: comp.x + radius, y: comp.y + radius, type: 'se' }
+                        ];
+
+                        handles.forEach(handle => {
+                            ctx.fillStyle = '#3498db';
+                            ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                        });
+                    }
+
+                    // Draw label and name
+                    let labelY = comp.y - 10;
+                    if (comp.name) {
+                        ctx.font = 'bold 12px Arial';
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 3;
+                        ctx.strokeText(comp.name, comp.x + radius + 5, labelY);
+                        ctx.fillText(comp.name, comp.x + radius + 5, labelY);
+                        labelY += 15;
+                    }
+                    if (comp.label) {
+                        ctx.font = 'bold 11px Arial';
+                        ctx.fillStyle = '#95a5a6';
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 3;
+                        ctx.strokeText(comp.label, comp.x + radius + 5, labelY);
+                        ctx.fillText(comp.label, comp.x + radius + 5, labelY);
+                    }
+
+                    // Draw CRM link indicator
+                    if (comp.crm_item_id) {
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillText('🔗', comp.x + radius - 8, comp.y - radius - 8);
+                    }
+
+                    // Draw circuit assignment
+                    if (comp.circuit && layers.circuits) {
+                        ctx.font = 'bold 10px Arial';
+                        ctx.fillStyle = '#f39c12';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.strokeText(`C${comp.circuit}`, comp.x - 10, comp.y + radius + 15);
+                        ctx.fillText(`C${comp.circuit}`, comp.x - 10, comp.y + radius + 15);
+                    }
+                });
+            }
+
+            // Draw annotations
+            if (layers.annotations && annotations.length > 0) {
+                annotations.forEach(ann => {
+                    const isSelected = selectedAnnotation === ann;
+
+                    // Draw selection highlight box if selected
+                    if (isSelected) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.3;
+                        ctx.fillStyle = '#3498db';
+                        const textWidth = ctx.measureText(ann.text).width;
+                        ctx.fillRect(ann.x - 10, ann.y - 20, textWidth + 20, 30);
+                        ctx.globalAlpha = 1;
+                        ctx.restore();
+                    }
+
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = isSelected ? '#3498db' : '#e74c3c';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(ann.text, ann.x, ann.y);
+                    ctx.fillText(ann.text, ann.x, ann.y);
+
+                    // Draw anchor point (draggable handle)
+                    ctx.fillStyle = isSelected ? '#3498db' : '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(ann.x - 5, ann.y - 5, isSelected ? 6 : 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                    if (isSelected) {
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // Draw measure tool
+            if (currentTool === 'measure' && measureStart) {
+                ctx.strokeStyle = '#f39c12';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(measureStart.x, measureStart.y);
+                if (measureEnd) {
+                    ctx.lineTo(measureEnd.x, measureEnd.y);
+                } else {
+                    // Draw to current mouse position if available
+                    ctx.lineTo(measureStart.x, measureStart.y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw distance if we have both points
+                if (measureEnd) {
+                    const dx = measureEnd.x - measureStart.x;
+                    const dy = measureEnd.y - measureStart.y;
+                    const distPx = Math.sqrt(dx * dx + dy * dy);
+                    const distFt = (distPx / 50).toFixed(2); // Assuming 50px = 1ft
+                    const distM = (distPx / 50 * 0.3048).toFixed(2); // Convert to meters
+
+                    const midX = (measureStart.x + measureEnd.x) / 2;
+                    const midY = (measureStart.y + measureEnd.y) / 2;
+
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    const measureText = `${distFt} ft (${distM} m)`;
+                    ctx.strokeText(measureText, midX, midY - 10);
+                    ctx.fillText(measureText, midX, midY - 10);
+                }
+            }
+
+            // Draw wireStart indicator when drawing wire
+            if (wireStart && currentTool === 'wire') {
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.5)';
+                ctx.beginPath();
+                ctx.arc(wireStart.x, wireStart.y, 8, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // Tool selection
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.component-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tool + 'Tool')?.classList.add('active');
+
+            if (tool === 'wire') {
+                wireStart = null;
+            } else if (tool === 'measure') {
+                measureStart = null;
+                measureEnd = null;
+            }
+
+            canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+            render();
+        }
+
+        // Helper function to check if clicking on resize handle
+        function getResizeHandle(comp, x, y) {
+            if (!comp) return null;
+            const config = componentConfig[comp.type] || componentConfig.light;
+            const compWidth = comp.width || config.width || config.size * 2;
+            const compHeight = comp.height || config.height || config.size * 2;
+            const radius = Math.max(compWidth, compHeight) / 2;
+            const handleSize = 8;
+            const threshold = 10;
+
+            const handles = [
+                { x: comp.x - radius, y: comp.y - radius, type: 'nw' },
+                { x: comp.x + radius, y: comp.y - radius, type: 'ne' },
+                { x: comp.x - radius, y: comp.y + radius, type: 'sw' },
+                { x: comp.x + radius, y: comp.y + radius, type: 'se' }
+            ];
+
+            for (let handle of handles) {
+                const dx = handle.x - x;
+                const dy = handle.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < threshold) {
+                    return handle.type;
+                }
+            }
+            return null;
+        }
+
+        // Helper function to get wire control point near click
+        function getWireControlPoint(x, y) {
+            for (let i = 0; i < wires.length; i++) {
+                const wire = wires[i];
+                if (wire.controlPoints && wire.controlPoints.length > 0) {
+                    for (let j = 0; j < wire.controlPoints.length; j++) {
+                        const pt = wire.controlPoints[j];
+                        const dx = pt.x - x;
+                        const dy = pt.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 10) {
+                            return { wireIndex: i, pointIndex: j };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Helper function to check if click is on a wire line
+        function getWireAtPoint(x, y) {
+            for (let i = 0; i < wires.length; i++) {
+                const wire = wires[i];
+                // Check distance from point to line segment
+                const dist = pointToLineDistance(x, y, wire.from.x, wire.from.y, wire.to.x, wire.to.y);
+                if (dist < 8) {
+                    return i;
+                }
+            }
+            return null;
+        }
+
+        // Helper function to check if click is on an annotation
+        function getAnnotationAtPoint(x, y) {
+            for (let i = annotations.length - 1; i >= 0; i--) {
+                const ann = annotations[i];
+                // Check if clicking near the anchor point or text
+                const dx = ann.x - x;
+                const dy = ann.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 30) {  // Within 30px of annotation
+                    return i;
+                }
+            }
+            return null;
+        }
+
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            if (lenSq != 0) param = dot / lenSq;
+
+            let xx, yy;
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function selectComponent(type) {
+            pendingComponentType = type;
+            currentTool = 'place';
+            canvas.style.cursor = 'crosshair';
+        }
+
+        // Mouse events
+        let draggingWirePoint = null;
+        let currentMouseX = 0;
+        let currentMouseY = 0;
+
+        canvasWrapper.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let x = (e.clientX - rect.left) * scaleX;
+            let y = (e.clientY - rect.top) * scaleY;
+
+            // Apply snap-to-grid
+            const snapped = snapToGridPoint(x, y);
+            x = snapped.x;
+            y = snapped.y;
+
+            // SPACEBAR + DRAG = PAN (overrides other tools)
+            if (spacebarPressed) {
+                isPanning = true;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            if (currentTool === 'select') {
+                // Check if clicking on resize handle first
+                if (selectedComponent) {
+                    const handle = getResizeHandle(selectedComponent, x, y);
+                    if (handle) {
+                        isResizing = true;
+                        resizeHandle = handle;
+                        return;
+                    }
+                }
+
+                // Check if clicking on annotation
+                const annIdx = getAnnotationAtPoint(x, y);
+                if (annIdx !== null) {
+                    selectedAnnotation = annotations[annIdx];
+                    selectedComponent = null;
+                    selectedWireForMove = null;
+                    draggingAnnotation = true;
+                    dragOffset = { x: x - selectedAnnotation.x, y: y - selectedAnnotation.y };
+                    render();
+                    return;
+                }
+
+                // Check if clicking on wire control point
+                const wirePoint = getWireControlPoint(x, y);
+                if (wirePoint) {
+                    draggingWirePoint = wirePoint;
+                    selectedAnnotation = null;
+                    return;
+                }
+
+                // Check if clicking on wire for moving entire wire
+                const wireIdx = getWireAtPoint(x, y);
+                if (wireIdx !== null) {
+                    selectedWireForMove = wires[wireIdx];
+                    selectedComponent = null;
+                    selectedAnnotation = null;
+                    draggingEntireWire = true;
+                    wireMoveDragOffset = { x: x, y: y };
+                    render();
+                    return;
+                }
+
+                // Check if clicking on component
+                let clickedComp = null;
+                components.forEach(comp => {
+                    const config = componentConfig[comp.type] || componentConfig.light;
+                    const compWidth = comp.width || config.width || config.size * 2;
+                    const compHeight = comp.height || config.height || config.size * 2;
+                    const radius = Math.max(compWidth, compHeight) / 2;
+                    const dx = comp.x - x;
+                    const dy = comp.y - y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < radius + 10) {
+                        clickedComp = comp;
+                    }
+                });
+
+                if (clickedComp) {
+                    selectedComponent = clickedComp;
+                    selectedAnnotation = null;
+                    selectedWireForMove = null;
+                    isDragging = true;
+                    dragOffset = { x: x - clickedComp.x, y: y - clickedComp.y };
+                    showProperties(clickedComp);
+                    render();
+                } else {
+                    // Deselect all
+                    selectedComponent = null;
+                    selectedAnnotation = null;
+                    selectedWireForMove = null;
+                    // Start panning
+                    isPanning = true;
+                    lastPanX = e.clientX;
+                    lastPanY = e.clientY;
+                    canvasWrapper.classList.add('panning');
+                    render();
+                }
+            } else if (currentTool === 'place' && pendingComponentType) {
+                // Place component
+                const config = componentConfig[pendingComponentType];
+                const newComp = {
+                    id: components.length + 1,
+                    type: pendingComponentType,
+                    x: x,
+                    y: y,
+                    label: `${config.name} ${components.length + 1}`,
+                    circuit: null,
+                    width: config.width,
+                    height: config.height
+                };
+                components.push(newComp);
+                render();
+            } else if (currentTool === 'wire') {
+                // Wire drawing
+                if (!wireStart) {
+                    // Find nearest component
+                    let nearest = null;
+                    let minDist = 30;
+                    components.forEach(comp => {
+                        const dx = comp.x - x;
+                        const dy = comp.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < minDist) {
+                            nearest = comp;
+                            minDist = dist;
+                        }
+                    });
+
+                    if (nearest) {
+                        wireStart = { x: nearest.x, y: nearest.y, comp: nearest };
+                        render();
+                    }
+                } else {
+                    // Check if double-clicking to add control point
+                    const wireIdx = getWireAtPoint(x, y);
+                    if (wireIdx !== null) {
+                        if (!wires[wireIdx].controlPoints) {
+                            wires[wireIdx].controlPoints = [];
+                        }
+                        wires[wireIdx].controlPoints.push({ x, y });
+                        render();
+                        return;
+                    }
+
+                    // Complete wire
+                    let nearest = null;
+                    let minDist = 30;
+                    components.forEach(comp => {
+                        if (comp !== wireStart.comp) {
+                            const dx = comp.x - x;
+                            const dy = comp.y - y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < minDist) {
+                                nearest = comp;
+                                minDist = dist;
+                            }
+                        }
+                    });
+
+                    if (nearest) {
+                        const wireType = prompt('Wire type:\n1 = 120V Power\n2 = 240V Power\n3 = Control\n4 = Low Voltage', '1');
+                        const cableType = prompt('Cable type (e.g., "14/2 Romex", "12/3 NM-B"):', '14/2 Romex');
+                        const typeMap = { '1': 'power120', '2': 'power240', '3': 'control', '4': 'lowvoltage' };
+
+                        wires.push({
+                            from: { x: wireStart.x, y: wireStart.y },
+                            to: { x: nearest.x, y: nearest.y },
+                            type: typeMap[wireType] || 'power120',
+                            cableType: cableType,
+                            circuit: null,
+                            controlPoints: []
+                        });
+                        wireStart = null;
+                        render();
+                    }
+                }
+            } else if (currentTool === 'measure') {
+                if (!measureStart) {
+                    measureStart = { x, y };
+                } else {
+                    measureEnd = { x, y };
+                    render();
+                    setTimeout(() => {
+                        measureStart = null;
+                        measureEnd = null;
+                        render();
+                    }, 5000); // Clear after 5 seconds
+                }
+            } else if (currentTool === 'annotate') {
+                const text = prompt('Enter annotation text:');
+                if (text) {
+                    annotations.push({ x, y, text });
+                    render();
+                }
+            }
+        });
+
+        canvasWrapper.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let x = (e.clientX - rect.left) * scaleX;
+            let y = (e.clientY - rect.top) * scaleY;
+
+            // Apply snap-to-grid when drawing wires
+            if (currentTool === 'wire' || draggingWirePoint) {
+                const snapped = snapToGridPoint(x, y);
+                x = snapped.x;
+                y = snapped.y;
+            }
+
+            currentMouseX = x;
+            currentMouseY = y;
+
+            if (isPanning) {
+                const dx = e.clientX - lastPanX;
+                const dy = e.clientY - lastPanY;
+                panX += dx;
+                panY += dy;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                updateTransform();
+            } else if (draggingAnnotation && selectedAnnotation) {
+                // Drag annotation
+                selectedAnnotation.x = x - dragOffset.x;
+                selectedAnnotation.y = y - dragOffset.y;
+                render();
+            } else if (draggingEntireWire && selectedWireForMove) {
+                // Drag entire wire with all control points
+                const dx = x - wireMoveDragOffset.x;
+                const dy = y - wireMoveDragOffset.y;
+
+                selectedWireForMove.from.x += dx;
+                selectedWireForMove.from.y += dy;
+                selectedWireForMove.to.x += dx;
+                selectedWireForMove.to.y += dy;
+
+                if (selectedWireForMove.controlPoints) {
+                    selectedWireForMove.controlPoints.forEach(pt => {
+                        pt.x += dx;
+                        pt.y += dy;
+                    });
+                }
+
+                wireMoveDragOffset = { x: x, y: y };
+                render();
+            } else if (isResizing && selectedComponent) {
+                // Handle resizing
+                const config = componentConfig[selectedComponent.type] || componentConfig.light;
+                const oldWidth = selectedComponent.width || config.width;
+                const oldHeight = selectedComponent.height || config.height;
+                const oldRadius = Math.max(oldWidth, oldHeight) / 2;
+
+                if (resizeHandle === 'se') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'sw') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'ne') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                } else if (resizeHandle === 'nw') {
+                    const newWidth = Math.max(20, Math.abs(x - selectedComponent.x) * 2);
+                    const newHeight = Math.max(20, Math.abs(y - selectedComponent.y) * 2);
+                    selectedComponent.width = newWidth;
+                    selectedComponent.height = newHeight;
+                }
+                render();
+            } else if (draggingWirePoint) {
+                // Drag wire control point
+                const wire = wires[draggingWirePoint.wireIndex];
+                if (wire && wire.controlPoints && wire.controlPoints[draggingWirePoint.pointIndex]) {
+                    wire.controlPoints[draggingWirePoint.pointIndex].x = x;
+                    wire.controlPoints[draggingWirePoint.pointIndex].y = y;
+                    render();
+                }
+            } else if (isDragging && selectedComponent) {
+                selectedComponent.x = x - dragOffset.x;
+                selectedComponent.y = y - dragOffset.y;
+                render();
+            }
+        });
+
+        canvasWrapper.addEventListener('mouseup', () => {
+            // Save state if something was modified
+            if (isDragging || isResizing || draggingWirePoint || draggingAnnotation || draggingEntireWire) {
+                saveState(); // Enable undo/redo
+            }
+
+            isPanning = false;
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+            draggingWirePoint = null;
+            draggingAnnotation = false;
+            draggingEntireWire = false;
+            canvasWrapper.classList.remove('panning');
+
+            // Reset cursor if spacebar still pressed
+            if (spacebarPressed) {
+                canvas.style.cursor = 'grab';
+            }
+        });
+
+        // DOUBLE-CLICK: Add control point to wire for bending
+        canvasWrapper.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check if double-clicking on a wire
+            const wireIdx = getWireAtPoint(x, y);
+            if (wireIdx !== null) {
+                const wire = wires[wireIdx];
+
+                // Initialize control points array if it doesn't exist
+                if (!wire.controlPoints) {
+                    wire.controlPoints = [];
+                }
+
+                // Add control point at click location
+                wire.controlPoints.push({ x, y });
+
+                // Select the wire
+                selectedWireForMove = wire;
+                selectedComponent = null;
+                selectedAnnotation = null;
+
+                render();
+                saveState(); // Enable undo
+
+                console.log(`✅ Added control point to wire (total: ${wire.controlPoints.length})`);
+            }
+        });
+
+        // Touch state for pinch/pan detection
+        let initialTouchDistance = null;
+        let lastTouchMidpoint = null;
+        let touchStartTime = 0;
+
+        // Helper function to get distance between two touches
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Helper function to get midpoint between two touches
+        function getTouchMidpoint(touch1, touch2) {
+            return {
+                x: (touch1.clientX + touch2.clientX) / 2,
+                y: (touch1.clientY + touch2.clientY) / 2
+            };
+        }
+
+        // Touch start - initialize pinch/pan detection
+        canvasWrapper.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                touchStartTime = Date.now();
+                initialTouchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                lastTouchMidpoint = getTouchMidpoint(e.touches[0], e.touches[1]);
+            }
+        }, { passive: false });
+
+        // Touch move - detect pinch vs pan
+        canvasWrapper.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+
+                const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                const currentMidpoint = getTouchMidpoint(e.touches[0], e.touches[1]);
+
+                if (initialTouchDistance && lastTouchMidpoint) {
+                    // Calculate distance change for pinch detection
+                    const distanceChange = currentDistance - initialTouchDistance;
+                    const distanceChangePercent = Math.abs(distanceChange / initialTouchDistance);
+
+                    // If distance changed significantly, it's a pinch (zoom)
+                    if (distanceChangePercent > 0.05) {
+                        // PINCH ZOOM
+                        const zoomDelta = distanceChange / 100;
+                        if (zoomDelta > 0) {
+                            zoomIn();
+                        } else if (zoomDelta < 0) {
+                            zoomOut();
+                        }
+                        initialTouchDistance = currentDistance; // Update for next frame
+                    } else {
+                        // TWO-FINGER PAN (no significant distance change)
+                        const deltaX = currentMidpoint.x - lastTouchMidpoint.x;
+                        const deltaY = currentMidpoint.y - lastTouchMidpoint.y;
+
+                        panX += deltaX;
+                        panY += deltaY;
+                        updateTransform();
+                    }
+
+                    lastTouchMidpoint = currentMidpoint;
+                }
+            }
+        }, { passive: false });
+
+        // Touch end - reset state
+        canvasWrapper.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialTouchDistance = null;
+                lastTouchMidpoint = null;
+            }
+        });
+
+        // Mouse wheel and trackpad handling
+        canvasWrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            // Pinch zoom on trackpad (ctrl key indicates pinch gesture)
+            if (e.ctrlKey) {
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+            // Two-finger pan on trackpad (has both deltaX and deltaY)
+            else if (Math.abs(e.deltaX) > 0) {
+                panX -= e.deltaX;
+                panY -= e.deltaY;
+                updateTransform();
+            }
+            // Regular mouse wheel zoom (pure vertical scroll only)
+            else if (Math.abs(e.deltaY) > 0) {
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        });
+
+        // Right-click context menu
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check if clicking on a wire
+            const wireIdx = getWireAtPoint(x, y);
+            if (wireIdx !== null) {
+                selectedWire = wires[wireIdx];
+                showWireContextMenu(e.pageX, e.pageY);
+                return;
+            }
+
+            if (selectedComponent) {
+                const menu = document.getElementById('contextMenu');
+                menu.style.display = 'block';
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+            }
+        });
+
+        function showWireContextMenu(x, y) {
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.id = 'wireContextMenu';
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.innerHTML = `
+                <div class="context-menu-item" onclick="editWireProperties()">✏️ Edit Wire Properties</div>
+                <div class="context-menu-item" onclick="addWireControlPoint()">➕ Add Bend Point</div>
+                <div class="context-menu-item" onclick="deleteWire()">🗑️ Delete Wire</div>
+            `;
+
+            // Remove existing wire context menu if any
+            const existing = document.getElementById('wireContextMenu');
+            if (existing) existing.remove();
+
+            document.body.appendChild(menu);
+        }
+
+        function editWireProperties() {
+            if (!selectedWire) return;
+
+            const cableType = prompt('Cable type (e.g., "14/2 Romex", "12/3 NM-B"):', selectedWire.cableType || '14/2 Romex');
+            if (cableType !== null) {
+                selectedWire.cableType = cableType;
+            }
+
+            const colorChoice = prompt('Wire color:\n1 = Red (120V)\n2 = Purple (240V)\n3 = Blue (Control)\n4 = Green (Low Voltage)\n5 = Custom', '1');
+            const colorMap = { '1': '#e74c3c', '2': '#9b59b6', '3': '#3498db', '4': '#2ecc71' };
+
+            if (colorChoice === '5') {
+                const customColor = prompt('Enter hex color (e.g., #ff6600):', '#ff6600');
+                if (customColor) {
+                    selectedWire.color = customColor;
+                }
+            } else if (colorMap[colorChoice]) {
+                selectedWire.color = colorMap[colorChoice];
+            }
+
+            // Update wire type based on color selection
+            const typeMap = { '1': 'power120', '2': 'power240', '3': 'control', '4': 'lowvoltage' };
+            if (typeMap[colorChoice]) {
+                selectedWire.type = typeMap[colorChoice];
+            }
+
+            render();
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
+        function addWireControlPoint() {
+            if (!selectedWire) return;
+
+            // Add a control point at the midpoint
+            const midX = (selectedWire.from.x + selectedWire.to.x) / 2;
+            const midY = (selectedWire.from.y + selectedWire.to.y) / 2;
+
+            if (!selectedWire.controlPoints) {
+                selectedWire.controlPoints = [];
+            }
+
+            selectedWire.controlPoints.push({ x: midX, y: midY });
+            render();
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
+        function deleteWire() {
+            if (!selectedWire) return;
+
+            if (confirm('Delete this wire?')) {
+                const index = wires.indexOf(selectedWire);
+                if (index > -1) {
+                    wires.splice(index, 1);
+                }
+                selectedWire = null;
+                render();
+            }
+            document.getElementById('wireContextMenu')?.remove();
+        }
+
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+            document.getElementById('wireContextMenu')?.remove();
+        });
+
+        // Properties panel
+        function showProperties(comp) {
+            const config = componentConfig[comp.type];
+            const crmLinked = comp.crm_item_id ? '✅ Linked' : '';
+            document.getElementById('propertiesContent').innerHTML = `
+                <div class="prop-group">
+                    <label>Type</label>
+                    <select id="propType" onchange="updateComponentProp('type', this.value)">
+                        ${Object.keys(componentConfig).map(key =>
+                            `<option value="${key}" ${comp.type === key ? 'selected' : ''}>${componentConfig[key].name}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="prop-group">
+                    <label>Label</label>
+                    <input type="text" id="propLabel" value="${comp.label || ''}" onchange="updateComponentProp('label', this.value)">
+                </div>
+                <div class="prop-group">
+                    <label>Name</label>
+                    <input type="text" id="propName" value="${comp.name || ''}" onchange="updateComponentProp('name', this.value)" placeholder="Custom name">
+                </div>
+                <div class="prop-group">
+                    <label>Notes</label>
+                    <input type="text" id="propNotes" value="${comp.notes || ''}" onchange="updateComponentProp('notes', this.value)" placeholder="Additional notes">
+                </div>
+                <div class="prop-group">
+                    <label>Custom Image</label>
+                    <button class="toolbar-btn" style="width: 100%; padding: 6px; font-size: 0.85em;" onclick="uploadComponentImage()">📤 Upload Image</button>
+                    ${comp.customImage ? '<p style="color: #2ecc71; font-size: 0.8em; margin-top: 4px;">✅ Custom image set</p>' : ''}
+                </div>
+                <div class="prop-group">
+                    <label>CRM Inventory ${crmLinked}</label>
+                    <button class="toolbar-btn" style="width: 100%; padding: 6px; font-size: 0.85em;" onclick="linkToCRM()">🔗 Link to CRM Item</button>
+                </div>
+                <div class="prop-group">
+                    <label>Circuit</label>
+                    <select id="propCircuit" onchange="updateComponentProp('circuit', this.value)">
+                        <option value="">Unassigned</option>
+                        ${circuits.map(c => `<option value="${c.number}" ${comp.circuit == c.number ? 'selected' : ''}>Circuit ${c.number}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="prop-group">
+                    <label>Position</label>
+                    <input type="text" value="X: ${Math.round(comp.x)}, Y: ${Math.round(comp.y)}" readonly>
+                </div>
+            `;
+        }
+
+        function updateComponentProp(prop, value) {
+            if (selectedComponent) {
+                selectedComponent[prop] = value === '' ? null : value;
+                render();
+                showProperties(selectedComponent);
+            }
+        }
+
+        // Context menu functions
+        function editComponent() {
+            if (selectedComponent) {
+                showProperties(selectedComponent);
+            }
+        }
+
+        function duplicateComponent() {
+            if (selectedComponent) {
+                const newComp = {
+                    ...selectedComponent,
+                    id: components.length + 1,
+                    x: selectedComponent.x + 30,
+                    y: selectedComponent.y + 30,
+                    label: selectedComponent.label + ' (copy)'
+                };
+                components.push(newComp);
+                selectedComponent = newComp;
+                render();
+            }
+        }
+
+        function assignCircuitToComp() {
+            if (selectedComponent && circuits.length > 0) {
+                const circuitNum = prompt(`Assign to circuit (1-${circuits.length}):`);
+                if (circuitNum && circuits.find(c => c.number == circuitNum)) {
+                    selectedComponent.circuit = parseInt(circuitNum);
+                    render();
+                    showProperties(selectedComponent);
+                    updateCircuitList();
+                }
+            } else if (circuits.length === 0) {
+                alert('Create a circuit first!');
+            }
+        }
+
+        function deleteComponent() {
+            if (selectedComponent && confirm('Delete this component?')) {
+                components = components.filter(c => c !== selectedComponent);
+                selectedComponent = null;
+                document.getElementById('propertiesContent').innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>';
+                render();
+            }
+        }
+
+        // Upload custom image for component
+        function uploadComponentImage() {
+            if (!selectedComponent) return;
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Store image as base64
+                        selectedComponent.customImage = event.target.result;
+                        selectedComponent.customImageObj = img;
+                        render();
+                        showProperties(selectedComponent);
+                        alert('✅ Custom image uploaded!');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        // Link component to CRM inventory item
+        async function linkToCRM() {
+            if (!selectedComponent) return;
+
+            try {
+                const response = await fetch('/api/crm/inventory');
+                const data = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    let options = 'Select CRM Inventory Item:\n\n';
+                    data.items.forEach((item, idx) => {
+                        options += `${idx + 1}. ${item.name} - ${item.category || 'N/A'} (Stock: ${item.quantity || 0})\n`;
+                    });
+                    options += '\nEnter number:';
+
+                    const choice = prompt(options);
+                    if (choice) {
+                        const idx = parseInt(choice) - 1;
+                        if (idx >= 0 && idx < data.items.length) {
+                            selectedComponent.crm_item_id = data.items[idx].id;
+                            selectedComponent.crm_item_name = data.items[idx].name;
+                            showProperties(selectedComponent);
+                            render();
+                            alert('✅ Linked to CRM item: ' + data.items[idx].name);
+                        }
+                    }
+                } else {
+                    alert('No CRM inventory items found. Add items in the CRM module first.');
+                }
+            } catch (error) {
+                console.error('CRM linking error:', error);
+                alert('Failed to fetch CRM inventory. Error: ' + error.message);
+            }
+        }
+
+        // Wire type management
+        function addWireType() {
+            const name = prompt('Wire type name:', 'Custom Wire');
+            if (!name) return;
+
+            const color = prompt('Wire color (hex code):', '#ff6600');
+            if (!color) return;
+
+            const newType = {
+                id: 'custom_' + Date.now(),
+                name: name,
+                color: color
+            };
+
+            wireTypes.push(newType);
+            updateWireTypesLegend();
+            alert('✅ Wire type added!');
+        }
+
+        function editWireType(idx) {
+            if (idx < 0 || idx >= wireTypes.length) return;
+            const wireType = wireTypes[idx];
+
+            const newName = prompt('Wire type name:', wireType.name);
+            if (newName !== null && newName !== '') {
+                wireType.name = newName;
+            }
+
+            const newColor = prompt('Wire color (hex code):', wireType.color);
+            if (newColor !== null && newColor !== '') {
+                wireType.color = newColor;
+            }
+
+            updateWireTypesLegend();
+            render();
+        }
+
+        function updateWireTypesLegend() {
+            const legend = document.getElementById('wireTypesLegend');
+            legend.innerHTML = '';
+
+            wireTypes.forEach((wireType, idx) => {
+                const div = document.createElement('div');
+                div.className = 'legend-item';
+                div.style.cursor = 'pointer';
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.justifyContent = 'space-between';
+                div.innerHTML = `
+                    <div style="display: flex; align-items: center; flex: 1;" onclick="editWireType(${idx})">
+                        <div class="legend-color" style="background: ${wireType.color};"></div>
+                        <span>${wireType.name}</span>
+                    </div>
+                    ${idx >= 4 ? `<button class="circuit-btn delete" onclick="deleteWireType(${idx})" style="margin-left: 5px;">🗑️</button>` : ''}
+                `;
+                legend.appendChild(div);
+            });
+        }
+
+        function deleteWireType(idx) {
+            if (idx < 4) {
+                alert('Cannot delete default wire types!');
+                return;
+            }
+
+            if (confirm('Delete this wire type?')) {
+                wireTypes.splice(idx, 1);
+                updateWireTypesLegend();
+            }
+        }
+
+        // Save/Load Progress
+        function saveProgress() {
+            console.log('💾 DEBUG: saveProgress() called');
+            // Save current page first
+            if (currentPage && pageData[currentPage]) {
+                savePageState(currentPage);
+            }
+
+            const progressData = {
+                // Multi-page support
+                pageData: pageData,
+                currentPage: currentPage,
+                totalPages: totalPages,
+                hasPDF: !!pdfDocument,
+
+                // Legacy support (for single page/image)
+                components: components.map(c => ({
+                    ...c,
+                    customImageObj: null  // Can't serialize Image objects
+                })),
+                wires: wires,
+                circuits: circuits,
+                annotations: annotations,
+                wireTypes: wireTypes,
+                floorplanImageData: floorplanImage ? canvas.toDataURL('image/jpeg', 0.8) : null,
+                timestamp: Date.now(),
+                version: '2.0' // Updated version
+            };
+
+            // Try localStorage first
+            try {
+                const jsonString = JSON.stringify(progressData);
+                if (jsonString.length > 5000000) {
+                    alert('⚠️ Project too large for browser storage (>5MB). Export to file instead.');
+                    downloadProjectFile(progressData);
+                    return;
+                }
+                localStorage.setItem('mapping_progress', jsonString);
+                alert(`✅ Progress saved! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
+            } catch (e) {
+                console.error('LocalStorage save failed:', e);
+                // Fallback to API save
+                saveProgressToAPI(progressData);
+            }
+        }
+
+        async function saveProgressToAPI(data) {
+            try {
+                const response = await fetch('/api/mapping/save-progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('✅ Progress saved to server!');
+                } else {
+                    alert('⚠️ Failed to save progress');
+                }
+            } catch (error) {
+                console.error('API save error:', error);
+                alert('⚠️ Failed to save progress: ' + error.message);
+            }
+        }
+
+        async function loadProgress() {
+            console.log('📂 DEBUG: loadProgress() called');
+            // Try localStorage first
+            try {
+                const savedData = localStorage.getItem('mapping_progress');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    restoreProgress(data);
+                    const pageInfo = data.totalPages > 1 ? ` (${data.totalPages} pages)` : '';
+                    alert('✅ Progress loaded from browser storage!' + pageInfo);
+                    return;
+                }
+            } catch (e) {
+                console.error('LocalStorage load failed:', e);
+            }
+
+            // Fallback to API load
+            try {
+                const response = await fetch('/api/mapping/load-progress');
+                if (response.ok) {
+                    const data = await response.json();
+                    restoreProgress(data);
+                    alert('✅ Progress loaded from server!');
+                } else {
+                    alert('⚠️ No saved progress found');
+                }
+            } catch (error) {
+                console.error('API load error:', error);
+                alert('⚠️ Failed to load progress: ' + error.message);
+            }
+        }
+
+        function downloadProjectFile(data) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mapping-project-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Project exported as JSON file');
+        }
+
+        function restoreProgress(data) {
+            // Check if this is v2.0 (multi-page) or v1.0 (single page)
+            if (data.version === '2.0' && data.pageData) {
+                // NEW FORMAT: Multi-page support
+                pageData = data.pageData || {};
+                totalPages = data.totalPages || 1;
+                currentPage = data.currentPage || 1;
+
+                // Update page navigation
+                if (totalPages > 1) {
+                    document.getElementById('pageControls').style.display = 'flex';
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('pageInput').max = totalPages;
+                    updatePageNavigation();
+                }
+
+                // Load current page state
+                loadPageState(currentPage);
+
+                // Restore floorplan image if available
+                if (data.floorplanImageData) {
+                    const img = new Image();
+                    img.onload = () => {
+                        floorplanImage = img;
+                        render();
+                    };
+                    img.src = data.floorplanImageData;
+                }
+            } else {
+                // OLD FORMAT: Single page (backward compatibility)
+                components = data.components || [];
+
+                // Restore custom images
+                components.forEach(comp => {
+                    if (comp.customImage) {
+                        const img = new Image();
+                        img.onload = () => {
+                            comp.customImageObj = img;
+                            render();
+                        };
+                        img.src = comp.customImage;
+                    }
+                });
+
+                // Restore wires, circuits, annotations
+                wires = data.wires || [];
+                circuits = data.circuits || [];
+                annotations = data.annotations || [];
+                wireTypes = data.wireTypes || wireTypes;
+
+                // Restore floorplan
+                if (data.floorplanImageData) {
+                    const img = new Image();
+                    img.onload = () => {
+                        floorplanImage = img;
+                        render();
+                    };
+                    img.src = data.floorplanImageData;
+                }
+            }
+
+            // Update UI (common for both formats)
+            updateCircuitList();
+            updateWireTypesLegend();
+            render();
+            console.log('✅ Progress restored');
+        }
+
+        // Circuit management
+        function createCircuit() {
+            const name = prompt('Circuit name:', `Circuit ${circuits.length + 1}`);
+            if (name) {
+                const amperage = prompt('Amperage (A):', '15');
+                const voltage = prompt('Voltage (V):', '120');
+
+                circuits.push({
+                    number: circuits.length + 1,
+                    name: name,
+                    amperage: parseInt(amperage) || 15,
+                    voltage: parseInt(voltage) || 120
+                });
+                updateCircuitList();
+            }
+        }
+
+        function updateCircuitList() {
+            const list = document.getElementById('circuitList');
+            list.innerHTML = '';
+
+            if (circuits.length === 0) {
+                list.innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">No circuits created yet</p>';
+                return;
+            }
+
+            const circuitMap = {};
+            components.forEach(comp => {
+                if (comp.circuit) {
+                    if (!circuitMap[comp.circuit]) circuitMap[comp.circuit] = [];
+                    circuitMap[comp.circuit].push(comp);
+                }
+            });
+
+            circuits.forEach((circuit, idx) => {
+                const div = document.createElement('div');
+                div.className = 'circuit-item';
+                div.style.position = 'relative';
+                div.style.borderLeftColor = circuit.color || '#e74c3c';
+                div.innerHTML = `
+                    <div class="circuit-header">
+                        <input type="text" value="${circuit.name}"
+                               onchange="updateCircuitInline(${idx}, 'name', this.value)"
+                               style="background: transparent; border: none; color: #3498db; font-weight: 600; flex: 1; font-size: 0.9em; padding: 2px;">
+                        <div class="circuit-actions">
+                            <button onclick="deleteCircuit(${idx})" class="circuit-btn delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 5px; margin-top: 5px; align-items: center;">
+                        <input type="number" value="${circuit.voltage}"
+                               onchange="updateCircuitInline(${idx}, 'voltage', this.value)"
+                               style="width: 50px; padding: 3px; background: #2c3e50; border: 1px solid #34495e; color: white; border-radius: 3px; font-size: 0.8em;">
+                        <span style="font-size: 0.75em; color: #95a5a6;">V</span>
+                        <input type="number" value="${circuit.amperage}"
+                               onchange="updateCircuitInline(${idx}, 'amperage', this.value)"
+                               style="width: 50px; padding: 3px; background: #2c3e50; border: 1px solid #34495e; color: white; border-radius: 3px; font-size: 0.8em;">
+                        <span style="font-size: 0.75em; color: #95a5a6;">A</span>
+                        <input type="color" value="${circuit.color || '#e74c3c'}"
+                               onchange="updateCircuitInline(${idx}, 'color', this.value)"
+                               style="width: 30px; height: 24px; border: none; border-radius: 3px; cursor: pointer;">
+                    </div>
+                    <div class="circuit-info" style="margin-top: 5px;">${circuitMap[circuit.number]?.length || 0} component(s)</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateCircuitInline(idx, prop, value) {
+            if (circuits[idx]) {
+                if (prop === 'voltage' || prop === 'amperage') {
+                    circuits[idx][prop] = parseInt(value) || circuits[idx][prop];
+                } else {
+                    circuits[idx][prop] = value;
+                }
+                render();
+            }
+        }
+
+        function editCircuit(index) {
+            const circuit = circuits[index];
+            if (!circuit) return;
+
+            const newName = prompt('Circuit name:', circuit.name);
+            if (newName !== null && newName !== '') {
+                circuit.name = newName;
+            }
+
+            const newAmperage = prompt('Amperage (A):', circuit.amperage);
+            if (newAmperage !== null && newAmperage !== '') {
+                circuit.amperage = parseInt(newAmperage) || circuit.amperage;
+            }
+
+            const newVoltage = prompt('Voltage (V):', circuit.voltage);
+            if (newVoltage !== null && newVoltage !== '') {
+                circuit.voltage = parseInt(newVoltage) || circuit.voltage;
+            }
+
+            const colorChoice = prompt('Circuit color:\n1 = Red\n2 = Purple\n3 = Blue\n4 = Green', '1');
+            const colorMap = { '1': '#e74c3c', '2': '#9b59b6', '3': '#3498db', '4': '#2ecc71' };
+            if (colorChoice && colorMap[colorChoice]) {
+                circuit.color = colorMap[colorChoice];
+            }
+
+            updateCircuitList();
+            render();
+        }
+
+        function deleteCircuit(index) {
+            const circuit = circuits[index];
+            if (!circuit) return;
+
+            if (confirm(`Delete circuit "${circuit.name}"? Components will be unassigned.`)) {
+                // Unassign components from this circuit
+                components.forEach(comp => {
+                    if (comp.circuit === circuit.number) {
+                        comp.circuit = null;
+                    }
+                });
+
+                // Unassign wires from this circuit
+                wires.forEach(wire => {
+                    if (wire.circuit === circuit.number) {
+                        wire.circuit = null;
+                    }
+                });
+
+                circuits.splice(index, 1);
+
+                // Renumber remaining circuits
+                circuits.forEach((c, i) => {
+                    const oldNumber = c.number;
+                    c.number = i + 1;
+
+                    // Update component references
+                    components.forEach(comp => {
+                        if (comp.circuit === oldNumber) {
+                            comp.circuit = c.number;
+                        }
+                    });
+
+                    // Update wire references
+                    wires.forEach(wire => {
+                        if (wire.circuit === oldNumber) {
+                            wire.circuit = c.number;
+                        }
+                    });
+                });
+
+                updateCircuitList();
+                render();
+            }
+        }
+
+        // Floor plan upload with PDF support
+        console.log('🔧 DEBUG: Initializing file upload handler...');
+        const uploadElement = document.getElementById('floorplanUpload');
+        console.log('🔧 DEBUG: Upload element found:', uploadElement);
+
+        if (!uploadElement) {
+            console.error('❌ ERROR: floorplanUpload element not found!');
+        } else {
+            console.log('✅ DEBUG: Adding event listener to file upload element');
+            uploadElement.addEventListener('change', async (e) => {
+                console.log('🔥 DEBUG: File upload change event triggered!');
+                const file = e.target.files[0];
+                if (!file) {
+                    console.log('⚠️ DEBUG: No file selected');
+                    return;
+                }
+
+                console.log(`📤 Uploading file: ${file.name} (${file.type})`);
+
+                if (file.type === 'application/pdf') {
+                    // Check if PDF.js is available - with better error handling
+                    if (typeof pdfjsLib === 'undefined' || !window.pdfJSReady) {
+                        const waitForPDFJS = confirm('⏳ PDF.js library is still loading. Wait a moment and try again?\n\n' +
+                            'Click OK to wait and retry, or Cancel to upload an image instead.');
+                        if (waitForPDFJS) {
+                            // Wait and retry
+                            setTimeout(() => {
+                                if (typeof pdfjsLib !== 'undefined') {
+                                    alert('✅ PDF.js is now ready! Please select your PDF file again.');
+                                } else {
+                                    alert('❌ PDF.js failed to load. Please refresh the page or upload an image file instead.');
+                                }
+                            }, 2000);
+                        }
+                        // Reset file input
+                        e.target.value = '';
+                        return;
+                    }
+
+                    // Handle PDF using PDF.js - ENHANCED for multi-page support with HIGHEST QUALITY
+                    console.log('📄 Processing PDF with PDF.js...');
+                    const fileReader = new FileReader();
+                    fileReader.onload = async function(event) {
+                        try {
+                            console.log('📄 Reading PDF data...');
+                            const typedarray = new Uint8Array(event.target.result);
+                            console.log('📄 Loading PDF document...');
+                            pdfDocument = await pdfjsLib.getDocument(typedarray).promise;
+                            totalPages = pdfDocument.numPages;
+                            currentPage = 1;
+
+                            console.log(`📄 Loaded PDF with ${totalPages} pages`);
+
+                            // Show page controls if multi-page
+                            if (totalPages > 1) {
+                                document.getElementById('pageControls').style.display = 'flex';
+                                document.getElementById('totalPages').textContent = totalPages;
+                                document.getElementById('pageInput').max = totalPages;
+                            }
+
+                            // Initialize page data for all pages
+                            for (let i = 1; i <= totalPages; i++) {
+                                if (!pageData[i]) {
+                                    pageData[i] = {
+                                        components: [],
+                                        wires: [],
+                                        circuits: [],
+                                        annotations: [],
+                                        viewport: { panX: 0, panY: 0, scale: 1 }
+                                    };
+                                }
+                            }
+
+                            // Load first page at highest quality
+                            await loadPDFPage(1);
+                            updatePageNavigation();
+                            saveState(); // Save initial state to undo stack
+
+                            alert(`✅ PDF loaded successfully! (${totalPages} page${totalPages > 1 ? 's' : ''})`);
+
+                        } catch (error) {
+                            console.error('Error loading PDF:', error);
+                            alert('❌ Failed to load PDF: ' + error.message);
+                        }
+                    };
+                    fileReader.readAsArrayBuffer(file);
+                } else {
+                    // Handle image files (PNG, JPG, etc.)
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            floorplanImage = img;
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            render();
+                            console.log(`✅ Image loaded: ${img.width}x${img.height}px`);
+                            alert('✅ Image loaded successfully!');
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Import from takeoffs or canvas
+        function importFromTakeoffs() {
+            // Check if coming from canvas
+            const fromCanvas = new URLSearchParams(window.location.search).get('from') === 'canvas';
+
+            if (fromCanvas) {
+                // Import from canvas via localStorage
+                try {
+                    const canvasData = localStorage.getItem('canvas_export');
+                    if (!canvasData) {
+                        alert('❌ No canvas export data found. Please export from Canvas first.');
+                        return;
+                    }
+
+                    const data = JSON.parse(canvasData);
+
+                    if (data.symbols && data.symbols.length > 0) {
+                        components = data.symbols.map((sym, i) => ({
+                            id: i + 1,
+                            type: sym.automation_category || sym.type || 'light',
+                            x: sym.x * canvas.width,
+                            y: sym.y * canvas.height,
+                            label: sym.id || `Component ${i + 1}`,
+                            circuit: null
+                        }));
+
+                        // Load floorplan if available
+                        if (data.floorplan_data) {
+                            const img = new Image();
+                            img.onload = function() {
+                                floorplanImage = img;
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+
+                                // Recalculate component positions
+                                components = components.map(comp => ({
+                                    ...comp,
+                                    x: (comp.x / 1400) * canvas.width,
+                                    y: (comp.y / 900) * canvas.height
+                                }));
+
+                                render();
+                            };
+                            img.src = data.floorplan_data;
+                        } else {
+                            render();
+                        }
+
+                        alert(`✅ Imported ${components.length} components from Canvas!`);
+
+                        // Clear the import flag
+                        window.history.replaceState({}, document.title, '/mapping');
+                    } else {
+                        alert('⚠️ No symbols found in canvas export.');
+                    }
+                } catch (error) {
+                    console.error('Canvas import failed:', error);
+                    alert('❌ Failed to import from canvas: ' + error.message);
+                }
+                return;
+            }
+
+            // Original takeoffs import logic
+            const sessionId = new URLSearchParams(window.location.search).get('session');
+            if (!sessionId) {
+                alert('No session found. Please export from Canvas/Takeoffs first.');
+                return;
+            }
+
+            fetch('/api/session/' + sessionId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.symbols) {
+                        components = data.symbols.map((sym, i) => ({
+                            id: i + 1,
+                            type: sym.automation_category || sym.type || 'light',
+                            x: sym.x * canvas.width,
+                            y: sym.y * canvas.height,
+                            label: sym.label || sym.id,
+                            circuit: null
+                        }));
+
+                        // Load floorplan if available
+                        if (data.floorplan_image) {
+                            const img = new Image();
+                            img.onload = function() {
+                                floorplanImage = img;
+                                render();
+                            };
+                            img.src = '/static/uploads/' + data.floorplan_image;
+                        }
+
+                        render();
+                        alert(`✅ Imported ${components.length} components from takeoffs!`);
+                    }
+                })
+                .catch(err => {
+                    console.error('Import failed:', err);
+                    alert('Failed to import from takeoffs');
+                });
+        }
+
+        // AI Mapping
+        async function runAIMapping() {
+            if (!floorplanImage) {
+                alert('Please upload a floor plan first!');
+                return;
+            }
+
+            if (!confirm('Run AI analysis to automatically place electrical components? This will replace any existing components.')) {
+                return;
+            }
+
+            const aiLoading = document.getElementById('aiLoading');
+            aiLoading.classList.add('active');
+
+            try {
+                // Convert canvas to blob
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+                const response = await fetch('/api/ai/mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        floor_plan_image: imageData,
+                        canvas_width: canvas.width,
+                        canvas_height: canvas.height,
+                        purpose: 'electrical'  // Vectorworks: Electrical installation mapping
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.components) {
+                    components = data.components;
+                    render();
+                    alert(`✅ AI placed ${components.length} electrical components!`);
+                } else {
+                    alert('AI mapping failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('AI mapping error:', error);
+                alert('Failed to run AI mapping: ' + error.message);
+            } finally {
+                aiLoading.classList.remove('active');
+            }
+        }
+
+        // Export mapping as PDF with TWO PAGES
+        async function exportMapping() {
+            if (components.length === 0 && wires.length === 0) {
+                alert('Add some components or wires first!');
+                return;
+            }
+
+            try {
+                // Load jsPDF library dynamically
+                if (typeof window.jspdf === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    document.head.appendChild(script);
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+                }
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('landscape', 'mm', 'a4');
+
+                // ===== PAGE 1: FLOOR PLAN WITH COMPONENTS AND WIRES =====
+                pdf.setFontSize(20);
+                pdf.text('Electrical Mapping - Floor Plan', 148, 15, { align: 'center' });
+
+                // Convert canvas to image and add FULL PAGE
+                const canvasImage = canvas.toDataURL('image/jpeg', 0.95);
+                pdf.addImage(canvasImage, 'JPEG', 10, 25, 277, 175);
+
+                // Add footer on page 1
+                pdf.setFontSize(8);
+                pdf.text(`Generated: ${new Date().toLocaleString()}`, 10, 205);
+                pdf.text(`Page 1 of 2 - Floor Plan`, 240, 205);
+
+                // ===== PAGE 2: LEGENDS, CIRCUIT DETAILS, COMPONENT LIST =====
+                pdf.addPage();
+
+                pdf.setFontSize(20);
+                pdf.text('Electrical Mapping - Details & Legends', 148, 15, { align: 'center' });
+
+                let y = 30;
+
+                // COMPONENTS LEGEND
+                pdf.setFontSize(14);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Component Types', 10, y);
+                y += 7;
+
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'normal');
+                Object.keys(componentConfig).forEach(key => {
+                    const config = componentConfig[key];
+                    const rgb = hexToRgb(config.color);
+                    pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+                    pdf.circle(12, y - 1, 1.5, 'F');
+                    pdf.setDrawColor(0);
+                    pdf.text(config.name, 17, y);
+                    y += 5;
+                });
+
+                // WIRE TYPES LEGEND
+                y += 5;
+                pdf.setFontSize(14);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Wire Types', 10, y);
+                y += 7;
+
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'normal');
+                wireTypes.forEach(wt => {
+                    const rgb = hexToRgb(wt.color);
+                    pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+                    pdf.setLineWidth(1);
+                    pdf.line(10, y - 1, 15, y - 1);
+                    pdf.setDrawColor(0);
+                    pdf.text(wt.name, 17, y);
+                    y += 5;
+                });
+
+                // CIRCUITS DETAILS (Right Column)
+                let rightY = 30;
+                if (circuits.length > 0) {
+                    pdf.setFontSize(14);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text('Circuit Details', 150, rightY);
+                    rightY += 7;
+
+                    pdf.setFontSize(9);
+                    pdf.setFont(undefined, 'normal');
+
+                    circuits.forEach(circuit => {
+                        const circuitColor = circuit.color || '#e74c3c';
+                        const rgb = hexToRgb(circuitColor);
+                        pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+                        pdf.circle(152, rightY - 1, 1.5, 'F');
+                        pdf.setDrawColor(0);
+
+                        // Circuit name and specs
+                        pdf.text(`${circuit.name}`, 157, rightY);
+                        rightY += 4;
+                        pdf.setFontSize(8);
+                        pdf.text(`  ${circuit.voltage}V, ${circuit.amperage}A`, 157, rightY);
+
+                        // List components on this circuit
+                        const circuitComps = components.filter(c => c.circuit == circuit.number);
+                        if (circuitComps.length > 0) {
+                            rightY += 3;
+                            pdf.text(`  Components (${circuitComps.length}):`, 157, rightY);
+                            circuitComps.forEach(comp => {
+                                rightY += 3;
+                                pdf.text(`    - ${comp.label || comp.name || 'Component'}`, 157, rightY);
+                            });
+                        }
+
+                        rightY += 5;
+                        pdf.setFontSize(9);
+
+                        // Page break if needed
+                        if (rightY > 190) {
+                            pdf.addPage();
+                            rightY = 20;
+                        }
+                    });
+                }
+
+                // COMPONENT LIST (Bottom of page 2)
+                if (y < 120) {
+                    y = Math.max(y, 120);
+                } else {
+                    pdf.addPage();
+                    y = 20;
+                }
+
+                pdf.setFontSize(14);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Component List', 10, y);
+                y += 7;
+
+                pdf.setFontSize(8);
+                pdf.setFont(undefined, 'normal');
+
+                components.forEach((comp, idx) => {
+                    const config = componentConfig[comp.type] || componentConfig.light;
+                    pdf.text(`${idx + 1}. ${comp.name || comp.label || config.name}`, 10, y);
+                    y += 3;
+                    pdf.text(`   Type: ${config.name} | Circuit: ${comp.circuit || 'Unassigned'} | Pos: (${Math.round(comp.x)}, ${Math.round(comp.y)})`, 10, y);
+                    if (comp.notes) {
+                        y += 3;
+                        pdf.text(`   Notes: ${comp.notes}`, 10, y);
+                    }
+                    y += 4;
+
+                    if (y > 195) {
+                        pdf.addPage();
+                        y = 20;
+                    }
+                });
+
+                // SUMMARY (At the end)
+                y += 5;
+                if (y > 190) {
+                    pdf.addPage();
+                    y = 20;
+                }
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Summary:', 10, y);
+                y += 5;
+                pdf.setFont(undefined, 'normal');
+                pdf.setFontSize(9);
+                pdf.text(`Total Components: ${components.length}`, 10, y);
+                y += 4;
+                pdf.text(`Total Wires: ${wires.length}`, 10, y);
+                y += 4;
+                pdf.text(`Total Circuits: ${circuits.length}`, 10, y);
+                y += 4;
+                pdf.text(`Total Annotations: ${annotations.length}`, 10, y);
+
+                // Footer on last page
+                pdf.setFontSize(8);
+                pdf.text(`Page ${pdf.internal.getNumberOfPages()} of ${pdf.internal.getNumberOfPages()}`, 240, 205);
+
+                // Save the PDF
+                const filename = `electrical-mapping-${Date.now()}.pdf`;
+                pdf.save(filename);
+
+                alert('✅ PDF exported successfully with 2 pages!');
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Failed to export PDF: ' + error.message);
+            }
+        }
+
+        // Helper function to convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
+        }
+
+        // Keyboard Shortcuts
+        let clipboard = null;  // For copy/paste
+
+        function saveState() {
+            undoStack.push({
+                components: JSON.parse(JSON.stringify(components)),
+                wires: JSON.parse(JSON.stringify(wires))
+            });
+            // Limit undo stack size
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];  // Clear redo on new action
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push({
+                    components: JSON.parse(JSON.stringify(components)),
+                    wires: JSON.parse(JSON.stringify(wires))
+                });
+                const state = undoStack.pop();
+                components = state.components;
+                wires = state.wires;
+                selectedComponent = null;
+                render();
+                alert('⏪ Undo');
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push({
+                    components: JSON.parse(JSON.stringify(components)),
+                    wires: JSON.parse(JSON.stringify(wires))
+                });
+                const state = redoStack.pop();
+                components = state.components;
+                wires = state.wires;
+                render();
+                alert('⏩ Redo');
+            }
+        }
+
+        function copyComponent() {
+            if (selectedComponent) {
+                clipboard = JSON.parse(JSON.stringify(selectedComponent));
+                alert('📋 Component copied');
+            }
+        }
+
+        function pasteComponent() {
+            if (clipboard) {
+                saveState();
+                const newComp = JSON.parse(JSON.stringify(clipboard));
+                newComp.id = components.length + 1;
+                newComp.x += 30;
+                newComp.y += 30;
+                newComp.label = (newComp.label || 'Component') + ' (copy)';
+                components.push(newComp);
+                selectedComponent = newComp;
+                render();
+                alert('📌 Component pasted');
+            }
+        }
+
+        function selectAllComponents() {
+            // In future can add multi-select
+            alert('📍 All components selectable with Shift+Click');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const isInputFocused = document.activeElement.tagName === 'INPUT' ||
+                                  document.activeElement.tagName === 'TEXTAREA';
+
+            // Spacebar - Enable panning mode
+            if (e.key === ' ' && !isInputFocused) {
+                e.preventDefault();
+                spacebarPressed = true;
+                canvas.style.cursor = 'grab';
+            }
+
+            // Page Up/Down - Navigate pages
+            if (e.key === 'PageUp' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage - 1);
+            } else if (e.key === 'PageDown' && totalPages > 1) {
+                e.preventDefault();
+                changePage(currentPage + 1);
+            }
+
+            // Ctrl+C - Copy
+            if (e.ctrlKey && e.key === 'c' && !e.shiftKey && !isInputFocused) {
+                e.preventDefault();
+                copyComponent();
+            }
+            // Ctrl+V - Paste
+            else if (e.ctrlKey && e.key === 'v' && !isInputFocused) {
+                e.preventDefault();
+                pasteComponent();
+            }
+            // Ctrl+Z - Undo (UPDATED to use new undoAction)
+            else if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undoAction();
+            }
+            // Ctrl+Y or Ctrl+Shift+Z - Redo (UPDATED to use new redoAction)
+            else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redoAction();
+            }
+            // Ctrl+S - Save
+            else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveProgress();
+            }
+            // Ctrl+A - Select All
+            else if (e.ctrlKey && e.key === 'a' && !isInputFocused) {
+                e.preventDefault();
+                selectAllComponents();
+            }
+            // Ctrl+D - Duplicate
+            else if (e.ctrlKey && e.key === 'd') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    duplicateComponent();
+                }
+            }
+            // Delete or Backspace - Delete component
+            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    deleteComponent();
+                }
+            }
+            // Escape - Deselect
+            else if (e.key === 'Escape') {
+                selectedComponent = null;
+                wireStart = null;
+                document.getElementById('propertiesContent').innerHTML = '<p style="color: #95a5a6; font-size: 0.85em;">Select a component to edit properties</p>';
+                render();
+            }
+            // +/= - Zoom in
+            else if (e.key === '+' || e.key === '=') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    zoomIn();
+                }
+            }
+            // - - Zoom out
+            else if (e.key === '-' || e.key === '_') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    zoomOut();
+                }
+            }
+            // 0 - Reset view
+            else if (e.key === '0') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    resetView();
+                }
+            }
+            // S - Select tool
+            else if (e.key === 's' || e.key === 'S') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('select');
+                }
+            }
+            // W - Wire tool
+            else if (e.key === 'w' || e.key === 'W') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('wire');
+                }
+            }
+            // M - Measure tool
+            else if (e.key === 'm' || e.key === 'M') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    setTool('measure');
+                }
+            }
+            // A - Annotate tool
+            else if (e.key === 'a' || e.key === 'A') {
+                if (document.activeElement.tagName !== 'INPUT' &&
+                    document.activeElement.tagName !== 'TEXTAREA' &&
+                    !e.ctrlKey) {
+                    e.preventDefault();
+                    setTool('annotate');
+                }
+            }
+        });
+
+        // Save state on component add/delete/move (call saveState() before making changes)
+        const originalPush = components.push;
+        components.push = function(...args) {
+            saveState();
+            return originalPush.apply(this, args);
+        };
+
+        // Initialize
+        render();
+
+        // Auto-import on load if session exists
+        const sessionId = new URLSearchParams(window.location.search).get('session');
+        if (sessionId) {
+            setTimeout(() => {
+                if (confirm('Import components from previous work?')) {
+                    importFromTakeoffs();
+                }
+            }, 500);
+        }
+
+        // Show keyboard shortcuts and new features on load
+        console.log(`
+        ✨ NEW FEATURES IMPLEMENTED:
+        1. ✅ Fixed Zoom/Pan - Two-finger drag now pans (no zoom), pinch to zoom (Ctrl+scroll)
+        2. ✅ Movable Annotations - Click and drag annotations to reposition them
+        3. ✅ Movable Wire Lines - Select and drag entire wire (with all control points)
+        4. ✅ Component Image Upload - Upload custom images for components (in properties)
+        5. ✅ Component Name/Notes - Add custom names and notes to components
+        6. ✅ CRM Linking - Link components to CRM inventory items
+        7. ✅ Inline Circuit Editing - Edit circuit name, voltage, amperage, color directly in sidebar
+        8. ✅ Enhanced Wire Section - Add, edit, delete custom wire types with colors
+        9. ✅ Selection Highlights - All elements (components, wires, annotations) now selectable
+        10. ✅ Save/Load Progress - Save to localStorage/server, load anytime
+        11. ✅ Two-Page PDF Export - Page 1: Floor plan, Page 2: Legends & details
+
+        🎹 KEYBOARD SHORTCUTS:
+        - Ctrl+C: Copy component
+        - Ctrl+V: Paste component
+        - Ctrl+Z: Undo
+        - Ctrl+Y: Redo
+        - Ctrl+D: Duplicate component
+        - Ctrl+A: Select all info
+        - Delete/Backspace: Delete selected item
+        - Escape: Deselect all
+        - +/=: Zoom in
+        - -: Zoom out
+        - 0: Reset view
+        - S: Select tool
+        - W: Wire tool
+        - M: Measure tool
+        - A: Annotate tool
+
+        🖱️ MOUSE CONTROLS:
+        - Scroll wheel: Zoom in/out
+        - Two-finger drag: Pan canvas (NO ZOOM)
+        - Ctrl + Scroll: Pinch zoom
+        - Click + Drag: Move selected item (component/wire/annotation)
+        - Click empty space: Pan canvas
+        - Right-click component: Context menu
+        - Right-click wire: Wire properties menu
+        - Click annotation/wire: Select it (shows blue highlight)
+
+        💾 NEW TOOLBAR BUTTONS:
+        - 💾 Save Progress: Save all work to browser/server
+        - 📂 Load Progress: Restore previous saved work
+        - 📄 Export PDF: Generate 2-page PDF report
+        `);
+
+        // ========================================
+        // ENHANCED KEYBOARD SHORTCUTS - KEYUP
+        // ========================================
+
+        document.addEventListener('keyup', (e) => {
+            // Spacebar - Disable panning mode
+            if (e.key === ' ') {
+                spacebarPressed = false;
+                canvas.style.cursor = currentTool === 'select' ? 'default' : 'crosshair';
+            }
+        });
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+
+        // Check for auto-saved data on page load
+        setTimeout(() => {
+            loadAutoSave();
+        }, 1000);
+
+        // Start auto-save
+        startAutoSave();
+
+        // Log initialization complete
+        console.log(`
+        ===================================
+        ⚡ ELECTRICAL MAPPING APP v2.0
+        ===================================
+        ✅ Multi-page PDF support
+        ✅ Undo/Redo (Ctrl+Z / Ctrl+Y)
+        ✅ Auto-save (every 30s)
+        ✅ Keyboard shortcuts:
+           • Spacebar + Drag = Pan
+           • Page Up/Down = Navigate pages
+           • Ctrl+S = Save
+           • Ctrl+Z/Y = Undo/Redo
+           • Ctrl+C/V = Copy/Paste
+           • Delete = Delete component
+        ✅ Enhanced canvas controls
+        ===================================
+        `);
+    </script>
+
+    <!-- AI Chatbot Component -->
+    {% include 'chatbot_component.html' %}
+</body>
+</html>
