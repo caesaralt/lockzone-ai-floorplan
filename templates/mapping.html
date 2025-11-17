@@ -455,6 +455,33 @@
 
         // Snap-to-grid state
         let snapToGrid = false;
+
+        // Check for imported data on page load
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        console.log('Imported data to Mapping:', data);
+                        showImportToast(`Data imported: ${data.project_name}`, 'success');
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                    } catch (e) {
+                        console.error('Import error:', e);
+                    }
+                }
+            }
+        })();
+
+        function showImportToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
         let gridSize = 20; // pixels
 
         // Multi-page PDF state

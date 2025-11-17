@@ -1012,7 +1012,93 @@
         document.addEventListener('DOMContentLoaded', function() {
             setupNavigation();
             loadAllData();
+
+            // Check for imported data from Quote Automation
+            checkForImportedData();
         });
+
+        // Handle imported data from Quote Automation
+        function checkForImportedData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+                const exportType = sessionStorage.getItem('crm_export_type') || urlParams.get('type');
+
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        processImportedData(data, exportType);
+
+                        // Clear session storage after successful import
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                        sessionStorage.removeItem('crm_export_type');
+                    } catch (e) {
+                        console.error('Error processing imported data:', e);
+                        showToast('Error importing data', 'error');
+                    }
+                }
+            }
+        }
+
+        function processImportedData(data, exportType) {
+            console.log('Imported data:', data);
+            console.log('Export type:', exportType);
+
+            // Show import notification
+            const typeLabels = {
+                'stock': 'Stock',
+                'projects': 'Projects',
+                'inventory': 'Inventory'
+            };
+
+            showToast(`Data imported from Quote Automation to ${typeLabels[exportType] || 'CRM'}`, 'success');
+
+            // Process based on export type
+            if (exportType === 'projects' && data.project) {
+                // Navigate to projects section and highlight the project
+                showSection('projects');
+                setTimeout(() => {
+                    showToast(`Materials added to project: ${data.project.name}`, 'info');
+                }, 500);
+            } else if (exportType === 'stock') {
+                // Navigate to inventory/stock section
+                showSection('inventory');
+                setTimeout(() => {
+                    showToast(`${data.components ? data.components.length : 0} items added to stock`, 'info');
+                }, 500);
+            } else if (exportType === 'inventory') {
+                showSection('inventory');
+                setTimeout(() => {
+                    showToast(`Inventory updated with ${data.components ? data.components.length : 0} items`, 'info');
+                }, 500);
+            }
+
+            // Log imported components for debugging
+            if (data.components && data.components.length > 0) {
+                console.log('Imported components:', data.components);
+                console.log('Total value:', data.updated_grand_total || 'N/A');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
 
         // NAVIGATION
         function setupNavigation() {

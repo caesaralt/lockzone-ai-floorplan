@@ -1062,6 +1062,89 @@
         let deletingTasks = new Set(); // Track tasks being deleted to prevent double-deletion
         let duplicatingTasks = new Set(); // Track tasks being duplicated to prevent double-duplication
 
+        // Check for imported data on page load
+        window.addEventListener('load', function() {
+            checkForImportedData();
+        });
+
+        // Handle imported data from Quote Automation
+        function checkForImportedData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        processImportedData(data);
+
+                        // Clear session storage after successful import
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                    } catch (e) {
+                        console.error('Error processing imported data:', e);
+                        showNotification('Error importing data', 'error');
+                    }
+                }
+            }
+        }
+
+        function processImportedData(data) {
+            console.log('Imported data to Kanban:', data);
+
+            showNotification(`Data imported from Quote Automation: ${data.project_name}`, 'success');
+
+            // Create a task for the imported quote
+            if (data.components && data.components.length > 0) {
+                const totalValue = data.updated_grand_total || 0;
+                const componentCount = data.components.length;
+
+                // Create a new task for this imported project
+                const newTask = {
+                    id: Date.now(),
+                    column: 'todo',
+                    title: `Quote: ${data.project_name}`,
+                    description: `Imported from Quote Automation\n${componentCount} components\nTotal: $${totalValue.toFixed(2)}`,
+                    priority: 'high',
+                    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
+                    assignee: '',
+                    tags: ['imported', 'quote'],
+                    attachments: [],
+                    checklist: data.components.map(c => ({
+                        text: `${c.type}: ${c.components ? c.components.map(comp => comp.name).join(', ') : 'N/A'}`,
+                        done: false
+                    })),
+                    comments: [],
+                    createdAt: new Date().toISOString()
+                };
+
+                tasks.push(newTask);
+                saveState();
+                renderBoard();
+
+                setTimeout(() => {
+                    showNotification(`Task created with ${componentCount} components`, 'info');
+                }, 500);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Use existing notification system or create toast
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
         // CRITICAL: Render throttle to prevent infinite loops
         let renderScheduled = false;
         let lastRenderTime = 0;
