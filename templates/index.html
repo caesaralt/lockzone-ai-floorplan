@@ -674,6 +674,16 @@
                                         <span id="zoomLevel" class="text-xs text-gray-600 font-mono">100%</span>
                                     </div>
 
+                                    <!-- Maximize Button -->
+                                    <div class="flex items-center space-x-2 border-l border-gray-300 pl-3">
+                                        <button onclick="toggleMaximize()" id="maximizeBtn" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 border-2 border-blue-400 text-blue-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2" title="Maximize Editor">
+                                            <svg id="maximizeIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                            </svg>
+                                            <span id="maximizeText">Maximize</span>
+                                        </button>
+                                    </div>
+
                                     <!-- Editor Actions -->
                                     <div class="flex-1"></div>
                                     <button onclick="deleteSelected()" class="px-4 py-2 bg-red-50 hover:bg-red-100 border-2 border-red-400 text-red-700 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center space-x-2">
@@ -692,7 +702,7 @@
                             </div>
 
                             <!-- Canvas Container -->
-                            <div class="p-6 bg-gray-100">
+                            <div id="canvasContainer" class="p-6 bg-gray-100" style="flex: 1; overflow: auto;">
                                 <div class="relative bg-white rounded-lg shadow-inner" style="min-height: 800px; max-height: 1200px; overflow: auto;">
                                     <canvas id="floorplanCanvas" class="w-full"></canvas>
                                 </div>
@@ -1198,6 +1208,122 @@
 
         function updateZoomDisplay() {
             document.getElementById('zoomLevel').textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        // =============================
+        // MAXIMIZE/FULLSCREEN CONTROLS
+        // =============================
+
+        let isMaximized = false;
+
+        function toggleMaximize() {
+            const editorSection = document.getElementById('interactiveEditorSection');
+            const maximizeBtn = document.getElementById('maximizeBtn');
+            const maximizeIcon = document.getElementById('maximizeIcon');
+            const maximizeText = document.getElementById('maximizeText');
+            const canvas = editorCanvas;
+
+            if (!editorSection) return;
+
+            isMaximized = !isMaximized;
+
+            if (isMaximized) {
+                // Enter fullscreen mode
+                editorSection.style.position = 'fixed';
+                editorSection.style.top = '0';
+                editorSection.style.left = '0';
+                editorSection.style.width = '100vw';
+                editorSection.style.height = '100vh';
+                editorSection.style.zIndex = '9999';
+                editorSection.style.margin = '0';
+                editorSection.style.borderRadius = '0';
+                editorSection.style.display = 'flex';
+                editorSection.style.flexDirection = 'column';
+
+                // Make canvas container fill available space
+                const canvasContainer = document.getElementById('canvasContainer');
+                if (canvasContainer) {
+                    const innerDiv = canvasContainer.querySelector('div');
+                    if (innerDiv) {
+                        innerDiv.style.minHeight = 'calc(100vh - 250px)';
+                        innerDiv.style.maxHeight = 'calc(100vh - 250px)';
+                    }
+                }
+
+                // Update button appearance
+                maximizeBtn.classList.remove('bg-blue-50', 'hover:bg-blue-100', 'border-blue-400', 'text-blue-700');
+                maximizeBtn.classList.add('bg-red-50', 'hover:bg-red-100', 'border-red-400', 'text-red-700');
+                maximizeText.textContent = 'Exit Fullscreen';
+
+                // Update icon to minimize icon
+                maximizeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>';
+
+                // Resize canvas to fit new container
+                if (canvas) {
+                    setTimeout(() => {
+                        const newWidth = window.innerWidth - 120; // Account for padding
+                        canvas.setWidth(newWidth);
+                        canvas.setHeight(window.innerHeight - 250); // Account for toolbar and stats
+                        canvas.renderAll();
+                    }, 100);
+                }
+
+                showToast('Fullscreen mode activated - Press ESC to exit', 'success');
+
+                // Add ESC key listener
+                document.addEventListener('keydown', escToExitFullscreen);
+
+            } else {
+                // Exit fullscreen mode
+                editorSection.style.position = '';
+                editorSection.style.top = '';
+                editorSection.style.left = '';
+                editorSection.style.width = '';
+                editorSection.style.height = '';
+                editorSection.style.zIndex = '';
+                editorSection.style.margin = '';
+                editorSection.style.borderRadius = '';
+                editorSection.style.display = '';
+                editorSection.style.flexDirection = '';
+
+                // Restore canvas container
+                const canvasContainer = document.getElementById('canvasContainer');
+                if (canvasContainer) {
+                    const innerDiv = canvasContainer.querySelector('div');
+                    if (innerDiv) {
+                        innerDiv.style.minHeight = '800px';
+                        innerDiv.style.maxHeight = '1200px';
+                    }
+                }
+
+                // Restore button appearance
+                maximizeBtn.classList.remove('bg-red-50', 'hover:bg-red-100', 'border-red-400', 'text-red-700');
+                maximizeBtn.classList.add('bg-blue-50', 'hover:bg-blue-100', 'border-blue-400', 'text-blue-700');
+                maximizeText.textContent = 'Maximize';
+
+                // Restore icon
+                maximizeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>';
+
+                // Resize canvas back to normal
+                if (canvas) {
+                    setTimeout(() => {
+                        const containerWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                        canvas.setWidth(containerWidth);
+                        canvas.renderAll();
+                    }, 100);
+                }
+
+                showToast('Exited fullscreen mode', 'info');
+
+                // Remove ESC key listener
+                document.removeEventListener('keydown', escToExitFullscreen);
+            }
+        }
+
+        function escToExitFullscreen(e) {
+            if (e.key === 'Escape' && isMaximized) {
+                toggleMaximize();
+            }
         }
 
         // =============================
