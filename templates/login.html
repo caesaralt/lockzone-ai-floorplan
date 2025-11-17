@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Integratd Living</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
+            color: #1d1d1f;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(85, 107, 47, 0.25);
+        }
+
+        .logo-icon svg {
+            width: 48px;
+            height: 48px;
+            color: white;
+        }
+
+        .logo-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .logo-subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 48px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-header {
+            margin-bottom: 32px;
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .form-subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #d2d2d7;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #556B2F;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(85, 107, 47, 0.1);
+        }
+
+        .form-input.code-input {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 8px;
+            font-weight: 600;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        .error-message {
+            display: none;
+            background: #fff5f5;
+            border-left: 4px solid #ff3b30;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .error-message.show {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .error-text {
+            font-size: 14px;
+            color: #c41e3a;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(85, 107, 47, 0.25);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(85, 107, 47, 0.35);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .submit-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .help-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .default-creds {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .default-creds-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .creds-display {
+            font-size: 14px;
+            color: #1d1d1f;
+        }
+
+        .cred-value {
+            display: inline-block;
+            background: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-weight: 600;
+            margin: 0 4px;
+        }
+
+        .contact-admin {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            margin-top: 16px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .login-card {
+                padding: 32px 24px;
+            }
+
+            .logo-title {
+                font-size: 28px;
+            }
+
+            .form-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <!-- Logo Section -->
+        <div class="logo-section">
+            <div class="logo-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+            </div>
+            <h1 class="logo-title">Integratd Living</h1>
+            <p class="logo-subtitle">Complete Business Automation Platform</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="login-card">
+            <div class="form-header">
+                <h2 class="form-title">Welcome Back</h2>
+                <p class="form-subtitle">Sign in to access your dashboard</p>
+            </div>
+
+            <form id="loginForm">
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message">
+                    <svg class="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <span class="error-text" id="errorText"></span>
+                </div>
+
+                <!-- Name Input -->
+                <div class="form-group">
+                    <label class="form-label" for="name">Name</label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        class="form-input"
+                        placeholder="Enter your name"
+                        required
+                        autocomplete="username"
+                        autofocus
+                    >
+                </div>
+
+                <!-- Code Input -->
+                <div class="form-group">
+                    <label class="form-label" for="code">Access Code</label>
+                    <input
+                        type="password"
+                        id="code"
+                        name="code"
+                        class="form-input code-input"
+                        placeholder="••••"
+                        required
+                        autocomplete="current-password"
+                        pattern="[0-9]{4,6}"
+                        inputmode="numeric"
+                        maxlength="6"
+                    >
+                    <p class="form-hint">Enter your 4-6 digit access code</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span id="btnText">Sign In</span>
+                    <svg id="btnIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </button>
+            </form>
+
+            <!-- Help Section -->
+            <div class="help-section">
+                <div class="default-creds">
+                    <div class="default-creds-title">Default Administrator</div>
+                    <div class="creds-display">
+                        <span class="cred-value">Admin</span>
+                        <span style="color: #999;">/</span>
+                        <span class="cred-value">1234</span>
+                    </div>
+                </div>
+                <p class="contact-admin">Contact your administrator for access credentials</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            &copy; 2025 Integratd Living. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const codeInput = document.getElementById('code');
+        const nameInput = document.getElementById('name');
+
+        // Only allow numbers in code field
+        codeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+
+        // Clear error on input
+        [nameInput, codeInput].forEach(input => {
+            input.addEventListener('input', () => {
+                errorMessage.classList.remove('show');
+            });
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Hide previous errors
+            errorMessage.classList.remove('show');
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            btnText.textContent = 'Signing in...';
+            btnIcon.innerHTML = '<div class="spinner"></div>';
+
+            const formData = {
+                name: nameInput.value.trim(),
+                code: codeInput.value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Success - redirect
+                    btnText.textContent = 'Success!';
+                    btnIcon.innerHTML = `
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/';
+                    }, 500);
+                } else {
+                    // Show error
+                    errorText.textContent = data.error || 'Invalid credentials. Please try again.';
+                    errorMessage.classList.add('show');
+
+                    // Reset button
+                    resetButton();
+
+                    // Clear code field and focus
+                    codeInput.value = '';
+                    codeInput.focus();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorText.textContent = 'Connection error. Please check your internet and try again.';
+                errorMessage.classList.add('show');
+                resetButton();
+            }
+        });
+
+        function resetButton() {
+            submitBtn.disabled = false;
+            btnText.textContent = 'Sign In';
+            btnIcon.innerHTML = `
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+            `;
+        }
+
+        // Focus name field on page load
+        nameInput.focus();
+    </script>
+</body>
+</html>
