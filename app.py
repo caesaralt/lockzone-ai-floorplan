@@ -24,6 +24,8 @@ import io
 import traceback
 import base64
 import requests
+# Authentication module
+import auth
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import logging
@@ -1477,6 +1479,208 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
 # ============================================================================
 # ROUTES
 # ============================================================================
+
+
+# ============================================================================
+# AUTHENTICATION AND USER MANAGEMENT ROUTES
+# ============================================================================
+
+# Initialize users file on startup
+auth.init_users_file()
+
+@app.route('/login')
+def login_page():
+    """Login page"""
+    # If already logged in, redirect to main menu
+    if auth.is_authenticated():
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API endpoint for user login"""
+    try:
+        data = request.json
+        name = data.get('name')
+        code = data.get('code')
+
+        if not name or not code:
+            return jsonify({'success': False, 'error': 'Name and code required'}), 400
+
+        # Authenticate user
+        user, error = auth.authenticate_user(name, code)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 401
+
+        # Set session
+        auth.login_user(user)
+
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': user['name'],
+                'display_name': user['display_name'],
+                'role': user['role'],
+                'permissions': user['permissions']
+            },
+            'redirect': '/'
+        })
+
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': 'Login failed'}), 500
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_logout():
+    """API endpoint for user logout"""
+    auth.logout_user()
+    return jsonify({'success': True})
+
+
+@app.route('/admin')
+@auth.admin_required
+def admin_page():
+    """Admin panel for user management"""
+    return render_template('admin.html')
+
+
+@app.route('/api/auth/users', methods=['GET'])
+@auth.admin_required
+def get_users():
+    """Get all users (admin only)"""
+    try:
+        users = auth.load_users()
+        # Remove password hashes from response
+        safe_users = [{k: v for k, v in user.items() if k != 'code'} for user in users]
+        return jsonify({'success': True, 'users': safe_users})
+    except Exception as e:
+        logger.error(f"Error getting users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['GET'])
+@auth.admin_required
+def get_user(user_id):
+    """Get specific user (admin only)"""
+    try:
+        user = auth.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+    except Exception as e:
+        logger.error(f"Error getting user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users', methods=['POST'])
+@auth.admin_required
+def create_user_api():
+    """Create new user (admin only)"""
+    try:
+        data = request.json
+        name = data.get('name')
+        code = data.get('code')
+        display_name = data.get('display_name')
+        role = data.get('role', 'viewer')
+        custom_permissions = data.get('permissions')
+
+        if not name or not code or not display_name:
+            return jsonify({'success': False, 'error': 'Name, code, and display name required'}), 400
+
+        user, error = auth.create_user(name, code, display_name, role, custom_permissions)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+
+    except Exception as e:
+        logger.error(f"Error creating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['PUT'])
+@auth.admin_required
+def update_user_api(user_id):
+    """Update user (admin only)"""
+    try:
+        data = request.json
+        
+        # Build update kwargs
+        update_data = {}
+        if 'name' in data:
+            update_data['name'] = data['name']
+        if 'display_name' in data:
+            update_data['display_name'] = data['display_name']
+        if 'code' in data and data['code']:  # Only update if provided
+            update_data['code'] = data['code']
+        if 'role' in data:
+            update_data['role'] = data['role']
+        if 'permissions' in data:
+            update_data['permissions'] = data['permissions']
+        if 'active' in data:
+            update_data['active'] = data['active']
+
+        user, error = auth.update_user(user_id, **update_data)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+
+    except Exception as e:
+        logger.error(f"Error updating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['DELETE'])
+@auth.admin_required
+def delete_user_api(user_id):
+    """Delete user (admin only)"""
+    try:
+        success, error = auth.delete_user(user_id)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/permissions', methods=['GET'])
+@auth.admin_required
+def get_permissions():
+    """Get available permissions and roles (admin only)"""
+    return jsonify({
+        'success': True,
+        'permissions': auth.PERMISSIONS,
+        'roles': auth.ROLES
+    })
+
+
+@app.route('/api/auth/current-user', methods=['GET'])
+@auth.login_required
+def get_current_user_api():
+    """Get current logged-in user info"""
+    user = auth.get_current_user()
+    if user:
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+    return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
 
 @app.route('/')
 def index():

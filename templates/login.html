@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Integratd Living</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        olive: {
+                            500: '#6B8E23',
+                            600: '#556B2F',
+                            700: '#455826',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center justify-center">
+
+    <div class="max-w-md w-full mx-4">
+        <!-- Logo and Title -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-olive-600 rounded-2xl mb-4">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900">Integratd Living</h1>
+            <p class="text-gray-600 mt-2">Sign in to your account</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <form id="loginForm" class="space-y-6">
+                <!-- Name -->
+                <div>
+                    <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
+                        Name
+                    </label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        autocomplete="username"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent transition-all"
+                        placeholder="Your name"
+                    >
+                </div>
+
+                <!-- Code -->
+                <div>
+                    <label for="code" class="block text-sm font-semibold text-gray-700 mb-2">
+                        Access Code
+                    </label>
+                    <input
+                        type="password"
+                        id="code"
+                        name="code"
+                        required
+                        autocomplete="current-password"
+                        pattern="[0-9]*"
+                        inputmode="numeric"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent transition-all text-center text-2xl tracking-widest"
+                        placeholder="••••"
+                        maxlength="6"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Enter your access code</p>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="hidden bg-red-50 border-l-4 border-red-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700" id="errorText"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button
+                    type="submit"
+                    id="loginButton"
+                    class="w-full bg-olive-600 hover:bg-olive-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                    <span>Sign In</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </button>
+            </form>
+
+            <!-- Help Text -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    Default credentials: <code class="bg-gray-100 px-2 py-1 rounded font-mono">Admin</code> / <code class="bg-gray-100 px-2 py-1 rounded font-mono">1234</code>
+                </p>
+                <p class="text-xs text-gray-500 mt-2">
+                    Contact your administrator for access
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm text-gray-600">
+            <p>&copy; 2025 Integratd Living. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const loginButton = document.getElementById('loginButton');
+        const codeInput = document.getElementById('code');
+
+        // Only allow numbers in code field
+        codeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Hide previous errors
+            errorMessage.classList.add('hidden');
+
+            // Disable button and show loading
+            loginButton.disabled = true;
+            loginButton.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Signing in...</span>
+            `;
+
+            const formData = {
+                name: document.getElementById('name').value,
+                code: document.getElementById('code').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Redirect to main menu or dashboard
+                    window.location.href = data.redirect || '/';
+                } else {
+                    // Show error
+                    errorText.textContent = data.error || 'Login failed. Please try again.';
+                    errorMessage.classList.remove('hidden');
+
+                    // Reset button
+                    loginButton.disabled = false;
+                    loginButton.innerHTML = `
+                        <span>Sign In</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                    `;
+
+                    // Clear code field
+                    document.getElementById('code').value = '';
+                    document.getElementById('code').focus();
+                }
+            } catch (error) {
+                errorText.textContent = 'Connection error. Please try again.';
+                errorMessage.classList.remove('hidden');
+
+                // Reset button
+                loginButton.disabled = false;
+                loginButton.innerHTML = `
+                    <span>Sign In</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                `;
+            }
+        });
+
+        // Auto-focus name field
+        document.getElementById('name').focus();
+    </script>
+</body>
+</html>
