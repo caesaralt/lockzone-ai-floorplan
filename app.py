@@ -5501,6 +5501,200 @@ def update_project(project_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# Cost Centres API Endpoints
+@app.route('/api/crm/projects/<project_id>/cost-centres', methods=['GET', 'POST'])
+def handle_project_cost_centres(project_id):
+    """Get all cost centres for a project or create a new one"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+
+        if request.method == 'GET':
+            cost_centres = project.get('cost_centres', [])
+            # Calculate totals
+            for cc in cost_centres:
+                cc['total'] = sum(item.get('total', 0) for item in cc.get('items', []))
+            grand_total = sum(cc.get('total', 0) for cc in cost_centres)
+            return jsonify({
+                'success': True,
+                'cost_centres': cost_centres,
+                'grand_total': grand_total
+            })
+        else:
+            # POST - create new cost centre
+            data = request.json
+            if 'cost_centres' not in project:
+                project['cost_centres'] = []
+
+            # Default colors for cost centres
+            default_colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B']
+            color_index = len(project['cost_centres']) % len(default_colors)
+
+            new_cost_centre = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', 'New Cost Centre'),
+                'color': data.get('color', default_colors[color_index]),
+                'items': [],
+                'total': 0,
+                'created_at': datetime.now().isoformat()
+            }
+            project['cost_centres'].append(new_cost_centre)
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({'success': True, 'cost_centre': new_cost_centre})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/cost-centres/<cc_id>', methods=['PUT', 'DELETE'])
+def update_cost_centre(project_id, cc_id):
+    """Update or delete a cost centre"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+        cost_centres = project.get('cost_centres', [])
+        cc_idx = next((i for i, cc in enumerate(cost_centres) if cc['id'] == cc_id), None)
+
+        if cc_idx is None:
+            return jsonify({'success': False, 'error': 'Cost centre not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            for field in ['name', 'color']:
+                if field in data:
+                    cost_centres[cc_idx][field] = data[field]
+            cost_centres[cc_idx]['updated_at'] = datetime.now().isoformat()
+            project['cost_centres'] = cost_centres
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+            return jsonify({'success': True, 'cost_centre': cost_centres[cc_idx]})
+
+        elif request.method == 'DELETE':
+            cost_centres.pop(cc_idx)
+            project['cost_centres'] = cost_centres
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/cost-centres/<cc_id>/items', methods=['POST'])
+def add_cost_centre_item(project_id, cc_id):
+    """Add an item to a cost centre"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+        cost_centres = project.get('cost_centres', [])
+        cc_idx = next((i for i, cc in enumerate(cost_centres) if cc['id'] == cc_id), None)
+
+        if cc_idx is None:
+            return jsonify({'success': False, 'error': 'Cost centre not found'}), 404
+
+        data = request.json
+        quantity = float(data.get('quantity', 1))
+        unit_price = float(data.get('unit_price', 0))
+
+        new_item = {
+            'id': str(uuid.uuid4()),
+            'description': data.get('description', ''),
+            'quantity': quantity,
+            'unit': data.get('unit', 'each'),
+            'unit_price': unit_price,
+            'total': quantity * unit_price,
+            'created_at': datetime.now().isoformat()
+        }
+
+        if 'items' not in cost_centres[cc_idx]:
+            cost_centres[cc_idx]['items'] = []
+        cost_centres[cc_idx]['items'].append(new_item)
+
+        # Recalculate cost centre total
+        cost_centres[cc_idx]['total'] = sum(item.get('total', 0) for item in cost_centres[cc_idx]['items'])
+
+        project['cost_centres'] = cost_centres
+        project['updated_at'] = datetime.now().isoformat()
+        projects[idx] = project
+        save_json_file(PROJECTS_FILE, projects)
+
+        return jsonify({'success': True, 'item': new_item, 'cost_centre_total': cost_centres[cc_idx]['total']})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/cost-centres/<cc_id>/items/<item_id>', methods=['PUT', 'DELETE'])
+def update_cost_centre_item(project_id, cc_id, item_id):
+    """Update or delete an item from a cost centre"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+        cost_centres = project.get('cost_centres', [])
+        cc_idx = next((i for i, cc in enumerate(cost_centres) if cc['id'] == cc_id), None)
+
+        if cc_idx is None:
+            return jsonify({'success': False, 'error': 'Cost centre not found'}), 404
+
+        items = cost_centres[cc_idx].get('items', [])
+        item_idx = next((i for i, item in enumerate(items) if item['id'] == item_id), None)
+
+        if item_idx is None:
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            for field in ['description', 'quantity', 'unit', 'unit_price']:
+                if field in data:
+                    items[item_idx][field] = data[field]
+            # Recalculate item total
+            quantity = float(items[item_idx].get('quantity', 1))
+            unit_price = float(items[item_idx].get('unit_price', 0))
+            items[item_idx]['total'] = quantity * unit_price
+            items[item_idx]['updated_at'] = datetime.now().isoformat()
+
+        elif request.method == 'DELETE':
+            items.pop(item_idx)
+
+        cost_centres[cc_idx]['items'] = items
+        # Recalculate cost centre total
+        cost_centres[cc_idx]['total'] = sum(item.get('total', 0) for item in items)
+
+        project['cost_centres'] = cost_centres
+        project['updated_at'] = datetime.now().isoformat()
+        projects[idx] = project
+        save_json_file(PROJECTS_FILE, projects)
+
+        return jsonify({
+            'success': True,
+            'item': items[item_idx] if request.method == 'PUT' else None,
+            'cost_centre_total': cost_centres[cc_idx]['total']
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/link-session-to-project', methods=['POST'])
 def link_session_to_project():
     """Link a takeoffs/mapping session to a CRM project"""

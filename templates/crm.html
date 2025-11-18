@@ -998,6 +998,130 @@
         </div>
     </div>
 
+    <!-- Project View Modal with Cost Centres -->
+    <div id="projectViewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="projectViewTitle">Project Details</h2>
+                <button class="close-btn" onclick="closeModal('projectViewModal')">×</button>
+            </div>
+            <input type="hidden" id="currentProjectId">
+
+            <!-- Project Info -->
+            <div class="card" style="margin-bottom: 20px; background: #f8f9fa;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                    <div>
+                        <strong>Customer:</strong>
+                        <p id="projectViewCustomer">-</p>
+                    </div>
+                    <div>
+                        <strong>Status:</strong>
+                        <p id="projectViewStatus">-</p>
+                    </div>
+                    <div>
+                        <strong>Due Date:</strong>
+                        <p id="projectViewDue">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Centres Visual Chart -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3 class="card-title">Cost Breakdown</h3>
+                    <div style="font-size: 24px; font-weight: 700; color: #556B2F;">
+                        Total: $<span id="costCentresGrandTotal">0</span>
+                    </div>
+                </div>
+                <div id="costCentresChart" style="display: flex; gap: 20px; align-items: center; padding: 20px 0;">
+                    <div id="pieChartContainer" style="width: 200px; height: 200px; position: relative;">
+                        <canvas id="costPieChart" width="200" height="200"></canvas>
+                    </div>
+                    <div id="chartLegend" style="flex: 1;"></div>
+                </div>
+            </div>
+
+            <!-- Cost Centres List -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Cost Centres</h3>
+                    <button class="btn btn-primary btn-small" onclick="openAddCostCentreModal()">+ Add Cost Centre</button>
+                </div>
+                <div id="costCentresList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Cost Centre Modal -->
+    <div id="addCostCentreModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Cost Centre</h2>
+                <button class="close-btn" onclick="closeModal('addCostCentreModal')">×</button>
+            </div>
+            <form id="addCostCentreForm" onsubmit="saveCostCentre(event)">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" id="costCentreName" required placeholder="e.g., Labor, Materials, Equipment">
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="color" id="costCentreColor" value="#4CAF50" style="width: 100%; height: 40px; border-radius: 8px;">
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addCostCentreModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Cost Centre</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Item to Cost Centre Modal -->
+    <div id="addItemModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Item</h2>
+                <button class="close-btn" onclick="closeModal('addItemModal')">×</button>
+            </div>
+            <form id="addItemForm" onsubmit="saveItem(event)">
+                <input type="hidden" id="itemCostCentreId">
+                <div class="form-group">
+                    <label>Description *</label>
+                    <input type="text" id="itemDescription" required placeholder="e.g., Installation labor">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantity *</label>
+                        <input type="number" id="itemQuantity" step="0.01" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select id="itemUnit">
+                            <option value="each">Each</option>
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                            <option value="meters">Meters</option>
+                            <option value="sqm">Sq. Meters</option>
+                            <option value="kg">Kilograms</option>
+                            <option value="lot">Lot</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Unit Price ($) *</label>
+                    <input type="number" id="itemUnitPrice" step="0.01" value="0" required>
+                </div>
+                <div class="form-group" style="background: #f8f9fa; padding: 12px; border-radius: 8px;">
+                    <strong>Total: $<span id="itemTotalPreview">0.00</span></strong>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addItemModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // STATE
         let customers = [];
@@ -1338,10 +1462,9 @@
                                         <td>$${(p.quote_amount || 0).toLocaleString()}</td>
                                         <td>${p.due_date || '-'}</td>
                                         <td>
+                                            <button class="btn btn-primary btn-small" onclick="viewProject('${p.id}')">View</button>
                                             <button class="btn btn-secondary btn-small" onclick="editProject('${p.id}')">Edit</button>
                                             <button class="btn btn-danger btn-small" onclick="deleteProject('${p.id}')">Delete</button>
-                                            ${p.takeoffs_session_id ? `<button class="btn btn-primary btn-small" onclick="window.location.href='/takeoffs/${p.takeoffs_session_id}'">📐 Takeoffs</button>` : ''}
-                                            ${p.mapping_session_id ? `<button class="btn btn-primary btn-small" onclick="window.location.href='/mapping?session=${p.mapping_session_id}'">⚡ Mapping</button>` : ''}
                                         </td>
                                     </tr>
                                 `;
@@ -1407,6 +1530,274 @@
                 loadProjects();
                 loadStats();
                 loadCustomers();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ========== COST CENTRES MANAGEMENT ==========
+        let currentCostCentres = [];
+
+        async function viewProject(id) {
+            const p = projects.find(x => x.id === id);
+            if (!p) return;
+
+            document.getElementById('currentProjectId').value = id;
+            document.getElementById('projectViewTitle').textContent = p.title;
+
+            const customer = customers.find(c => c.id === p.customer_id);
+            document.getElementById('projectViewCustomer').textContent = customer ? customer.name : '-';
+            document.getElementById('projectViewStatus').innerHTML = `<span class="status-badge status-${p.status}">${p.status}</span>`;
+            document.getElementById('projectViewDue').textContent = p.due_date || '-';
+
+            // Load cost centres
+            await loadCostCentres(id);
+
+            openModal('projectViewModal');
+        }
+
+        async function loadCostCentres(projectId) {
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/cost-centres`);
+                const data = await res.json();
+
+                if (data.success) {
+                    currentCostCentres = data.cost_centres;
+                    document.getElementById('costCentresGrandTotal').textContent = data.grand_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    renderCostCentres();
+                    renderPieChart();
+                }
+            } catch (e) {
+                console.error('Cost centres error:', e);
+            }
+        }
+
+        function renderCostCentres() {
+            const container = document.getElementById('costCentresList');
+
+            if (currentCostCentres.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px;">
+                        <div class="empty-icon">📊</div>
+                        <div class="empty-title">No cost centres yet</div>
+                        <p>Add cost centres to track project expenses</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = currentCostCentres.map(cc => `
+                <div style="border: 2px solid ${cc.color}; border-radius: 12px; margin-bottom: 16px; overflow: hidden;">
+                    <div style="background: ${cc.color}15; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 16px; height: 16px; background: ${cc.color}; border-radius: 4px;"></div>
+                            <strong style="font-size: 16px;">${cc.name}</strong>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-weight: 700; font-size: 18px; color: ${cc.color};">$${(cc.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <button class="btn btn-primary btn-small" onclick="openAddItemModal('${cc.id}')">+ Add Item</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteCostCentre('${cc.id}')">Delete</button>
+                        </div>
+                    </div>
+                    ${cc.items && cc.items.length > 0 ? `
+                        <div style="padding: 0;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8f9fa;">
+                                        <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: #666;">Description</th>
+                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Qty</th>
+                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Unit</th>
+                                        <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #666;">Unit Price</th>
+                                        <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #666;">Total</th>
+                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cc.items.map(item => `
+                                        <tr style="border-top: 1px solid #f0f0f0;">
+                                            <td style="padding: 12px 16px;">${item.description}</td>
+                                            <td style="padding: 12px 16px; text-align: center;">${item.quantity}</td>
+                                            <td style="padding: 12px 16px; text-align: center;">${item.unit}</td>
+                                            <td style="padding: 12px 16px; text-align: right;">$${item.unit_price.toFixed(2)}</td>
+                                            <td style="padding: 12px 16px; text-align: right; font-weight: 600;">$${item.total.toFixed(2)}</td>
+                                            <td style="padding: 12px 16px; text-align: center;">
+                                                <button class="btn btn-danger btn-small" onclick="deleteItem('${cc.id}', '${item.id}')">×</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `
+                        <div style="padding: 20px; text-align: center; color: #999; font-size: 14px;">
+                            No items yet. Click "+ Add Item" to add expenses.
+                        </div>
+                    `}
+                </div>
+            `).join('');
+        }
+
+        function renderPieChart() {
+            const canvas = document.getElementById('costPieChart');
+            const ctx = canvas.getContext('2d');
+            const legendContainer = document.getElementById('chartLegend');
+
+            // Clear canvas
+            ctx.clearRect(0, 0, 200, 200);
+
+            if (currentCostCentres.length === 0 || currentCostCentres.every(cc => cc.total === 0)) {
+                // Draw empty state
+                ctx.beginPath();
+                ctx.arc(100, 100, 80, 0, Math.PI * 2);
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fill();
+                ctx.fillStyle = '#999';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data', 100, 105);
+                legendContainer.innerHTML = '<p style="color: #999; text-align: center;">Add items to see chart</p>';
+                return;
+            }
+
+            const total = currentCostCentres.reduce((sum, cc) => sum + (cc.total || 0), 0);
+            let startAngle = -Math.PI / 2;
+
+            currentCostCentres.forEach(cc => {
+                if (cc.total > 0) {
+                    const sliceAngle = (cc.total / total) * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(100, 100);
+                    ctx.arc(100, 100, 80, startAngle, startAngle + sliceAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = cc.color;
+                    ctx.fill();
+                    startAngle += sliceAngle;
+                }
+            });
+
+            // Draw center circle for donut effect
+            ctx.beginPath();
+            ctx.arc(100, 100, 50, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+
+            // Render legend
+            legendContainer.innerHTML = `
+                <div style="display: grid; gap: 8px;">
+                    ${currentCostCentres.filter(cc => cc.total > 0).map(cc => {
+                        const percentage = total > 0 ? ((cc.total / total) * 100).toFixed(1) : 0;
+                        return `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 12px; height: 12px; background: ${cc.color}; border-radius: 3px; flex-shrink: 0;"></div>
+                                <span style="flex: 1; font-size: 13px;">${cc.name}</span>
+                                <span style="font-weight: 600; font-size: 13px;">$${cc.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                <span style="color: #666; font-size: 12px; width: 50px; text-align: right;">${percentage}%</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function openAddCostCentreModal() {
+            document.getElementById('addCostCentreForm').reset();
+            // Set a random color
+            const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B'];
+            document.getElementById('costCentreColor').value = colors[Math.floor(Math.random() * colors.length)];
+            openModal('addCostCentreModal');
+        }
+
+        async function saveCostCentre(e) {
+            e.preventDefault();
+            const projectId = document.getElementById('currentProjectId').value;
+            const data = {
+                name: document.getElementById('costCentreName').value,
+                color: document.getElementById('costCentreColor').value
+            };
+
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/cost-centres`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('addCostCentreModal');
+                    await loadCostCentres(projectId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteCostCentre(ccId) {
+            if (!confirm('Delete this cost centre and all its items?')) return;
+            const projectId = document.getElementById('currentProjectId').value;
+
+            try {
+                await fetch(`/api/crm/projects/${projectId}/cost-centres/${ccId}`, {method: 'DELETE'});
+                await loadCostCentres(projectId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function openAddItemModal(ccId) {
+            document.getElementById('addItemForm').reset();
+            document.getElementById('itemCostCentreId').value = ccId;
+            document.getElementById('itemTotalPreview').textContent = '0.00';
+            openModal('addItemModal');
+        }
+
+        // Update item total preview when quantity or price changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const qtyInput = document.getElementById('itemQuantity');
+            const priceInput = document.getElementById('itemUnitPrice');
+            const updatePreview = () => {
+                const qty = parseFloat(qtyInput.value) || 0;
+                const price = parseFloat(priceInput.value) || 0;
+                document.getElementById('itemTotalPreview').textContent = (qty * price).toFixed(2);
+            };
+            if (qtyInput) qtyInput.addEventListener('input', updatePreview);
+            if (priceInput) priceInput.addEventListener('input', updatePreview);
+        });
+
+        async function saveItem(e) {
+            e.preventDefault();
+            const projectId = document.getElementById('currentProjectId').value;
+            const ccId = document.getElementById('itemCostCentreId').value;
+
+            const data = {
+                description: document.getElementById('itemDescription').value,
+                quantity: parseFloat(document.getElementById('itemQuantity').value),
+                unit: document.getElementById('itemUnit').value,
+                unit_price: parseFloat(document.getElementById('itemUnitPrice').value)
+            };
+
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/cost-centres/${ccId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('addItemModal');
+                    await loadCostCentres(projectId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteItem(ccId, itemId) {
+            if (!confirm('Delete this item?')) return;
+            const projectId = document.getElementById('currentProjectId').value;
+
+            try {
+                await fetch(`/api/crm/projects/${projectId}/cost-centres/${ccId}/items/${itemId}`, {method: 'DELETE'});
+                await loadCostCentres(projectId);
             } catch (e) {
                 alert('Error: ' + e.message);
             }
