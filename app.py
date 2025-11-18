@@ -1779,6 +1779,45 @@ def index():
 def crm_page():
     return render_template('crm.html')
 
+# ============================================================================
+# AUTOMATION DATA API ENDPOINTS
+# ============================================================================
+
+@app.route('/api/data', methods=['GET'])
+def get_automation_data():
+    """Get automation catalog, pricing, and company info"""
+    try:
+        data = load_data()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/data', methods=['POST'])
+def update_automation_data():
+    """Update automation catalog and pricing"""
+    try:
+        new_data = request.get_json()
+        if not new_data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Load existing data and merge
+        current_data = load_data()
+
+        # Deep merge - update only provided fields
+        if 'automation_types' in new_data:
+            current_data['automation_types'].update(new_data['automation_types'])
+        if 'labor_rate' in new_data:
+            current_data['labor_rate'] = new_data['labor_rate']
+        if 'markup_percentage' in new_data:
+            current_data['markup_percentage'] = new_data['markup_percentage']
+        if 'company_info' in new_data:
+            current_data['company_info'].update(new_data['company_info'])
+
+        save_data(current_data)
+        return jsonify({'success': True, 'data': current_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/quotes')
 def quotes_page():
     return render_template('index.html')
@@ -2517,10 +2556,18 @@ def add_to_crm_stock():
     """Add item to CRM stock"""
     try:
         data = request.get_json()
-        name = data.get('name', 'Unnamed Item')
+
+        # Validate required fields
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Stock item name is required'}), 400
+
         category = data.get('category', 'general')
         item_type = data.get('type', 'component')
         quantity = data.get('quantity', 1)
+        if quantity < 0:
+            return jsonify({'success': False, 'error': 'Quantity cannot be negative'}), 400
+
         cost = data.get('cost', 0)
         serial_number = data.get('serialNumber', '')
         notes = data.get('notes', '')
@@ -2699,12 +2746,16 @@ def electrical_cad():
 def create_cad_session():
     """Create new CAD session"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         session_id = f"cad_{uuid.uuid4().hex[:12]}"
+
+        # Accept both 'name' and 'project_name' for flexibility
+        project_name = data.get('project_name') or data.get('name') or 'Untitled Project'
 
         cad_session = {
             'session_id': session_id,
-            'project_name': data.get('project_name', 'Untitled Project'),
+            'project_name': project_name,
+            'description': data.get('description', ''),
             'linked_quote': data.get('linked_quote'),
             'linked_board': data.get('linked_board'),
             'linked_floorplan': data.get('linked_floorplan'),
@@ -5468,12 +5519,18 @@ def handle_projects():
             return jsonify({'success': True, 'projects': projects})
         else:
             data = request.json
+
+            # Validate required fields
+            title = data.get('title', '').strip()
+            if not title:
+                return jsonify({'success': False, 'error': 'Project title is required'}), 400
+
             projects = load_json_file(PROJECTS_FILE, [])
             project = {
                 'id': str(uuid.uuid4()),
                 'customer_id': data.get('customer_id'),
-                'title': data.get('title', ''),
-                'description': data.get('description', ''),
+                'title': title,
+                'description': data.get('description', '').strip(),
                 'status': data.get('status', 'pending'),
                 'priority': data.get('priority', 'medium'),
                 'quote_amount': data.get('quote_amount', 0.0),
