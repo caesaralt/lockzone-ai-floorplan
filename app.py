@@ -1484,6 +1484,67 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
 # ROUTES
 # ============================================================================
 
+# ============================================================================
+# ADMIN PAGE EDITOR
+# ============================================================================
+
+def load_page_config():
+    """Load the landing page configuration"""
+    config_file = os.path.join(app.config['DATA_FOLDER'], 'page_config.json')
+    default_config = {
+        'logo_icon': '🏠',
+        'logo_text': 'Integratd Living',
+        'logo_color': '#556B2F',
+        'welcome_title': 'Welcome to Integratd Living',
+        'welcome_subtitle': 'Your complete business automation platform',
+        'background_color': '#f5f5f7',
+        'modules': [
+            {'href': '/crm', 'icon': '📊', 'title': 'CRM Dashboard', 'description': 'Manage customers, projects, scheduling, inventory, and more in one place.'},
+            {'href': '/quotes', 'icon': '💰', 'title': 'Quote Automation', 'description': 'Upload floor plans and let AI generate accurate quotes automatically.'},
+            {'href': '/canvas', 'icon': '🎨', 'title': 'Canvas Editor', 'description': 'Professional floor plan editor with zoom, pan, and symbol management.'},
+            {'href': '/mapping', 'icon': '⚡', 'title': 'Electrical Mapping', 'description': 'Professional electrical mapping with wiring, circuits, and component management.'},
+            {'href': '/board-builder', 'icon': '🔌', 'title': 'Loxone Board Builder', 'description': 'Design professional Loxone boards with AI generation and integration with mapping data.'},
+            {'href': '/electrical-cad', 'icon': '📟', 'title': 'Electrical CAD Designer', 'description': 'Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.'},
+            {'href': '/learning', 'icon': '🧠', 'title': 'AI Learning', 'description': 'Train the system with examples to improve accuracy over time.'},
+            {'href': '/kanban', 'icon': '📋', 'title': 'Operations Board', 'description': 'Kanban task management system for team workflow and project tracking.'}
+        ]
+    }
+
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                return json.load(f)
+        except:
+            return default_config
+    return default_config
+
+def save_page_config(config):
+    """Save the landing page configuration"""
+    config_file = os.path.join(app.config['DATA_FOLDER'], 'page_config.json')
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
+
+@app.route('/admin/page-editor')
+def admin_page_editor():
+    """Admin page editor for the landing page"""
+    config = load_page_config()
+    return render_template('admin_page_editor.html', config=config)
+
+@app.route('/api/admin/page-config', methods=['GET'])
+def get_page_config():
+    """Get the current page configuration"""
+    config = load_page_config()
+    return jsonify(config)
+
+@app.route('/api/admin/page-config', methods=['POST'])
+def update_page_config():
+    """Update the page configuration"""
+    try:
+        config = request.json
+        save_page_config(config)
+        return jsonify({'success': True, 'message': 'Page configuration saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
 # AUTHENTICATION AND USER MANAGEMENT ROUTES
@@ -1573,7 +1634,7 @@ def get_user(user_id):
         user = auth.get_user_by_id(user_id)
         if not user:
             return jsonify({'success': False, 'error': 'User not found'}), 404
-        
+
         # Remove password hash
         safe_user = {k: v for k, v in user.items() if k != 'code'}
         return jsonify({'success': True, 'user': safe_user})
@@ -1617,7 +1678,7 @@ def update_user_api(user_id):
     """Update user (admin only)"""
     try:
         data = request.json
-        
+
         # Build update kwargs
         update_data = {}
         if 'name' in data:
@@ -1688,7 +1749,9 @@ def get_current_user_api():
 
 @app.route('/')
 def index():
-    return render_template('template_unified.html')
+    """Render landing page with saved configuration"""
+    config = load_page_config()
+    return render_template('template_unified.html', config=config)
 
 @app.route('/crm')
 def crm_page():

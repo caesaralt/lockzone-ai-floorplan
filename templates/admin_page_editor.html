@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Page Editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #2a2a2a;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #556B2F;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #556B2F;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #556B2F;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #6b8a47;
+        }
+
+        .btn-secondary {
+            background: #3a3a3a;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .editor-panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
+            height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .preview-panel {
+            background: #f5f5f7;
+            border-radius: 12px;
+            overflow: hidden;
+            height: calc(100vh - 140px);
+        }
+
+        .preview-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #556B2F;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #556B2F;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .color-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .color-input-group input[type="color"] {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+        }
+
+        .color-input-group input[type="text"] {
+            flex: 1;
+        }
+
+        .module-card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #3a3a3a;
+        }
+
+        .module-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .module-card-header span {
+            font-weight: 600;
+            color: #556B2F;
+        }
+
+        .module-card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            background: #3a3a3a;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .btn-icon:hover {
+            background: #4a4a4a;
+            color: white;
+        }
+
+        .btn-icon.delete:hover {
+            background: #dc3545;
+        }
+
+        .icon-picker {
+            position: relative;
+        }
+
+        .icon-picker-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .icon-picker-trigger:hover {
+            border-color: #556B2F;
+        }
+
+        .icon-picker-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            padding: 12px;
+            display: none;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .icon-picker-dropdown.active {
+            display: grid;
+        }
+
+        .icon-option {
+            padding: 8px;
+            text-align: center;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .icon-option:hover {
+            background: #3a3a3a;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: none;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .toast.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .add-module-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3a3a3a;
+            border: 2px dashed #556B2F;
+            border-radius: 8px;
+            color: #556B2F;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-module-btn:hover {
+            background: #4a4a4a;
+            border-style: solid;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Page Editor - Admin Panel</h1>
+        <div class="header-buttons">
+            <button class="btn btn-secondary" onclick="resetToDefault()">Reset to Default</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/'">View Live Page</button>
+            <button class="btn btn-primary" onclick="saveConfig()">Save Changes</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Editor Panel -->
+        <div class="editor-panel">
+            <!-- General Settings -->
+            <div class="section">
+                <h3 class="section-title">General Settings</h3>
+
+                <div class="form-group">
+                    <label>Logo Icon</label>
+                    <div class="icon-picker">
+                        <div class="icon-picker-trigger" onclick="toggleIconPicker('logo')">
+                            <span id="logo-icon-preview">{{ config.logo_icon }}</span>
+                            <span style="color: #999; font-size: 12px;">Click to change</span>
+                        </div>
+                        <div id="logo-icon-dropdown" class="icon-picker-dropdown"></div>
+                    </div>
+                    <input type="hidden" id="logo_icon" value="{{ config.logo_icon }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Logo Text</label>
+                    <input type="text" id="logo_text" value="{{ config.logo_text }}" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label>Logo Color</label>
+                    <div class="color-input-group">
+                        <input type="color" id="logo_color_picker" value="{{ config.logo_color }}" onchange="syncColorInput('logo_color')">
+                        <input type="text" id="logo_color" value="{{ config.logo_color }}" onchange="syncColorPicker('logo_color'); updatePreview()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Background Color</label>
+                    <div class="color-input-group">
+                        <input type="color" id="background_color_picker" value="{{ config.background_color }}" onchange="syncColorInput('background_color')">
+                        <input type="text" id="background_color" value="{{ config.background_color }}" onchange="syncColorPicker('background_color'); updatePreview()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Welcome Section -->
+            <div class="section">
+                <h3 class="section-title">Welcome Section</h3>
+
+                <div class="form-group">
+                    <label>Welcome Title</label>
+                    <input type="text" id="welcome_title" value="{{ config.welcome_title }}" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label>Welcome Subtitle</label>
+                    <input type="text" id="welcome_subtitle" value="{{ config.welcome_subtitle }}" onchange="updatePreview()">
+                </div>
+            </div>
+
+            <!-- Modules -->
+            <div class="section">
+                <h3 class="section-title">Modules</h3>
+                <div id="modules-container">
+                    {% for module in config.modules %}
+                    <div class="module-card" data-index="{{ loop.index0 }}">
+                        <div class="module-card-header">
+                            <span>Module {{ loop.index }}</span>
+                            <div class="module-card-actions">
+                                <button class="btn-icon" onclick="moveModule({{ loop.index0 }}, -1)" title="Move Up">&#9650;</button>
+                                <button class="btn-icon" onclick="moveModule({{ loop.index0 }}, 1)" title="Move Down">&#9660;</button>
+                                <button class="btn-icon delete" onclick="deleteModule({{ loop.index0 }})" title="Delete">&#10005;</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Icon</label>
+                            <div class="icon-picker">
+                                <div class="icon-picker-trigger" onclick="toggleIconPicker('module-{{ loop.index0 }}')">
+                                    <span id="module-{{ loop.index0 }}-icon-preview">{{ module.icon }}</span>
+                                    <span style="color: #999; font-size: 12px;">Click to change</span>
+                                </div>
+                                <div id="module-{{ loop.index0 }}-icon-dropdown" class="icon-picker-dropdown"></div>
+                            </div>
+                            <input type="hidden" class="module-icon" value="{{ module.icon }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" class="module-title" value="{{ module.title }}" onchange="updatePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="module-description" onchange="updatePreview()">{{ module.description }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Link (href)</label>
+                            <input type="text" class="module-href" value="{{ module.href }}" onchange="updatePreview()">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button class="add-module-btn" onclick="addModule()">+ Add New Module</button>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+            <iframe id="preview-frame" class="preview-frame" src="/"></iframe>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Common emoji icons for selection
+        const commonIcons = [
+            '📊', '💰', '🎨', '⚡', '🔌', '📟', '🧠', '📋',
+            '🏠', '📈', '💼', '🔧', '⚙️', '📁', '📄', '🔍',
+            '✅', '📝', '🛠️', '📦', '🚀', '💡', '🔒', '📡',
+            '🏗️', '🔋', '💾', '🖥️', '📱', '🌐', '📫', '🎯'
+        ];
+
+        // Initialize icon pickers
+        function initIconPickers() {
+            document.querySelectorAll('.icon-picker-dropdown').forEach(dropdown => {
+                dropdown.innerHTML = commonIcons.map(icon =>
+                    `<div class="icon-option" onclick="selectIcon('${dropdown.id.replace('-dropdown', '')}', '${icon}')">${icon}</div>`
+                ).join('');
+            });
+        }
+
+        function toggleIconPicker(id) {
+            const dropdown = document.getElementById(`${id}-icon-dropdown`);
+            document.querySelectorAll('.icon-picker-dropdown').forEach(d => {
+                if (d !== dropdown) d.classList.remove('active');
+            });
+            dropdown.classList.toggle('active');
+        }
+
+        function selectIcon(id, icon) {
+            if (id === 'logo') {
+                document.getElementById('logo_icon').value = icon;
+                document.getElementById('logo-icon-preview').textContent = icon;
+            } else {
+                const index = id.replace('module-', '');
+                const card = document.querySelectorAll('.module-card')[index];
+                card.querySelector('.module-icon').value = icon;
+                document.getElementById(`${id}-icon-preview`).textContent = icon;
+            }
+            document.getElementById(`${id}-icon-dropdown`).classList.remove('active');
+            updatePreview();
+        }
+
+        // Color sync functions
+        function syncColorInput(field) {
+            const picker = document.getElementById(`${field}_picker`);
+            const input = document.getElementById(field);
+            input.value = picker.value;
+            updatePreview();
+        }
+
+        function syncColorPicker(field) {
+            const picker = document.getElementById(`${field}_picker`);
+            const input = document.getElementById(field);
+            picker.value = input.value;
+        }
+
+        // Get current config from form
+        function getConfig() {
+            const modules = [];
+            document.querySelectorAll('.module-card').forEach(card => {
+                modules.push({
+                    icon: card.querySelector('.module-icon').value,
+                    title: card.querySelector('.module-title').value,
+                    description: card.querySelector('.module-description').value,
+                    href: card.querySelector('.module-href').value
+                });
+            });
+
+            return {
+                logo_icon: document.getElementById('logo_icon').value,
+                logo_text: document.getElementById('logo_text').value,
+                logo_color: document.getElementById('logo_color').value,
+                background_color: document.getElementById('background_color').value,
+                welcome_title: document.getElementById('welcome_title').value,
+                welcome_subtitle: document.getElementById('welcome_subtitle').value,
+                modules: modules
+            };
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            const config = getConfig();
+
+            try {
+                const response = await fetch('/api/admin/page-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('Configuration saved successfully!', 'success');
+                    updatePreview();
+                } else {
+                    showToast('Error saving configuration: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showToast('Error saving configuration: ' + error.message, 'error');
+            }
+        }
+
+        // Update preview
+        function updatePreview() {
+            const frame = document.getElementById('preview-frame');
+            frame.src = frame.src;
+        }
+
+        // Add new module
+        function addModule() {
+            const container = document.getElementById('modules-container');
+            const index = document.querySelectorAll('.module-card').length;
+
+            const card = document.createElement('div');
+            card.className = 'module-card';
+            card.dataset.index = index;
+            card.innerHTML = `
+                <div class="module-card-header">
+                    <span>Module ${index + 1}</span>
+                    <div class="module-card-actions">
+                        <button class="btn-icon" onclick="moveModule(${index}, -1)" title="Move Up">&#9650;</button>
+                        <button class="btn-icon" onclick="moveModule(${index}, 1)" title="Move Down">&#9660;</button>
+                        <button class="btn-icon delete" onclick="deleteModule(${index})" title="Delete">&#10005;</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Icon</label>
+                    <div class="icon-picker">
+                        <div class="icon-picker-trigger" onclick="toggleIconPicker('module-${index}')">
+                            <span id="module-${index}-icon-preview">📦</span>
+                            <span style="color: #999; font-size: 12px;">Click to change</span>
+                        </div>
+                        <div id="module-${index}-icon-dropdown" class="icon-picker-dropdown"></div>
+                    </div>
+                    <input type="hidden" class="module-icon" value="📦">
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" class="module-title" value="New Module" onchange="updatePreview()">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="module-description" onchange="updatePreview()">Description for the new module.</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Link (href)</label>
+                    <input type="text" class="module-href" value="/new-module" onchange="updatePreview()">
+                </div>
+            `;
+
+            container.appendChild(card);
+            initIconPickers();
+            updateModuleIndices();
+        }
+
+        // Delete module
+        function deleteModule(index) {
+            if (!confirm('Are you sure you want to delete this module?')) return;
+
+            const cards = document.querySelectorAll('.module-card');
+            if (cards[index]) {
+                cards[index].remove();
+                updateModuleIndices();
+                updatePreview();
+            }
+        }
+
+        // Move module up or down
+        function moveModule(index, direction) {
+            const cards = Array.from(document.querySelectorAll('.module-card'));
+            const newIndex = index + direction;
+
+            if (newIndex < 0 || newIndex >= cards.length) return;
+
+            const container = document.getElementById('modules-container');
+            const card = cards[index];
+            const targetCard = cards[newIndex];
+
+            if (direction === -1) {
+                container.insertBefore(card, targetCard);
+            } else {
+                container.insertBefore(targetCard, card);
+            }
+
+            updateModuleIndices();
+            updatePreview();
+        }
+
+        // Update module indices after reordering
+        function updateModuleIndices() {
+            document.querySelectorAll('.module-card').forEach((card, i) => {
+                card.dataset.index = i;
+                card.querySelector('.module-card-header span').textContent = `Module ${i + 1}`;
+
+                // Update button onclick handlers
+                const buttons = card.querySelectorAll('.btn-icon');
+                buttons[0].setAttribute('onclick', `moveModule(${i}, -1)`);
+                buttons[1].setAttribute('onclick', `moveModule(${i}, 1)`);
+                buttons[2].setAttribute('onclick', `deleteModule(${i})`);
+
+                // Update icon picker
+                const trigger = card.querySelector('.icon-picker-trigger');
+                trigger.setAttribute('onclick', `toggleIconPicker('module-${i}')`);
+
+                const dropdown = card.querySelector('.icon-picker-dropdown');
+                dropdown.id = `module-${i}-icon-dropdown`;
+
+                const preview = card.querySelector('[id^="module-"][id$="-icon-preview"]');
+                preview.id = `module-${i}-icon-preview`;
+            });
+
+            initIconPickers();
+        }
+
+        // Reset to default configuration
+        async function resetToDefault() {
+            if (!confirm('Are you sure you want to reset to default configuration? All changes will be lost.')) return;
+
+            try {
+                const response = await fetch('/api/admin/page-config');
+                const defaultConfig = {
+                    logo_icon: '🏠',
+                    logo_text: 'Integratd Living',
+                    logo_color: '#556B2F',
+                    background_color: '#f5f5f7',
+                    welcome_title: 'Welcome to Integratd Living',
+                    welcome_subtitle: 'Your complete business automation platform',
+                    modules: [
+                        {href: '/crm', icon: '📊', title: 'CRM Dashboard', description: 'Manage customers, projects, scheduling, inventory, and more in one place.'},
+                        {href: '/quotes', icon: '💰', title: 'Quote Automation', description: 'Upload floor plans and let AI generate accurate quotes automatically.'},
+                        {href: '/canvas', icon: '🎨', title: 'Canvas Editor', description: 'Professional floor plan editor with zoom, pan, and symbol management.'},
+                        {href: '/mapping', icon: '⚡', title: 'Electrical Mapping', description: 'Professional electrical mapping with wiring, circuits, and component management.'},
+                        {href: '/board-builder', icon: '🔌', title: 'Loxone Board Builder', description: 'Design professional Loxone boards with AI generation and integration with mapping data.'},
+                        {href: '/electrical-cad', icon: '📟', title: 'Electrical CAD Designer', description: 'Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.'},
+                        {href: '/learning', icon: '🧠', title: 'AI Learning', description: 'Train the system with examples to improve accuracy over time.'},
+                        {href: '/kanban', icon: '📋', title: 'Operations Board', description: 'Kanban task management system for team workflow and project tracking.'}
+                    ]
+                };
+
+                await fetch('/api/admin/page-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(defaultConfig)
+                });
+
+                location.reload();
+            } catch (error) {
+                showToast('Error resetting configuration: ' + error.message, 'error');
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.icon-picker')) {
+                document.querySelectorAll('.icon-picker-dropdown').forEach(d => {
+                    d.classList.remove('active');
+                });
+            }
+        });
+
+        // Initialize
+        initIconPickers();
+    </script>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        © 2025 Integratd Living. All rights reserved.
+    </footer>
+</body>
+</html>
