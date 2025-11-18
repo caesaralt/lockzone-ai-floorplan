@@ -4,556 +4,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete CRM - Integratd Living</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f4f7ed',
+                            100: '#e5ebd6',
+                            200: '#cdd9b1',
+                            300: '#afc183',
+                            400: '#93a85d',
+                            500: '#556B2F',
+                            600: '#5a6f3a',
+                            700: '#455530',
+                            800: '#39452a',
+                            900: '#313b26',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        /* TOP NAV */
-        .top-nav {
-            background: white;
-            border-bottom: 1px solid #d2d2d7;
-            padding: 0 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            height: 60px;
-            gap: 40px;
-        }
-
-        .top-logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: #556B2F;
-            text-decoration: none;
-        }
-
-        .top-nav-menu {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-            flex: 1;
-        }
-
-        .top-nav-item {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .top-nav-item:hover {
-            background: rgba(85, 107, 47, 0.1);
-        }
-
-        .top-nav-item.active {
-            background: #556B2F;
-            color: white;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 60px;
-            bottom: 0;
-            width: 250px;
-            background: white;
-            border-right: 1px solid #d2d2d7;
-            padding: 24px 0;
-            overflow-y: auto;
-        }
-
-        .nav-section {
-            padding: 24px 0;
-            border-bottom: 1px solid #f5f5f7;
-        }
-
-        .nav-section-title {
-            padding: 0 24px 12px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #999;
-        }
-
-        .nav-item {
-            padding: 12px 24px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #1d1d1f;
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .nav-item:hover { background: #f5f5f7; }
-        .nav-item.active {
-            background: #556B2F;
-            color: white;
-            font-weight: 600;
-        }
-
-        /* MAIN CONTENT */
-        .main-content {
-            margin-left: 250px;
-            margin-top: 0;
-            padding: 40px;
-            min-height: calc(100vh - 60px);
-        }
-
-        .section {
-            display: none;
-            animation: fadeIn 0.3s;
-        }
-
-        .section.active { display: block; }
-
+        /* Custom animations and specific styles */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .page-subtitle {
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 32px;
-        }
-
-        /* STATS */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        .stat-value {
-            font-size: 36px;
-            font-weight: 700;
-            color: #556B2F;
-            margin-bottom: 8px;
-        }
-
-        .stat-label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        /* CARD */
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .card-title {
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        /* BUTTONS */
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-
-        .btn-primary {
-            background: #556B2F;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #6B8E23;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        .btn-secondary:hover { background: #e8e8ed; }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        /* FORM */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"],
-        input[type="number"],
-        input[type="date"],
-        input[type="time"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #d2d2d7;
-            border-radius: 10px;
-            font-size: 15px;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #556B2F;
-            box-shadow: 0 0 0 4px rgba(85, 107, 47, 0.1);
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .search-input {
-            width: 100%;
-            max-width: 400px;
-            padding: 12px 16px;
-            border: 1px solid #d2d2d7;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        /* TABLE */
-        .table-container { overflow-x: auto; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            text-align: left;
-            padding: 16px;
-            background: #f5f5f7;
-            font-weight: 600;
-            font-size: 13px;
-            color: #666;
-            text-transform: uppercase;
-            border-bottom: 2px solid #d2d2d7;
-        }
-
-        td {
-            padding: 16px;
-            border-bottom: 1px solid #f5f5f7;
-        }
-
-        tr:hover { background: #fafafa; }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-active { background: #d4edda; color: #155724; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-in-progress { background: #cce5ff; color: #004085; }
-        .status-completed { background: #d4edda; color: #155724; }
-        .status-on-hold { background: #ffeaa7; color: #6c5ce7; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
-
-        /* MODAL */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            overflow-y: auto;
-            padding: 40px 20px;
-        }
-
-        .modal.active { display: flex; }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
-            max-width: 700px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .modal-title {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 32px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        /* EMPTY STATE */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #666;
-        }
-
-        .empty-icon { font-size: 64px; margin-bottom: 16px; }
-        .empty-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #1d1d1f;
-        }
-
-        /* LOADING */
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f5f5f7;
-            border-top-color: #556B2F;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .flex { display: flex; }
-        .gap-2 { gap: 16px; }
-        .mt-3 { margin-top: 24px; }
+        .section { display: none; animation: fadeIn 0.3s ease-out; }
+        .section.active { display: block; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+        .spinner { animation: spin 0.8s linear infinite; }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 font-sans text-gray-900 antialiased">
 
     <!-- TOP NAVIGATION -->
-    <nav class="top-nav">
-        <div class="nav-container">
-            <a href="/" class="top-logo">🏠 Integratd Living</a>
-            <ul class="top-nav-menu">
-                <li><a href="/crm" class="top-nav-item active">CRM Dashboard</a></li>
-                <li><a href="/quotes" class="top-nav-item">Quote Automation</a></li>
-                <li><a href="/editor/latest" class="top-nav-item">Floor Plan Canvas</a></li>
-                <li><a href="/learning" class="top-nav-item">AI Learning</a></li>
-                <li><a href="/simpro" class="top-nav-item">Simpro Integration</a></li>
+    <nav class="bg-white border-b border-gray-200 px-6 lg:px-10 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto flex items-center h-16 gap-10">
+            <a href="/" class="text-xl font-bold text-brand-500 hover:text-brand-600 transition-colors flex items-center gap-2">
+                <span class="text-2xl">🏠</span> Integratd Living
+            </a>
+            <ul class="hidden md:flex gap-2 flex-1">
+                <li><a href="/crm" class="px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 text-white shadow-md">CRM Dashboard</a></li>
+                <li><a href="/quotes" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-600 transition-all">Quote Automation</a></li>
+                <li><a href="/editor/latest" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-600 transition-all">Floor Plan Canvas</a></li>
+                <li><a href="/learning" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-600 transition-all">AI Learning</a></li>
+                <li><a href="/simpro" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-600 transition-all">Simpro Integration</a></li>
             </ul>
         </div>
     </nav>
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
-        <div class="nav-section">
-            <div class="nav-section-title">Main</div>
-            <div class="nav-item active" data-section="dashboard">
-                <span>📊</span> Dashboard
+    <div class="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 py-6 overflow-y-auto shadow-lg">
+        <div class="py-4 border-b border-gray-100">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Main</div>
+            <div class="nav-item active px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium bg-gradient-to-r from-brand-500 to-brand-600 text-white mx-3 rounded-lg shadow-md" data-section="dashboard">
+                <span class="text-lg">📊</span> Dashboard
             </div>
         </div>
 
-        <div class="nav-section">
-            <div class="nav-section-title">Customers</div>
-            <div class="nav-item" data-section="customers">
-                <span>👥</span> All Customers
+        <div class="py-4 border-b border-gray-100">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Customers</div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="customers">
+                <span class="text-lg">👥</span> All Customers
             </div>
-            <div class="nav-item" data-section="communications">
-                <span>💬</span> Communications
-            </div>
-        </div>
-
-        <div class="nav-section">
-            <div class="nav-section-title">Projects</div>
-            <div class="nav-item" data-section="projects">
-                <span>📁</span> All Projects
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="communications">
+                <span class="text-lg">💬</span> Communications
             </div>
         </div>
 
-        <div class="nav-section">
-            <div class="nav-section-title">Inventory</div>
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> All Inventory
+        <div class="py-4 border-b border-gray-100">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Projects</div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="projects">
+                <span class="text-lg">📁</span> All Projects
             </div>
         </div>
 
-        <div class="nav-section">
-            <div class="nav-section-title">Scheduling</div>
-            <div class="nav-item" data-section="calendar">
-                <span>📅</span> Calendar
+        <div class="py-4 border-b border-gray-100">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Scheduling</div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="calendar">
+                <span class="text-lg">📅</span> Calendar
             </div>
-            <div class="nav-item" data-section="technicians">
-                <span>👷</span> Technicians
-            </div>
-        </div>
-
-        <div class="nav-section">
-            <div class="nav-section-title">Inventory</div>
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> Stock
-            </div>
-            <div class="nav-item" data-section="suppliers">
-                <span>🏭</span> Suppliers
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="technicians">
+                <span class="text-lg">👷</span> Technicians
             </div>
         </div>
 
-        <div class="nav-section">
-            <div class="nav-section-title">System</div>
-            <div class="nav-item" data-section="integrations">
-                <span>🔗</span> Integrations
+        <div class="py-4 border-b border-gray-100">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Inventory</div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="inventory">
+                <span class="text-lg">📦</span> Stock
+            </div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="suppliers">
+                <span class="text-lg">🏭</span> Suppliers
+            </div>
+        </div>
+
+        <div class="py-4">
+            <div class="px-6 pb-3 text-xs font-bold uppercase tracking-wider text-gray-400">System</div>
+            <div class="nav-item px-6 py-3 cursor-pointer transition-all flex items-center gap-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-brand-600 mx-3 rounded-lg" data-section="integrations">
+                <span class="text-lg">🔗</span> Integrations
             </div>
         </div>
     </div>
 
     <!-- MAIN CONTENT -->
-    <div class="main-content">
-        
+    <div class="ml-64 p-8 min-h-screen">
+
         <!-- DASHBOARD -->
         <div id="dashboard" class="section active">
-            <h1 class="page-title">Dashboard</h1>
-            <p class="page-subtitle">Overview of your business</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <p class="text-gray-500 mb-8">Overview of your business</p>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="statCustomers">0</div>
-                    <div class="stat-label">Total Customers</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-brand-500 mb-2" id="statCustomers">0</div>
+                    <div class="text-sm text-gray-500 font-medium">Total Customers</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statProjects">0</div>
-                    <div class="stat-label">Total Projects</div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-brand-500 mb-2" id="statProjects">0</div>
+                    <div class="text-sm text-gray-500 font-medium">Total Projects</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statActive">0</div>
-                    <div class="stat-label">Active Projects</div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-blue-500 mb-2" id="statActive">0</div>
+                    <div class="text-sm text-gray-500 font-medium">Active Projects</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statRevenue">$0</div>
-                    <div class="stat-label">Total Revenue</div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-green-500 mb-2" id="statRevenue">$0</div>
+                    <div class="text-sm text-gray-500 font-medium">Total Revenue</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statPending">$0</div>
-                    <div class="stat-label">Pending Revenue</div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-amber-500 mb-2" id="statPending">$0</div>
+                    <div class="text-sm text-gray-500 font-medium">Pending Revenue</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statStock">0</div>
-                    <div class="stat-label">Low Stock Items</div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="text-3xl font-bold text-red-500 mb-2" id="statStock">0</div>
+                    <div class="text-sm text-gray-500 font-medium">Low Stock Items</div>
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Quick Actions</h2>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-900">Quick Actions</h2>
                 </div>
-                <div class="flex gap-2">
-                    <button class="btn btn-primary" onclick="showSection('customers'); openModal('customerModal')">+ New Customer</button>
-                    <button class="btn btn-primary" onclick="showSection('projects'); openModal('projectModal')">+ New Project</button>
-                    <button class="btn btn-primary" onclick="showSection('calendar'); openModal('eventModal')">+ Schedule Event</button>
-                    <button class="btn btn-primary" onclick="showSection('inventory'); openModal('inventoryModal')">+ Add Inventory</button>
+                <div class="flex flex-wrap gap-3">
+                    <button class="px-5 py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transform hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg" onclick="showSection('customers'); openModal('customerModal')">+ New Customer</button>
+                    <button class="px-5 py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transform hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg" onclick="showSection('projects'); openModal('projectModal')">+ New Project</button>
+                    <button class="px-5 py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transform hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg" onclick="showSection('calendar'); openModal('eventModal')">+ Schedule Event</button>
+                    <button class="px-5 py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transform hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg" onclick="showSection('inventory'); openModal('inventoryModal')">+ Add Inventory</button>
                 </div>
             </div>
         </div>
 
         <!-- CUSTOMERS -->
         <div id="customers" class="section">
-            <h1 class="page-title">Customers</h1>
-            <p class="page-subtitle">Manage your customer relationships</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Customers</h1>
+            <p class="text-gray-500 mb-8">Manage your customer relationships</p>
 
-            <div class="card">
-                <div class="card-header">
-                    <input type="text" class="search-input" id="customerSearch" placeholder="Search customers..." onkeyup="searchCustomers()">
-                    <button class="btn btn-primary" onclick="openModal('customerModal')">+ Add Customer</button>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <input type="text" class="w-full sm:max-w-md px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all" id="customerSearch" placeholder="Search customers..." onkeyup="searchCustomers()">
+                    <button class="px-5 py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transform hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg whitespace-nowrap" onclick="openModal('customerModal')">+ Add Customer</button>
                 </div>
-                <div id="customersLoading" class="loading" style="display:none;">
-                    <div class="spinner"></div>
-                    <p>Loading customers...</p>
+                <div id="customersLoading" class="text-center py-10" style="display:none;">
+                    <div class="w-10 h-10 border-4 border-gray-200 border-t-brand-500 rounded-full spinner mx-auto mb-4"></div>
+                    <p class="text-gray-500">Loading customers...</p>
                 </div>
                 <div id="customersTable"></div>
             </div>
@@ -1297,41 +927,43 @@
             const container = document.getElementById('customersTable');
             if (customers.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">👥</div>
-                        <div class="empty-title">No customers yet</div>
-                        <p>Add your first customer to get started</p>
+                    <div class="text-center py-16">
+                        <div class="text-6xl mb-4">👥</div>
+                        <div class="text-xl font-semibold text-gray-900 mb-2">No customers yet</div>
+                        <p class="text-gray-500">Add your first customer to get started</p>
                     </div>
                 `;
                 return;
             }
 
             container.innerHTML = `
-                <div class="table-container">
-                    <table>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
                         <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Company</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Projects</th>
-                                <th>Revenue</th>
-                                <th>Actions</th>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Company</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Projects</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Revenue</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-gray-100">
                             ${customers.map(c => `
-                                <tr>
-                                    <td><strong>${c.name}</strong></td>
-                                    <td>${c.company || '-'}</td>
-                                    <td>${c.email || '-'}</td>
-                                    <td>${c.phone || '-'}</td>
-                                    <td>${c.total_projects || 0}</td>
-                                    <td>$${(c.total_revenue || 0).toLocaleString()}</td>
-                                    <td>
-                                        <button class="btn btn-secondary btn-small" onclick="editCustomer('${c.id}')">Edit</button>
-                                        <button class="btn btn-danger btn-small" onclick="deleteCustomer('${c.id}')">Delete</button>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-4"><span class="font-semibold text-gray-900">${c.name}</span></td>
+                                    <td class="px-4 py-4 text-gray-600">${c.company || '-'}</td>
+                                    <td class="px-4 py-4 text-gray-600">${c.email || '-'}</td>
+                                    <td class="px-4 py-4 text-gray-600">${c.phone || '-'}</td>
+                                    <td class="px-4 py-4"><span class="px-2.5 py-1 bg-brand-50 text-brand-600 rounded-full text-sm font-medium">${c.total_projects || 0}</span></td>
+                                    <td class="px-4 py-4 font-semibold text-green-600">$${(c.total_revenue || 0).toLocaleString()}</td>
+                                    <td class="px-4 py-4">
+                                        <div class="flex gap-2">
+                                            <button class="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors" onclick="editCustomer('${c.id}')">Edit</button>
+                                            <button class="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" onclick="deleteCustomer('${c.id}')">Delete</button>
+                                        </div>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -1427,44 +1059,60 @@
             const container = document.getElementById('projectsTable');
             if (projects.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📁</div>
-                        <div class="empty-title">No projects yet</div>
-                        <p>Create your first project</p>
+                    <div class="text-center py-16">
+                        <div class="text-6xl mb-4">📁</div>
+                        <div class="text-xl font-semibold text-gray-900 mb-2">No projects yet</div>
+                        <p class="text-gray-500">Create your first project</p>
                     </div>
                 `;
                 return;
             }
 
+            const statusColors = {
+                'pending': 'bg-amber-100 text-amber-700',
+                'in_progress': 'bg-blue-100 text-blue-700',
+                'completed': 'bg-green-100 text-green-700',
+                'on_hold': 'bg-purple-100 text-purple-700',
+                'cancelled': 'bg-red-100 text-red-700'
+            };
+
+            const priorityColors = {
+                'low': 'text-gray-500',
+                'medium': 'text-amber-600 font-medium',
+                'high': 'text-red-600 font-bold'
+            };
+
             container.innerHTML = `
-                <div class="table-container">
-                    <table>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
                         <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Customer</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                                <th>Quote</th>
-                                <th>Due Date</th>
-                                <th>Actions</th>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Title</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Quote</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
+                                <th class="text-left px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-gray-100">
                             ${projects.map(p => {
                                 const customer = customers.find(c => c.id === p.customer_id);
                                 return `
-                                    <tr>
-                                        <td><strong>${p.title}</strong></td>
-                                        <td>${customer ? customer.name : '-'}</td>
-                                        <td><span class="status-badge status-${p.status}">${p.status}</span></td>
-                                        <td>${p.priority}</td>
-                                        <td>$${(p.quote_amount || 0).toLocaleString()}</td>
-                                        <td>${p.due_date || '-'}</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-small" onclick="viewProject('${p.id}')">View</button>
-                                            <button class="btn btn-secondary btn-small" onclick="editProject('${p.id}')">Edit</button>
-                                            <button class="btn btn-danger btn-small" onclick="deleteProject('${p.id}')">Delete</button>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-4 py-4"><span class="font-semibold text-gray-900">${p.title}</span></td>
+                                        <td class="px-4 py-4 text-gray-600">${customer ? customer.name : '-'}</td>
+                                        <td class="px-4 py-4"><span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColors[p.status] || 'bg-gray-100 text-gray-700'}">${p.status.replace('_', ' ')}</span></td>
+                                        <td class="px-4 py-4 capitalize ${priorityColors[p.priority] || ''}">${p.priority}</td>
+                                        <td class="px-4 py-4 font-semibold text-gray-900">$${(p.quote_amount || 0).toLocaleString()}</td>
+                                        <td class="px-4 py-4 text-gray-600">${p.due_date || '-'}</td>
+                                        <td class="px-4 py-4">
+                                            <div class="flex gap-2">
+                                                <button class="px-3 py-1.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-medium rounded-lg hover:from-brand-600 hover:to-brand-700 transition-all shadow-sm" onclick="viewProject('${p.id}')">View</button>
+                                                <button class="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors" onclick="editProject('${p.id}')">Edit</button>
+                                                <button class="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" onclick="deleteProject('${p.id}')">Delete</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 `;
@@ -1577,51 +1225,51 @@
 
             if (currentCostCentres.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-state" style="padding: 40px;">
-                        <div class="empty-icon">📊</div>
-                        <div class="empty-title">No cost centres yet</div>
-                        <p>Add cost centres to track project expenses</p>
+                    <div class="text-center py-12">
+                        <div class="text-5xl mb-4">📊</div>
+                        <div class="text-lg font-semibold text-gray-900 mb-2">No cost centres yet</div>
+                        <p class="text-gray-500">Add cost centres to track project expenses</p>
                     </div>
                 `;
                 return;
             }
 
             container.innerHTML = currentCostCentres.map(cc => `
-                <div style="border: 2px solid ${cc.color}; border-radius: 12px; margin-bottom: 16px; overflow: hidden;">
-                    <div style="background: ${cc.color}15; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 16px; height: 16px; background: ${cc.color}; border-radius: 4px;"></div>
-                            <strong style="font-size: 16px;">${cc.name}</strong>
+                <div class="border-2 rounded-xl mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow" style="border-color: ${cc.color};">
+                    <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3" style="background: ${cc.color}15;">
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded" style="background: ${cc.color};"></div>
+                            <span class="font-bold text-gray-900">${cc.name}</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-weight: 700; font-size: 18px; color: ${cc.color};">$${(cc.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                            <button class="btn btn-primary btn-small" onclick="openAddItemModal('${cc.id}')">+ Add Item</button>
-                            <button class="btn btn-danger btn-small" onclick="deleteCostCentre('${cc.id}')">Delete</button>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl font-bold" style="color: ${cc.color};">$${(cc.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <button class="px-3 py-1.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm" onclick="openAddItemModal('${cc.id}')">+ Add Item</button>
+                            <button class="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" onclick="deleteCostCentre('${cc.id}')">Delete</button>
                         </div>
                     </div>
                     ${cc.items && cc.items.length > 0 ? `
-                        <div style="padding: 0;">
-                            <table style="width: 100%; border-collapse: collapse;">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
                                 <thead>
-                                    <tr style="background: #f8f9fa;">
-                                        <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: #666;">Description</th>
-                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Qty</th>
-                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Unit</th>
-                                        <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #666;">Unit Price</th>
-                                        <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #666;">Total</th>
-                                        <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #666;">Actions</th>
+                                    <tr class="bg-gray-50">
+                                        <th class="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Description</th>
+                                        <th class="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Qty</th>
+                                        <th class="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Unit</th>
+                                        <th class="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Unit Price</th>
+                                        <th class="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Total</th>
+                                        <th class="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="divide-y divide-gray-100">
                                     ${cc.items.map(item => `
-                                        <tr style="border-top: 1px solid #f0f0f0;">
-                                            <td style="padding: 12px 16px;">${item.description}</td>
-                                            <td style="padding: 12px 16px; text-align: center;">${item.quantity}</td>
-                                            <td style="padding: 12px 16px; text-align: center;">${item.unit}</td>
-                                            <td style="padding: 12px 16px; text-align: right;">$${item.unit_price.toFixed(2)}</td>
-                                            <td style="padding: 12px 16px; text-align: right; font-weight: 600;">$${item.total.toFixed(2)}</td>
-                                            <td style="padding: 12px 16px; text-align: center;">
-                                                <button class="btn btn-danger btn-small" onclick="deleteItem('${cc.id}', '${item.id}')">×</button>
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 text-sm text-gray-900">${item.description}</td>
+                                            <td class="px-4 py-3 text-sm text-center text-gray-600">${item.quantity}</td>
+                                            <td class="px-4 py-3 text-sm text-center text-gray-600">${item.unit}</td>
+                                            <td class="px-4 py-3 text-sm text-right text-gray-600">$${item.unit_price.toFixed(2)}</td>
+                                            <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900">$${item.total.toFixed(2)}</td>
+                                            <td class="px-4 py-3 text-center">
+                                                <button class="w-7 h-7 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-bold" onclick="deleteItem('${cc.id}', '${item.id}')">×</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -1629,7 +1277,7 @@
                             </table>
                         </div>
                     ` : `
-                        <div style="padding: 20px; text-align: center; color: #999; font-size: 14px;">
+                        <div class="py-6 text-center text-gray-400 text-sm">
                             No items yet. Click "+ Add Item" to add expenses.
                         </div>
                     `}
