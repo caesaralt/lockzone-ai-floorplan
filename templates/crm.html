@@ -883,6 +883,23 @@
                     <p>Loading markups...</p>
                 </div>
             </div>
+
+            <!-- Cost Centres Section -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-header" style="margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">Cost Centres</h3>
+                    <button type="button" class="btn btn-primary btn-small" onclick="addProjectCostCentre()">+ Add Cost Centre</button>
+                </div>
+
+                <!-- Cost Summary Visual -->
+                <div id="projectCostSummary" style="margin-bottom: 20px; padding: 16px; background: #f5f5f7; border-radius: 10px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #556B2F;">$0.00</div>
+                    <div style="font-size: 12px; color: #666;">Total Cost</div>
+                </div>
+
+                <!-- Cost Centres List -->
+                <div id="projectCostCentresList"></div>
+            </div>
         </div>
     </div>
 
@@ -1042,6 +1059,28 @@
                     </div>
                 </form>
                 <div id="quoteStockItemsList"></div>
+            </div>
+
+            <!-- Cost Centres Section -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-header" style="margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">Cost Centres</h3>
+                    <button type="button" class="btn btn-primary btn-small" onclick="addQuoteCostCentre()">+ Add Cost Centre</button>
+                </div>
+
+                <!-- Cost Summary Visual -->
+                <div id="quoteCostSummary" style="margin-bottom: 20px; padding: 16px; background: #f5f5f7; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 24px; font-weight: 700; color: #556B2F;" id="quoteCostTotal">$0.00</div>
+                            <div style="font-size: 12px; color: #666;">Total from Cost Centres</div>
+                        </div>
+                        <div id="quoteCostBreakdown" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                    </div>
+                </div>
+
+                <!-- Cost Centres List -->
+                <div id="quoteCostCentresList"></div>
             </div>
         </div>
     </div>
@@ -1687,6 +1726,7 @@
 
             openModal('markupsModal');
             await loadMarkups(projectId);
+            await loadProjectCostCentres(projectId);
         }
 
         async function loadMarkups(projectId) {
@@ -2088,6 +2128,7 @@
             openModal('quoteMarkupsModal');
             await loadQuoteMarkups(quoteId);
             await loadQuoteStockItems(quoteId);
+            await loadQuoteCostCentres(quoteId);
         }
 
         async function loadQuoteMarkups(quoteId) {
@@ -2282,6 +2323,316 @@
             try {
                 await fetch(`/api/crm/quotes/${currentQuoteId}/stock-items/${itemId}`, {method: 'DELETE'});
                 await loadQuoteStockItems(currentQuoteId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ==================== COST CENTRES MANAGEMENT ====================
+
+        // Project Cost Centres
+        async function loadProjectCostCentres(projectId) {
+            const container = document.getElementById('projectCostCentresList');
+            const summary = document.getElementById('projectCostSummary');
+
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/cost-centres`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderProjectCostCentres(data.cost_centres);
+                    summary.innerHTML = `
+                        <div style="font-size: 24px; font-weight: 700; color: #556B2F;">$${data.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                        <div style="font-size: 12px; color: #666;">Total Cost</div>
+                        ${data.cost_centres.length > 0 ? `
+                            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                ${data.cost_centres.map(cc => `
+                                    <div style="padding: 4px 8px; border-radius: 4px; font-size: 11px; background: ${cc.color}20; color: ${cc.color}; border: 1px solid ${cc.color};">
+                                        ${cc.name}: $${cc.subtotal.toLocaleString()}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    `;
+                }
+            } catch (e) {
+                container.innerHTML = `<p>Error loading cost centres</p>`;
+            }
+        }
+
+        function renderProjectCostCentres(costCentres) {
+            const container = document.getElementById('projectCostCentresList');
+
+            if (!costCentres || costCentres.length === 0) {
+                container.innerHTML = `<p style="color: #666; font-size: 13px; text-align: center; padding: 20px;">No cost centres yet. Add one to organize your costs.</p>`;
+                return;
+            }
+
+            container.innerHTML = costCentres.map(cc => `
+                <div style="border: 2px solid ${cc.color}; border-radius: 10px; margin-bottom: 16px; overflow: hidden;">
+                    <div style="background: ${cc.color}20; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: ${cc.color};">${cc.name}</strong>
+                            ${cc.description ? `<span style="font-size: 12px; color: #666; margin-left: 8px;">${cc.description}</span>` : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600;">$${cc.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <button class="btn btn-danger btn-small" onclick="deleteProjectCostCentre('${cc.id}')" style="padding: 4px 8px; font-size: 11px;">X</button>
+                        </div>
+                    </div>
+                    <div style="padding: 12px;">
+                        <!-- Add Item Form -->
+                        <form onsubmit="addProjectCostCentreItem(event, '${cc.id}')" style="margin-bottom: 12px;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <input type="text" placeholder="Item name" required style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <input type="number" placeholder="Qty" value="1" min="1" required style="width: 60px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <input type="number" placeholder="Unit $" step="0.01" required style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <button type="submit" class="btn btn-primary btn-small" style="padding: 6px 12px; font-size: 11px;">Add</button>
+                            </div>
+                        </form>
+                        <!-- Items List -->
+                        ${cc.items.length > 0 ? `
+                            <table style="width: 100%; font-size: 12px;">
+                                <thead>
+                                    <tr style="background: #f5f5f7;">
+                                        <th style="padding: 6px; text-align: left;">Item</th>
+                                        <th style="padding: 6px; text-align: center;">Qty</th>
+                                        <th style="padding: 6px; text-align: right;">Unit $</th>
+                                        <th style="padding: 6px; text-align: right;">Total</th>
+                                        <th style="padding: 6px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cc.items.map(item => `
+                                        <tr>
+                                            <td style="padding: 6px;">${item.name}</td>
+                                            <td style="padding: 6px; text-align: center;">${item.quantity}</td>
+                                            <td style="padding: 6px; text-align: right;">$${item.unit_price.toFixed(2)}</td>
+                                            <td style="padding: 6px; text-align: right; font-weight: 600;">$${item.total.toFixed(2)}</td>
+                                            <td style="padding: 6px; text-align: center;">
+                                                <button onclick="deleteProjectCostCentreItem('${cc.id}', '${item.id}')" style="background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px;">X</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p style="font-size: 11px; color: #999; text-align: center;">No items yet</p>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addProjectCostCentre() {
+            const name = prompt('Enter cost centre name (e.g., Lighting, Security, Labor):');
+            if (!name) return;
+
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/cost-centres`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    await loadProjectCostCentres(currentMarkupsProjectId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteProjectCostCentre(centreId) {
+            if (!confirm('Delete this cost centre and all its items?')) return;
+            try {
+                await fetch(`/api/crm/projects/${currentMarkupsProjectId}/cost-centres/${centreId}`, {method: 'DELETE'});
+                await loadProjectCostCentres(currentMarkupsProjectId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function addProjectCostCentreItem(e, centreId) {
+            e.preventDefault();
+            const form = e.target;
+            const inputs = form.querySelectorAll('input');
+
+            const data = {
+                name: inputs[0].value,
+                quantity: parseInt(inputs[1].value) || 1,
+                unit_price: parseFloat(inputs[2].value) || 0
+            };
+
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/cost-centres/${centreId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    form.reset();
+                    inputs[1].value = '1';
+                    await loadProjectCostCentres(currentMarkupsProjectId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteProjectCostCentreItem(centreId, itemId) {
+            try {
+                await fetch(`/api/crm/projects/${currentMarkupsProjectId}/cost-centres/${centreId}/items/${itemId}`, {method: 'DELETE'});
+                await loadProjectCostCentres(currentMarkupsProjectId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Quote Cost Centres
+        async function loadQuoteCostCentres(quoteId) {
+            const container = document.getElementById('quoteCostCentresList');
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/cost-centres`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderQuoteCostCentres(data.cost_centres);
+                    document.getElementById('quoteCostTotal').textContent = `$${data.total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+                    // Update breakdown
+                    const breakdown = document.getElementById('quoteCostBreakdown');
+                    breakdown.innerHTML = data.cost_centres.map(cc => `
+                        <div style="padding: 4px 8px; border-radius: 4px; font-size: 10px; background: ${cc.color}20; color: ${cc.color}; border: 1px solid ${cc.color};">
+                            ${cc.name}: $${cc.subtotal.toLocaleString()}
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                container.innerHTML = `<p>Error loading cost centres</p>`;
+            }
+        }
+
+        function renderQuoteCostCentres(costCentres) {
+            const container = document.getElementById('quoteCostCentresList');
+
+            if (!costCentres || costCentres.length === 0) {
+                container.innerHTML = `<p style="color: #666; font-size: 13px; text-align: center; padding: 20px;">No cost centres yet. Add one to organize your quote.</p>`;
+                return;
+            }
+
+            container.innerHTML = costCentres.map(cc => `
+                <div style="border: 2px solid ${cc.color}; border-radius: 10px; margin-bottom: 16px; overflow: hidden;">
+                    <div style="background: ${cc.color}20; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: ${cc.color};">${cc.name}</strong>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600;">$${cc.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <button class="btn btn-danger btn-small" onclick="deleteQuoteCostCentre('${cc.id}')" style="padding: 4px 8px; font-size: 11px;">X</button>
+                        </div>
+                    </div>
+                    <div style="padding: 12px;">
+                        <form onsubmit="addQuoteCostCentreItem(event, '${cc.id}')" style="margin-bottom: 12px;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <input type="text" placeholder="Item name" required style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <input type="number" placeholder="Qty" value="1" min="1" required style="width: 60px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <input type="number" placeholder="Unit $" step="0.01" required style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;">
+                                <button type="submit" class="btn btn-primary btn-small" style="padding: 6px 12px; font-size: 11px;">Add</button>
+                            </div>
+                        </form>
+                        ${cc.items.length > 0 ? `
+                            <table style="width: 100%; font-size: 12px;">
+                                <thead>
+                                    <tr style="background: #f5f5f7;">
+                                        <th style="padding: 6px; text-align: left;">Item</th>
+                                        <th style="padding: 6px; text-align: center;">Qty</th>
+                                        <th style="padding: 6px; text-align: right;">Unit $</th>
+                                        <th style="padding: 6px; text-align: right;">Total</th>
+                                        <th style="padding: 6px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cc.items.map(item => `
+                                        <tr>
+                                            <td style="padding: 6px;">${item.name}</td>
+                                            <td style="padding: 6px; text-align: center;">${item.quantity}</td>
+                                            <td style="padding: 6px; text-align: right;">$${item.unit_price.toFixed(2)}</td>
+                                            <td style="padding: 6px; text-align: right; font-weight: 600;">$${item.total.toFixed(2)}</td>
+                                            <td style="padding: 6px; text-align: center;">
+                                                <button onclick="deleteQuoteCostCentreItem('${cc.id}', '${item.id}')" style="background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px;">X</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p style="font-size: 11px; color: #999; text-align: center;">No items yet</p>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addQuoteCostCentre() {
+            const name = prompt('Enter cost centre name (e.g., Lighting, Security, Labor):');
+            if (!name) return;
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/cost-centres`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    await loadQuoteCostCentres(currentQuoteId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteQuoteCostCentre(centreId) {
+            if (!confirm('Delete this cost centre and all its items?')) return;
+            try {
+                await fetch(`/api/crm/quotes/${currentQuoteId}/cost-centres/${centreId}`, {method: 'DELETE'});
+                await loadQuoteCostCentres(currentQuoteId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function addQuoteCostCentreItem(e, centreId) {
+            e.preventDefault();
+            const form = e.target;
+            const inputs = form.querySelectorAll('input');
+
+            const data = {
+                name: inputs[0].value,
+                quantity: parseInt(inputs[1].value) || 1,
+                unit_price: parseFloat(inputs[2].value) || 0
+            };
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/cost-centres/${centreId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    form.reset();
+                    inputs[1].value = '1';
+                    await loadQuoteCostCentres(currentQuoteId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteQuoteCostCentreItem(centreId, itemId) {
+            try {
+                await fetch(`/api/crm/quotes/${currentQuoteId}/cost-centres/${centreId}/items/${itemId}`, {method: 'DELETE'});
+                await loadQuoteCostCentres(currentQuoteId);
             } catch (e) {
                 alert('Error: ' + e.message);
             }
