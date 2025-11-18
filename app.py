@@ -8274,6 +8274,79 @@ If users attach images, you can:
 - Provide professional technical support
 - Use extended thinking for complex reasoning
 
+📦 CRM SYSTEM FEATURES YOU KNOW ABOUT:
+
+1. STOCK & INVENTORY MANAGEMENT:
+   - Items have: name, sku, item_number, category, quantity, unit_price
+   - Serial numbers can be added to track individual units
+   - Serial numbers track status: available, assigned, installed
+   - Search inventory at: /api/crm/inventory/search?q=keyword
+
+2. SERIAL NUMBER TRACKING:
+   - Add serial numbers to stock items for individual unit tracking
+   - Each serial number tracks: serial, status, assigned_to, added_at
+   - Statuses: 'available' (in stock), 'assigned' (allocated to room), 'installed' (physically installed)
+   - Perfect for knowing exactly which unit goes where during installation
+
+3. ROOM ASSIGNMENTS (Project Installation Planning):
+   - Assign specific serial numbers to specific rooms in a project
+   - Each assignment includes: room_name, serial_number, item_name, notes
+   - Track installation status and timestamps
+   - When assigned, serial number status automatically updates to 'assigned'
+   - When marked as installed, timestamp is recorded
+   - Helps installers know "what goes where" for efficient installation
+   - API: /api/crm/projects/{id}/room-assignments
+
+4. QUOTES MANAGEMENT:
+   - Create quotes linked to customers
+   - Add markups (floor plans, takeoffs, electrical mapping)
+   - Add stock items to quotes
+   - Track materials_cost, labor_cost, markup_percentage
+   - Convert quotes to projects when job is won
+   - All data migrates during conversion
+
+5. COST CENTRES (Project & Quote Cost Organization):
+   - Highly customizable cost categories for organizing expenses
+   - Each cost centre has: name, description, color (auto-assigned)
+   - Add items with: name, quantity, unit_price, auto-calculated total
+   - Subtotals calculated per cost centre
+   - Total cost displayed visually with color-coded breakdown
+   - Search inventory to add items directly
+   - API: /api/crm/projects/{id}/cost-centres
+
+6. GOOGLE CALENDAR INTEGRATION:
+   - OAuth2 connection to Google account
+   - View upcoming calendar events
+   - Create events with: title, description, location, start/end time
+   - Add attendees and set reminders
+   - API: /api/crm/google/calendar/events
+
+7. GMAIL INTEGRATION:
+   - Send emails directly from CRM
+   - Supports plain text and HTML emails
+   - Emails are logged to Communications
+   - Read inbox messages
+   - API: /api/crm/google/gmail/send
+
+8. PROJECT MARKUPS:
+   - Attach floor plans, quotes, takeoffs, electrical mappings to projects
+   - Open markups in different modules (Takeoffs, Mapping, CAD)
+   - Track session IDs for cross-module data sharing
+
+HOW TO EXPLAIN THESE FEATURES TO USERS:
+
+For Serial Number Tracking:
+"You can add serial numbers to your stock items to track individual units. Each serial number can be assigned to a specific room in a project, so your installers know exactly which device goes where. The system automatically tracks whether each unit is available, assigned, or installed."
+
+For Room Assignments:
+"In each project, you can assign serial numbers to specific rooms. For example, assign dimmer SN-001 to the Living Room and SN-002 to the Master Bedroom. This creates an installation checklist that shows what goes where, and you can mark items as installed when complete."
+
+For Cost Centres:
+"Cost centres let you organize project costs into categories like 'Lighting Equipment', 'Labor', 'Security Devices'. Each centre shows its subtotal, and you see the total cost with a visual breakdown. You can search your inventory and add items directly to cost centres."
+
+For Google Integration:
+"Connect your Google account to sync calendar events and send emails directly from the CRM. Schedule installation appointments, send quotes to customers, and keep all communication in one place."
+
 """.format(page=current_page)
 
     if agent_mode:
