@@ -32,6 +32,19 @@ PERMISSIONS = {
     'admin': 'Admin Panel'
 }
 
+# CRM sub-permissions for granular access control
+CRM_PERMISSIONS = {
+    'crm_customers': 'Customers',
+    'crm_projects': 'Projects',
+    'crm_communications': 'Communications',
+    'crm_calendar': 'Calendar',
+    'crm_technicians': 'Technicians',
+    'crm_inventory': 'Inventory',
+    'crm_suppliers': 'Suppliers',
+    'crm_stock': 'Stock Management',
+    'crm_reports': 'Reports & Analytics'
+}
+
 # Predefined roles
 ROLES = {
     'admin': {
@@ -125,7 +138,7 @@ def get_user_by_id(user_id):
     return None
 
 
-def create_user(name, code, display_name, role='viewer', custom_permissions=None):
+def create_user(name, code, display_name, role='viewer', custom_permissions=None, crm_permissions=None):
     """Create a new user (admin only)"""
     users = load_users()
 
@@ -146,6 +159,7 @@ def create_user(name, code, display_name, role='viewer', custom_permissions=None
         'display_name': display_name,
         'role': role,
         'permissions': permissions,
+        'crm_permissions': crm_permissions or list(CRM_PERMISSIONS.keys()) if 'crm' in permissions else [],
         'active': True,
         'created_at': datetime.utcnow().isoformat(),
         'last_login': None
@@ -182,6 +196,8 @@ def update_user(user_id, **kwargs):
                 user['active'] = kwargs['active']
             if 'code' in kwargs and kwargs['code']:
                 user['code'] = generate_password_hash(kwargs['code'])
+            if 'crm_permissions' in kwargs:
+                user['crm_permissions'] = kwargs['crm_permissions']
 
             users[i] = user
 

@@ -257,6 +257,46 @@
             margin-top: 16px;
         }
 
+        /* Autocomplete styles */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 2px solid #d2d2d7;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 0 0 12px 12px;
+            display: none;
+        }
+
+        .autocomplete-items.show {
+            display: block;
+        }
+
+        .autocomplete-items div {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .autocomplete-items div:hover,
+        .autocomplete-active {
+            background: rgba(85, 107, 47, 0.1);
+            color: #556B2F;
+        }
+
+        .autocomplete-items div:last-child {
+            border-radius: 0 0 10px 10px;
+        }
+
         .footer {
             text-align: center;
             margin-top: 32px;
@@ -291,7 +331,7 @@
                 </svg>
             </div>
             <h1 class="logo-title">Integratd Living</h1>
-            <p class="logo-subtitle">Complete Business Automation Platform</p>
+            <p class="logo-subtitle">Automation Platform</p>
         </div>
 
         <!-- Login Card -->
@@ -310,19 +350,22 @@
                     <span class="error-text" id="errorText"></span>
                 </div>
 
-                <!-- Name Input -->
+                <!-- User Input with Autocomplete -->
                 <div class="form-group">
-                    <label class="form-label" for="name">Name</label>
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        class="form-input"
-                        placeholder="Enter your name"
-                        required
-                        autocomplete="username"
-                        autofocus
-                    >
+                    <label class="form-label" for="name">User</label>
+                    <div class="autocomplete-wrapper">
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            class="form-input"
+                            placeholder="Start typing username..."
+                            required
+                            autocomplete="off"
+                            autofocus
+                        >
+                        <div id="autocomplete-list" class="autocomplete-items"></div>
+                    </div>
                 </div>
 
                 <!-- Code Input -->
@@ -354,14 +397,6 @@
 
             <!-- Help Section -->
             <div class="help-section">
-                <div class="default-creds">
-                    <div class="default-creds-title">Default Administrator</div>
-                    <div class="creds-display">
-                        <span class="cred-value">Admin</span>
-                        <span style="color: #999;">/</span>
-                        <span class="cred-value">1234</span>
-                    </div>
-                </div>
                 <p class="contact-admin">Contact your administrator for access credentials</p>
             </div>
         </div>
@@ -381,6 +416,99 @@
         const btnIcon = document.getElementById('btnIcon');
         const codeInput = document.getElementById('code');
         const nameInput = document.getElementById('name');
+        const autocompleteList = document.getElementById('autocomplete-list');
+
+        let usernames = [];
+        let currentFocus = -1;
+
+        // Fetch usernames for autocomplete
+        async function fetchUsernames() {
+            try {
+                const response = await fetch('/api/auth/usernames');
+                const data = await response.json();
+                if (data.success) {
+                    usernames = data.usernames;
+                }
+            } catch (error) {
+                console.error('Error fetching usernames:', error);
+            }
+        }
+
+        // Initialize usernames
+        fetchUsernames();
+
+        // Autocomplete functionality
+        nameInput.addEventListener('input', function() {
+            const val = this.value;
+            closeAllLists();
+            if (!val) return;
+            currentFocus = -1;
+
+            const matches = usernames.filter(username =>
+                username.toLowerCase().includes(val.toLowerCase())
+            );
+
+            if (matches.length > 0) {
+                autocompleteList.innerHTML = '';
+                matches.forEach(username => {
+                    const div = document.createElement('div');
+                    const matchIndex = username.toLowerCase().indexOf(val.toLowerCase());
+                    div.innerHTML = username.substring(0, matchIndex) +
+                        '<strong>' + username.substring(matchIndex, matchIndex + val.length) + '</strong>' +
+                        username.substring(matchIndex + val.length);
+                    div.addEventListener('click', function() {
+                        nameInput.value = username;
+                        closeAllLists();
+                        codeInput.focus();
+                    });
+                    autocompleteList.appendChild(div);
+                });
+                autocompleteList.classList.add('show');
+            }
+        });
+
+        // Keyboard navigation for autocomplete
+        nameInput.addEventListener('keydown', function(e) {
+            const items = autocompleteList.getElementsByTagName('div');
+            if (e.keyCode == 40) { // Down arrow
+                currentFocus++;
+                addActive(items);
+            } else if (e.keyCode == 38) { // Up arrow
+                currentFocus--;
+                addActive(items);
+            } else if (e.keyCode == 13) { // Enter
+                e.preventDefault();
+                if (currentFocus > -1 && items[currentFocus]) {
+                    items[currentFocus].click();
+                }
+            }
+        });
+
+        function addActive(items) {
+            if (!items) return;
+            removeActive(items);
+            if (currentFocus >= items.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = items.length - 1;
+            items[currentFocus].classList.add('autocomplete-active');
+        }
+
+        function removeActive(items) {
+            for (let item of items) {
+                item.classList.remove('autocomplete-active');
+            }
+        }
+
+        function closeAllLists() {
+            autocompleteList.classList.remove('show');
+            autocompleteList.innerHTML = '';
+        }
+
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== nameInput) {
+                closeAllLists();
+            }
+        });
 
         // Only allow numbers in code field
         codeInput.addEventListener('input', (e) => {
