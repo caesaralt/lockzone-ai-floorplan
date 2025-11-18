@@ -13,63 +13,6 @@
             color: #1d1d1f;
         }
 
-        /* TOP NAV */
-        .top-nav {
-            background: white;
-            border-bottom: 1px solid #d2d2d7;
-            padding: 0 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            height: 60px;
-            gap: 40px;
-        }
-
-        .logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: {{ config.logo_color if config else '#556B2F' }};
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-            flex: 1;
-        }
-
-        .nav-item {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .nav-item:hover {
-            background: rgba(85, 107, 47, 0.1);
-        }
-
-        .nav-item.active {
-            background: #556B2F;
-            color: white;
-        }
-
-
         /* WELCOME SCREEN */
         .welcome-container {
             max-width: 1200px;
@@ -136,24 +79,6 @@
     </style>
 </head>
 <body>
-
-    <!-- TOP NAVIGATION -->
-    <nav class="top-nav">
-        <div class="nav-container">
-            <a href="/" class="logo">{{ config.logo_icon if config else '🏠' }} {{ config.logo_text if config else 'Integratd Living' }}</a>
-            <ul class="nav-menu">
-                <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
-                <li><a href="/quotes" class="nav-item">Quote Automation</a></li>
-                <li><a href="/canvas" class="nav-item">Canvas Editor</a></li>
-                <li><a href="/mapping" class="nav-item">Electrical Mapping</a></li>
-                <li><a href="/board-builder" class="nav-item">Board Builder</a></li>
-                <li><a href="/electrical-cad" class="nav-item">Electrical CAD</a></li>
-                <li><a href="/learning" class="nav-item">AI Learning</a></li>
-                <li><a href="/admin/page-editor" class="nav-item" style="color: #666; font-size: 12px;">Admin</a></li>
-            </ul>
-        </div>
-    </nav>
-
 
     <!-- WELCOME CONTENT -->
     <div class="welcome-container">
@@ -234,18 +159,6 @@
             {% endif %}
         </div>
     </div>
-
-    <script>
-        // Highlight active nav item based on current URL
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-            document.querySelectorAll('.nav-item').forEach(item => {
-                if (item.getAttribute('href') === currentPath) {
-                    item.classList.add('active');
-                }
-            });
-        });
-    </script>
 
     <!-- Footer -->
     <footer style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
