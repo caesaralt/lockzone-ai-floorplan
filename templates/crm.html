@@ -459,6 +459,13 @@
         </div>
 
         <div class="nav-section">
+            <div class="nav-section-title">Quotes</div>
+            <div class="nav-item" data-section="quotes">
+                <span>📋</span> All Quotes
+            </div>
+        </div>
+
+        <div class="nav-section">
             <div class="nav-section-title">Inventory</div>
             <div class="nav-item" data-section="inventory">
                 <span>📦</span> All Inventory
@@ -584,6 +591,30 @@
                     <button class="btn btn-primary" onclick="openModal('projectModal')">+ New Project</button>
                 </div>
                 <div id="projectsTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES -->
+        <div id="quotes" class="section">
+            <h1 class="page-title">Quotes</h1>
+            <p class="page-subtitle">Manage quotes and convert to projects when accepted</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quoteSearch" placeholder="Search quotes...">
+                    <div style="display: flex; gap: 10px;">
+                        <select id="quoteStatusFilter" onchange="filterQuotes()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #d2d2d7;">
+                            <option value="">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="sent">Sent</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="expired">Expired</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openModal('quoteModal')">+ New Quote</button>
+                    </div>
+                </div>
+                <div id="quotesTable"></div>
             </div>
         </div>
 
@@ -855,6 +886,166 @@
         </div>
     </div>
 
+    <!-- Quote Modal -->
+    <div id="quoteModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">New Quote</h2>
+                <button class="close-btn" onclick="closeModal('quoteModal')">×</button>
+            </div>
+            <form id="quoteForm" onsubmit="saveQuote(event)">
+                <input type="hidden" id="quoteId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quote Number</label>
+                        <input type="text" id="quoteNumber" placeholder="Auto-generated if empty">
+                    </div>
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <select id="quoteCustomer"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="quoteTitle" required placeholder="e.g., Home Automation - Smith Residence">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="quoteDesc" placeholder="Quote details and scope of work..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="quoteStatus">
+                            <option value="draft">Draft</option>
+                            <option value="sent">Sent</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="expired">Expired</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valid Until</label>
+                        <input type="date" id="quoteValidUntil">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Materials Cost</label>
+                        <input type="number" id="quoteMaterialsCost" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Labor Cost</label>
+                        <input type="number" id="quoteLaborCost" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Markup %</label>
+                        <input type="number" id="quoteMarkupPct" step="0.1" value="20" placeholder="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Quote Amount</label>
+                        <input type="number" id="quoteAmount" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="quoteNotes" rows="2" placeholder="Internal notes..."></textarea>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('quoteModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Quote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quote Markups Modal -->
+    <div id="quoteMarkupsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Quote Attachments</h2>
+                <button class="close-btn" onclick="closeModal('quoteMarkupsModal')">×</button>
+            </div>
+            <div id="quoteMarkupsInfo" style="margin-bottom: 20px; padding: 12px; background: #f5f5f7; border-radius: 10px;">
+                <strong id="quoteMarkupsTitle">Loading...</strong>
+            </div>
+
+            <!-- Add Markup Form -->
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Add Floor Plan / Attachment</h3>
+                <form id="addQuoteMarkupForm" onsubmit="addQuoteMarkup(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="quoteMarkupType">
+                                <option value="quote">Quote PDF</option>
+                                <option value="takeoffs">Takeoffs Session</option>
+                                <option value="mapping">Electrical Mapping</option>
+                                <option value="cad">CAD Drawing</option>
+                                <option value="board">Board Layout</option>
+                                <option value="general">General File</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Name *</label>
+                            <input type="text" id="quoteMarkupName" placeholder="e.g., Floor Plan Rev 1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Session ID</label>
+                            <input type="text" id="quoteMarkupSessionId" placeholder="Session UUID">
+                        </div>
+                        <div class="form-group">
+                            <label>Filename</label>
+                            <input type="text" id="quoteMarkupFilename" placeholder="e.g., quote_12345.pdf">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="quoteMarkupDescription" placeholder="Optional description..." rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">+ Add Attachment</button>
+                </form>
+            </div>
+
+            <!-- Markups List -->
+            <div id="quoteMarkupsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading attachments...</p>
+                </div>
+            </div>
+
+            <!-- Stock Items Section -->
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Linked Stock Items</h3>
+                <form id="addQuoteStockForm" onsubmit="addQuoteStockItem(event)" style="margin-bottom: 16px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Item Name</label>
+                            <input type="text" id="stockItemName" placeholder="e.g., Lutron Dimmer" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="stockItemQty" value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Unit Price</label>
+                            <input type="number" id="stockItemPrice" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end;">
+                            <button type="submit" class="btn btn-secondary btn-small">+ Add Item</button>
+                        </div>
+                    </div>
+                </form>
+                <div id="quoteStockItemsList"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Event Modal -->
     <div id="eventModal" class="modal">
         <div class="modal-content">
@@ -1061,6 +1252,7 @@
         // STATE
         let customers = [];
         let projects = [];
+        let quotes = [];
         let calendar = [];
         let technicians = [];
         let inventory = [];
@@ -1185,6 +1377,7 @@
                 loadStats(),
                 loadCustomers(),
                 loadProjects(),
+                loadQuotes(),
                 loadCalendar(),
                 loadTechnicians(),
                 loadInventory(),
@@ -1674,6 +1867,421 @@
                 } else {
                     alert('Cannot open this markup. Make sure it has a valid session ID or filename.');
                 }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ==================== QUOTES MANAGEMENT ====================
+        let currentQuoteId = null;
+
+        async function loadQuotes() {
+            try {
+                const res = await fetch('/api/crm/quotes');
+                const data = await res.json();
+                if (data.success) {
+                    quotes = data.quotes;
+                    renderQuotes();
+                    populateQuoteCustomerSelect();
+                }
+            } catch (e) {
+                console.error('Quotes error:', e);
+            }
+        }
+
+        function populateQuoteCustomerSelect() {
+            const select = document.getElementById('quoteCustomer');
+            if (select) {
+                select.innerHTML = '<option value="">Select Customer</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            }
+        }
+
+        function filterQuotes() {
+            const status = document.getElementById('quoteStatusFilter').value;
+            renderQuotes(status);
+        }
+
+        function renderQuotes(statusFilter = '') {
+            const container = document.getElementById('quotesTable');
+            let filteredQuotes = quotes;
+
+            if (statusFilter) {
+                filteredQuotes = quotes.filter(q => q.status === statusFilter);
+            }
+
+            if (filteredQuotes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">No quotes yet</div>
+                        <p>Create your first quote</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusColors = {
+                'draft': 'status-pending',
+                'sent': 'status-in-progress',
+                'accepted': 'status-completed',
+                'rejected': 'status-cancelled',
+                'expired': 'status-on-hold'
+            };
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quote #</th>
+                                <th>Title</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Attachments</th>
+                                <th>Valid Until</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredQuotes.map(q => {
+                                const customer = customers.find(c => c.id === q.customer_id);
+                                const markupCount = (q.markups || []).length;
+                                const stockCount = (q.stock_items || []).length;
+                                return `
+                                    <tr>
+                                        <td><strong>${q.quote_number || '-'}</strong></td>
+                                        <td>${q.title}</td>
+                                        <td>${customer ? customer.name : '-'}</td>
+                                        <td><span class="status-badge ${statusColors[q.status] || ''}">${q.status}</span></td>
+                                        <td>$${(q.quote_amount || 0).toLocaleString()}</td>
+                                        <td>
+                                            <button class="btn btn-secondary btn-small" onclick="openQuoteMarkupsModal('${q.id}')" style="display: flex; align-items: center; gap: 6px;">
+                                                <span>📎</span> ${markupCount} / ${stockCount} items
+                                            </button>
+                                        </td>
+                                        <td>${q.valid_until || '-'}</td>
+                                        <td style="white-space: nowrap;">
+                                            <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')">Edit</button>
+                                            ${q.status !== 'accepted' ? `<button class="btn btn-primary btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">Convert</button>` : ''}
+                                            ${q.converted_to_project_id ? `<button class="btn btn-primary btn-small" onclick="goToProject('${q.converted_to_project_id}')">View Project</button>` : ''}
+                                            <button class="btn btn-danger btn-small" onclick="deleteQuote('${q.id}')">Delete</button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function saveQuote(e) {
+            e.preventDefault();
+            const id = document.getElementById('quoteId').value;
+            const data = {
+                quote_number: document.getElementById('quoteNumber').value,
+                customer_id: document.getElementById('quoteCustomer').value,
+                title: document.getElementById('quoteTitle').value,
+                description: document.getElementById('quoteDesc').value,
+                status: document.getElementById('quoteStatus').value,
+                valid_until: document.getElementById('quoteValidUntil').value,
+                materials_cost: parseFloat(document.getElementById('quoteMaterialsCost').value) || 0,
+                labor_cost: parseFloat(document.getElementById('quoteLaborCost').value) || 0,
+                markup_percentage: parseFloat(document.getElementById('quoteMarkupPct').value) || 20,
+                quote_amount: parseFloat(document.getElementById('quoteAmount').value) || 0,
+                notes: document.getElementById('quoteNotes').value
+            };
+
+            try {
+                const url = id ? `/api/crm/quotes/${id}` : '/api/crm/quotes';
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('quoteModal');
+                    loadQuotes();
+                    loadStats();
+                    alert('Quote saved!');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function editQuote(id) {
+            const q = quotes.find(x => x.id === id);
+            if (q) {
+                document.getElementById('quoteId').value = q.id;
+                document.getElementById('quoteNumber').value = q.quote_number || '';
+                document.getElementById('quoteCustomer').value = q.customer_id || '';
+                document.getElementById('quoteTitle').value = q.title;
+                document.getElementById('quoteDesc').value = q.description || '';
+                document.getElementById('quoteStatus').value = q.status;
+                document.getElementById('quoteValidUntil').value = q.valid_until || '';
+                document.getElementById('quoteMaterialsCost').value = q.materials_cost || '';
+                document.getElementById('quoteLaborCost').value = q.labor_cost || '';
+                document.getElementById('quoteMarkupPct').value = q.markup_percentage || 20;
+                document.getElementById('quoteAmount').value = q.quote_amount || '';
+                document.getElementById('quoteNotes').value = q.notes || '';
+                openModal('quoteModal');
+            }
+        }
+
+        async function deleteQuote(id) {
+            if (!confirm('Delete this quote?')) return;
+            try {
+                await fetch(`/api/crm/quotes/${id}`, {method: 'DELETE'});
+                loadQuotes();
+                loadStats();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function convertToProject(quoteId) {
+            if (!confirm('Convert this quote to a project? This will mark the quote as accepted.')) return;
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/convert-to-project`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Quote converted to project successfully!');
+                    loadQuotes();
+                    loadProjects();
+                    loadStats();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function goToProject(projectId) {
+            showSection('projects');
+            // Highlight the project row
+            setTimeout(() => {
+                const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
+                if (row) row.scrollIntoView({behavior: 'smooth'});
+            }, 100);
+        }
+
+        // Quote Markups Management
+        async function openQuoteMarkupsModal(quoteId) {
+            currentQuoteId = quoteId;
+            const quote = quotes.find(q => q.id === quoteId);
+
+            if (quote) {
+                document.getElementById('quoteMarkupsTitle').textContent = `${quote.quote_number || 'Quote'}: ${quote.title}`;
+            }
+
+            document.getElementById('addQuoteMarkupForm').reset();
+            document.getElementById('addQuoteStockForm').reset();
+
+            openModal('quoteMarkupsModal');
+            await loadQuoteMarkups(quoteId);
+            await loadQuoteStockItems(quoteId);
+        }
+
+        async function loadQuoteMarkups(quoteId) {
+            const container = document.getElementById('quoteMarkupsList');
+            container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading...</p></div>`;
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/markups`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderQuoteMarkups(data.markups);
+                } else {
+                    container.innerHTML = `<div class="empty-state"><p>Error: ${data.error}</p></div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`;
+            }
+        }
+
+        function renderQuoteMarkups(markups) {
+            const container = document.getElementById('quoteMarkupsList');
+
+            if (!markups || markups.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 20px;">
+                        <p>No attachments yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const typeIcons = {
+                'quote': '📄', 'takeoffs': '📐', 'mapping': '⚡',
+                'cad': '📏', 'board': '🔲', 'general': '📎'
+            };
+
+            container.innerHTML = `
+                <table style="width: 100%;">
+                    <thead>
+                        <tr><th>Type</th><th>Name</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        ${markups.map(m => `
+                            <tr>
+                                <td>${typeIcons[m.type] || '📎'} ${m.type}</td>
+                                <td>${m.name}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-small" onclick="openQuoteMarkup('${m.id}')">Open</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteQuoteMarkup('${m.id}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function addQuoteMarkup(e) {
+            e.preventDefault();
+            if (!currentQuoteId) return;
+
+            const data = {
+                type: document.getElementById('quoteMarkupType').value,
+                name: document.getElementById('quoteMarkupName').value,
+                session_id: document.getElementById('quoteMarkupSessionId').value || '',
+                filename: document.getElementById('quoteMarkupFilename').value || '',
+                description: document.getElementById('quoteMarkupDescription').value || ''
+            };
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/markups`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('addQuoteMarkupForm').reset();
+                    await loadQuoteMarkups(currentQuoteId);
+                    loadQuotes();
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteQuoteMarkup(markupId) {
+            if (!confirm('Delete this attachment?')) return;
+            try {
+                await fetch(`/api/crm/quotes/${currentQuoteId}/markups/${markupId}`, {method: 'DELETE'});
+                await loadQuoteMarkups(currentQuoteId);
+                loadQuotes();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function openQuoteMarkup(markupId) {
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/markups/${markupId}/open`);
+                const data = await res.json();
+                if (data.success && data.url) {
+                    if (data.type === 'quote' || data.type === 'general') {
+                        window.open(data.url, '_blank');
+                    } else {
+                        window.location.href = data.url;
+                    }
+                } else {
+                    alert('Cannot open this attachment.');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Quote Stock Items Management
+        async function loadQuoteStockItems(quoteId) {
+            const container = document.getElementById('quoteStockItemsList');
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/stock-items`);
+                const data = await res.json();
+                if (data.success) {
+                    renderQuoteStockItems(data.stock_items);
+                }
+            } catch (e) {
+                container.innerHTML = `<p>Error loading stock items</p>`;
+            }
+        }
+
+        function renderQuoteStockItems(items) {
+            const container = document.getElementById('quoteStockItemsList');
+            if (!items || items.length === 0) {
+                container.innerHTML = `<p style="color: #666; font-size: 13px;">No stock items linked</p>`;
+                return;
+            }
+
+            const total = items.reduce((sum, i) => sum + (i.total_price || 0), 0);
+
+            container.innerHTML = `
+                <table style="width: 100%; font-size: 13px;">
+                    <thead>
+                        <tr><th>Item</th><th>Qty</th><th>Unit $</th><th>Total</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(i => `
+                            <tr>
+                                <td>${i.name}</td>
+                                <td>${i.quantity}</td>
+                                <td>$${(i.unit_price || 0).toFixed(2)}</td>
+                                <td>$${(i.total_price || 0).toFixed(2)}</td>
+                                <td><button class="btn btn-danger btn-small" onclick="deleteQuoteStockItem('${i.id}')" style="padding: 4px 8px; font-size: 11px;">X</button></td>
+                            </tr>
+                        `).join('')}
+                        <tr style="font-weight: bold; border-top: 2px solid #333;">
+                            <td colspan="3">Total Materials</td>
+                            <td>$${total.toFixed(2)}</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function addQuoteStockItem(e) {
+            e.preventDefault();
+            if (!currentQuoteId) return;
+
+            const data = {
+                name: document.getElementById('stockItemName').value,
+                quantity: parseInt(document.getElementById('stockItemQty').value) || 1,
+                unit_price: parseFloat(document.getElementById('stockItemPrice').value) || 0
+            };
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/stock-items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('addQuoteStockForm').reset();
+                    await loadQuoteStockItems(currentQuoteId);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteQuoteStockItem(itemId) {
+            try {
+                await fetch(`/api/crm/quotes/${currentQuoteId}/stock-items/${itemId}`, {method: 'DELETE'});
+                await loadQuoteStockItems(currentQuoteId);
             } catch (e) {
                 alert('Error: ' + e.message);
             }
