@@ -1506,7 +1506,9 @@ def load_page_config():
             {'href': '/board-builder', 'icon': '🔌', 'title': 'Loxone Board Builder', 'description': 'Design professional Loxone boards with AI generation and integration with mapping data.'},
             {'href': '/electrical-cad', 'icon': '📟', 'title': 'Electrical CAD Designer', 'description': 'Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.'},
             {'href': '/learning', 'icon': '🧠', 'title': 'AI Learning', 'description': 'Train the system with examples to improve accuracy over time.'},
-            {'href': '/kanban', 'icon': '📋', 'title': 'Operations Board', 'description': 'Kanban task management system for team workflow and project tracking.'}
+            {'href': '/kanban', 'icon': '📋', 'title': 'Operations Board', 'description': 'Kanban task management system for team workflow and project tracking.'},
+            {'href': '/login', 'icon': '🔐', 'title': 'User Login', 'description': 'Sign in to access your authorized modules and personalized dashboard.'},
+            {'href': '/admin', 'icon': '👤', 'title': 'Admin Panel', 'description': 'Manage users, assign permissions, and configure system access controls.'}
         ]
     }
 
