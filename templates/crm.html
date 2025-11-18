@@ -1589,7 +1589,9 @@
                     document.getElementById('statActive').textContent = data.stats.projects.active;
                     document.getElementById('statRevenue').textContent = '$' + data.stats.revenue.total.toLocaleString();
                     document.getElementById('statPending').textContent = '$' + data.stats.revenue.pending.toLocaleString();
-                    document.getElementById('statStock').textContent = data.stats.inventory.low_stock;
+                    // Show stock value instead of just low stock count
+                    const stockValue = data.stats.stock ? data.stats.stock.total_value : 0;
+                    document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
                 }
             } catch (e) {
                 console.error('Stats error:', e);

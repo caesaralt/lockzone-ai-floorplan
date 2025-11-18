@@ -1,0 +1,42 @@
+{
+    "automation_types": {
+        "lighting": {
+            "name": "Lighting Control",
+            "symbols": ["💡"],
+            "base_cost_per_unit": {"basic": 150.0, "premium": 250.0, "deluxe": 400.0},
+            "labor_hours": {"basic": 2.0, "premium": 3.0, "deluxe": 4.0}
+        },
+        "shading": {
+            "name": "Shading Control",
+            "symbols": ["🪟"],
+            "base_cost_per_unit": {"basic": 300.0, "premium": 500.0, "deluxe": 800.0},
+            "labor_hours": {"basic": 3.0, "premium": 4.0, "deluxe": 5.0}
+        },
+        "security_access": {
+            "name": "Security & Access",
+            "symbols": ["🔐"],
+            "base_cost_per_unit": {"basic": 500.0, "premium": 900.0, "deluxe": 1500.0},
+            "labor_hours": {"basic": 4.5, "premium": 6.0, "deluxe": 8.0}
+        },
+        "climate": {
+            "name": "Climate Control",
+            "symbols": ["🌡"],
+            "base_cost_per_unit": {"basic": 400.0, "premium": 700.0, "deluxe": 1200.0},
+            "labor_hours": {"basic": 5.0, "premium": 7.0, "deluxe": 9.0}
+        },
+        "audio": {
+            "name": "Audio System",
+            "symbols": ["🔊"],
+            "base_cost_per_unit": {"basic": 350.0, "premium": 600.0, "deluxe": 1000.0},
+            "labor_hours": {"basic": 3.5, "premium": 5.0, "deluxe": 7.0}
+        }
+    },
+    "labor_rate": 75.0,
+    "markup_percentage": 20.0,
+    "company_info": {
+        "name": "Integratd living",
+        "phone": "+61 XXX XXX XXX",
+        "email": "info@integratdliving.com.au",
+        "address": "Sydney, Australia"
+    }
+}

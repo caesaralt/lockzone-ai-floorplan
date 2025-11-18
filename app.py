@@ -2497,13 +2497,12 @@ def export_board_to_crm():
 def get_crm_stock():
     """Get CRM stock data"""
     try:
-        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
-        if os.path.exists(crm_file):
-            with open(crm_file, 'r') as f:
-                crm_data = json.load(f)
+        if os.path.exists(STOCK_FILE):
+            with open(STOCK_FILE, 'r') as f:
+                stock_data = json.load(f)
                 return jsonify({
                     'success': True,
-                    'stock': crm_data.get('stock', [])
+                    'stock': stock_data if isinstance(stock_data, list) else []
                 })
         else:
             return jsonify({
@@ -5401,13 +5400,19 @@ def handle_customers():
             return jsonify({'success': True, 'customers': customers})
         else:
             data = request.json
+
+            # Validate required fields
+            name = data.get('name', '').strip()
+            if not name:
+                return jsonify({'success': False, 'error': 'Customer name is required'}), 400
+
             customers = load_json_file(CUSTOMERS_FILE, [])
             customer = {
                 'id': str(uuid.uuid4()),
-                'name': data.get('name', ''),
-                'email': data.get('email', ''),
-                'phone': data.get('phone', ''),
-                'address': data.get('address', ''),
+                'name': name,
+                'email': data.get('email', '').strip(),
+                'phone': data.get('phone', '').strip(),
+                'address': data.get('address', '').strip(),
                 'status': data.get('status', 'active'),
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
@@ -5721,13 +5726,19 @@ def handle_quotes():
             return jsonify({'success': True, 'quotes': quotes})
         else:
             data = request.json
+
+            # Validate required fields
+            title = data.get('title', '').strip()
+            if not title:
+                return jsonify({'success': False, 'error': 'Quote title is required'}), 400
+
             quotes = load_json_file(QUOTES_FILE, [])
             quote = {
                 'id': str(uuid.uuid4()),
                 'quote_number': data.get('quote_number', f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"),
                 'customer_id': data.get('customer_id'),
-                'title': data.get('title', ''),
-                'description': data.get('description', ''),
+                'title': title,
+                'description': data.get('description', '').strip(),
                 'status': data.get('status', 'draft'),  # draft, sent, accepted, rejected, expired
                 'quote_amount': data.get('quote_amount', 0.0),
                 'labor_cost': data.get('labor_cost', 0.0),
@@ -7585,25 +7596,28 @@ def get_crm_stats():
     try:
         customers = load_json_file(CUSTOMERS_FILE, [])
         projects = load_json_file(PROJECTS_FILE, [])
-        inventory = load_json_file(INVENTORY_FILE, [])
-        
+        stock = load_json_file(STOCK_FILE, [])
+
         total_customers = len(customers)
         active_customers = len([c for c in customers if c.get('status') == 'active'])
         total_projects = len(projects)
-        active_projects = len([p for p in projects if p.get('status') in ['pending', 'in_progress']])
+        active_projects = len([p for p in projects if p.get('status') in ['pending', 'in_progress', 'planning']])
         completed_projects = len([p for p in projects if p.get('status') == 'completed'])
         total_revenue = sum(p.get('actual_amount', 0) for p in projects if p.get('status') == 'completed')
-        pending_revenue = sum(p.get('quote_amount', 0) for p in projects if p.get('status') in ['pending', 'in_progress'])
-        total_inventory_value = sum(i.get('quantity', 0) * i.get('unit_cost', 0) for i in inventory)
-        low_stock_items = len([i for i in inventory if i.get('quantity', 0) <= i.get('reorder_level', 10)])
-        
+        pending_revenue = sum(p.get('quote_amount', 0) for p in projects if p.get('status') in ['pending', 'in_progress', 'planning'])
+
+        # Calculate stock value from stock file
+        total_stock_value = sum(i.get('quantity', 0) * i.get('unit_price', 0) for i in stock)
+        total_stock_items = len(stock)
+        low_stock_items = len([i for i in stock if i.get('quantity', 0) <= 5])  # Items with 5 or fewer
+
         return jsonify({
             'success': True,
             'stats': {
                 'customers': {'total': total_customers, 'active': active_customers},
                 'projects': {'total': total_projects, 'active': active_projects, 'completed': completed_projects},
                 'revenue': {'total': total_revenue, 'pending': pending_revenue},
-                'inventory': {'total_value': total_inventory_value, 'low_stock': low_stock_items},
+                'stock': {'total_value': total_stock_value, 'total_items': total_stock_items, 'low_stock': low_stock_items},
                 'calendar': {'today_events': 0}
             }
         })
