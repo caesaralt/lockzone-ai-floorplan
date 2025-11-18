@@ -123,6 +123,7 @@ TECHNICIANS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'technicians.json
 INVENTORY_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'inventory.json')
 SUPPLIERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'suppliers.json')
 INTEGRATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'integrations.json')
+QUOTES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'quotes.json')
 
 DEFAULT_DATA = {
     "automation_types": {
@@ -5685,6 +5686,374 @@ def open_markup_in_module(project_id, markup_id):
             'url': url,
             'markup': markup,
             'type': markup_type
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# QUOTES MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.route('/api/crm/quotes', methods=['GET', 'POST'])
+def handle_quotes():
+    """Manage quotes - list all or create new"""
+    try:
+        if request.method == 'GET':
+            quotes = load_json_file(QUOTES_FILE, [])
+            customer_id = request.args.get('customer_id')
+            status = request.args.get('status')
+            if customer_id:
+                quotes = [q for q in quotes if q.get('customer_id') == customer_id]
+            if status:
+                quotes = [q for q in quotes if q.get('status') == status]
+            return jsonify({'success': True, 'quotes': quotes})
+        else:
+            data = request.json
+            quotes = load_json_file(QUOTES_FILE, [])
+            quote = {
+                'id': str(uuid.uuid4()),
+                'quote_number': data.get('quote_number', f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"),
+                'customer_id': data.get('customer_id'),
+                'title': data.get('title', ''),
+                'description': data.get('description', ''),
+                'status': data.get('status', 'draft'),  # draft, sent, accepted, rejected, expired
+                'quote_amount': data.get('quote_amount', 0.0),
+                'labor_cost': data.get('labor_cost', 0.0),
+                'materials_cost': data.get('materials_cost', 0.0),
+                'markup_percentage': data.get('markup_percentage', 20.0),
+                'valid_until': data.get('valid_until'),
+                'notes': data.get('notes', ''),
+                # Linked sessions for different modules
+                'takeoffs_session_id': data.get('takeoffs_session_id'),
+                'mapping_session_id': data.get('mapping_session_id'),
+                'cad_session_id': data.get('cad_session_id'),
+                'board_session_id': data.get('board_session_id'),
+                # Attachments and linked items
+                'markups': [],
+                'stock_items': [],  # Linked inventory items
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            quotes.append(quote)
+            save_json_file(QUOTES_FILE, quotes)
+            return jsonify({'success': True, 'quote': quote})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_quote(quote_id):
+    """Manage a specific quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify({'success': True, 'quote': quotes[idx]})
+
+        elif request.method == 'PUT':
+            data = request.json
+            quote = quotes[idx]
+            for field in ['title', 'description', 'status', 'quote_amount', 'labor_cost',
+                         'materials_cost', 'markup_percentage', 'valid_until', 'notes',
+                         'customer_id', 'takeoffs_session_id', 'mapping_session_id',
+                         'cad_session_id', 'board_session_id', 'quote_number']:
+                if field in data:
+                    quote[field] = data[field]
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+            return jsonify({'success': True, 'quote': quote})
+
+        elif request.method == 'DELETE':
+            quotes.pop(idx)
+            save_json_file(QUOTES_FILE, quotes)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/markups', methods=['GET', 'POST'])
+def handle_quote_markups(quote_id):
+    """Manage markups attached to a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'markups' not in quote:
+            quote['markups'] = []
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'markups': quote['markups'],
+                'quote_id': quote_id
+            })
+
+        else:  # POST - Add new markup
+            data = request.json
+            markup = {
+                'id': str(uuid.uuid4()),
+                'type': data.get('type', 'general'),
+                'name': data.get('name', 'Unnamed Markup'),
+                'filename': data.get('filename', ''),
+                'session_id': data.get('session_id', ''),
+                'description': data.get('description', ''),
+                'created_at': datetime.now().isoformat(),
+                'created_by': data.get('created_by', 'system')
+            }
+
+            quote['markups'].append(markup)
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+
+            return jsonify({
+                'success': True,
+                'markup': markup,
+                'quote': quote
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/markups/<markup_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_quote_markup(quote_id, markup_id):
+    """Manage a specific markup on a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'markups' not in quote:
+            return jsonify({'success': False, 'error': 'No markups on this quote'}), 404
+
+        markup_idx = next((i for i, m in enumerate(quote['markups']) if m['id'] == markup_id), None)
+
+        if markup_idx is None:
+            return jsonify({'success': False, 'error': 'Markup not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'markup': quote['markups'][markup_idx]
+            })
+
+        elif request.method == 'PUT':
+            data = request.json
+            markup = quote['markups'][markup_idx]
+            for field in ['name', 'description', 'type', 'filename', 'session_id']:
+                if field in data:
+                    markup[field] = data[field]
+            markup['updated_at'] = datetime.now().isoformat()
+            quote['markups'][markup_idx] = markup
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+
+            return jsonify({
+                'success': True,
+                'markup': markup
+            })
+
+        elif request.method == 'DELETE':
+            quote['markups'].pop(markup_idx)
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/markups/<markup_id>/open', methods=['GET'])
+def open_quote_markup_in_module(quote_id, markup_id):
+    """Get the appropriate URL to open a quote markup in its module"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote = next((q for q in quotes if q['id'] == quote_id), None)
+
+        if not quote:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        if 'markups' not in quote:
+            return jsonify({'success': False, 'error': 'No markups on this quote'}), 404
+
+        markup = next((m for m in quote['markups'] if m['id'] == markup_id), None)
+
+        if not markup:
+            return jsonify({'success': False, 'error': 'Markup not found'}), 404
+
+        markup_type = markup.get('type', 'general')
+        session_id = markup.get('session_id', '')
+        filename = markup.get('filename', '')
+
+        url = None
+        if markup_type == 'takeoffs' and session_id:
+            url = f'/takeoffs/{session_id}'
+        elif markup_type == 'mapping' and session_id:
+            url = f'/mapping?session={session_id}'
+        elif markup_type == 'cad' and session_id:
+            url = f'/electrical-cad?session={session_id}'
+        elif markup_type == 'board' and session_id:
+            url = f'/board-builder?session={session_id}'
+        elif markup_type == 'quote' and filename:
+            url = f'/api/download/{filename}'
+        elif filename:
+            url = f'/api/download/{filename}'
+
+        return jsonify({
+            'success': True,
+            'url': url,
+            'markup': markup,
+            'type': markup_type
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/stock-items', methods=['GET', 'POST'])
+def handle_quote_stock_items(quote_id):
+    """Manage stock items linked to a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'stock_items' not in quote:
+            quote['stock_items'] = []
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'stock_items': quote['stock_items'],
+                'quote_id': quote_id
+            })
+
+        else:  # POST - Add stock item
+            data = request.json
+            stock_item = {
+                'id': str(uuid.uuid4()),
+                'inventory_id': data.get('inventory_id', ''),
+                'name': data.get('name', ''),
+                'quantity': data.get('quantity', 1),
+                'unit_price': data.get('unit_price', 0.0),
+                'total_price': data.get('quantity', 1) * data.get('unit_price', 0.0),
+                'notes': data.get('notes', ''),
+                'added_at': datetime.now().isoformat()
+            }
+
+            quote['stock_items'].append(stock_item)
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+
+            return jsonify({
+                'success': True,
+                'stock_item': stock_item,
+                'quote': quote
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/stock-items/<item_id>', methods=['DELETE'])
+def delete_quote_stock_item(quote_id, item_id):
+    """Remove a stock item from a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'stock_items' not in quote:
+            return jsonify({'success': False, 'error': 'No stock items on this quote'}), 404
+
+        item_idx = next((i for i, s in enumerate(quote['stock_items']) if s['id'] == item_id), None)
+
+        if item_idx is None:
+            return jsonify({'success': False, 'error': 'Stock item not found'}), 404
+
+        quote['stock_items'].pop(item_idx)
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/convert-to-project', methods=['POST'])
+def convert_quote_to_project(quote_id):
+    """Convert an accepted quote into a project"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote_idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if quote_idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[quote_idx]
+
+        # Create project from quote
+        projects = load_json_file(PROJECTS_FILE, [])
+        project = {
+            'id': str(uuid.uuid4()),
+            'customer_id': quote.get('customer_id'),
+            'title': quote.get('title', 'Converted from Quote'),
+            'description': f"Converted from Quote {quote.get('quote_number', quote_id)}\n\n{quote.get('description', '')}",
+            'status': 'pending',
+            'priority': 'medium',
+            'quote_amount': quote.get('quote_amount', 0.0),
+            'actual_amount': 0.0,
+            'due_date': None,
+            'takeoffs_session_id': quote.get('takeoffs_session_id'),
+            'mapping_session_id': quote.get('mapping_session_id'),
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat(),
+            # Copy markups from quote
+            'markups': quote.get('markups', []).copy(),
+            # Store reference to original quote
+            'source_quote_id': quote_id
+        }
+
+        projects.append(project)
+        save_json_file(PROJECTS_FILE, projects)
+
+        # Update quote status to accepted and link to project
+        quote['status'] = 'accepted'
+        quote['converted_to_project_id'] = project['id']
+        quote['converted_at'] = datetime.now().isoformat()
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[quote_idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+
+        return jsonify({
+            'success': True,
+            'project': project,
+            'quote': quote,
+            'message': f"Quote converted to project successfully"
         })
 
     except Exception as e:
