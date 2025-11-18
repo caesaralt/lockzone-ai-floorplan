@@ -24,6 +24,12 @@ import io
 import traceback
 import base64
 import requests
+# Authentication module
+import auth
+
+# CRM Integration module
+import crm_integration
+
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import logging
@@ -1539,6 +1545,207 @@ def update_page_config():
         return jsonify({'success': True, 'message': 'Page configuration saved successfully'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# AUTHENTICATION AND USER MANAGEMENT ROUTES
+# ============================================================================
+
+# Initialize users file on startup
+auth.init_users_file()
+
+@app.route('/login')
+def login_page():
+    """Login page"""
+    # If already logged in, redirect to main menu
+    if auth.is_authenticated():
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API endpoint for user login"""
+    try:
+        data = request.json
+        name = data.get('name')
+        code = data.get('code')
+
+        if not name or not code:
+            return jsonify({'success': False, 'error': 'Name and code required'}), 400
+
+        # Authenticate user
+        user, error = auth.authenticate_user(name, code)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 401
+
+        # Set session
+        auth.login_user(user)
+
+        return jsonify({
+            'success': True,
+            'user': {
+                'name': user['name'],
+                'display_name': user['display_name'],
+                'role': user['role'],
+                'permissions': user['permissions']
+            },
+            'redirect': '/'
+        })
+
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': 'Login failed'}), 500
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_logout():
+    """API endpoint for user logout"""
+    auth.logout_user()
+    return jsonify({'success': True})
+
+
+@app.route('/admin')
+@auth.admin_required
+def admin_page():
+    """Admin panel for user management"""
+    return render_template('admin.html')
+
+
+@app.route('/api/auth/users', methods=['GET'])
+@auth.admin_required
+def get_users():
+    """Get all users (admin only)"""
+    try:
+        users = auth.load_users()
+        # Remove password hashes from response
+        safe_users = [{k: v for k, v in user.items() if k != 'code'} for user in users]
+        return jsonify({'success': True, 'users': safe_users})
+    except Exception as e:
+        logger.error(f"Error getting users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['GET'])
+@auth.admin_required
+def get_user(user_id):
+    """Get specific user (admin only)"""
+    try:
+        user = auth.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+    except Exception as e:
+        logger.error(f"Error getting user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users', methods=['POST'])
+@auth.admin_required
+def create_user_api():
+    """Create new user (admin only)"""
+    try:
+        data = request.json
+        name = data.get('name')
+        code = data.get('code')
+        display_name = data.get('display_name')
+        role = data.get('role', 'viewer')
+        custom_permissions = data.get('permissions')
+
+        if not name or not code or not display_name:
+            return jsonify({'success': False, 'error': 'Name, code, and display name required'}), 400
+
+        user, error = auth.create_user(name, code, display_name, role, custom_permissions)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+
+    except Exception as e:
+        logger.error(f"Error creating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['PUT'])
+@auth.admin_required
+def update_user_api(user_id):
+    """Update user (admin only)"""
+    try:
+        data = request.json
+
+        # Build update kwargs
+        update_data = {}
+        if 'name' in data:
+            update_data['name'] = data['name']
+        if 'display_name' in data:
+            update_data['display_name'] = data['display_name']
+        if 'code' in data and data['code']:  # Only update if provided
+            update_data['code'] = data['code']
+        if 'role' in data:
+            update_data['role'] = data['role']
+        if 'permissions' in data:
+            update_data['permissions'] = data['permissions']
+        if 'active' in data:
+            update_data['active'] = data['active']
+
+        user, error = auth.update_user(user_id, **update_data)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        # Remove password hash
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+
+    except Exception as e:
+        logger.error(f"Error updating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/users/<user_id>', methods=['DELETE'])
+@auth.admin_required
+def delete_user_api(user_id):
+    """Delete user (admin only)"""
+    try:
+        success, error = auth.delete_user(user_id)
+
+        if error:
+            return jsonify({'success': False, 'error': error}), 400
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/permissions', methods=['GET'])
+@auth.admin_required
+def get_permissions():
+    """Get available permissions and roles (admin only)"""
+    return jsonify({
+        'success': True,
+        'permissions': auth.PERMISSIONS,
+        'roles': auth.ROLES
+    })
+
+
+@app.route('/api/auth/current-user', methods=['GET'])
+@auth.login_required
+def get_current_user_api():
+    """Get current logged-in user info"""
+    user = auth.get_current_user()
+    if user:
+        safe_user = {k: v for k, v in user.items() if k != 'code'}
+        return jsonify({'success': True, 'user': safe_user})
+    return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
 
 @app.route('/')
 def index():
@@ -5629,6 +5836,218 @@ def get_crm_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================================
+# CRM INTEGRATION ENDPOINTS
+# ============================================================================
+
+@app.route('/api/crm/integration/health', methods=['GET'])
+def get_crm_health():
+    """Get CRM data health report"""
+    try:
+        report = crm_integration.get_crm_health_report()
+        return jsonify({'success': True, 'report': report})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/snapshot', methods=['GET'])
+def get_crm_snapshot():
+    """Get complete CRM data snapshot with all relationships"""
+    try:
+        snapshot = crm_integration.get_complete_crm_snapshot()
+        return jsonify({'success': True, 'data': snapshot})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/project/<project_id>', methods=['GET'])
+def get_project_with_relations(project_id):
+    """Get project with all related data (customer, communications, events)"""
+    try:
+        project = crm_integration.get_project_details(project_id)
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+        return jsonify({'success': True, 'project': project})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/customer/<customer_id>/projects', methods=['GET'])
+def get_customer_projects_api(customer_id):
+    """Get all projects for a customer"""
+    try:
+        projects = crm_integration.get_customer_projects(customer_id)
+        return jsonify({'success': True, 'projects': projects})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/customer/<customer_id>/communications', methods=['GET'])
+def get_customer_comms_api(customer_id):
+    """Get all communications for a customer"""
+    try:
+        comms = crm_integration.get_customer_communications(customer_id)
+        return jsonify({'success': True, 'communications': comms})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/technician/<tech_id>/schedule', methods=['GET'])
+def get_tech_schedule_api(tech_id):
+    """Get technician's schedule with project details"""
+    try:
+        schedule = crm_integration.get_technician_schedule(tech_id)
+        return jsonify({'success': True, 'schedule': schedule})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/user/<user_id>/projects', methods=['GET'])
+def get_user_projects_api(user_id):
+    """Get projects assigned to a user (via technician link)"""
+    try:
+        projects = crm_integration.get_user_assigned_projects(user_id)
+        return jsonify({'success': True, 'projects': projects})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/supplier/<supplier_id>/inventory', methods=['GET'])
+def get_supplier_inventory_api(supplier_id):
+    """Get all inventory from a supplier"""
+    try:
+        inventory = crm_integration.get_inventory_by_supplier(supplier_id)
+        return jsonify({'success': True, 'inventory': inventory})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/link/technician', methods=['POST'])
+def link_technician_to_user_api():
+    """Link a technician to a user account"""
+    try:
+        data = request.json
+        tech_id = data.get('tech_id')
+        user_id = data.get('user_id')
+
+        if not tech_id or not user_id:
+            return jsonify({'success': False, 'error': 'Missing tech_id or user_id'}), 400
+
+        success = crm_integration.link_technician_to_user(tech_id, user_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Technician linked to user'})
+        else:
+            return jsonify({'success': False, 'error': 'Technician not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/link/project', methods=['POST'])
+def link_project_to_customer_api():
+    """Link a project to a customer"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        customer_id = data.get('customer_id')
+
+        if not project_id or not customer_id:
+            return jsonify({'success': False, 'error': 'Missing project_id or customer_id'}), 400
+
+        success = crm_integration.link_project_to_customer(project_id, customer_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Project linked to customer'})
+        else:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/link/communication', methods=['POST'])
+def link_communication_api():
+    """Link a communication to customer and/or project"""
+    try:
+        data = request.json
+        comm_id = data.get('comm_id')
+        customer_id = data.get('customer_id')
+        project_id = data.get('project_id')
+
+        if not comm_id:
+            return jsonify({'success': False, 'error': 'Missing comm_id'}), 400
+
+        success = crm_integration.link_communication_to_entities(comm_id, customer_id, project_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Communication linked'})
+        else:
+            return jsonify({'success': False, 'error': 'Communication not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/link/event', methods=['POST'])
+def link_event_api():
+    """Link a calendar event to project and/or technician"""
+    try:
+        data = request.json
+        event_id = data.get('event_id')
+        project_id = data.get('project_id')
+        technician_id = data.get('technician_id')
+
+        if not event_id:
+            return jsonify({'success': False, 'error': 'Missing event_id'}), 400
+
+        success = crm_integration.link_event_to_entities(event_id, project_id, technician_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Event linked'})
+        else:
+            return jsonify({'success': False, 'error': 'Event not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/link/inventory', methods=['POST'])
+def link_inventory_api():
+    """Link an inventory item to a supplier"""
+    try:
+        data = request.json
+        item_id = data.get('item_id')
+        supplier_id = data.get('supplier_id')
+
+        if not item_id or not supplier_id:
+            return jsonify({'success': False, 'error': 'Missing item_id or supplier_id'}), 400
+
+        success = crm_integration.link_inventory_to_supplier(item_id, supplier_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Inventory item linked to supplier'})
+        else:
+            return jsonify({'success': False, 'error': 'Inventory item not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/cleanup', methods=['POST'])
+def cleanup_orphaned_refs_api():
+    """Clean up orphaned references in CRM data"""
+    try:
+        cleanup_count = crm_integration.cleanup_orphaned_references()
+        return jsonify({
+            'success': True,
+            'message': 'Cleanup completed',
+            'cleaned': cleanup_count
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/crm/integration/validate/project/<project_id>', methods=['GET'])
+def validate_project_api(project_id):
+    """Validate all references to a project"""
+    try:
+        validation = crm_integration.validate_project_references(project_id)
+        return jsonify({'success': True, 'validation': validation})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/simpro/import-all', methods=['POST'])
 def simpro_import_all():
     """BULK IMPORT from Simpro"""
@@ -5938,7 +6357,7 @@ def ai_chat():
             # Call Anthropic with tool use capability
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=4096,
+                max_tokens=16000,  # Must be greater than thinking budget (10000)
                 thinking={
                     "type": "enabled",
                     "budget_tokens": 10000  # High budget for deep reasoning
