@@ -1507,7 +1507,6 @@ def load_page_config():
             {'href': '/electrical-cad', 'icon': '📟', 'title': 'Electrical CAD Designer', 'description': 'Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.'},
             {'href': '/learning', 'icon': '🧠', 'title': 'AI Learning', 'description': 'Train the system with examples to improve accuracy over time.'},
             {'href': '/kanban', 'icon': '📋', 'title': 'Operations Board', 'description': 'Kanban task management system for team workflow and project tracking.'},
-            {'href': '/login', 'icon': '🔐', 'title': 'User Login', 'description': 'Sign in to access your authorized modules and personalized dashboard.'},
             {'href': '/admin', 'icon': '👤', 'title': 'Admin Panel', 'description': 'Manage users, assign permissions, and configure system access controls.'}
         ]
     }
@@ -1734,6 +1733,7 @@ def get_permissions():
     return jsonify({
         'success': True,
         'permissions': auth.PERMISSIONS,
+        'crm_permissions': auth.CRM_PERMISSIONS,
         'roles': auth.ROLES
     })
 
@@ -1749,9 +1749,23 @@ def get_current_user_api():
     return jsonify({'success': False, 'error': 'Not authenticated'}), 401
 
 
+@app.route('/api/auth/usernames', methods=['GET'])
+def get_usernames():
+    """Get list of active usernames for autocomplete"""
+    try:
+        users = auth.load_users()
+        # Return only active user names for autocomplete
+        usernames = [user['name'] for user in users if user.get('active', True)]
+        return jsonify({'success': True, 'usernames': usernames})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/')
 def index():
-    """Render landing page with saved configuration"""
+    """Render landing page - requires login"""
+    if not auth.is_authenticated():
+        return redirect(url_for('login_page'))
     config = load_page_config()
     return render_template('template_unified.html', config=config)
 

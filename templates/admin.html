@@ -389,6 +389,50 @@
             cursor: pointer;
         }
 
+        /* CRM Sub-permissions dropdown */
+        .permission-dropdown {
+            margin-top: 8px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .permission-dropdown.show {
+            display: block;
+        }
+
+        .permission-dropdown-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .crm-sub-permissions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+
+        .crm-sub-permissions .checkbox-label {
+            font-size: 13px;
+            padding: 6px 10px;
+        }
+
+        .expand-icon {
+            margin-left: auto;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .expand-icon.rotated {
+            transform: rotate(180deg);
+        }
+
         /* STATS */
         .stats-grid {
             display: grid;
@@ -659,6 +703,9 @@
             }
         }
 
+        // Store permissions data globally
+        let permissionsData = null;
+
         // Load permissions
         async function loadPermissions() {
             try {
@@ -666,25 +713,74 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Populate permissions checkboxes
+                    permissionsData = data;
+
+                    // Populate permissions checkboxes with CRM dropdown
                     const container = document.getElementById('permissionsCheckboxes');
-                    container.innerHTML = Object.entries(data.permissions).map(([key, label]) => `
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="permission" value="${key}">
-                            <span>${label}</span>
-                        </label>
-                    `).join('');
+                    let html = '';
+
+                    Object.entries(data.permissions).forEach(([key, label]) => {
+                        if (key === 'crm') {
+                            // CRM with expandable sub-permissions
+                            html += `
+                                <div style="grid-column: 1 / -1;">
+                                    <label class="checkbox-label" style="background: #e8f5e9;">
+                                        <input type="checkbox" name="permission" value="${key}" onchange="toggleCrmSubPermissions(this)">
+                                        <span>${label}</span>
+                                        <span class="expand-icon" id="crmExpandIcon">▼</span>
+                                    </label>
+                                    <div class="permission-dropdown" id="crmSubPermissions">
+                                        <div class="permission-dropdown-title">CRM Components Access</div>
+                                        <div class="crm-sub-permissions">
+                                            ${Object.entries(data.crm_permissions || {}).map(([subKey, subLabel]) => `
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" name="crm_permission" value="${subKey}">
+                                                    <span>${subLabel}</span>
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="permission" value="${key}">
+                                    <span>${label}</span>
+                                </label>
+                            `;
+                        }
+                    });
+
+                    container.innerHTML = html;
 
                     // Show permissions list
                     const permList = document.getElementById('permissionsList');
-                    permList.innerHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">' +
-                        Object.entries(data.permissions).map(([key, label]) => `
+                    let permHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">';
+
+                    Object.entries(data.permissions).forEach(([key, label]) => {
+                        permHtml += `
                             <div style="padding: 12px; background: #f5f5f7; border-radius: 8px;">
                                 <strong>${label}</strong><br>
                                 <small style="color: #666;">${key}</small>
                             </div>
-                        `).join('') +
-                        '</div>';
+                        `;
+                    });
+
+                    if (data.crm_permissions) {
+                        permHtml += '</div><h3 style="margin: 24px 0 12px;">CRM Sub-Permissions</h3><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">';
+                        Object.entries(data.crm_permissions).forEach(([key, label]) => {
+                            permHtml += `
+                                <div style="padding: 12px; background: #e8f5e9; border-radius: 8px;">
+                                    <strong>${label}</strong><br>
+                                    <small style="color: #666;">${key}</small>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    permHtml += '</div>';
+                    permList.innerHTML = permHtml;
 
                     // Show roles
                     const rolesList = document.getElementById('rolesList');
@@ -703,6 +799,42 @@
                 console.error('Error loading permissions:', error);
             }
         }
+
+        // Toggle CRM sub-permissions dropdown
+        function toggleCrmSubPermissions(checkbox) {
+            const dropdown = document.getElementById('crmSubPermissions');
+            const icon = document.getElementById('crmExpandIcon');
+
+            if (checkbox.checked) {
+                dropdown.classList.add('show');
+                icon.classList.add('rotated');
+                // Select all CRM sub-permissions by default
+                document.querySelectorAll('input[name="crm_permission"]').forEach(cb => {
+                    cb.checked = true;
+                });
+            } else {
+                dropdown.classList.remove('show');
+                icon.classList.remove('rotated');
+                // Deselect all CRM sub-permissions
+                document.querySelectorAll('input[name="crm_permission"]').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+        }
+
+        // Click on CRM label to expand/collapse
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.checkbox-label') && e.target.closest('.checkbox-label').querySelector('input[value="crm"]')) {
+                const icon = document.getElementById('crmExpandIcon');
+                const dropdown = document.getElementById('crmSubPermissions');
+                if (icon && dropdown) {
+                    if (!e.target.matches('input')) {
+                        dropdown.classList.toggle('show');
+                        icon.classList.toggle('rotated');
+                    }
+                }
+            }
+        });
 
         // Show create user modal
         function showCreateUserModal() {
@@ -749,13 +881,17 @@
             e.preventDefault();
 
             const userId = document.getElementById('userId').value;
+            const permissions = Array.from(document.querySelectorAll('input[name="permission"]:checked')).map(cb => cb.value);
+            const crmPermissions = Array.from(document.querySelectorAll('input[name="crm_permission"]:checked')).map(cb => cb.value);
+
             const formData = {
                 name: document.getElementById('userName').value,
                 display_name: document.getElementById('userDisplayName').value,
                 code: document.getElementById('userCode').value,
                 role: document.getElementById('userRole').value,
                 active: document.getElementById('userActive').checked,
-                permissions: Array.from(document.querySelectorAll('input[name="permission"]:checked')).map(cb => cb.value)
+                permissions: permissions,
+                crm_permissions: crmPermissions
             };
 
             try {
@@ -805,6 +941,20 @@
                         cb.checked = user.permissions.includes(cb.value);
                         cb.disabled = false; // Always allow editing for admins
                     });
+
+                    // Set CRM sub-permissions
+                    const crmCheckbox = document.querySelector('input[name="permission"][value="crm"]');
+                    if (crmCheckbox && crmCheckbox.checked) {
+                        const dropdown = document.getElementById('crmSubPermissions');
+                        const icon = document.getElementById('crmExpandIcon');
+                        if (dropdown) dropdown.classList.add('show');
+                        if (icon) icon.classList.add('rotated');
+
+                        // Set CRM sub-permissions
+                        document.querySelectorAll('input[name="crm_permission"]').forEach(cb => {
+                            cb.checked = (user.crm_permissions || []).includes(cb.value);
+                        });
+                    }
 
                     document.getElementById('userModal').classList.add('active');
                 }
