@@ -5541,6 +5541,155 @@ def link_session_to_project():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/crm/projects/<project_id>/markups', methods=['GET', 'POST'])
+def handle_project_markups(project_id):
+    """Manage markups attached to a project"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+
+        # Ensure markups array exists
+        if 'markups' not in project:
+            project['markups'] = []
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'markups': project['markups'],
+                'project_id': project_id
+            })
+
+        else:  # POST - Add new markup
+            data = request.json
+            markup = {
+                'id': str(uuid.uuid4()),
+                'type': data.get('type', 'general'),  # takeoffs, mapping, cad, quote, general
+                'name': data.get('name', 'Unnamed Markup'),
+                'filename': data.get('filename', ''),
+                'session_id': data.get('session_id', ''),
+                'description': data.get('description', ''),
+                'created_at': datetime.now().isoformat(),
+                'created_by': data.get('created_by', 'system')
+            }
+
+            project['markups'].append(markup)
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({
+                'success': True,
+                'markup': markup,
+                'project': project
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/markups/<markup_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_project_markup(project_id, markup_id):
+    """Manage a specific markup on a project"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        idx = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        project = projects[idx]
+
+        if 'markups' not in project:
+            return jsonify({'success': False, 'error': 'No markups on this project'}), 404
+
+        markup_idx = next((i for i, m in enumerate(project['markups']) if m['id'] == markup_id), None)
+
+        if markup_idx is None:
+            return jsonify({'success': False, 'error': 'Markup not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'markup': project['markups'][markup_idx]
+            })
+
+        elif request.method == 'PUT':
+            data = request.json
+            markup = project['markups'][markup_idx]
+            for field in ['name', 'description', 'type', 'filename', 'session_id']:
+                if field in data:
+                    markup[field] = data[field]
+            markup['updated_at'] = datetime.now().isoformat()
+            project['markups'][markup_idx] = markup
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({
+                'success': True,
+                'markup': markup
+            })
+
+        elif request.method == 'DELETE':
+            project['markups'].pop(markup_idx)
+            project['updated_at'] = datetime.now().isoformat()
+            projects[idx] = project
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/markups/<markup_id>/open', methods=['GET'])
+def open_markup_in_module(project_id, markup_id):
+    """Get the appropriate URL to open a markup in its module"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        project = next((p for p in projects if p['id'] == project_id), None)
+
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        if 'markups' not in project:
+            return jsonify({'success': False, 'error': 'No markups on this project'}), 404
+
+        markup = next((m for m in project['markups'] if m['id'] == markup_id), None)
+
+        if not markup:
+            return jsonify({'success': False, 'error': 'Markup not found'}), 404
+
+        # Determine the appropriate URL based on markup type
+        markup_type = markup.get('type', 'general')
+        session_id = markup.get('session_id', '')
+        filename = markup.get('filename', '')
+
+        url = None
+        if markup_type == 'takeoffs' and session_id:
+            url = f'/takeoffs/{session_id}'
+        elif markup_type == 'mapping' and session_id:
+            url = f'/mapping?session={session_id}'
+        elif markup_type == 'cad' and session_id:
+            url = f'/electrical-cad?session={session_id}'
+        elif markup_type == 'quote' and filename:
+            url = f'/api/download/{filename}'
+        elif filename:
+            url = f'/api/download/{filename}'
+
+        return jsonify({
+            'success': True,
+            'url': url,
+            'markup': markup,
+            'type': markup_type
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/crm/communications', methods=['GET', 'POST'])
 def handle_communications():
     try:

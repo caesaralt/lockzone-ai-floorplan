@@ -796,6 +796,65 @@
         </div>
     </div>
 
+    <!-- Markups Modal -->
+    <div id="markupsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Project Markups</h2>
+                <button class="close-btn" onclick="closeModal('markupsModal')">×</button>
+            </div>
+            <div id="markupsProjectInfo" style="margin-bottom: 20px; padding: 12px; background: #f5f5f7; border-radius: 10px;">
+                <strong id="markupsProjectTitle">Loading...</strong>
+            </div>
+
+            <!-- Add Markup Form -->
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Add New Markup</h3>
+                <form id="addMarkupForm" onsubmit="addMarkup(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="markupType">
+                                <option value="quote">Quote/PDF</option>
+                                <option value="takeoffs">Takeoffs Session</option>
+                                <option value="mapping">Electrical Mapping</option>
+                                <option value="cad">CAD Drawing</option>
+                                <option value="general">General File</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Name *</label>
+                            <input type="text" id="markupName" placeholder="e.g., Floor Plan Rev 1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Session ID (for Takeoffs/Mapping/CAD)</label>
+                            <input type="text" id="markupSessionId" placeholder="Session UUID">
+                        </div>
+                        <div class="form-group">
+                            <label>Filename (for downloads)</label>
+                            <input type="text" id="markupFilename" placeholder="e.g., quote_12345.pdf">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="markupDescription" placeholder="Optional description..." rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">+ Add Markup</button>
+                </form>
+            </div>
+
+            <!-- Markups List -->
+            <div id="markupsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading markups...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Event Modal -->
     <div id="eventModal" class="modal">
         <div class="modal-content">
@@ -1322,6 +1381,7 @@
                                 <th>Status</th>
                                 <th>Priority</th>
                                 <th>Quote</th>
+                                <th>Markups</th>
                                 <th>Due Date</th>
                                 <th>Actions</th>
                             </tr>
@@ -1329,6 +1389,7 @@
                         <tbody>
                             ${projects.map(p => {
                                 const customer = customers.find(c => c.id === p.customer_id);
+                                const markupCount = (p.markups || []).length;
                                 return `
                                     <tr>
                                         <td><strong>${p.title}</strong></td>
@@ -1336,6 +1397,11 @@
                                         <td><span class="status-badge status-${p.status}">${p.status}</span></td>
                                         <td>${p.priority}</td>
                                         <td>$${(p.quote_amount || 0).toLocaleString()}</td>
+                                        <td>
+                                            <button class="btn btn-secondary btn-small" onclick="openMarkupsModal('${p.id}')" style="display: flex; align-items: center; gap: 6px;">
+                                                <span>📎</span> ${markupCount} ${markupCount === 1 ? 'Markup' : 'Markups'}
+                                            </button>
+                                        </td>
                                         <td>${p.due_date || '-'}</td>
                                         <td>
                                             <button class="btn btn-secondary btn-small" onclick="editProject('${p.id}')">Edit</button>
@@ -1407,6 +1473,207 @@
                 loadProjects();
                 loadStats();
                 loadCustomers();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ==================== MARKUPS MANAGEMENT ====================
+        let currentMarkupsProjectId = null;
+
+        async function openMarkupsModal(projectId) {
+            currentMarkupsProjectId = projectId;
+            const project = projects.find(p => p.id === projectId);
+
+            if (project) {
+                document.getElementById('markupsProjectTitle').textContent = project.title;
+            }
+
+            // Reset form
+            document.getElementById('addMarkupForm').reset();
+
+            openModal('markupsModal');
+            await loadMarkups(projectId);
+        }
+
+        async function loadMarkups(projectId) {
+            const container = document.getElementById('markupsList');
+            container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading markups...</p></div>`;
+
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/markups`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderMarkups(data.markups);
+                } else {
+                    container.innerHTML = `<div class="empty-state"><p>Error loading markups: ${data.error}</p></div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`;
+            }
+        }
+
+        function renderMarkups(markups) {
+            const container = document.getElementById('markupsList');
+
+            if (!markups || markups.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px;">
+                        <div class="empty-icon">📎</div>
+                        <div class="empty-title">No markups yet</div>
+                        <p>Add floor plans, quotes, and other documents to this project</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const typeIcons = {
+                'quote': '📄',
+                'takeoffs': '📐',
+                'mapping': '⚡',
+                'cad': '📏',
+                'general': '📎'
+            };
+
+            const typeLabels = {
+                'quote': 'Quote/PDF',
+                'takeoffs': 'Takeoffs',
+                'mapping': 'Electrical Mapping',
+                'cad': 'CAD Drawing',
+                'general': 'General'
+            };
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${markups.map(m => `
+                                <tr>
+                                    <td>
+                                        <span style="font-size: 18px;">${typeIcons[m.type] || '📎'}</span>
+                                        <span style="font-size: 12px; color: #666;">${typeLabels[m.type] || m.type}</span>
+                                    </td>
+                                    <td><strong>${m.name}</strong></td>
+                                    <td style="font-size: 13px; color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        ${m.description || '-'}
+                                    </td>
+                                    <td style="font-size: 12px; color: #666;">
+                                        ${new Date(m.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-primary btn-small" onclick="openMarkup('${m.id}')" title="Open in module">
+                                            Open
+                                        </button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteMarkup('${m.id}')" title="Remove markup">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function addMarkup(e) {
+            e.preventDefault();
+
+            if (!currentMarkupsProjectId) {
+                alert('No project selected');
+                return;
+            }
+
+            const data = {
+                type: document.getElementById('markupType').value,
+                name: document.getElementById('markupName').value,
+                session_id: document.getElementById('markupSessionId').value || '',
+                filename: document.getElementById('markupFilename').value || '',
+                description: document.getElementById('markupDescription').value || ''
+            };
+
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/markups`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    // Reset form
+                    document.getElementById('addMarkupForm').reset();
+
+                    // Reload markups
+                    await loadMarkups(currentMarkupsProjectId);
+
+                    // Update project in local array and re-render table
+                    if (result.project) {
+                        const idx = projects.findIndex(p => p.id === currentMarkupsProjectId);
+                        if (idx !== -1) {
+                            projects[idx] = result.project;
+                            renderProjects();
+                        }
+                    }
+
+                    alert('Markup added successfully!');
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteMarkup(markupId) {
+            if (!confirm('Delete this markup?')) return;
+
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/markups/${markupId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    await loadMarkups(currentMarkupsProjectId);
+
+                    // Reload projects to update markup count
+                    await loadProjects();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function openMarkup(markupId) {
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/markups/${markupId}/open`);
+                const data = await res.json();
+
+                if (data.success && data.url) {
+                    // Open in new tab for downloads, same window for sessions
+                    if (data.type === 'quote' || data.type === 'general') {
+                        window.open(data.url, '_blank');
+                    } else {
+                        window.location.href = data.url;
+                    }
+                } else {
+                    alert('Cannot open this markup. Make sure it has a valid session ID or filename.');
+                }
             } catch (e) {
                 alert('Error: ' + e.message);
             }
