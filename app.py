@@ -1779,6 +1779,45 @@ def index():
 def crm_page():
     return render_template('crm.html')
 
+# ============================================================================
+# AUTOMATION DATA API ENDPOINTS
+# ============================================================================
+
+@app.route('/api/data', methods=['GET'])
+def get_automation_data():
+    """Get automation catalog, pricing, and company info"""
+    try:
+        data = load_data()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/data', methods=['POST'])
+def update_automation_data():
+    """Update automation catalog and pricing"""
+    try:
+        new_data = request.get_json()
+        if not new_data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Load existing data and merge
+        current_data = load_data()
+
+        # Deep merge - update only provided fields
+        if 'automation_types' in new_data:
+            current_data['automation_types'].update(new_data['automation_types'])
+        if 'labor_rate' in new_data:
+            current_data['labor_rate'] = new_data['labor_rate']
+        if 'markup_percentage' in new_data:
+            current_data['markup_percentage'] = new_data['markup_percentage']
+        if 'company_info' in new_data:
+            current_data['company_info'].update(new_data['company_info'])
+
+        save_data(current_data)
+        return jsonify({'success': True, 'data': current_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/quotes')
 def quotes_page():
     return render_template('index.html')
@@ -2497,13 +2536,12 @@ def export_board_to_crm():
 def get_crm_stock():
     """Get CRM stock data"""
     try:
-        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
-        if os.path.exists(crm_file):
-            with open(crm_file, 'r') as f:
-                crm_data = json.load(f)
+        if os.path.exists(STOCK_FILE):
+            with open(STOCK_FILE, 'r') as f:
+                stock_data = json.load(f)
                 return jsonify({
                     'success': True,
-                    'stock': crm_data.get('stock', [])
+                    'stock': stock_data if isinstance(stock_data, list) else []
                 })
         else:
             return jsonify({
@@ -2518,10 +2556,18 @@ def add_to_crm_stock():
     """Add item to CRM stock"""
     try:
         data = request.get_json()
-        name = data.get('name', 'Unnamed Item')
+
+        # Validate required fields
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Stock item name is required'}), 400
+
         category = data.get('category', 'general')
         item_type = data.get('type', 'component')
         quantity = data.get('quantity', 1)
+        if quantity < 0:
+            return jsonify({'success': False, 'error': 'Quantity cannot be negative'}), 400
+
         cost = data.get('cost', 0)
         serial_number = data.get('serialNumber', '')
         notes = data.get('notes', '')
@@ -2529,6 +2575,8 @@ def add_to_crm_stock():
         sku = data.get('sku', '')
         description = data.get('description', '')
         unit_price = data.get('unit_price', cost)
+        item_number = data.get('item_number', '')
+        serial_numbers = data.get('serial_numbers', [])  # List of serial numbers for tracking
 
         # Load stock data
         stock_data = load_json_file(STOCK_FILE, [])
@@ -2545,12 +2593,19 @@ def add_to_crm_stock():
             existing_item['quantity'] = existing_item.get('quantity', 0) + quantity
             existing_item['unit_price'] = unit_price
             existing_item['updated_at'] = datetime.now().isoformat()
+            # Add new serial numbers to existing list
+            if serial_numbers:
+                existing_serials = existing_item.get('serial_numbers', [])
+                existing_serials.extend(serial_numbers)
+                existing_item['serial_numbers'] = existing_serials
         else:
             # Add new item
             new_item = {
                 'id': str(uuid.uuid4()),
                 'name': name,
                 'sku': sku,
+                'item_number': item_number,
+                'serial_numbers': serial_numbers,
                 'category': category,
                 'type': item_type,
                 'quantity': quantity,
@@ -2691,12 +2746,16 @@ def electrical_cad():
 def create_cad_session():
     """Create new CAD session"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         session_id = f"cad_{uuid.uuid4().hex[:12]}"
+
+        # Accept both 'name' and 'project_name' for flexibility
+        project_name = data.get('project_name') or data.get('name') or 'Untitled Project'
 
         cad_session = {
             'session_id': session_id,
-            'project_name': data.get('project_name', 'Untitled Project'),
+            'project_name': project_name,
+            'description': data.get('description', ''),
             'linked_quote': data.get('linked_quote'),
             'linked_board': data.get('linked_board'),
             'linked_floorplan': data.get('linked_floorplan'),
@@ -5392,13 +5451,19 @@ def handle_customers():
             return jsonify({'success': True, 'customers': customers})
         else:
             data = request.json
+
+            # Validate required fields
+            name = data.get('name', '').strip()
+            if not name:
+                return jsonify({'success': False, 'error': 'Customer name is required'}), 400
+
             customers = load_json_file(CUSTOMERS_FILE, [])
             customer = {
                 'id': str(uuid.uuid4()),
-                'name': data.get('name', ''),
-                'email': data.get('email', ''),
-                'phone': data.get('phone', ''),
-                'address': data.get('address', ''),
+                'name': name,
+                'email': data.get('email', '').strip(),
+                'phone': data.get('phone', '').strip(),
+                'address': data.get('address', '').strip(),
                 'status': data.get('status', 'active'),
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
@@ -5454,12 +5519,18 @@ def handle_projects():
             return jsonify({'success': True, 'projects': projects})
         else:
             data = request.json
+
+            # Validate required fields
+            title = data.get('title', '').strip()
+            if not title:
+                return jsonify({'success': False, 'error': 'Project title is required'}), 400
+
             projects = load_json_file(PROJECTS_FILE, [])
             project = {
                 'id': str(uuid.uuid4()),
                 'customer_id': data.get('customer_id'),
-                'title': data.get('title', ''),
-                'description': data.get('description', ''),
+                'title': title,
+                'description': data.get('description', '').strip(),
                 'status': data.get('status', 'pending'),
                 'priority': data.get('priority', 'medium'),
                 'quote_amount': data.get('quote_amount', 0.0),
@@ -5712,13 +5783,19 @@ def handle_quotes():
             return jsonify({'success': True, 'quotes': quotes})
         else:
             data = request.json
+
+            # Validate required fields
+            title = data.get('title', '').strip()
+            if not title:
+                return jsonify({'success': False, 'error': 'Quote title is required'}), 400
+
             quotes = load_json_file(QUOTES_FILE, [])
             quote = {
                 'id': str(uuid.uuid4()),
                 'quote_number': data.get('quote_number', f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"),
                 'customer_id': data.get('customer_id'),
-                'title': data.get('title', ''),
-                'description': data.get('description', ''),
+                'title': title,
+                'description': data.get('description', '').strip(),
                 'status': data.get('status', 'draft'),  # draft, sent, accepted, rejected, expired
                 'quote_amount': data.get('quote_amount', 0.0),
                 'labor_cost': data.get('labor_cost', 0.0),
@@ -6522,6 +6599,775 @@ def search_inventory():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== SERIAL NUMBER MANAGEMENT ====================
+
+@app.route('/api/crm/stock/<item_id>/serial-numbers', methods=['GET', 'POST'])
+def manage_stock_serial_numbers(item_id):
+    """Manage serial numbers for a stock item"""
+    try:
+        stock_data = load_json_file(STOCK_FILE, [])
+        item = next((i for i in stock_data if i['id'] == item_id), None)
+
+        if not item:
+            return jsonify({'success': False, 'error': 'Stock item not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'item_id': item_id,
+                'item_name': item.get('name'),
+                'serial_numbers': item.get('serial_numbers', [])
+            })
+
+        # POST - Add serial numbers
+        data = request.get_json()
+        new_serials = data.get('serial_numbers', [])
+
+        if not new_serials:
+            return jsonify({'success': False, 'error': 'No serial numbers provided'}), 400
+
+        existing_serials = item.get('serial_numbers', [])
+
+        # Add new serial numbers with metadata
+        for serial in new_serials:
+            serial_entry = {
+                'serial': serial if isinstance(serial, str) else serial.get('serial', ''),
+                'added_at': datetime.now().isoformat(),
+                'assigned_to': None,  # Will hold project_id/room info
+                'status': 'available'
+            }
+            existing_serials.append(serial_entry)
+
+        item['serial_numbers'] = existing_serials
+        item['updated_at'] = datetime.now().isoformat()
+
+        save_json_file(STOCK_FILE, stock_data)
+
+        return jsonify({
+            'success': True,
+            'message': f'Added {len(new_serials)} serial number(s)',
+            'serial_numbers': existing_serials
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/stock/<item_id>/serial-numbers/<serial_index>', methods=['PUT', 'DELETE'])
+def update_stock_serial_number(item_id, serial_index):
+    """Update or delete a specific serial number"""
+    try:
+        stock_data = load_json_file(STOCK_FILE, [])
+        item = next((i for i in stock_data if i['id'] == item_id), None)
+
+        if not item:
+            return jsonify({'success': False, 'error': 'Stock item not found'}), 404
+
+        serial_numbers = item.get('serial_numbers', [])
+        idx = int(serial_index)
+
+        if idx < 0 or idx >= len(serial_numbers):
+            return jsonify({'success': False, 'error': 'Serial number index out of range'}), 404
+
+        if request.method == 'DELETE':
+            removed = serial_numbers.pop(idx)
+            item['serial_numbers'] = serial_numbers
+            item['updated_at'] = datetime.now().isoformat()
+            save_json_file(STOCK_FILE, stock_data)
+
+            return jsonify({
+                'success': True,
+                'message': 'Serial number removed',
+                'removed': removed
+            })
+
+        # PUT - Update serial number
+        data = request.get_json()
+        serial_numbers[idx].update({
+            'serial': data.get('serial', serial_numbers[idx].get('serial')),
+            'status': data.get('status', serial_numbers[idx].get('status')),
+            'notes': data.get('notes', serial_numbers[idx].get('notes', '')),
+            'updated_at': datetime.now().isoformat()
+        })
+
+        item['serial_numbers'] = serial_numbers
+        item['updated_at'] = datetime.now().isoformat()
+        save_json_file(STOCK_FILE, stock_data)
+
+        return jsonify({
+            'success': True,
+            'serial_number': serial_numbers[idx]
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/room-assignments', methods=['GET', 'POST'])
+def manage_room_assignments(project_id):
+    """Manage serial number assignments to rooms in a project"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        project = next((p for p in projects if p['id'] == project_id), None)
+
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'project_id': project_id,
+                'room_assignments': project.get('room_assignments', [])
+            })
+
+        # POST - Add room assignment
+        data = request.get_json()
+        room_name = data.get('room_name')
+        serial_number = data.get('serial_number')
+        item_id = data.get('item_id')
+        item_name = data.get('item_name')
+        notes = data.get('notes', '')
+
+        if not room_name or not serial_number:
+            return jsonify({'success': False, 'error': 'Room name and serial number required'}), 400
+
+        assignments = project.get('room_assignments', [])
+
+        assignment = {
+            'id': str(uuid.uuid4()),
+            'room_name': room_name,
+            'serial_number': serial_number,
+            'item_id': item_id,
+            'item_name': item_name,
+            'notes': notes,
+            'assigned_at': datetime.now().isoformat(),
+            'installed': False,
+            'installed_at': None
+        }
+
+        assignments.append(assignment)
+        project['room_assignments'] = assignments
+        project['updated_at'] = datetime.now().isoformat()
+
+        # Update the serial number status in stock
+        if item_id:
+            stock_data = load_json_file(STOCK_FILE, [])
+            stock_item = next((i for i in stock_data if i['id'] == item_id), None)
+            if stock_item:
+                serial_numbers = stock_item.get('serial_numbers', [])
+                for i, sn in enumerate(serial_numbers):
+                    # Handle both string and object format
+                    sn_value = sn.get('serial') if isinstance(sn, dict) else sn
+                    if sn_value == serial_number:
+                        # Convert to object format if it's a string
+                        if isinstance(sn, str):
+                            serial_numbers[i] = {
+                                'serial': sn,
+                                'added_at': datetime.now().isoformat(),
+                                'assigned_to': {
+                                    'project_id': project_id,
+                                    'room_name': room_name
+                                },
+                                'status': 'assigned'
+                            }
+                        else:
+                            sn['assigned_to'] = {
+                                'project_id': project_id,
+                                'room_name': room_name
+                            }
+                            sn['status'] = 'assigned'
+                        break
+                stock_item['serial_numbers'] = serial_numbers
+                save_json_file(STOCK_FILE, stock_data)
+
+        save_json_file(PROJECTS_FILE, projects)
+
+        return jsonify({
+            'success': True,
+            'assignment': assignment,
+            'message': f'Assigned {serial_number} to {room_name}'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/projects/<project_id>/room-assignments/<assignment_id>', methods=['PUT', 'DELETE'])
+def update_room_assignment(project_id, assignment_id):
+    """Update or delete a room assignment"""
+    try:
+        projects = load_json_file(PROJECTS_FILE, [])
+        project = next((p for p in projects if p['id'] == project_id), None)
+
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        assignments = project.get('room_assignments', [])
+        assignment = next((a for a in assignments if a['id'] == assignment_id), None)
+
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Assignment not found'}), 404
+
+        if request.method == 'DELETE':
+            # Free up the serial number in stock
+            item_id = assignment.get('item_id')
+            serial_number = assignment.get('serial_number')
+            if item_id and serial_number:
+                stock_data = load_json_file(STOCK_FILE, [])
+                stock_item = next((i for i in stock_data if i['id'] == item_id), None)
+                if stock_item:
+                    for sn in stock_item.get('serial_numbers', []):
+                        # Handle both string and object format
+                        sn_value = sn.get('serial') if isinstance(sn, dict) else sn
+                        if sn_value == serial_number and isinstance(sn, dict):
+                            sn['assigned_to'] = None
+                            sn['status'] = 'available'
+                            break
+                    save_json_file(STOCK_FILE, stock_data)
+
+            assignments.remove(assignment)
+            project['room_assignments'] = assignments
+            project['updated_at'] = datetime.now().isoformat()
+            save_json_file(PROJECTS_FILE, projects)
+
+            return jsonify({'success': True, 'message': 'Assignment removed'})
+
+        # PUT - Update assignment
+        data = request.get_json()
+        assignment['room_name'] = data.get('room_name', assignment['room_name'])
+        assignment['notes'] = data.get('notes', assignment.get('notes', ''))
+        assignment['installed'] = data.get('installed', assignment.get('installed', False))
+        if data.get('installed') and not assignment.get('installed_at'):
+            assignment['installed_at'] = datetime.now().isoformat()
+
+        project['updated_at'] = datetime.now().isoformat()
+        save_json_file(PROJECTS_FILE, projects)
+
+        return jsonify({
+            'success': True,
+            'assignment': assignment
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== GOOGLE INTEGRATIONS ====================
+
+GOOGLE_CONFIG_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'google_config.json')
+
+@app.route('/api/crm/google/config', methods=['GET', 'POST'])
+def handle_google_config():
+    """Manage Google API configuration"""
+    try:
+        if request.method == 'GET':
+            config = load_json_file(GOOGLE_CONFIG_FILE, {
+                'client_id': '',
+                'client_secret': '',
+                'redirect_uri': '',
+                'access_token': '',
+                'refresh_token': '',
+                'token_expiry': '',
+                'calendar_enabled': False,
+                'gmail_enabled': False,
+                'connected': False
+            })
+            # Don't expose tokens in GET
+            safe_config = {
+                'client_id': config.get('client_id', ''),
+                'redirect_uri': config.get('redirect_uri', ''),
+                'calendar_enabled': config.get('calendar_enabled', False),
+                'gmail_enabled': config.get('gmail_enabled', False),
+                'connected': bool(config.get('access_token'))
+            }
+            return jsonify({'success': True, 'config': safe_config})
+
+        # POST - Save configuration
+        data = request.get_json()
+        config = load_json_file(GOOGLE_CONFIG_FILE, {})
+
+        config['client_id'] = data.get('client_id', config.get('client_id', ''))
+        config['client_secret'] = data.get('client_secret', config.get('client_secret', ''))
+        config['redirect_uri'] = data.get('redirect_uri', config.get('redirect_uri', ''))
+        config['calendar_enabled'] = data.get('calendar_enabled', config.get('calendar_enabled', False))
+        config['gmail_enabled'] = data.get('gmail_enabled', config.get('gmail_enabled', False))
+
+        save_json_file(GOOGLE_CONFIG_FILE, config)
+
+        return jsonify({
+            'success': True,
+            'message': 'Google configuration saved'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/auth-url', methods=['GET'])
+def get_google_auth_url():
+    """Generate Google OAuth2 authorization URL"""
+    try:
+        config = load_json_file(GOOGLE_CONFIG_FILE, {})
+
+        if not config.get('client_id'):
+            return jsonify({'success': False, 'error': 'Google client ID not configured'}), 400
+
+        scopes = []
+        if config.get('calendar_enabled'):
+            scopes.append('https://www.googleapis.com/auth/calendar')
+        if config.get('gmail_enabled'):
+            scopes.extend([
+                'https://www.googleapis.com/auth/gmail.send',
+                'https://www.googleapis.com/auth/gmail.readonly'
+            ])
+
+        if not scopes:
+            return jsonify({'success': False, 'error': 'No Google services enabled'}), 400
+
+        auth_url = (
+            f"https://accounts.google.com/o/oauth2/v2/auth?"
+            f"client_id={config['client_id']}&"
+            f"redirect_uri={config.get('redirect_uri', '')}&"
+            f"response_type=code&"
+            f"scope={' '.join(scopes)}&"
+            f"access_type=offline&"
+            f"prompt=consent"
+        )
+
+        return jsonify({
+            'success': True,
+            'auth_url': auth_url
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/callback', methods=['POST'])
+def google_oauth_callback():
+    """Handle Google OAuth2 callback and exchange code for tokens"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+
+        if not code:
+            return jsonify({'success': False, 'error': 'Authorization code required'}), 400
+
+        config = load_json_file(GOOGLE_CONFIG_FILE, {})
+
+        # Exchange code for tokens
+        token_url = 'https://oauth2.googleapis.com/token'
+        token_data = {
+            'client_id': config['client_id'],
+            'client_secret': config['client_secret'],
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': config['redirect_uri']
+        }
+
+        response = requests.post(token_url, data=token_data)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'Token exchange failed: {response.text}'
+            }), 400
+
+        tokens = response.json()
+
+        config['access_token'] = tokens.get('access_token')
+        config['refresh_token'] = tokens.get('refresh_token', config.get('refresh_token'))
+        config['token_expiry'] = (datetime.now().timestamp() + tokens.get('expires_in', 3600))
+        config['connected'] = True
+
+        save_json_file(GOOGLE_CONFIG_FILE, config)
+
+        return jsonify({
+            'success': True,
+            'message': 'Google account connected successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/disconnect', methods=['POST'])
+def disconnect_google():
+    """Disconnect Google account"""
+    try:
+        config = load_json_file(GOOGLE_CONFIG_FILE, {})
+        config['access_token'] = ''
+        config['refresh_token'] = ''
+        config['token_expiry'] = ''
+        config['connected'] = False
+        save_json_file(GOOGLE_CONFIG_FILE, config)
+
+        return jsonify({
+            'success': True,
+            'message': 'Google account disconnected'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def refresh_google_token():
+    """Refresh Google access token if expired"""
+    config = load_json_file(GOOGLE_CONFIG_FILE, {})
+
+    if not config.get('refresh_token'):
+        return None
+
+    # Check if token is expired
+    if config.get('token_expiry') and datetime.now().timestamp() < config['token_expiry'] - 60:
+        return config.get('access_token')
+
+    # Refresh the token
+    token_url = 'https://oauth2.googleapis.com/token'
+    token_data = {
+        'client_id': config['client_id'],
+        'client_secret': config['client_secret'],
+        'refresh_token': config['refresh_token'],
+        'grant_type': 'refresh_token'
+    }
+
+    response = requests.post(token_url, data=token_data)
+
+    if response.status_code == 200:
+        tokens = response.json()
+        config['access_token'] = tokens.get('access_token')
+        config['token_expiry'] = (datetime.now().timestamp() + tokens.get('expires_in', 3600))
+        save_json_file(GOOGLE_CONFIG_FILE, config)
+        return config['access_token']
+
+    return None
+
+# ==================== GOOGLE CALENDAR ENDPOINTS ====================
+
+@app.route('/api/crm/google/calendar/events', methods=['GET', 'POST'])
+def handle_calendar_events():
+    """List or create Google Calendar events"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+
+        if request.method == 'GET':
+            # Get calendar events
+            calendar_id = request.args.get('calendar_id', 'primary')
+            time_min = request.args.get('time_min', datetime.now().isoformat() + 'Z')
+            max_results = request.args.get('max_results', 50)
+
+            url = (
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events?"
+                f"timeMin={time_min}&maxResults={max_results}&singleEvents=true&orderBy=startTime"
+            )
+
+            response = requests.get(url, headers=headers)
+
+            if response.status_code != 200:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to fetch events: {response.text}'
+                }), response.status_code
+
+            events = response.json().get('items', [])
+
+            return jsonify({
+                'success': True,
+                'events': events,
+                'count': len(events)
+            })
+
+        # POST - Create new event
+        data = request.get_json()
+        calendar_id = data.get('calendar_id', 'primary')
+
+        event = {
+            'summary': data.get('title', 'Untitled Event'),
+            'description': data.get('description', ''),
+            'location': data.get('location', ''),
+            'start': {
+                'dateTime': data.get('start_time'),
+                'timeZone': data.get('timezone', 'UTC')
+            },
+            'end': {
+                'dateTime': data.get('end_time'),
+                'timeZone': data.get('timezone', 'UTC')
+            }
+        }
+
+        if data.get('attendees'):
+            event['attendees'] = [{'email': email} for email in data['attendees']]
+
+        if data.get('reminder_minutes'):
+            event['reminders'] = {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': data['reminder_minutes']},
+                    {'method': 'popup', 'minutes': data['reminder_minutes']}
+                ]
+            }
+
+        url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
+        response = requests.post(url, headers=headers, json=event)
+
+        if response.status_code not in [200, 201]:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to create event: {response.text}'
+            }), response.status_code
+
+        created_event = response.json()
+
+        return jsonify({
+            'success': True,
+            'event': created_event,
+            'message': 'Event created successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/calendar/events/<event_id>', methods=['PUT', 'DELETE'])
+def manage_calendar_event(event_id):
+    """Update or delete a calendar event"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+        calendar_id = request.args.get('calendar_id', 'primary')
+        url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}"
+
+        if request.method == 'DELETE':
+            response = requests.delete(url, headers=headers)
+
+            if response.status_code not in [200, 204]:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to delete event: {response.text}'
+                }), response.status_code
+
+            return jsonify({
+                'success': True,
+                'message': 'Event deleted successfully'
+            })
+
+        # PUT - Update event
+        data = request.get_json()
+
+        event = {
+            'summary': data.get('title'),
+            'description': data.get('description'),
+            'location': data.get('location'),
+            'start': {
+                'dateTime': data.get('start_time'),
+                'timeZone': data.get('timezone', 'UTC')
+            },
+            'end': {
+                'dateTime': data.get('end_time'),
+                'timeZone': data.get('timezone', 'UTC')
+            }
+        }
+
+        response = requests.put(url, headers=headers, json=event)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to update event: {response.text}'
+            }), response.status_code
+
+        return jsonify({
+            'success': True,
+            'event': response.json(),
+            'message': 'Event updated successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/calendar/list', methods=['GET'])
+def list_calendars():
+    """List available Google calendars"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+        url = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to list calendars: {response.text}'
+            }), response.status_code
+
+        calendars = response.json().get('items', [])
+
+        return jsonify({
+            'success': True,
+            'calendars': calendars
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== GMAIL ENDPOINTS ====================
+
+@app.route('/api/crm/google/gmail/send', methods=['POST'])
+def send_gmail():
+    """Send email via Gmail API"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        data = request.get_json()
+        to = data.get('to')
+        subject = data.get('subject', '')
+        body = data.get('body', '')
+        cc = data.get('cc', [])
+        bcc = data.get('bcc', [])
+
+        if not to:
+            return jsonify({'success': False, 'error': 'Recipient email required'}), 400
+
+        # Build email message
+        import email.mime.text
+        import email.mime.multipart
+
+        message = email.mime.multipart.MIMEMultipart()
+        message['to'] = to if isinstance(to, str) else ', '.join(to)
+        message['subject'] = subject
+
+        if cc:
+            message['cc'] = cc if isinstance(cc, str) else ', '.join(cc)
+        if bcc:
+            message['bcc'] = bcc if isinstance(bcc, str) else ', '.join(bcc)
+
+        # Check if HTML body
+        if '<html' in body.lower() or '<body' in body.lower():
+            msg = email.mime.text.MIMEText(body, 'html')
+        else:
+            msg = email.mime.text.MIMEText(body, 'plain')
+
+        message.attach(msg)
+
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+        url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+        response = requests.post(url, headers=headers, json={'raw': raw_message})
+
+        if response.status_code not in [200, 201]:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to send email: {response.text}'
+            }), response.status_code
+
+        # Log the email
+        comms = load_json_file(COMMUNICATIONS_FILE, [])
+        comm = {
+            'id': str(uuid.uuid4()),
+            'type': 'email',
+            'direction': 'outbound',
+            'to': to,
+            'subject': subject,
+            'body': body[:500] + '...' if len(body) > 500 else body,
+            'sent_at': datetime.now().isoformat(),
+            'gmail_id': response.json().get('id')
+        }
+        comms.append(comm)
+        save_json_file(COMMUNICATIONS_FILE, comms)
+
+        return jsonify({
+            'success': True,
+            'message': 'Email sent successfully',
+            'gmail_id': response.json().get('id')
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/gmail/messages', methods=['GET'])
+def get_gmail_messages():
+    """Get Gmail messages"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+
+        # Get query parameters
+        query = request.args.get('q', '')
+        max_results = request.args.get('max_results', 20)
+        label_ids = request.args.get('label_ids', 'INBOX')
+
+        url = (
+            f"https://gmail.googleapis.com/gmail/v1/users/me/messages?"
+            f"maxResults={max_results}&labelIds={label_ids}"
+        )
+
+        if query:
+            url += f"&q={query}"
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to fetch messages: {response.text}'
+            }), response.status_code
+
+        messages = response.json().get('messages', [])
+
+        # Get details for each message
+        detailed_messages = []
+        for msg in messages[:10]:  # Limit to 10 for performance
+            msg_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg['id']}?format=metadata"
+            msg_response = requests.get(msg_url, headers=headers)
+            if msg_response.status_code == 200:
+                detailed_messages.append(msg_response.json())
+
+        return jsonify({
+            'success': True,
+            'messages': detailed_messages,
+            'count': len(detailed_messages)
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/google/gmail/message/<message_id>', methods=['GET'])
+def get_gmail_message(message_id):
+    """Get a specific Gmail message"""
+    try:
+        access_token = refresh_google_token()
+        if not access_token:
+            return jsonify({'success': False, 'error': 'Google account not connected'}), 401
+
+        headers = {'Authorization': f'Bearer {access_token}'}
+        url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=full"
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to fetch message: {response.text}'
+            }), response.status_code
+
+        return jsonify({
+            'success': True,
+            'message': response.json()
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/crm/communications', methods=['GET', 'POST'])
 def handle_communications():
     try:
@@ -6807,25 +7653,28 @@ def get_crm_stats():
     try:
         customers = load_json_file(CUSTOMERS_FILE, [])
         projects = load_json_file(PROJECTS_FILE, [])
-        inventory = load_json_file(INVENTORY_FILE, [])
-        
+        stock = load_json_file(STOCK_FILE, [])
+
         total_customers = len(customers)
         active_customers = len([c for c in customers if c.get('status') == 'active'])
         total_projects = len(projects)
-        active_projects = len([p for p in projects if p.get('status') in ['pending', 'in_progress']])
+        active_projects = len([p for p in projects if p.get('status') in ['pending', 'in_progress', 'planning']])
         completed_projects = len([p for p in projects if p.get('status') == 'completed'])
         total_revenue = sum(p.get('actual_amount', 0) for p in projects if p.get('status') == 'completed')
-        pending_revenue = sum(p.get('quote_amount', 0) for p in projects if p.get('status') in ['pending', 'in_progress'])
-        total_inventory_value = sum(i.get('quantity', 0) * i.get('unit_cost', 0) for i in inventory)
-        low_stock_items = len([i for i in inventory if i.get('quantity', 0) <= i.get('reorder_level', 10)])
-        
+        pending_revenue = sum(p.get('quote_amount', 0) for p in projects if p.get('status') in ['pending', 'in_progress', 'planning'])
+
+        # Calculate stock value from stock file
+        total_stock_value = sum(i.get('quantity', 0) * i.get('unit_price', 0) for i in stock)
+        total_stock_items = len(stock)
+        low_stock_items = len([i for i in stock if i.get('quantity', 0) <= 5])  # Items with 5 or fewer
+
         return jsonify({
             'success': True,
             'stats': {
                 'customers': {'total': total_customers, 'active': active_customers},
                 'projects': {'total': total_projects, 'active': active_projects, 'completed': completed_projects},
                 'revenue': {'total': total_revenue, 'pending': pending_revenue},
-                'inventory': {'total_value': total_inventory_value, 'low_stock': low_stock_items},
+                'stock': {'total_value': total_stock_value, 'total_items': total_stock_items, 'low_stock': low_stock_items},
                 'calendar': {'today_events': 0}
             }
         })
@@ -7495,6 +8344,79 @@ If users attach images, you can:
 - Help users make informed decisions
 - Provide professional technical support
 - Use extended thinking for complex reasoning
+
+📦 CRM SYSTEM FEATURES YOU KNOW ABOUT:
+
+1. STOCK & INVENTORY MANAGEMENT:
+   - Items have: name, sku, item_number, category, quantity, unit_price
+   - Serial numbers can be added to track individual units
+   - Serial numbers track status: available, assigned, installed
+   - Search inventory at: /api/crm/inventory/search?q=keyword
+
+2. SERIAL NUMBER TRACKING:
+   - Add serial numbers to stock items for individual unit tracking
+   - Each serial number tracks: serial, status, assigned_to, added_at
+   - Statuses: 'available' (in stock), 'assigned' (allocated to room), 'installed' (physically installed)
+   - Perfect for knowing exactly which unit goes where during installation
+
+3. ROOM ASSIGNMENTS (Project Installation Planning):
+   - Assign specific serial numbers to specific rooms in a project
+   - Each assignment includes: room_name, serial_number, item_name, notes
+   - Track installation status and timestamps
+   - When assigned, serial number status automatically updates to 'assigned'
+   - When marked as installed, timestamp is recorded
+   - Helps installers know "what goes where" for efficient installation
+   - API: /api/crm/projects/{id}/room-assignments
+
+4. QUOTES MANAGEMENT:
+   - Create quotes linked to customers
+   - Add markups (floor plans, takeoffs, electrical mapping)
+   - Add stock items to quotes
+   - Track materials_cost, labor_cost, markup_percentage
+   - Convert quotes to projects when job is won
+   - All data migrates during conversion
+
+5. COST CENTRES (Project & Quote Cost Organization):
+   - Highly customizable cost categories for organizing expenses
+   - Each cost centre has: name, description, color (auto-assigned)
+   - Add items with: name, quantity, unit_price, auto-calculated total
+   - Subtotals calculated per cost centre
+   - Total cost displayed visually with color-coded breakdown
+   - Search inventory to add items directly
+   - API: /api/crm/projects/{id}/cost-centres
+
+6. GOOGLE CALENDAR INTEGRATION:
+   - OAuth2 connection to Google account
+   - View upcoming calendar events
+   - Create events with: title, description, location, start/end time
+   - Add attendees and set reminders
+   - API: /api/crm/google/calendar/events
+
+7. GMAIL INTEGRATION:
+   - Send emails directly from CRM
+   - Supports plain text and HTML emails
+   - Emails are logged to Communications
+   - Read inbox messages
+   - API: /api/crm/google/gmail/send
+
+8. PROJECT MARKUPS:
+   - Attach floor plans, quotes, takeoffs, electrical mappings to projects
+   - Open markups in different modules (Takeoffs, Mapping, CAD)
+   - Track session IDs for cross-module data sharing
+
+HOW TO EXPLAIN THESE FEATURES TO USERS:
+
+For Serial Number Tracking:
+"You can add serial numbers to your stock items to track individual units. Each serial number can be assigned to a specific room in a project, so your installers know exactly which device goes where. The system automatically tracks whether each unit is available, assigned, or installed."
+
+For Room Assignments:
+"In each project, you can assign serial numbers to specific rooms. For example, assign dimmer SN-001 to the Living Room and SN-002 to the Master Bedroom. This creates an installation checklist that shows what goes where, and you can mark items as installed when complete."
+
+For Cost Centres:
+"Cost centres let you organize project costs into categories like 'Lighting Equipment', 'Labor', 'Security Devices'. Each centre shows its subtotal, and you see the total cost with a visual breakdown. You can search your inventory and add items directly to cost centres."
+
+For Google Integration:
+"Connect your Google account to sync calendar events and send emails directly from the CRM. Schedule installation appointments, send quotes to customers, and keep all communication in one place."
 
 """.format(page=current_page)
 

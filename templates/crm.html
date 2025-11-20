@@ -497,6 +497,9 @@
             <div class="nav-item" data-section="integrations">
                 <span>🔗</span> Integrations
             </div>
+            <div class="nav-item" data-section="google-integrations">
+                <span>🔌</span> Google Integration
+            </div>
         </div>
     </div>
 
@@ -718,11 +721,161 @@
             </div>
         </div>
 
+        <!-- GOOGLE INTEGRATIONS -->
+        <div id="google-integrations" class="section">
+            <h1 class="page-title">Google Integration</h1>
+            <p class="page-subtitle">Connect Google Calendar and Gmail</p>
+
+            <!-- Connection Status -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h2 class="card-title">Connection Status</h2>
+                    <span id="googleConnectionStatus" class="status-badge status-pending">Not Connected</span>
+                </div>
+                <div id="googleConnectionActions" style="margin-top: 16px;">
+                    <button class="btn btn-primary" onclick="connectGoogle()" id="btnConnectGoogle">Connect Google Account</button>
+                    <button class="btn btn-danger" onclick="disconnectGoogle()" id="btnDisconnectGoogle" style="display: none;">Disconnect</button>
+                </div>
+            </div>
+
+            <!-- API Configuration -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h2 class="card-title">API Configuration</h2>
+                    <button type="button" class="btn btn-small" onclick="toggleGoogleConfig()">Configure</button>
+                </div>
+                <div id="googleConfigForm" style="display: none; margin-top: 16px;">
+                    <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
+                        Get your credentials from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #007AFF;">Google Cloud Console</a>
+                    </p>
+                    <form onsubmit="saveGoogleConfig(event)">
+                        <div class="form-group">
+                            <label>Client ID</label>
+                            <input type="text" id="googleClientId" class="form-input" placeholder="xxx.apps.googleusercontent.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Client Secret</label>
+                            <input type="password" id="googleClientSecret" class="form-input" placeholder="Enter client secret">
+                        </div>
+                        <div class="form-group">
+                            <label>Redirect URI</label>
+                            <input type="text" id="googleRedirectUri" class="form-input" placeholder="https://yourapp.com/google/callback">
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="googleCalendarEnabled">
+                                Enable Google Calendar
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="googleGmailEnabled">
+                                Enable Gmail
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Calendar Events -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h2 class="card-title">Calendar Events</h2>
+                    <div>
+                        <button type="button" class="btn btn-small" onclick="loadGoogleCalendarEvents()">Refresh</button>
+                        <button type="button" class="btn btn-primary btn-small" onclick="openModal('googleEventModal')">+ New Event</button>
+                    </div>
+                </div>
+                <div id="googleCalendarEvents" style="margin-top: 16px;">
+                    <div class="empty-state" style="padding: 40px;">
+                        <div class="empty-icon">📅</div>
+                        <div class="empty-title">No events loaded</div>
+                        <p>Connect your Google account and click Refresh to load events</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Send Email -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Send Email via Gmail</h2>
+                </div>
+                <form onsubmit="sendGmailEmail(event)" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>To</label>
+                        <input type="email" id="gmailTo" class="form-input" placeholder="recipient@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="text" id="gmailSubject" class="form-input" placeholder="Email subject">
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="gmailBody" class="form-input" rows="5" placeholder="Enter your message..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send Email</button>
+                </form>
+            </div>
+        </div>
+
     </div>
 
 
     <!-- MODALS -->
-    
+
+    <!-- Google Calendar Event Modal -->
+    <div id="googleEventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Calendar Event</h2>
+                <button class="modal-close" onclick="closeModal('googleEventModal')">&times;</button>
+            </div>
+            <form onsubmit="createGoogleCalendarEvent(event)">
+                <div class="form-group">
+                    <label>Event Title *</label>
+                    <input type="text" id="googleEventTitle" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="googleEventDescription" class="form-input" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="googleEventLocation" class="form-input">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date/Time *</label>
+                        <input type="datetime-local" id="googleEventStart" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date/Time *</label>
+                        <input type="datetime-local" id="googleEventEnd" class="form-input" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Attendees (comma-separated emails)</label>
+                    <input type="text" id="googleEventAttendees" class="form-input" placeholder="email1@test.com, email2@test.com">
+                </div>
+                <div class="form-group">
+                    <label>Reminder (minutes before)</label>
+                    <select id="googleEventReminder" class="form-input">
+                        <option value="">No reminder</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="1440">1 day</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeModal('googleEventModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Customer Modal -->
     <div id="customerModal" class="modal">
         <div class="modal-content">
@@ -1436,7 +1589,9 @@
                     document.getElementById('statActive').textContent = data.stats.projects.active;
                     document.getElementById('statRevenue').textContent = '$' + data.stats.revenue.total.toLocaleString();
                     document.getElementById('statPending').textContent = '$' + data.stats.revenue.pending.toLocaleString();
-                    document.getElementById('statStock').textContent = data.stats.inventory.low_stock;
+                    // Show stock value instead of just low stock count
+                    const stockValue = data.stats.stock ? data.stats.stock.total_value : 0;
+                    document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
                 }
             } catch (e) {
                 console.error('Stats error:', e);
@@ -3636,6 +3791,289 @@
     if (window.location.hash === '#inventory') {
         loadInventory();
     }
+
+    // ==================== GOOGLE INTEGRATION FUNCTIONS ====================
+
+    function toggleGoogleConfig() {
+        const form = document.getElementById('googleConfigForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+        if (form.style.display === 'block') {
+            loadGoogleConfig();
+        }
+    }
+
+    async function loadGoogleConfig() {
+        try {
+            const res = await fetch('/api/crm/google/config');
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('googleClientId').value = data.config.client_id || '';
+                document.getElementById('googleRedirectUri').value = data.config.redirect_uri || '';
+                document.getElementById('googleCalendarEnabled').checked = data.config.calendar_enabled || false;
+                document.getElementById('googleGmailEnabled').checked = data.config.gmail_enabled || false;
+
+                // Update connection status
+                updateGoogleConnectionStatus(data.config.connected);
+            }
+        } catch (e) {
+            console.error('Error loading Google config:', e);
+        }
+    }
+
+    function updateGoogleConnectionStatus(connected) {
+        const status = document.getElementById('googleConnectionStatus');
+        const btnConnect = document.getElementById('btnConnectGoogle');
+        const btnDisconnect = document.getElementById('btnDisconnectGoogle');
+
+        if (connected) {
+            status.textContent = 'Connected';
+            status.className = 'status-badge status-completed';
+            btnConnect.style.display = 'none';
+            btnDisconnect.style.display = 'inline-block';
+        } else {
+            status.textContent = 'Not Connected';
+            status.className = 'status-badge status-pending';
+            btnConnect.style.display = 'inline-block';
+            btnDisconnect.style.display = 'none';
+        }
+    }
+
+    async function saveGoogleConfig(e) {
+        e.preventDefault();
+
+        const config = {
+            client_id: document.getElementById('googleClientId').value,
+            client_secret: document.getElementById('googleClientSecret').value,
+            redirect_uri: document.getElementById('googleRedirectUri').value,
+            calendar_enabled: document.getElementById('googleCalendarEnabled').checked,
+            gmail_enabled: document.getElementById('googleGmailEnabled').checked
+        };
+
+        try {
+            const res = await fetch('/api/crm/google/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showNotification('Google configuration saved', 'success');
+            } else {
+                showNotification(data.error || 'Failed to save configuration', 'error');
+            }
+        } catch (e) {
+            showNotification('Error saving configuration', 'error');
+        }
+    }
+
+    async function connectGoogle() {
+        try {
+            const res = await fetch('/api/crm/google/auth-url');
+            const data = await res.json();
+
+            if (data.success) {
+                // Open Google OAuth in new window
+                const authWindow = window.open(data.auth_url, 'Google Auth', 'width=600,height=700');
+
+                // Listen for callback
+                window.addEventListener('message', async function handler(event) {
+                    if (event.data.type === 'google-auth-callback') {
+                        authWindow.close();
+                        window.removeEventListener('message', handler);
+
+                        // Exchange code for tokens
+                        const callbackRes = await fetch('/api/crm/google/callback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ code: event.data.code })
+                        });
+                        const callbackData = await callbackRes.json();
+
+                        if (callbackData.success) {
+                            showNotification('Google account connected successfully', 'success');
+                            updateGoogleConnectionStatus(true);
+                        } else {
+                            showNotification(callbackData.error || 'Failed to connect', 'error');
+                        }
+                    }
+                });
+
+                // Show instructions for manual code entry
+                showNotification('Complete authorization in the new window. If redirected, copy the code from the URL and enter it below.', 'info');
+
+            } else {
+                showNotification(data.error || 'Failed to get auth URL', 'error');
+            }
+        } catch (e) {
+            showNotification('Error connecting to Google', 'error');
+        }
+    }
+
+    async function disconnectGoogle() {
+        if (!confirm('Are you sure you want to disconnect your Google account?')) return;
+
+        try {
+            const res = await fetch('/api/crm/google/disconnect', {
+                method: 'POST'
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showNotification('Google account disconnected', 'success');
+                updateGoogleConnectionStatus(false);
+            } else {
+                showNotification(data.error || 'Failed to disconnect', 'error');
+            }
+        } catch (e) {
+            showNotification('Error disconnecting', 'error');
+        }
+    }
+
+    async function loadGoogleCalendarEvents() {
+        const container = document.getElementById('googleCalendarEvents');
+        container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading events...</p></div>';
+
+        try {
+            const res = await fetch('/api/crm/google/calendar/events');
+            const data = await res.json();
+
+            if (data.success) {
+                if (data.events.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: 40px;">
+                            <div class="empty-icon">📅</div>
+                            <div class="empty-title">No upcoming events</div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = data.events.map(event => `
+                        <div style="padding: 12px; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 8px;">
+                            <div style="font-weight: 600;">${event.summary || 'Untitled'}</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                ${formatEventTime(event.start)} - ${formatEventTime(event.end)}
+                            </div>
+                            ${event.location ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">📍 ${event.location}</div>` : ''}
+                        </div>
+                    `).join('');
+                }
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px;">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-title">Error loading events</div>
+                        <p>${data.error || 'Please connect your Google account'}</p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            container.innerHTML = `
+                <div class="empty-state" style="padding: 40px;">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-title">Error</div>
+                    <p>${e.message}</p>
+                </div>
+            `;
+        }
+    }
+
+    function formatEventTime(eventTime) {
+        if (!eventTime) return '';
+        const date = eventTime.dateTime || eventTime.date;
+        if (!date) return '';
+        return new Date(date).toLocaleString();
+    }
+
+    async function createGoogleCalendarEvent(e) {
+        e.preventDefault();
+
+        const startTime = new Date(document.getElementById('googleEventStart').value).toISOString();
+        const endTime = new Date(document.getElementById('googleEventEnd').value).toISOString();
+        const attendeesStr = document.getElementById('googleEventAttendees').value;
+        const attendees = attendeesStr ? attendeesStr.split(',').map(e => e.trim()).filter(e => e) : [];
+        const reminderMinutes = document.getElementById('googleEventReminder').value;
+
+        const eventData = {
+            title: document.getElementById('googleEventTitle').value,
+            description: document.getElementById('googleEventDescription').value,
+            location: document.getElementById('googleEventLocation').value,
+            start_time: startTime,
+            end_time: endTime,
+            attendees: attendees,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+
+        if (reminderMinutes) {
+            eventData.reminder_minutes = parseInt(reminderMinutes);
+        }
+
+        try {
+            const res = await fetch('/api/crm/google/calendar/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(eventData)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showNotification('Event created successfully', 'success');
+                closeModal('googleEventModal');
+                document.querySelector('#googleEventModal form').reset();
+                loadGoogleCalendarEvents();
+            } else {
+                showNotification(data.error || 'Failed to create event', 'error');
+            }
+        } catch (e) {
+            showNotification('Error creating event', 'error');
+        }
+    }
+
+    async function sendGmailEmail(e) {
+        e.preventDefault();
+
+        const emailData = {
+            to: document.getElementById('gmailTo').value,
+            subject: document.getElementById('gmailSubject').value,
+            body: document.getElementById('gmailBody').value
+        };
+
+        try {
+            const res = await fetch('/api/crm/google/gmail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(emailData)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showNotification('Email sent successfully', 'success');
+                document.getElementById('gmailTo').value = '';
+                document.getElementById('gmailSubject').value = '';
+                document.getElementById('gmailBody').value = '';
+            } else {
+                showNotification(data.error || 'Failed to send email', 'error');
+            }
+        } catch (e) {
+            showNotification('Error sending email', 'error');
+        }
+    }
+
+    // Load Google config when section is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const googleSection = document.getElementById('google-integrations');
+        if (googleSection) {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.target.classList.contains('active')) {
+                        loadGoogleConfig();
+                    }
+                });
+            });
+            observer.observe(googleSection, { attributes: true, attributeFilter: ['class'] });
+        }
+    });
 </script>
 
 <!-- Footer -->
