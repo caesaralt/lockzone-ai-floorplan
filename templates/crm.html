@@ -643,7 +643,8 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">Product Catalog</h2>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="inventorySearchInput" class="search-input" placeholder="Search inventory..." style="flex: 1; min-width: 200px;">
                         <select id="inventoryTypeFilter" onchange="filterInventory()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                             <option value="">All Types</option>
                             <option value="lighting">💡 Lighting</option>
@@ -662,6 +663,7 @@
                             <option value="deluxe">👑 Deluxe</option>
                         </select>
                         <button class="btn btn-secondary" onclick="loadInventory()">🔄 Refresh</button>
+                        <button class="btn btn-primary" onclick="openModal('inventoryModal')">+ Add Item</button>
                     </div>
                 </div>
                 <div id="inventoryTable"></div>
@@ -679,20 +681,6 @@
                     <button class="btn btn-primary" onclick="openModal('techModal')">+ Add Technician</button>
                 </div>
                 <div id="techTable"></div>
-            </div>
-        </div>
-
-        <!-- INVENTORY -->
-        <div id="inventory" class="section">
-            <h1 class="page-title">Inventory</h1>
-            <p class="page-subtitle">Track stock and materials</p>
-
-            <div class="card">
-                <div class="card-header">
-                    <input type="text" class="search-input" placeholder="Search inventory...">
-                    <button class="btn btn-primary" onclick="openModal('inventoryModal')">+ Add Item</button>
-                </div>
-                <div id="inventoryTable"></div>
             </div>
         </div>
 
