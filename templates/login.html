@@ -5,17 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Integratd Living</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            /* Light mode colors */
+            --bg-gradient-start: #f5f5f7;
+            --bg-gradient-end: #e8e8ea;
+            --text-primary: #1d1d1f;
+            --text-secondary: #666666;
+            --text-tertiary: #999999;
+            --card-bg: #ffffff;
+            --input-bg: #fafafa;
+            --input-border: #d2d2d7;
+            --input-focus-bg: #ffffff;
+            --border-color: #f0f0f0;
+            --cred-bg: #f5f5f7;
+            --cred-value-bg: #ffffff;
+            --error-bg: #fff5f5;
+            --error-border: #ff3b30;
+            --error-text: #c41e3a;
+            --autocomplete-hover: rgba(85, 107, 47, 0.1);
+        }
+
+        [data-theme="dark"] {
+            /* Dark mode colors */
+            --bg-gradient-start: #0a0a0a;
+            --bg-gradient-end: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --text-tertiary: #707070;
+            --card-bg: #1e1e1e;
+            --input-bg: #2a2a2a;
+            --input-border: #3a3a3a;
+            --input-focus-bg: #2a2a2a;
+            --border-color: #2a2a2a;
+            --cred-bg: #2a2a2a;
+            --cred-value-bg: #1e1e1e;
+            --error-bg: #2a1a1a;
+            --error-border: #ff3b30;
+            --error-text: #ff6b6b;
+            --autocomplete-hover: rgba(107, 142, 35, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-            color: #1d1d1f;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: none;
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-toggle svg {
+            width: 24px;
+            height: 24px;
+            color: var(--text-primary);
         }
 
         .login-container {
@@ -49,20 +124,21 @@
         .logo-title {
             font-size: 32px;
             font-weight: 700;
-            color: #1d1d1f;
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
         .logo-subtitle {
             font-size: 16px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         .login-card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 20px;
             padding: 48px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease;
         }
 
         .form-header {
@@ -77,7 +153,7 @@
 
         .form-subtitle {
             font-size: 14px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         .form-group {
@@ -88,25 +164,26 @@
             display: block;
             font-size: 14px;
             font-weight: 600;
-            color: #1d1d1f;
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
         .form-input {
             width: 100%;
             padding: 14px 16px;
-            border: 2px solid #d2d2d7;
+            border: 2px solid var(--input-border);
             border-radius: 12px;
             font-size: 16px;
             font-family: inherit;
             transition: all 0.2s;
-            background: #fafafa;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
 
         .form-input:focus {
             outline: none;
             border-color: #556B2F;
-            background: white;
+            background: var(--input-focus-bg);
             box-shadow: 0 0 0 4px rgba(85, 107, 47, 0.1);
         }
 
@@ -119,14 +196,14 @@
 
         .form-hint {
             font-size: 12px;
-            color: #999;
+            color: var(--text-tertiary);
             margin-top: 6px;
         }
 
         .error-message {
             display: none;
-            background: #fff5f5;
-            border-left: 4px solid #ff3b30;
+            background: var(--error-bg);
+            border-left: 4px solid var(--error-border);
             padding: 14px 16px;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -158,7 +235,7 @@
 
         .error-text {
             font-size: 14px;
-            color: #c41e3a;
+            color: var(--error-text);
             font-weight: 500;
         }
 
@@ -216,11 +293,11 @@
         .help-section {
             margin-top: 32px;
             padding-top: 24px;
-            border-top: 1px solid #f0f0f0;
+            border-top: 1px solid var(--border-color);
         }
 
         .default-creds {
-            background: #f5f5f7;
+            background: var(--cred-bg);
             padding: 16px;
             border-radius: 12px;
             text-align: center;
@@ -231,18 +308,18 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #999;
+            color: var(--text-tertiary);
             margin-bottom: 8px;
         }
 
         .creds-display {
             font-size: 14px;
-            color: #1d1d1f;
+            color: var(--text-primary);
         }
 
         .cred-value {
             display: inline-block;
-            background: white;
+            background: var(--cred-value-bg);
             padding: 4px 12px;
             border-radius: 6px;
             font-family: 'Monaco', 'Courier New', monospace;
@@ -253,7 +330,7 @@
         .contact-admin {
             text-align: center;
             font-size: 13px;
-            color: #666;
+            color: var(--text-secondary);
             margin-top: 16px;
         }
 
@@ -264,7 +341,7 @@
 
         .autocomplete-items {
             position: absolute;
-            border: 2px solid #d2d2d7;
+            border: 2px solid var(--input-border);
             border-top: none;
             z-index: 99;
             top: 100%;
@@ -272,7 +349,7 @@
             right: 0;
             max-height: 200px;
             overflow-y: auto;
-            background: white;
+            background: var(--card-bg);
             border-radius: 0 0 12px 12px;
             display: none;
         }
@@ -289,8 +366,8 @@
 
         .autocomplete-items div:hover,
         .autocomplete-active {
-            background: rgba(85, 107, 47, 0.1);
-            color: #556B2F;
+            background: var(--autocomplete-hover);
+            color: #6B8E23;
         }
 
         .autocomplete-items div:last-child {
@@ -301,7 +378,7 @@
             text-align: center;
             margin-top: 32px;
             font-size: 13px;
-            color: #999;
+            color: var(--text-tertiary);
         }
 
         /* Responsive */
@@ -321,6 +398,23 @@
     </style>
 </head>
 <body>
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="moonIcon" class="moon-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
 
     <div class="login-container">
         <!-- Logo Section -->
@@ -408,6 +502,40 @@
     </div>
 
     <script>
+        // Dark mode toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
+
+        // Check for saved theme preference or default to 'light' mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+
+        // Set initial theme
+        if (currentTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        }
+
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', function() {
+            const theme = htmlElement.getAttribute('data-theme');
+
+            if (theme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+        });
+
+        // Login form functionality
         const form = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
