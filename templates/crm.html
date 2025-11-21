@@ -4704,8 +4704,8 @@
 
     function renderPeople(peopleList, type) {
         const containerId = type === 'employee' ? 'employeesTable' :
-                           type === 'customer' ? 'customersTablePeople' :
-                           type === 'supplier' ? 'suppliersTablePeople' :
+                           type === 'customer' ? 'customersTableNew' :
+                           type === 'supplier' ? 'suppliersTableNew' :
                            type === 'contractor' ? 'contractorsTable' :
                            'contactsTable';
 
@@ -4765,8 +4765,8 @@
 
     function searchPeople(type) {
         const searchId = type === 'employee' ? 'employeeSearch' :
-                        type === 'customer' ? 'customerSearchPeople' :
-                        type === 'supplier' ? 'supplierSearch' :
+                        type === 'customer' ? 'customerSearch' :
+                        type === 'supplier' ? 'suppliersSearch' :
                         type === 'contractor' ? 'contractorSearch' :
                         'contactSearch';
 
@@ -4981,7 +4981,7 @@
         document.getElementById('jobStartDate').value = '';
         document.getElementById('jobDueDate').value = '';
         document.getElementById('jobValue').value = '';
-        document.getElementById('jobRecurringSchedule').value = '';
+        document.getElementById('jobRecurring').value = '';
 
         const labels = {
             'in_progress': 'In Progress Job',
@@ -4993,7 +4993,7 @@
         document.querySelector('#jobModal h2').textContent = `Add ${labels[status]}`;
 
         // Show/hide recurring schedule field
-        const recurringField = document.querySelector('#jobRecurringSchedule').closest('.form-group');
+        const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
         recurringField.style.display = status === 'recurring' ? 'block' : 'none';
 
         openModal('jobModal');
@@ -5013,7 +5013,7 @@
                     document.getElementById('jobStartDate').value = j.start_date || '';
                     document.getElementById('jobDueDate').value = j.due_date || '';
                     document.getElementById('jobValue').value = j.value || '';
-                    document.getElementById('jobRecurringSchedule').value = j.recurring_schedule || '';
+                    document.getElementById('jobRecurring').value = j.recurring_schedule || '';
 
                     const labels = {
                         'in_progress': 'In Progress Job',
@@ -5025,7 +5025,7 @@
                     document.querySelector('#jobModal h2').textContent = `Edit ${labels[status]}`;
 
                     // Show/hide recurring schedule field
-                    const recurringField = document.querySelector('#jobRecurringSchedule').closest('.form-group');
+                    const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
                     recurringField.style.display = status === 'recurring' ? 'block' : 'none';
 
                     openModal('jobModal');
@@ -5046,7 +5046,7 @@
             start_date: document.getElementById('jobStartDate').value,
             due_date: document.getElementById('jobDueDate').value,
             value: parseFloat(document.getElementById('jobValue').value) || 0,
-            recurring_schedule: document.getElementById('jobRecurringSchedule').value
+            recurring_schedule: document.getElementById('jobRecurring').value
         };
 
         try {
@@ -5177,7 +5177,7 @@
         document.getElementById('materialCategory').value = '';
         document.getElementById('materialLocation').value = 'sydney';
         document.getElementById('materialQuantity').value = '';
-        document.getElementById('materialUnitPrice').value = '';
+        document.getElementById('materialPrice').value = '';
         document.getElementById('materialSupplier').value = '';
 
         document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Add Stock Item' : 'Add Order';
@@ -5196,7 +5196,7 @@
                     document.getElementById('materialCategory').value = m.category || '';
                     document.getElementById('materialLocation').value = m.location || 'sydney';
                     document.getElementById('materialQuantity').value = m.quantity || '';
-                    document.getElementById('materialUnitPrice').value = m.unit_price || '';
+                    document.getElementById('materialPrice').value = m.unit_price || '';
                     document.getElementById('materialSupplier').value = m.supplier_id || '';
 
                     document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Edit Stock Item' : 'Edit Order';
@@ -5216,7 +5216,7 @@
             category: document.getElementById('materialCategory').value,
             location: document.getElementById('materialLocation').value,
             quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
-            unit_price: parseFloat(document.getElementById('materialUnitPrice').value) || 0,
+            unit_price: parseFloat(document.getElementById('materialPrice').value) || 0,
             supplier_id: document.getElementById('materialSupplier').value
         };
 

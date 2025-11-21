@@ -2641,26 +2641,6 @@ def add_to_crm_stock():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/crm/jobs', methods=['GET'])
-def get_crm_jobs():
-    """Get all CRM jobs"""
-    try:
-        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
-        if os.path.exists(crm_file):
-            with open(crm_file, 'r') as f:
-                crm_data = json.load(f)
-                return jsonify({
-                    'success': True,
-                    'jobs': crm_data.get('jobs', [])
-                })
-        else:
-            return jsonify({
-                'success': True,
-                'jobs': []
-            })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 @app.route('/api/crm/jobs/<job_id>/assign-item', methods=['POST'])
 def assign_item_to_job(job_id):
     """Assign component or cable to a job"""
