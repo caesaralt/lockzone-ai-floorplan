@@ -410,3 +410,152 @@ def delete_payment(payment_id):
     if save_payments(payments):
         return True, None
     return False, "Failed to save changes"
+
+# ====================================================================================
+# SCHEDULES/CALENDAR MODULE
+# ====================================================================================
+
+SCHEDULE_TYPES = {
+    'job': 'Job',
+    'meeting': 'Meeting',
+    'reminder': 'Reminder',
+    'event': 'Event'
+}
+
+SCHEDULE_RECURRENCE = {
+    'none': 'None',
+    'daily': 'Daily',
+    'weekly': 'Weekly',
+    'fortnightly': 'Fortnightly',
+    'monthly': 'Monthly',
+    'annually': 'Annually'
+}
+
+def load_events():
+    """Load calendar events from JSON file"""
+    file_path = os.path.join(CRM_DATA_DIR, 'calendar.json')
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                return data.get('events', [])
+        return []
+    except Exception as e:
+        logger.error(f"Error loading events: {e}")
+        return []
+
+def save_events(events):
+    """Save calendar events to JSON file"""
+    file_path = os.path.join(CRM_DATA_DIR, 'calendar.json')
+    try:
+        with open(file_path, 'w') as f:
+            json.dump({'events': events}, f, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving events: {e}")
+        return False
+
+def get_event(event_id):
+    """Get a single event by ID"""
+    events = load_events()
+    for event in events:
+        if event['id'] == event_id:
+            return event
+    return None
+
+def create_event(data):
+    """Create a new calendar event"""
+    events = load_events()
+
+    # Validate required fields
+    if not data.get('title'):
+        return None, "Title is required"
+    if not data.get('start_date'):
+        return None, "Start date is required"
+
+    new_event = {
+        'id': str(uuid.uuid4()),
+        'title': data.get('title'),
+        'description': data.get('description', ''),
+        'type': data.get('type', 'event'),
+        'start_date': data.get('start_date'),
+        'start_time': data.get('start_time', ''),
+        'end_date': data.get('end_date', data.get('start_date')),
+        'end_time': data.get('end_time', ''),
+        'all_day': data.get('all_day', False),
+        'recurrence': data.get('recurrence', 'none'),
+        'location': data.get('location', ''),
+        'attendees': data.get('attendees', []),
+        'linked_to': data.get('linked_to', {}),  # Can link to jobs, people, etc.
+        'google_event_id': data.get('google_event_id', ''),
+        'color': data.get('color', '#3b82f6'),
+        'reminder_minutes': data.get('reminder_minutes', 0),
+        'created_at': datetime.utcnow().isoformat(),
+        'updated_at': datetime.utcnow().isoformat()
+    }
+
+    events.append(new_event)
+
+    if save_events(events):
+        return new_event, None
+    return None, "Failed to save event"
+
+def update_event(event_id, data):
+    """Update a calendar event"""
+    events = load_events()
+
+    for i, event in enumerate(events):
+        if event['id'] == event_id:
+            event.update({
+                'title': data.get('title', event['title']),
+                'description': data.get('description', event.get('description', '')),
+                'type': data.get('type', event.get('type', 'event')),
+                'start_date': data.get('start_date', event['start_date']),
+                'start_time': data.get('start_time', event.get('start_time', '')),
+                'end_date': data.get('end_date', event.get('end_date', '')),
+                'end_time': data.get('end_time', event.get('end_time', '')),
+                'all_day': data.get('all_day', event.get('all_day', False)),
+                'recurrence': data.get('recurrence', event.get('recurrence', 'none')),
+                'location': data.get('location', event.get('location', '')),
+                'attendees': data.get('attendees', event.get('attendees', [])),
+                'color': data.get('color', event.get('color', '#3b82f6')),
+                'reminder_minutes': data.get('reminder_minutes', event.get('reminder_minutes', 0)),
+                'updated_at': datetime.utcnow().isoformat()
+            })
+
+            events[i] = event
+
+            if save_events(events):
+                return event, None
+            return None, "Failed to save changes"
+
+    return None, "Event not found"
+
+def delete_event(event_id):
+    """Delete a calendar event"""
+    events = load_events()
+    events = [e for e in events if e['id'] != event_id]
+
+    if save_events(events):
+        return True, None
+    return False, "Failed to save changes"
+
+def get_events_by_date_range(start_date, end_date):
+    """Get events within a date range"""
+    events = load_events()
+
+    try:
+        from datetime import datetime as dt
+        start = dt.fromisoformat(start_date.replace('Z', '+00:00'))
+        end = dt.fromisoformat(end_date.replace('Z', '+00:00'))
+
+        filtered_events = []
+        for event in events:
+            event_start = dt.fromisoformat(event['start_date'].replace('Z', '+00:00'))
+            if start <= event_start <= end:
+                filtered_events.append(event)
+
+        return filtered_events
+    except Exception as e:
+        logger.error(f"Error filtering events by date range: {e}")
+        return events

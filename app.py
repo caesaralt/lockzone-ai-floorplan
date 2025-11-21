@@ -9079,6 +9079,78 @@ def generate_payment_invoice(payment_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ====================================================================================
+# CALENDAR/SCHEDULES API ENDPOINTS
+# ====================================================================================
+
+@app.route('/api/crm/calendar/events', methods=['GET', 'POST'])
+@auth.login_required
+def crm_calendar_events():
+    """Get all calendar events or create a new event"""
+    if request.method == 'GET':
+        try:
+            # Get query parameters for filtering
+            start_date = request.args.get('start_date')
+            end_date = request.args.get('end_date')
+
+            if start_date and end_date:
+                events = crm_extended.get_events_by_date_range(start_date, end_date)
+            else:
+                events = crm_extended.load_events()
+
+            return jsonify({'success': True, 'events': events})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            event, error = crm_extended.create_event(data)
+
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+
+            return jsonify({'success': True, 'event': event})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/calendar/events/<event_id>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required
+def crm_calendar_event(event_id):
+    """Get, update, or delete a specific calendar event"""
+    if request.method == 'GET':
+        try:
+            event = crm_extended.get_event(event_id)
+            if not event:
+                return jsonify({'success': False, 'error': 'Event not found'}), 404
+
+            return jsonify({'success': True, 'event': event})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    elif request.method == 'PUT':
+        try:
+            data = request.json
+            event, error = crm_extended.update_event(event_id, data)
+
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+
+            return jsonify({'success': True, 'event': event})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    elif request.method == 'DELETE':
+        try:
+            success, error = crm_extended.delete_event(event_id)
+
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+
+            return jsonify({'success': True, 'message': 'Event deleted'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
 # ============================================================================
 # STATIC FILE SERVING
 # ============================================================================
