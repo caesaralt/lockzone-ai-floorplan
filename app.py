@@ -71,6 +71,19 @@ except ImportError:
 app = create_app()
 logger = logging.getLogger(__name__)
 
+# Context processor to make user permissions available in all templates
+@app.context_processor
+def inject_user_permissions():
+    """Make user permissions available in all templates"""
+    return {
+        'user_permissions': session.get('user_permissions', []),
+        'crm_permissions': session.get('crm_permissions', []),
+        'user_name': session.get('user_name', ''),
+        'user_display_name': session.get('user_display_name', ''),
+        'is_authenticated': auth.is_authenticated(),
+        'has_permission': auth.has_permission
+    }
+
 # Database disabled temporarily - using JSON files for stability
 USE_DATABASE = app.config.get('USE_DATABASE', False)
 db = None
