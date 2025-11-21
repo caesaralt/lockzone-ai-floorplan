@@ -441,22 +441,30 @@
             </div>
         </div>
 
+        {% if 'crm_customers' in crm_permissions or 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
         <div class="nav-section">
             <div class="nav-section-title">Customers</div>
+            {% if 'crm_customers' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="customers">
                 <span>👥</span> All Customers
             </div>
+            {% endif %}
+            {% if 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="communications">
                 <span>💬</span> Communications
             </div>
+            {% endif %}
         </div>
+        {% endif %}
 
+        {% if 'crm_projects' in crm_permissions or 'admin' in user_permissions %}
         <div class="nav-section">
             <div class="nav-section-title">Projects</div>
             <div class="nav-item" data-section="projects">
                 <span>📁</span> All Projects
             </div>
         </div>
+        {% endif %}
 
         <div class="nav-section">
             <div class="nav-section-title">Quotes</div>
@@ -465,32 +473,46 @@
             </div>
         </div>
 
+        {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
         <div class="nav-section">
             <div class="nav-section-title">Inventory</div>
             <div class="nav-item" data-section="inventory">
                 <span>📦</span> All Inventory
             </div>
         </div>
+        {% endif %}
 
+        {% if 'crm_calendar' in crm_permissions or 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
         <div class="nav-section">
             <div class="nav-section-title">Scheduling</div>
+            {% if 'crm_calendar' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="calendar">
                 <span>📅</span> Calendar
             </div>
+            {% endif %}
+            {% if 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="technicians">
                 <span>👷</span> Technicians
             </div>
+            {% endif %}
         </div>
+        {% endif %}
 
+        {% if 'crm_inventory' in crm_permissions or 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
         <div class="nav-section">
-            <div class="nav-section-title">Inventory</div>
+            <div class="nav-section-title">Resources</div>
+            {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="inventory">
                 <span>📦</span> Stock
             </div>
+            {% endif %}
+            {% if 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
             <div class="nav-item" data-section="suppliers">
                 <span>🏭</span> Suppliers
             </div>
+            {% endif %}
         </div>
+        {% endif %}
 
         <div class="nav-section">
             <div class="nav-section-title">System</div>

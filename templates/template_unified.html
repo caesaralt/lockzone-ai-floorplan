@@ -97,59 +97,93 @@
                 </a>
                 {% endfor %}
             {% else %}
+            {% if 'crm' in user_permissions or 'admin' in user_permissions %}
             <a href="/crm" class="module-card">
                 <div class="module-icon">📊</div>
                 <h2 class="module-title">CRM Dashboard</h2>
                 <p class="module-description">Manage customers, projects, scheduling, inventory, and more in one place.</p>
             </a>
+            {% endif %}
 
+            {% if 'quotes' in user_permissions or 'admin' in user_permissions %}
             <a href="/quotes" class="module-card">
                 <div class="module-icon">💰</div>
                 <h2 class="module-title">Quote Automation</h2>
                 <p class="module-description">Upload floor plans and let AI generate accurate quotes automatically.</p>
             </a>
+            {% endif %}
 
+            {% if 'canvas' in user_permissions or 'admin' in user_permissions %}
             <a href="/canvas" class="module-card">
                 <div class="module-icon">🎨</div>
                 <h2 class="module-title">Canvas Editor</h2>
                 <p class="module-description">Professional floor plan editor with zoom, pan, and symbol management.</p>
             </a>
+            {% endif %}
 
+            {% if 'mapping' in user_permissions or 'admin' in user_permissions %}
             <a href="/mapping" class="module-card">
                 <div class="module-icon">⚡</div>
                 <h2 class="module-title">Electrical Mapping</h2>
                 <p class="module-description">Professional electrical mapping with wiring, circuits, and component management.</p>
             </a>
+            {% endif %}
 
+            {% if 'board_builder' in user_permissions or 'admin' in user_permissions %}
             <a href="/board-builder" class="module-card">
                 <div class="module-icon">🔌</div>
                 <h2 class="module-title">Loxone Board Builder</h2>
                 <p class="module-description">Design professional Loxone boards with AI generation and integration with mapping data.</p>
             </a>
+            {% endif %}
 
+            {% if 'electrical_cad' in user_permissions or 'admin' in user_permissions %}
             <a href="/electrical-cad" class="module-card">
                 <div class="module-icon">📟</div>
                 <h2 class="module-title">Electrical CAD Designer</h2>
                 <p class="module-description">Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.</p>
             </a>
+            {% endif %}
 
+            {% if 'learning' in user_permissions or 'admin' in user_permissions %}
             <a href="/learning" class="module-card">
                 <div class="module-icon">🧠</div>
                 <h2 class="module-title">AI Learning</h2>
                 <p class="module-description">Train the system with examples to improve accuracy over time.</p>
             </a>
+            {% endif %}
 
+            {% if 'kanban' in user_permissions or 'admin' in user_permissions %}
             <a href="/kanban" class="module-card">
                 <div class="module-icon">📋</div>
                 <h2 class="module-title">Operations Board</h2>
                 <p class="module-description">Kanban task management system for team workflow and project tracking.</p>
             </a>
+            {% endif %}
 
+            {% if 'admin' in user_permissions %}
             <a href="/admin" class="module-card">
                 <div class="module-icon">👤</div>
                 <h2 class="module-title">Admin Panel</h2>
                 <p class="module-description">Manage users, assign permissions, and configure system access controls.</p>
             </a>
+            {% endif %}
+
+            {% if 'simpro' in user_permissions or 'admin' in user_permissions %}
+            <a href="/simpro" class="module-card">
+                <div class="module-icon">🔗</div>
+                <h2 class="module-title">Simpro Integration</h2>
+                <p class="module-description">Connect and sync with Simpro for seamless workflow integration.</p>
+            </a>
+            {% endif %}
+
+            {% if 'ai_mapping' in user_permissions or 'admin' in user_permissions %}
+            <a href="/ai-mapping" class="module-card">
+                <div class="module-icon">🤖</div>
+                <h2 class="module-title">AI Mapping</h2>
+                <p class="module-description">Advanced AI-powered mapping and analysis tools.</p>
+            </a>
+            {% endif %}
             {% endif %}
         </div>
     </div>

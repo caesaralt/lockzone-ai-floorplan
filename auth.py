@@ -263,6 +263,7 @@ def login_user(user):
     session['user_display_name'] = user['display_name']
     session['user_role'] = user['role']
     session['user_permissions'] = user['permissions']
+    session['crm_permissions'] = user.get('crm_permissions', list(CRM_PERMISSIONS.keys()) if 'crm' in user['permissions'] else [])
     session.permanent = True
 
 
