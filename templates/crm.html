@@ -4653,6 +4653,782 @@
             observer.observe(googleSection, { attributes: true, attributeFilter: ['class'] });
         }
     });
+
+    // ============================================================================
+    // CRM EXTENDED MODULES - PEOPLE, JOBS, MATERIALS, PAYMENTS
+    // ============================================================================
+
+    // STATE for new modules
+    let people = [];
+    let jobs = [];
+    let materials = [];
+    let payments = [];
+
+    // Add to loadAllData function
+    const originalLoadAllData = loadAllData;
+    loadAllData = async function() {
+        await originalLoadAllData();
+        await Promise.all([
+            loadPeople('employee'),
+            loadPeople('customer'),
+            loadPeople('supplier'),
+            loadPeople('contractor'),
+            loadPeople('contact'),
+            loadJobs('in_progress'),
+            loadJobs('upcoming'),
+            loadJobs('pending'),
+            loadJobs('finished'),
+            loadJobs('recurring'),
+            loadMaterials('stock'),
+            loadMaterials('order'),
+            loadPayments('to_us'),
+            loadPayments('to_suppliers')
+        ]);
+    };
+
+    // ============================================================================
+    // PEOPLE MODULE
+    // ============================================================================
+
+    async function loadPeople(type) {
+        try {
+            const res = await fetch(`/api/crm/people?type=${type}`);
+            const data = await res.json();
+            if (data.success) {
+                renderPeople(data.people, type);
+            }
+        } catch (e) {
+            console.error(`Error loading ${type}:`, e);
+        }
+    }
+
+    function renderPeople(peopleList, type) {
+        const containerId = type === 'employee' ? 'employeesTable' :
+                           type === 'customer' ? 'customersTablePeople' :
+                           type === 'supplier' ? 'suppliersTablePeople' :
+                           type === 'contractor' ? 'contractorsTable' :
+                           'contactsTable';
+
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (peopleList.length === 0) {
+            const labels = {
+                'employee': 'employees',
+                'customer': 'customers',
+                'supplier': 'suppliers',
+                'contractor': 'contractors',
+                'contact': 'contacts'
+            };
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👤</div>
+                    <div class="empty-title">No ${labels[type]} yet</div>
+                    <p>Add your first ${type} to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Company</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${peopleList.map(p => `
+                            <tr>
+                                <td><strong>${p.name}</strong></td>
+                                <td>${p.company || '-'}</td>
+                                <td>${p.email || '-'}</td>
+                                <td>${p.phone || '-'}</td>
+                                <td>${p.address || '-'}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editPerson('${p.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deletePerson('${p.id}', '${type}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchPeople(type) {
+        const searchId = type === 'employee' ? 'employeeSearch' :
+                        type === 'customer' ? 'customerSearchPeople' :
+                        type === 'supplier' ? 'supplierSearch' :
+                        type === 'contractor' ? 'contractorSearch' :
+                        'contactSearch';
+
+        const search = document.getElementById(searchId).value.toLowerCase();
+        // Reload with search filter
+        loadPeople(type, search);
+    }
+
+    function openPersonModal(type) {
+        document.getElementById('personId').value = '';
+        document.getElementById('personType').value = type;
+        document.getElementById('personName').value = '';
+        document.getElementById('personCompany').value = '';
+        document.getElementById('personEmail').value = '';
+        document.getElementById('personPhone').value = '';
+        document.getElementById('personAddress').value = '';
+        document.getElementById('personNotes').value = '';
+
+        const labels = {
+            'employee': 'Employee',
+            'customer': 'Customer',
+            'supplier': 'Supplier',
+            'contractor': 'Contractor',
+            'contact': 'Contact'
+        };
+        document.querySelector('#personModal h2').textContent = `Add ${labels[type]}`;
+        openModal('personModal');
+    }
+
+    function editPerson(id, type) {
+        fetch(`/api/crm/people/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.person;
+                    document.getElementById('personId').value = p.id;
+                    document.getElementById('personType').value = p.type;
+                    document.getElementById('personName').value = p.name;
+                    document.getElementById('personCompany').value = p.company || '';
+                    document.getElementById('personEmail').value = p.email || '';
+                    document.getElementById('personPhone').value = p.phone || '';
+                    document.getElementById('personAddress').value = p.address || '';
+                    document.getElementById('personNotes').value = p.notes || '';
+
+                    const labels = {
+                        'employee': 'Employee',
+                        'customer': 'Customer',
+                        'supplier': 'Supplier',
+                        'contractor': 'Contractor',
+                        'contact': 'Contact'
+                    };
+                    document.querySelector('#personModal h2').textContent = `Edit ${labels[type]}`;
+                    openModal('personModal');
+                }
+            });
+    }
+
+    async function savePerson(e) {
+        e.preventDefault();
+        const id = document.getElementById('personId').value;
+        const type = document.getElementById('personType').value;
+
+        const data = {
+            type: type,
+            name: document.getElementById('personName').value,
+            company: document.getElementById('personCompany').value,
+            email: document.getElementById('personEmail').value,
+            phone: document.getElementById('personPhone').value,
+            address: document.getElementById('personAddress').value,
+            notes: document.getElementById('personNotes').value
+        };
+
+        try {
+            const url = id ? `/api/crm/people/${id}` : '/api/crm/people';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('personModal');
+                loadPeople(type);
+                showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`, 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deletePerson(id, type) {
+        if (!confirm('Are you sure you want to delete this person?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/people/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadPeople(type);
+                showToast('Person deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // JOBS MODULE
+    // ============================================================================
+
+    async function loadJobs(status) {
+        try {
+            const res = await fetch(`/api/crm/jobs?status=${status}`);
+            const data = await res.json();
+            if (data.success) {
+                renderJobs(data.jobs, status);
+            }
+        } catch (e) {
+            console.error(`Error loading ${status} jobs:`, e);
+        }
+    }
+
+    function renderJobs(jobsList, status) {
+        const containerMap = {
+            'in_progress': 'jobsInProgressTable',
+            'upcoming': 'jobsUpcomingTable',
+            'pending': 'jobsPendingTable',
+            'finished': 'jobsFinishedTable',
+            'recurring': 'jobsRecurringTable'
+        };
+
+        const container = document.getElementById(containerMap[status]);
+        if (!container) return;
+
+        if (jobsList.length === 0) {
+            const labels = {
+                'in_progress': 'jobs in progress',
+                'upcoming': 'upcoming jobs',
+                'pending': 'pending jobs',
+                'finished': 'finished jobs',
+                'recurring': 'recurring jobs'
+            };
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💼</div>
+                    <div class="empty-title">No ${labels[status]}</div>
+                    <p>Add your first job to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Customer</th>
+                            <th>Start Date</th>
+                            <th>Due Date</th>
+                            <th>Value</th>
+                            ${status === 'recurring' ? '<th>Schedule</th>' : ''}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jobsList.map(j => `
+                            <tr>
+                                <td><strong>${j.name}</strong></td>
+                                <td>${j.customer_id || '-'}</td>
+                                <td>${j.start_date || '-'}</td>
+                                <td>${j.due_date || '-'}</td>
+                                <td>$${(j.value || 0).toLocaleString()}</td>
+                                ${status === 'recurring' ? `<td>${j.recurring_schedule || '-'}</td>` : ''}
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editJob('${j.id}', '${status}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteJob('${j.id}', '${status}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchJobs(status) {
+        const searchMap = {
+            'in_progress': 'jobsInProgressSearch',
+            'upcoming': 'jobsUpcomingSearch',
+            'pending': 'jobsPendingSearch',
+            'finished': 'jobsFinishedSearch',
+            'recurring': 'jobsRecurringSearch'
+        };
+
+        const search = document.getElementById(searchMap[status]).value.toLowerCase();
+        loadJobs(status, search);
+    }
+
+    function openJobModal(status) {
+        document.getElementById('jobId').value = '';
+        document.getElementById('jobStatus').value = status;
+        document.getElementById('jobName').value = '';
+        document.getElementById('jobCustomer').value = '';
+        document.getElementById('jobDescription').value = '';
+        document.getElementById('jobStartDate').value = '';
+        document.getElementById('jobDueDate').value = '';
+        document.getElementById('jobValue').value = '';
+        document.getElementById('jobRecurringSchedule').value = '';
+
+        const labels = {
+            'in_progress': 'In Progress Job',
+            'upcoming': 'Upcoming Job',
+            'pending': 'Pending Job',
+            'finished': 'Finished Job',
+            'recurring': 'Recurring Job'
+        };
+        document.querySelector('#jobModal h2').textContent = `Add ${labels[status]}`;
+
+        // Show/hide recurring schedule field
+        const recurringField = document.querySelector('#jobRecurringSchedule').closest('.form-group');
+        recurringField.style.display = status === 'recurring' ? 'block' : 'none';
+
+        openModal('jobModal');
+    }
+
+    function editJob(id, status) {
+        fetch(`/api/crm/jobs/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const j = data.job;
+                    document.getElementById('jobId').value = j.id;
+                    document.getElementById('jobStatus').value = j.status;
+                    document.getElementById('jobName').value = j.name;
+                    document.getElementById('jobCustomer').value = j.customer_id || '';
+                    document.getElementById('jobDescription').value = j.description || '';
+                    document.getElementById('jobStartDate').value = j.start_date || '';
+                    document.getElementById('jobDueDate').value = j.due_date || '';
+                    document.getElementById('jobValue').value = j.value || '';
+                    document.getElementById('jobRecurringSchedule').value = j.recurring_schedule || '';
+
+                    const labels = {
+                        'in_progress': 'In Progress Job',
+                        'upcoming': 'Upcoming Job',
+                        'pending': 'Pending Job',
+                        'finished': 'Finished Job',
+                        'recurring': 'Recurring Job'
+                    };
+                    document.querySelector('#jobModal h2').textContent = `Edit ${labels[status]}`;
+
+                    // Show/hide recurring schedule field
+                    const recurringField = document.querySelector('#jobRecurringSchedule').closest('.form-group');
+                    recurringField.style.display = status === 'recurring' ? 'block' : 'none';
+
+                    openModal('jobModal');
+                }
+            });
+    }
+
+    async function saveJob(e) {
+        e.preventDefault();
+        const id = document.getElementById('jobId').value;
+        const status = document.getElementById('jobStatus').value;
+
+        const data = {
+            status: status,
+            name: document.getElementById('jobName').value,
+            customer_id: document.getElementById('jobCustomer').value,
+            description: document.getElementById('jobDescription').value,
+            start_date: document.getElementById('jobStartDate').value,
+            due_date: document.getElementById('jobDueDate').value,
+            value: parseFloat(document.getElementById('jobValue').value) || 0,
+            recurring_schedule: document.getElementById('jobRecurringSchedule').value
+        };
+
+        try {
+            const url = id ? `/api/crm/jobs/${id}` : '/api/crm/jobs';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('jobModal');
+                loadJobs(status);
+                showToast('Job saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteJob(id, status) {
+        if (!confirm('Are you sure you want to delete this job?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/jobs/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadJobs(status);
+                showToast('Job deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // MATERIALS MODULE
+    // ============================================================================
+
+    async function loadMaterials(type, location = null) {
+        try {
+            let url = `/api/crm/materials?type=${type}`;
+            if (location) url += `&location=${location}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) {
+                renderMaterials(data.materials, type);
+            }
+        } catch (e) {
+            console.error(`Error loading ${type} materials:`, e);
+        }
+    }
+
+    function filterMaterials(type) {
+        const filterId = type === 'stock' ? 'stockLocationFilter' : 'ordersLocationFilter';
+        const location = document.getElementById(filterId).value;
+        loadMaterials(type, location);
+    }
+
+    function renderMaterials(materialsList, type) {
+        const containerId = type === 'stock' ? 'stockTable' : 'ordersTable';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (materialsList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <div class="empty-title">No ${type} materials</div>
+                    <p>Add your first material to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Location</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total Value</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${materialsList.map(m => `
+                            <tr>
+                                <td><strong>${m.name}</strong></td>
+                                <td>${m.category || '-'}</td>
+                                <td>${m.location || '-'}</td>
+                                <td>${m.quantity || 0}</td>
+                                <td>$${(m.unit_price || 0).toFixed(2)}</td>
+                                <td>$${((m.quantity || 0) * (m.unit_price || 0)).toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editMaterial('${m.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteMaterial('${m.id}', '${type}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchMaterials(type) {
+        const searchId = type === 'stock' ? 'stockSearch' : 'ordersSearch';
+        const search = document.getElementById(searchId).value.toLowerCase();
+        loadMaterials(type, null, search);
+    }
+
+    function openMaterialModal(type) {
+        document.getElementById('materialId').value = '';
+        document.getElementById('materialType').value = type;
+        document.getElementById('materialName').value = '';
+        document.getElementById('materialCategory').value = '';
+        document.getElementById('materialLocation').value = 'sydney';
+        document.getElementById('materialQuantity').value = '';
+        document.getElementById('materialUnitPrice').value = '';
+        document.getElementById('materialSupplier').value = '';
+
+        document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Add Stock Item' : 'Add Order';
+        openModal('materialModal');
+    }
+
+    function editMaterial(id, type) {
+        fetch(`/api/crm/materials/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const m = data.material;
+                    document.getElementById('materialId').value = m.id;
+                    document.getElementById('materialType').value = m.type;
+                    document.getElementById('materialName').value = m.name;
+                    document.getElementById('materialCategory').value = m.category || '';
+                    document.getElementById('materialLocation').value = m.location || 'sydney';
+                    document.getElementById('materialQuantity').value = m.quantity || '';
+                    document.getElementById('materialUnitPrice').value = m.unit_price || '';
+                    document.getElementById('materialSupplier').value = m.supplier_id || '';
+
+                    document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Edit Stock Item' : 'Edit Order';
+                    openModal('materialModal');
+                }
+            });
+    }
+
+    async function saveMaterial(e) {
+        e.preventDefault();
+        const id = document.getElementById('materialId').value;
+        const type = document.getElementById('materialType').value;
+
+        const data = {
+            type: type,
+            name: document.getElementById('materialName').value,
+            category: document.getElementById('materialCategory').value,
+            location: document.getElementById('materialLocation').value,
+            quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
+            unit_price: parseFloat(document.getElementById('materialUnitPrice').value) || 0,
+            supplier_id: document.getElementById('materialSupplier').value
+        };
+
+        try {
+            const url = id ? `/api/crm/materials/${id}` : '/api/crm/materials';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('materialModal');
+                loadMaterials(type);
+                showToast('Material saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteMaterial(id, type) {
+        if (!confirm('Are you sure you want to delete this material?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/materials/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadMaterials(type);
+                showToast('Material deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // PAYMENTS MODULE
+    // ============================================================================
+
+    async function loadPayments(direction, status = null) {
+        try {
+            let url = `/api/crm/payments?direction=${direction}`;
+            if (status) url += `&status=${status}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) {
+                renderPayments(data.payments, direction);
+            }
+        } catch (e) {
+            console.error(`Error loading ${direction} payments:`, e);
+        }
+    }
+
+    function filterPayments(direction) {
+        const filterId = direction === 'to_suppliers' ? 'paymentsToSuppliersFilter' : 'paymentsToUsFilter';
+        const status = document.getElementById(filterId).value;
+        loadPayments(direction, status);
+    }
+
+    function renderPayments(paymentsList, direction) {
+        const containerId = direction === 'to_suppliers' ? 'paymentsToSuppliersTable' : 'paymentsToUsTable';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (paymentsList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💰</div>
+                    <div class="empty-title">No payments</div>
+                    <p>Add your first payment to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Due Date</th>
+                            <th>Paid Date</th>
+                            <th>Person</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paymentsList.map(p => `
+                            <tr>
+                                <td><strong>$${(p.amount || 0).toLocaleString()}</strong></td>
+                                <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                                <td>${p.due_date || '-'}</td>
+                                <td>${p.paid_date || '-'}</td>
+                                <td>${p.person_id || '-'}</td>
+                                <td>${p.notes || '-'}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editPayment('${p.id}', '${direction}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deletePayment('${p.id}', '${direction}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchPayments(direction) {
+        const searchId = direction === 'to_suppliers' ? 'paymentsToSuppliersSearch' : 'paymentsToUsSearch';
+        const search = document.getElementById(searchId).value.toLowerCase();
+        loadPayments(direction, null, search);
+    }
+
+    function openPaymentModal(direction) {
+        document.getElementById('paymentId').value = '';
+        document.getElementById('paymentDirection').value = direction;
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentStatus').value = 'pending';
+        document.getElementById('paymentDueDate').value = '';
+        document.getElementById('paymentPaidDate').value = '';
+        document.getElementById('paymentPerson').value = '';
+        document.getElementById('paymentNotes').value = '';
+
+        document.querySelector('#paymentModal h2').textContent = direction === 'to_suppliers' ? 'Add Payment to Supplier' : 'Add Payment to Us';
+        openModal('paymentModal');
+    }
+
+    function editPayment(id, direction) {
+        fetch(`/api/crm/payments/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.payment;
+                    document.getElementById('paymentId').value = p.id;
+                    document.getElementById('paymentDirection').value = p.direction;
+                    document.getElementById('paymentAmount').value = p.amount || '';
+                    document.getElementById('paymentStatus').value = p.status || 'pending';
+                    document.getElementById('paymentDueDate').value = p.due_date || '';
+                    document.getElementById('paymentPaidDate').value = p.paid_date || '';
+                    document.getElementById('paymentPerson').value = p.person_id || '';
+                    document.getElementById('paymentNotes').value = p.notes || '';
+
+                    document.querySelector('#paymentModal h2').textContent = direction === 'to_suppliers' ? 'Edit Payment to Supplier' : 'Edit Payment to Us';
+                    openModal('paymentModal');
+                }
+            });
+    }
+
+    async function savePayment(e) {
+        e.preventDefault();
+        const id = document.getElementById('paymentId').value;
+        const direction = document.getElementById('paymentDirection').value;
+
+        const data = {
+            direction: direction,
+            amount: parseFloat(document.getElementById('paymentAmount').value) || 0,
+            status: document.getElementById('paymentStatus').value,
+            due_date: document.getElementById('paymentDueDate').value,
+            paid_date: document.getElementById('paymentPaidDate').value,
+            person_id: document.getElementById('paymentPerson').value,
+            notes: document.getElementById('paymentNotes').value
+        };
+
+        try {
+            const url = id ? `/api/crm/payments/${id}` : '/api/crm/payments';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('paymentModal');
+                loadPayments(direction);
+                showToast('Payment saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deletePayment(id, direction) {
+        if (!confirm('Are you sure you want to delete this payment?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/payments/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadPayments(direction);
+                showToast('Payment deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
 </script>
 
 <!-- Footer -->
