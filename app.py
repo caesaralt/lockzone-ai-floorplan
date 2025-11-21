@@ -2641,26 +2641,6 @@ def add_to_crm_stock():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/crm/jobs', methods=['GET'])
-def get_crm_jobs():
-    """Get all CRM jobs"""
-    try:
-        crm_file = os.path.join(BASE_DIR, 'crm_data.json')
-        if os.path.exists(crm_file):
-            with open(crm_file, 'r') as f:
-                crm_data = json.load(f)
-                return jsonify({
-                    'success': True,
-                    'jobs': crm_data.get('jobs', [])
-                })
-        else:
-            return jsonify({
-                'success': True,
-                'jobs': []
-            })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 @app.route('/api/crm/jobs/<job_id>/assign-item', methods=['POST'])
 def assign_item_to_job(job_id):
     """Assign component or cable to a job"""
@@ -8858,6 +8838,243 @@ def handle_kanban_task(task_id):
                 tasks.pop(idx)
                 save_json_file(KANBAN_FILE, tasks)
                 return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# CRM EXTENDED - PEOPLE, JOBS, MATERIALS, PAYMENTS
+# ============================================================================
+
+import crm_extended
+
+# ====================================================================================
+# PEOPLE API ENDPOINTS
+# ====================================================================================
+
+@app.route('/api/crm/people', methods=['GET', 'POST'])
+@auth.login_required
+def crm_people():
+    """Get or create people"""
+    try:
+        if request.method == 'GET':
+            person_type = request.args.get('type')
+            people = crm_extended.load_people(person_type)
+            return jsonify({'success': True, 'people': people})
+
+        elif request.method == 'POST':
+            data = request.json
+            person, error = crm_extended.create_person(data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'person': person})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/people/<person_id>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required
+def crm_person(person_id):
+    """Get, update, or delete a person"""
+    try:
+        if request.method == 'GET':
+            people = crm_extended.load_people()
+            person = next((p for p in people if p['id'] == person_id), None)
+            if not person:
+                return jsonify({'success': False, 'error': 'Person not found'}), 404
+            return jsonify({'success': True, 'person': person})
+
+        elif request.method == 'PUT':
+            data = request.json
+            person, error = crm_extended.update_person(person_id, data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'person': person})
+
+        elif request.method == 'DELETE':
+            success, error = crm_extended.delete_person(person_id)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ====================================================================================
+# JOBS API ENDPOINTS
+# ====================================================================================
+
+@app.route('/api/crm/jobs', methods=['GET', 'POST'])
+@auth.login_required
+def crm_jobs():
+    """Get or create jobs"""
+    try:
+        if request.method == 'GET':
+            status = request.args.get('status')
+            jobs = crm_extended.load_jobs(status)
+            return jsonify({'success': True, 'jobs': jobs})
+
+        elif request.method == 'POST':
+            data = request.json
+            job, error = crm_extended.create_job(data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'job': job})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/jobs/<job_id>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required
+def crm_job(job_id):
+    """Get, update, or delete a job"""
+    try:
+        if request.method == 'GET':
+            jobs = crm_extended.load_jobs()
+            job = next((j for j in jobs if j['id'] == job_id), None)
+            if not job:
+                return jsonify({'success': False, 'error': 'Job not found'}), 404
+            return jsonify({'success': True, 'job': job})
+
+        elif request.method == 'PUT':
+            data = request.json
+            job, error = crm_extended.update_job(job_id, data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'job': job})
+
+        elif request.method == 'DELETE':
+            success, error = crm_extended.delete_job(job_id)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ====================================================================================
+# MATERIALS API ENDPOINTS
+# ====================================================================================
+
+@app.route('/api/crm/materials', methods=['GET', 'POST'])
+@auth.login_required
+def crm_materials():
+    """Get or create materials"""
+    try:
+        if request.method == 'GET':
+            mat_type = request.args.get('type')
+            location = request.args.get('location')
+            materials = crm_extended.load_materials(mat_type, location)
+            return jsonify({'success': True, 'materials': materials})
+
+        elif request.method == 'POST':
+            data = request.json
+            material, error = crm_extended.create_material(data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'material': material})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/materials/<material_id>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required
+def crm_material(material_id):
+    """Get, update, or delete a material"""
+    try:
+        if request.method == 'GET':
+            materials = crm_extended.load_materials()
+            material = next((m for m in materials if m['id'] == material_id), None)
+            if not material:
+                return jsonify({'success': False, 'error': 'Material not found'}), 404
+            return jsonify({'success': True, 'material': material})
+
+        elif request.method == 'PUT':
+            data = request.json
+            material, error = crm_extended.update_material(material_id, data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'material': material})
+
+        elif request.method == 'DELETE':
+            success, error = crm_extended.delete_material(material_id)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ====================================================================================
+# PAYMENTS API ENDPOINTS
+# ====================================================================================
+
+@app.route('/api/crm/payments', methods=['GET', 'POST'])
+@auth.login_required
+def crm_payments():
+    """Get or create payments"""
+    try:
+        if request.method == 'GET':
+            direction = request.args.get('direction')
+            status = request.args.get('status')
+            payments = crm_extended.load_payments(direction, status)
+            return jsonify({'success': True, 'payments': payments})
+
+        elif request.method == 'POST':
+            data = request.json
+            payment, error = crm_extended.create_payment(data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'payment': payment})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/payments/<payment_id>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required
+def crm_payment(payment_id):
+    """Get, update, or delete a payment"""
+    try:
+        if request.method == 'GET':
+            payments = crm_extended.load_payments()
+            payment = next((p for p in payments if p['id'] == payment_id), None)
+            if not payment:
+                return jsonify({'success': False, 'error': 'Payment not found'}), 404
+            return jsonify({'success': True, 'payment': payment})
+
+        elif request.method == 'PUT':
+            data = request.json
+            payment, error = crm_extended.update_payment(payment_id, data)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True, 'payment': payment})
+
+        elif request.method == 'DELETE':
+            success, error = crm_extended.delete_payment(payment_id)
+            if error:
+                return jsonify({'success': False, 'error': error}), 400
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/payments/<payment_id>/generate-invoice', methods=['POST'])
+@auth.login_required
+def generate_payment_invoice(payment_id):
+    """Generate PDF invoice for a payment"""
+    try:
+        payments = crm_extended.load_payments()
+        payment = next((p for p in payments if p['id'] == payment_id), None)
+        if not payment:
+            return jsonify({'success': False, 'error': 'Payment not found'}), 404
+
+        # TODO: Implement PDF invoice generation
+        # For now, return placeholder
+        return jsonify({
+            'success': True,
+            'message': 'Invoice generation will be implemented',
+            'payment_id': payment_id
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

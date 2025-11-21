@@ -441,79 +441,94 @@
             </div>
         </div>
 
-        {% if 'crm_customers' in crm_permissions or 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
+        <!-- PEOPLE -->
         <div class="nav-section">
-            <div class="nav-section-title">Customers</div>
-            {% if 'crm_customers' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="customers">
-                <span>👥</span> All Customers
+            <div class="nav-section-title">People</div>
+            <div class="nav-item" data-section="people-employees">
+                <span>👔</span> Employees
             </div>
-            {% endif %}
-            {% if 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="communications">
-                <span>💬</span> Communications
+            <div class="nav-item" data-section="people-customers">
+                <span>👥</span> Customers
             </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if 'crm_projects' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Projects</div>
-            <div class="nav-item" data-section="projects">
-                <span>📁</span> All Projects
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="nav-section">
-            <div class="nav-section-title">Quotes</div>
-            <div class="nav-item" data-section="quotes">
-                <span>📋</span> All Quotes
-            </div>
-        </div>
-
-        {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Inventory</div>
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> All Inventory
-            </div>
-        </div>
-        {% endif %}
-
-        {% if 'crm_calendar' in crm_permissions or 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Scheduling</div>
-            {% if 'crm_calendar' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="calendar">
-                <span>📅</span> Calendar
-            </div>
-            {% endif %}
-            {% if 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="technicians">
-                <span>👷</span> Technicians
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if 'crm_inventory' in crm_permissions or 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Resources</div>
-            {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> Stock
-            </div>
-            {% endif %}
-            {% if 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="suppliers">
+            <div class="nav-item" data-section="people-suppliers">
                 <span>🏭</span> Suppliers
             </div>
-            {% endif %}
+            <div class="nav-item" data-section="people-contractors">
+                <span>🔧</span> Contractors
+            </div>
+            <div class="nav-item" data-section="people-contacts">
+                <span>📇</span> Contacts
+            </div>
         </div>
-        {% endif %}
 
+        <!-- QUOTES -->
+        <div class="nav-section">
+            <div class="nav-section-title">Quotes</div>
+            <div class="nav-item" data-section="quotes-open">
+                <span>📋</span> Open
+            </div>
+            <div class="nav-item" data-section="quotes-sent">
+                <span>📤</span> Sent
+            </div>
+            <div class="nav-item" data-section="quotes-expired">
+                <span>⏰</span> Expired
+            </div>
+            <div class="nav-item" data-section="quotes-supplier">
+                <span>📥</span> Supplier Quotes
+            </div>
+        </div>
+
+        <!-- JOBS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Jobs</div>
+            <div class="nav-item" data-section="jobs-in-progress">
+                <span>⚙️</span> In Progress
+            </div>
+            <div class="nav-item" data-section="jobs-upcoming">
+                <span>📅</span> Upcoming
+            </div>
+            <div class="nav-item" data-section="jobs-pending">
+                <span>⏸️</span> Pending
+            </div>
+            <div class="nav-item" data-section="jobs-finished">
+                <span>✅</span> Finished
+            </div>
+            <div class="nav-item" data-section="jobs-recurring">
+                <span>🔄</span> Recurring
+            </div>
+        </div>
+
+        <!-- SCHEDULES -->
+        <div class="nav-section">
+            <div class="nav-section-title">Schedules</div>
+            <div class="nav-item" data-section="schedules-calendar">
+                <span>📆</span> Calendar
+            </div>
+        </div>
+
+        <!-- MATERIALS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Materials</div>
+            <div class="nav-item" data-section="materials-stock">
+                <span>📦</span> Stock
+            </div>
+            <div class="nav-item" data-section="materials-orders">
+                <span>🛒</span> Orders
+            </div>
+        </div>
+
+        <!-- PAYMENTS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Payments</div>
+            <div class="nav-item" data-section="payments-to-suppliers">
+                <span>💸</span> To Suppliers
+            </div>
+            <div class="nav-item" data-section="payments-to-us">
+                <span>💰</span> To Us
+            </div>
+        </div>
+
+        <!-- SYSTEM -->
         <div class="nav-section">
             <div class="nav-section-title">System</div>
             <div class="nav-item" data-section="integrations">
@@ -717,6 +732,342 @@
                     <button class="btn btn-primary" onclick="openModal('supplierModal')">+ Add Supplier</button>
                 </div>
                 <div id="suppliersTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== PEOPLE MODULE ========== -->
+
+        <!-- PEOPLE - EMPLOYEES -->
+        <div id="people-employees" class="section">
+            <h1 class="page-title">👔 Employees</h1>
+            <p class="page-subtitle">Manage your team members</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="employeeSearch" placeholder="Search employees..." onkeyup="searchPeople('employee')">
+                    <button class="btn btn-primary" onclick="openPersonModal('employee')">+ Add Employee</button>
+                </div>
+                <div id="employeesTable"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CUSTOMERS -->
+        <div id="people-customers" class="section">
+            <h1 class="page-title">👥 Customers</h1>
+            <p class="page-subtitle">Manage your customer relationships</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="customerSearch" placeholder="Search customers..." onkeyup="searchPeople('customer')">
+                    <button class="btn btn-primary" onclick="openPersonModal('customer')">+ Add Customer</button>
+                </div>
+                <div id="customersTableNew"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - SUPPLIERS -->
+        <div id="people-suppliers" class="section">
+            <h1 class="page-title">🏭 Suppliers</h1>
+            <p class="page-subtitle">Manage your supplier network</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="suppliersSearch" placeholder="Search suppliers..." onkeyup="searchPeople('supplier')">
+                    <button class="btn btn-primary" onclick="openPersonModal('supplier')">+ Add Supplier</button>
+                </div>
+                <div id="suppliersTableNew"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CONTRACTORS -->
+        <div id="people-contractors" class="section">
+            <h1 class="page-title">🔧 Contractors</h1>
+            <p class="page-subtitle">Manage external contractors</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="contractorSearch" placeholder="Search contractors..." onkeyup="searchPeople('contractor')">
+                    <button class="btn btn-primary" onclick="openPersonModal('contractor')">+ Add Contractor</button>
+                </div>
+                <div id="contractorsTable"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CONTACTS -->
+        <div id="people-contacts" class="section">
+            <h1 class="page-title">📇 Contacts</h1>
+            <p class="page-subtitle">General contact directory</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="contactSearch" placeholder="Search contacts..." onkeyup="searchPeople('contact')">
+                    <button class="btn btn-primary" onclick="openPersonModal('contact')">+ Add Contact</button>
+                </div>
+                <div id="contactsTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== JOBS MODULE ========== -->
+
+        <!-- JOBS - IN PROGRESS -->
+        <div id="jobs-in-progress" class="section">
+            <h1 class="page-title">⚙️ Jobs In Progress</h1>
+            <p class="page-subtitle">Currently active jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsInProgressSearch" placeholder="Search jobs..." onkeyup="searchJobs('in_progress')">
+                    <button class="btn btn-primary" onclick="openJobModal('in_progress')">+ Add Job</button>
+                </div>
+                <div id="jobsInProgressTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - UPCOMING -->
+        <div id="jobs-upcoming" class="section">
+            <h1 class="page-title">📅 Upcoming Jobs</h1>
+            <p class="page-subtitle">Scheduled future jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsUpcomingSearch" placeholder="Search jobs..." onkeyup="searchJobs('upcoming')">
+                    <button class="btn btn-primary" onclick="openJobModal('upcoming')">+ Add Job</button>
+                </div>
+                <div id="jobsUpcomingTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - PENDING -->
+        <div id="jobs-pending" class="section">
+            <h1 class="page-title">⏸️ Pending Jobs</h1>
+            <p class="page-subtitle">Jobs awaiting approval or start</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsPendingSearch" placeholder="Search jobs..." onkeyup="searchJobs('pending')">
+                    <button class="btn btn-primary" onclick="openJobModal('pending')">+ Add Job</button>
+                </div>
+                <div id="jobsPendingTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - FINISHED -->
+        <div id="jobs-finished" class="section">
+            <h1 class="page-title">✅ Finished Jobs</h1>
+            <p class="page-subtitle">Completed jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsFinishedSearch" placeholder="Search jobs..." onkeyup="searchJobs('finished')">
+                    <button class="btn btn-primary" onclick="openJobModal('finished')">+ Add Job</button>
+                </div>
+                <div id="jobsFinishedTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - RECURRING -->
+        <div id="jobs-recurring" class="section">
+            <h1 class="page-title">🔄 Recurring Jobs</h1>
+            <p class="page-subtitle">Repeating maintenance and service jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsRecurringSearch" placeholder="Search jobs..." onkeyup="searchJobs('recurring')">
+                    <button class="btn btn-primary" onclick="openJobModal('recurring')">+ Add Job</button>
+                </div>
+                <div id="jobsRecurringTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== MATERIALS MODULE ========== -->
+
+        <!-- MATERIALS - STOCK -->
+        <div id="materials-stock" class="section">
+            <h1 class="page-title">📦 Stock</h1>
+            <p class="page-subtitle">Manage inventory and stock levels</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="stockSearch" placeholder="Search stock..." onkeyup="searchMaterials('stock')" style="flex: 1;">
+                        <select id="stockLocationFilter" onchange="filterMaterials('stock')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Locations</option>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openMaterialModal('stock')">+ Add Stock</button>
+                </div>
+                <div id="stockTable"></div>
+            </div>
+        </div>
+
+        <!-- MATERIALS - ORDERS -->
+        <div id="materials-orders" class="section">
+            <h1 class="page-title">🛒 Orders</h1>
+            <p class="page-subtitle">Track materials to order and incoming orders</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="ordersSearch" placeholder="Search orders..." onkeyup="searchMaterials('order')" style="flex: 1;">
+                        <select id="ordersLocationFilter" onchange="filterMaterials('order')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Locations</option>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openMaterialModal('order')">+ Add Order</button>
+                </div>
+                <div id="ordersTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== PAYMENTS MODULE ========== -->
+
+        <!-- PAYMENTS - TO SUPPLIERS -->
+        <div id="payments-to-suppliers" class="section">
+            <h1 class="page-title">💸 Payments to Suppliers</h1>
+            <p class="page-subtitle">Track money we owe to suppliers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="paymentsToSuppliersSearch" placeholder="Search payments..." style="flex: 1;">
+                        <select id="paymentsToSuppliersFilter" onchange="filterPayments('to_suppliers')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Statuses</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credits</option>
+                            <option value="retention">Retentions</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPaymentModal('to_suppliers')">+ Add Payment</button>
+                </div>
+                <div id="paymentsToSuppliersTable"></div>
+            </div>
+        </div>
+
+        <!-- PAYMENTS - TO US -->
+        <div id="payments-to-us" class="section">
+            <h1 class="page-title">💰 Payments to Us</h1>
+            <p class="page-subtitle">Track money owed to us by customers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="paymentsToUsSearch" placeholder="Search payments..." style="flex: 1;">
+                        <select id="paymentsToUsFilter" onchange="filterPayments('to_us')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Statuses</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credits</option>
+                            <option value="retention">Retentions</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPaymentModal('to_us')">+ Add Payment</button>
+                </div>
+                <div id="paymentsToUsTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== QUOTES ENHANCED ========== -->
+
+        <!-- QUOTES - OPEN -->
+        <div id="quotes-open" class="section">
+            <h1 class="page-title">📋 Open Quotes</h1>
+            <p class="page-subtitle">Active quotes awaiting response</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesOpenSearch" placeholder="Search quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('open')">+ New Quote</button>
+                </div>
+                <div id="quotesOpenTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - SENT -->
+        <div id="quotes-sent" class="section">
+            <h1 class="page-title">📤 Sent Quotes</h1>
+            <p class="page-subtitle">Quotes sent to customers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesSentSearch" placeholder="Search quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('sent')">+ New Quote</button>
+                </div>
+                <div id="quotesSentTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - EXPIRED -->
+        <div id="quotes-expired" class="section">
+            <h1 class="page-title">⏰ Expired Quotes</h1>
+            <p class="page-subtitle">Quotes past their expiry date</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesExpiredSearch" placeholder="Search quotes...">
+                </div>
+                <div id="quotesExpiredTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - SUPPLIER -->
+        <div id="quotes-supplier" class="section">
+            <h1 class="page-title">📥 Supplier Quotes</h1>
+            <p class="page-subtitle">Quotes received from our suppliers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesSupplierSearch" placeholder="Search supplier quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('supplier')">+ Add Supplier Quote</button>
+                </div>
+                <div id="quotesSupplierTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== SCHEDULES / CALENDAR ========== -->
+
+        <!-- SCHEDULES - CALENDAR -->
+        <div id="schedules-calendar" class="section">
+            <h1 class="page-title">📆 Calendar & Schedules</h1>
+            <p class="page-subtitle">View and manage all scheduled events</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px;">
+                        <select id="calendarViewMode" onchange="changeCalendarView()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="daily">Daily</option>
+                            <option value="weekly" selected>Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="annually">Annually</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="calendarToday()">Today</button>
+                        <button class="btn btn-secondary" onclick="calendarPrevious()">← Previous</button>
+                        <button class="btn btn-secondary" onclick="calendarNext()">Next →</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="syncGoogleCalendar()">🔄 Sync Google Calendar</button>
+                </div>
+                <div id="calendarView" style="min-height: 500px; margin-top: 20px;">
+                    <div style="text-align: center; padding: 60px; color: #999;">
+                        <p style="font-size: 18px; margin-bottom: 12px;">📅 Calendar View</p>
+                        <p>Calendar integration coming soon. Will show:</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 16px;">
+                            <li>✓ Job timelines and deadlines</li>
+                            <li>✓ Quote expiry dates</li>
+                            <li>✓ Payment due dates</li>
+                            <li>✓ Meetings and appointments</li>
+                            <li>✓ Google Calendar events (two-way sync)</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1444,6 +1795,224 @@
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('commModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== NEW MODALS FOR EXTENDED CRM ========== -->
+
+    <!-- Person Modal (for all people types) -->
+    <div id="personModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="personModalTitle">Add Person</h2>
+                <button class="close-btn" onclick="closeModal('personModal')">×</button>
+            </div>
+            <form id="personForm" onsubmit="savePerson(event)">
+                <input type="hidden" id="personId">
+                <input type="hidden" id="personType">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="personName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Company</label>
+                        <input type="text" id="personCompany">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="personEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="personPhone">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea id="personAddress" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="personNotes" rows="3"></textarea>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('personModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Job Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="jobModalTitle">Add Job</h2>
+                <button class="close-btn" onclick="closeModal('jobModal')">×</button>
+            </div>
+            <form id="jobForm" onsubmit="saveJob(event)">
+                <input type="hidden" id="jobId">
+                <input type="hidden" id="jobStatus">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Job Name *</label>
+                        <input type="text" id="jobName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <select id="jobCustomer">
+                            <option value="">Select Customer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="jobDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="jobStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="jobDueDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Value ($)</label>
+                        <input type="number" id="jobValue" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Recurring Schedule</label>
+                        <select id="jobRecurring">
+                            <option value="">None</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('jobModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Material Modal -->
+    <div id="materialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="materialModalTitle">Add Material</h2>
+                <button class="close-btn" onclick="closeModal('materialModal')">×</button>
+            </div>
+            <form id="materialForm" onsubmit="saveMaterial(event)">
+                <input type="hidden" id="materialId">
+                <input type="hidden" id="materialType">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="materialName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" id="materialCategory" placeholder="e.g., Lighting, Switches">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <select id="materialLocation" required>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="materialQuantity" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Price ($)</label>
+                        <input type="number" id="materialPrice" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Supplier</label>
+                        <select id="materialSupplier">
+                            <option value="">Select Supplier</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="paymentModalTitle">Add Payment</h2>
+                <button class="close-btn" onclick="closeModal('paymentModal')">×</button>
+            </div>
+            <form id="paymentForm" onsubmit="savePayment(event)">
+                <input type="hidden" id="paymentId">
+                <input type="hidden" id="paymentDirection">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount ($) *</label>
+                        <input type="number" id="paymentAmount" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status *</label>
+                        <select id="paymentStatus" required>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credit</option>
+                            <option value="retention">Retention</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="paymentDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Paid Date</label>
+                        <input type="date" id="paymentPaidDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label id="paymentPersonLabel">Person</label>
+                    <select id="paymentPerson">
+                        <option value="">Select Person</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="paymentNotes" rows="3"></textarea>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('paymentModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
@@ -4084,6 +4653,782 @@
             observer.observe(googleSection, { attributes: true, attributeFilter: ['class'] });
         }
     });
+
+    // ============================================================================
+    // CRM EXTENDED MODULES - PEOPLE, JOBS, MATERIALS, PAYMENTS
+    // ============================================================================
+
+    // STATE for new modules
+    let people = [];
+    let jobs = [];
+    let materials = [];
+    let payments = [];
+
+    // Add to loadAllData function
+    const originalLoadAllData = loadAllData;
+    loadAllData = async function() {
+        await originalLoadAllData();
+        await Promise.all([
+            loadPeople('employee'),
+            loadPeople('customer'),
+            loadPeople('supplier'),
+            loadPeople('contractor'),
+            loadPeople('contact'),
+            loadJobs('in_progress'),
+            loadJobs('upcoming'),
+            loadJobs('pending'),
+            loadJobs('finished'),
+            loadJobs('recurring'),
+            loadMaterials('stock'),
+            loadMaterials('order'),
+            loadPayments('to_us'),
+            loadPayments('to_suppliers')
+        ]);
+    };
+
+    // ============================================================================
+    // PEOPLE MODULE
+    // ============================================================================
+
+    async function loadPeople(type) {
+        try {
+            const res = await fetch(`/api/crm/people?type=${type}`);
+            const data = await res.json();
+            if (data.success) {
+                renderPeople(data.people, type);
+            }
+        } catch (e) {
+            console.error(`Error loading ${type}:`, e);
+        }
+    }
+
+    function renderPeople(peopleList, type) {
+        const containerId = type === 'employee' ? 'employeesTable' :
+                           type === 'customer' ? 'customersTableNew' :
+                           type === 'supplier' ? 'suppliersTableNew' :
+                           type === 'contractor' ? 'contractorsTable' :
+                           'contactsTable';
+
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (peopleList.length === 0) {
+            const labels = {
+                'employee': 'employees',
+                'customer': 'customers',
+                'supplier': 'suppliers',
+                'contractor': 'contractors',
+                'contact': 'contacts'
+            };
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👤</div>
+                    <div class="empty-title">No ${labels[type]} yet</div>
+                    <p>Add your first ${type} to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Company</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${peopleList.map(p => `
+                            <tr>
+                                <td><strong>${p.name}</strong></td>
+                                <td>${p.company || '-'}</td>
+                                <td>${p.email || '-'}</td>
+                                <td>${p.phone || '-'}</td>
+                                <td>${p.address || '-'}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editPerson('${p.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deletePerson('${p.id}', '${type}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchPeople(type) {
+        const searchId = type === 'employee' ? 'employeeSearch' :
+                        type === 'customer' ? 'customerSearch' :
+                        type === 'supplier' ? 'suppliersSearch' :
+                        type === 'contractor' ? 'contractorSearch' :
+                        'contactSearch';
+
+        const search = document.getElementById(searchId).value.toLowerCase();
+        // Reload with search filter
+        loadPeople(type, search);
+    }
+
+    function openPersonModal(type) {
+        document.getElementById('personId').value = '';
+        document.getElementById('personType').value = type;
+        document.getElementById('personName').value = '';
+        document.getElementById('personCompany').value = '';
+        document.getElementById('personEmail').value = '';
+        document.getElementById('personPhone').value = '';
+        document.getElementById('personAddress').value = '';
+        document.getElementById('personNotes').value = '';
+
+        const labels = {
+            'employee': 'Employee',
+            'customer': 'Customer',
+            'supplier': 'Supplier',
+            'contractor': 'Contractor',
+            'contact': 'Contact'
+        };
+        document.querySelector('#personModal h2').textContent = `Add ${labels[type]}`;
+        openModal('personModal');
+    }
+
+    function editPerson(id, type) {
+        fetch(`/api/crm/people/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.person;
+                    document.getElementById('personId').value = p.id;
+                    document.getElementById('personType').value = p.type;
+                    document.getElementById('personName').value = p.name;
+                    document.getElementById('personCompany').value = p.company || '';
+                    document.getElementById('personEmail').value = p.email || '';
+                    document.getElementById('personPhone').value = p.phone || '';
+                    document.getElementById('personAddress').value = p.address || '';
+                    document.getElementById('personNotes').value = p.notes || '';
+
+                    const labels = {
+                        'employee': 'Employee',
+                        'customer': 'Customer',
+                        'supplier': 'Supplier',
+                        'contractor': 'Contractor',
+                        'contact': 'Contact'
+                    };
+                    document.querySelector('#personModal h2').textContent = `Edit ${labels[type]}`;
+                    openModal('personModal');
+                }
+            });
+    }
+
+    async function savePerson(e) {
+        e.preventDefault();
+        const id = document.getElementById('personId').value;
+        const type = document.getElementById('personType').value;
+
+        const data = {
+            type: type,
+            name: document.getElementById('personName').value,
+            company: document.getElementById('personCompany').value,
+            email: document.getElementById('personEmail').value,
+            phone: document.getElementById('personPhone').value,
+            address: document.getElementById('personAddress').value,
+            notes: document.getElementById('personNotes').value
+        };
+
+        try {
+            const url = id ? `/api/crm/people/${id}` : '/api/crm/people';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('personModal');
+                loadPeople(type);
+                showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`, 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deletePerson(id, type) {
+        if (!confirm('Are you sure you want to delete this person?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/people/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadPeople(type);
+                showToast('Person deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // JOBS MODULE
+    // ============================================================================
+
+    async function loadJobs(status) {
+        try {
+            const res = await fetch(`/api/crm/jobs?status=${status}`);
+            const data = await res.json();
+            if (data.success) {
+                renderJobs(data.jobs, status);
+            }
+        } catch (e) {
+            console.error(`Error loading ${status} jobs:`, e);
+        }
+    }
+
+    function renderJobs(jobsList, status) {
+        const containerMap = {
+            'in_progress': 'jobsInProgressTable',
+            'upcoming': 'jobsUpcomingTable',
+            'pending': 'jobsPendingTable',
+            'finished': 'jobsFinishedTable',
+            'recurring': 'jobsRecurringTable'
+        };
+
+        const container = document.getElementById(containerMap[status]);
+        if (!container) return;
+
+        if (jobsList.length === 0) {
+            const labels = {
+                'in_progress': 'jobs in progress',
+                'upcoming': 'upcoming jobs',
+                'pending': 'pending jobs',
+                'finished': 'finished jobs',
+                'recurring': 'recurring jobs'
+            };
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💼</div>
+                    <div class="empty-title">No ${labels[status]}</div>
+                    <p>Add your first job to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Customer</th>
+                            <th>Start Date</th>
+                            <th>Due Date</th>
+                            <th>Value</th>
+                            ${status === 'recurring' ? '<th>Schedule</th>' : ''}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jobsList.map(j => `
+                            <tr>
+                                <td><strong>${j.name}</strong></td>
+                                <td>${j.customer_id || '-'}</td>
+                                <td>${j.start_date || '-'}</td>
+                                <td>${j.due_date || '-'}</td>
+                                <td>$${(j.value || 0).toLocaleString()}</td>
+                                ${status === 'recurring' ? `<td>${j.recurring_schedule || '-'}</td>` : ''}
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editJob('${j.id}', '${status}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteJob('${j.id}', '${status}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchJobs(status) {
+        const searchMap = {
+            'in_progress': 'jobsInProgressSearch',
+            'upcoming': 'jobsUpcomingSearch',
+            'pending': 'jobsPendingSearch',
+            'finished': 'jobsFinishedSearch',
+            'recurring': 'jobsRecurringSearch'
+        };
+
+        const search = document.getElementById(searchMap[status]).value.toLowerCase();
+        loadJobs(status, search);
+    }
+
+    function openJobModal(status) {
+        document.getElementById('jobId').value = '';
+        document.getElementById('jobStatus').value = status;
+        document.getElementById('jobName').value = '';
+        document.getElementById('jobCustomer').value = '';
+        document.getElementById('jobDescription').value = '';
+        document.getElementById('jobStartDate').value = '';
+        document.getElementById('jobDueDate').value = '';
+        document.getElementById('jobValue').value = '';
+        document.getElementById('jobRecurring').value = '';
+
+        const labels = {
+            'in_progress': 'In Progress Job',
+            'upcoming': 'Upcoming Job',
+            'pending': 'Pending Job',
+            'finished': 'Finished Job',
+            'recurring': 'Recurring Job'
+        };
+        document.querySelector('#jobModal h2').textContent = `Add ${labels[status]}`;
+
+        // Show/hide recurring schedule field
+        const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
+        recurringField.style.display = status === 'recurring' ? 'block' : 'none';
+
+        openModal('jobModal');
+    }
+
+    function editJob(id, status) {
+        fetch(`/api/crm/jobs/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const j = data.job;
+                    document.getElementById('jobId').value = j.id;
+                    document.getElementById('jobStatus').value = j.status;
+                    document.getElementById('jobName').value = j.name;
+                    document.getElementById('jobCustomer').value = j.customer_id || '';
+                    document.getElementById('jobDescription').value = j.description || '';
+                    document.getElementById('jobStartDate').value = j.start_date || '';
+                    document.getElementById('jobDueDate').value = j.due_date || '';
+                    document.getElementById('jobValue').value = j.value || '';
+                    document.getElementById('jobRecurring').value = j.recurring_schedule || '';
+
+                    const labels = {
+                        'in_progress': 'In Progress Job',
+                        'upcoming': 'Upcoming Job',
+                        'pending': 'Pending Job',
+                        'finished': 'Finished Job',
+                        'recurring': 'Recurring Job'
+                    };
+                    document.querySelector('#jobModal h2').textContent = `Edit ${labels[status]}`;
+
+                    // Show/hide recurring schedule field
+                    const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
+                    recurringField.style.display = status === 'recurring' ? 'block' : 'none';
+
+                    openModal('jobModal');
+                }
+            });
+    }
+
+    async function saveJob(e) {
+        e.preventDefault();
+        const id = document.getElementById('jobId').value;
+        const status = document.getElementById('jobStatus').value;
+
+        const data = {
+            status: status,
+            name: document.getElementById('jobName').value,
+            customer_id: document.getElementById('jobCustomer').value,
+            description: document.getElementById('jobDescription').value,
+            start_date: document.getElementById('jobStartDate').value,
+            due_date: document.getElementById('jobDueDate').value,
+            value: parseFloat(document.getElementById('jobValue').value) || 0,
+            recurring_schedule: document.getElementById('jobRecurring').value
+        };
+
+        try {
+            const url = id ? `/api/crm/jobs/${id}` : '/api/crm/jobs';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('jobModal');
+                loadJobs(status);
+                showToast('Job saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteJob(id, status) {
+        if (!confirm('Are you sure you want to delete this job?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/jobs/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadJobs(status);
+                showToast('Job deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // MATERIALS MODULE
+    // ============================================================================
+
+    async function loadMaterials(type, location = null) {
+        try {
+            let url = `/api/crm/materials?type=${type}`;
+            if (location) url += `&location=${location}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) {
+                renderMaterials(data.materials, type);
+            }
+        } catch (e) {
+            console.error(`Error loading ${type} materials:`, e);
+        }
+    }
+
+    function filterMaterials(type) {
+        const filterId = type === 'stock' ? 'stockLocationFilter' : 'ordersLocationFilter';
+        const location = document.getElementById(filterId).value;
+        loadMaterials(type, location);
+    }
+
+    function renderMaterials(materialsList, type) {
+        const containerId = type === 'stock' ? 'stockTable' : 'ordersTable';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (materialsList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <div class="empty-title">No ${type} materials</div>
+                    <p>Add your first material to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Location</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total Value</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${materialsList.map(m => `
+                            <tr>
+                                <td><strong>${m.name}</strong></td>
+                                <td>${m.category || '-'}</td>
+                                <td>${m.location || '-'}</td>
+                                <td>${m.quantity || 0}</td>
+                                <td>$${(m.unit_price || 0).toFixed(2)}</td>
+                                <td>$${((m.quantity || 0) * (m.unit_price || 0)).toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editMaterial('${m.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteMaterial('${m.id}', '${type}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchMaterials(type) {
+        const searchId = type === 'stock' ? 'stockSearch' : 'ordersSearch';
+        const search = document.getElementById(searchId).value.toLowerCase();
+        loadMaterials(type, null, search);
+    }
+
+    function openMaterialModal(type) {
+        document.getElementById('materialId').value = '';
+        document.getElementById('materialType').value = type;
+        document.getElementById('materialName').value = '';
+        document.getElementById('materialCategory').value = '';
+        document.getElementById('materialLocation').value = 'sydney';
+        document.getElementById('materialQuantity').value = '';
+        document.getElementById('materialPrice').value = '';
+        document.getElementById('materialSupplier').value = '';
+
+        document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Add Stock Item' : 'Add Order';
+        openModal('materialModal');
+    }
+
+    function editMaterial(id, type) {
+        fetch(`/api/crm/materials/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const m = data.material;
+                    document.getElementById('materialId').value = m.id;
+                    document.getElementById('materialType').value = m.type;
+                    document.getElementById('materialName').value = m.name;
+                    document.getElementById('materialCategory').value = m.category || '';
+                    document.getElementById('materialLocation').value = m.location || 'sydney';
+                    document.getElementById('materialQuantity').value = m.quantity || '';
+                    document.getElementById('materialPrice').value = m.unit_price || '';
+                    document.getElementById('materialSupplier').value = m.supplier_id || '';
+
+                    document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Edit Stock Item' : 'Edit Order';
+                    openModal('materialModal');
+                }
+            });
+    }
+
+    async function saveMaterial(e) {
+        e.preventDefault();
+        const id = document.getElementById('materialId').value;
+        const type = document.getElementById('materialType').value;
+
+        const data = {
+            type: type,
+            name: document.getElementById('materialName').value,
+            category: document.getElementById('materialCategory').value,
+            location: document.getElementById('materialLocation').value,
+            quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
+            unit_price: parseFloat(document.getElementById('materialPrice').value) || 0,
+            supplier_id: document.getElementById('materialSupplier').value
+        };
+
+        try {
+            const url = id ? `/api/crm/materials/${id}` : '/api/crm/materials';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('materialModal');
+                loadMaterials(type);
+                showToast('Material saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteMaterial(id, type) {
+        if (!confirm('Are you sure you want to delete this material?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/materials/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadMaterials(type);
+                showToast('Material deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // PAYMENTS MODULE
+    // ============================================================================
+
+    async function loadPayments(direction, status = null) {
+        try {
+            let url = `/api/crm/payments?direction=${direction}`;
+            if (status) url += `&status=${status}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) {
+                renderPayments(data.payments, direction);
+            }
+        } catch (e) {
+            console.error(`Error loading ${direction} payments:`, e);
+        }
+    }
+
+    function filterPayments(direction) {
+        const filterId = direction === 'to_suppliers' ? 'paymentsToSuppliersFilter' : 'paymentsToUsFilter';
+        const status = document.getElementById(filterId).value;
+        loadPayments(direction, status);
+    }
+
+    function renderPayments(paymentsList, direction) {
+        const containerId = direction === 'to_suppliers' ? 'paymentsToSuppliersTable' : 'paymentsToUsTable';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (paymentsList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💰</div>
+                    <div class="empty-title">No payments</div>
+                    <p>Add your first payment to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Due Date</th>
+                            <th>Paid Date</th>
+                            <th>Person</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paymentsList.map(p => `
+                            <tr>
+                                <td><strong>$${(p.amount || 0).toLocaleString()}</strong></td>
+                                <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                                <td>${p.due_date || '-'}</td>
+                                <td>${p.paid_date || '-'}</td>
+                                <td>${p.person_id || '-'}</td>
+                                <td>${p.notes || '-'}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="editPayment('${p.id}', '${direction}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deletePayment('${p.id}', '${direction}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function searchPayments(direction) {
+        const searchId = direction === 'to_suppliers' ? 'paymentsToSuppliersSearch' : 'paymentsToUsSearch';
+        const search = document.getElementById(searchId).value.toLowerCase();
+        loadPayments(direction, null, search);
+    }
+
+    function openPaymentModal(direction) {
+        document.getElementById('paymentId').value = '';
+        document.getElementById('paymentDirection').value = direction;
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentStatus').value = 'pending';
+        document.getElementById('paymentDueDate').value = '';
+        document.getElementById('paymentPaidDate').value = '';
+        document.getElementById('paymentPerson').value = '';
+        document.getElementById('paymentNotes').value = '';
+
+        document.querySelector('#paymentModal h2').textContent = direction === 'to_suppliers' ? 'Add Payment to Supplier' : 'Add Payment to Us';
+        openModal('paymentModal');
+    }
+
+    function editPayment(id, direction) {
+        fetch(`/api/crm/payments/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.payment;
+                    document.getElementById('paymentId').value = p.id;
+                    document.getElementById('paymentDirection').value = p.direction;
+                    document.getElementById('paymentAmount').value = p.amount || '';
+                    document.getElementById('paymentStatus').value = p.status || 'pending';
+                    document.getElementById('paymentDueDate').value = p.due_date || '';
+                    document.getElementById('paymentPaidDate').value = p.paid_date || '';
+                    document.getElementById('paymentPerson').value = p.person_id || '';
+                    document.getElementById('paymentNotes').value = p.notes || '';
+
+                    document.querySelector('#paymentModal h2').textContent = direction === 'to_suppliers' ? 'Edit Payment to Supplier' : 'Edit Payment to Us';
+                    openModal('paymentModal');
+                }
+            });
+    }
+
+    async function savePayment(e) {
+        e.preventDefault();
+        const id = document.getElementById('paymentId').value;
+        const direction = document.getElementById('paymentDirection').value;
+
+        const data = {
+            direction: direction,
+            amount: parseFloat(document.getElementById('paymentAmount').value) || 0,
+            status: document.getElementById('paymentStatus').value,
+            due_date: document.getElementById('paymentDueDate').value,
+            paid_date: document.getElementById('paymentPaidDate').value,
+            person_id: document.getElementById('paymentPerson').value,
+            notes: document.getElementById('paymentNotes').value
+        };
+
+        try {
+            const url = id ? `/api/crm/payments/${id}` : '/api/crm/payments';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('paymentModal');
+                loadPayments(direction);
+                showToast('Payment saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
+
+    async function deletePayment(id, direction) {
+        if (!confirm('Are you sure you want to delete this payment?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/payments/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                loadPayments(direction);
+                showToast('Payment deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+    }
 </script>
 
 <!-- Footer -->
