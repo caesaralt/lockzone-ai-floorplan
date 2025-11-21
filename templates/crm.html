@@ -1040,33 +1040,38 @@
             <p class="page-subtitle">View and manage all scheduled events</p>
 
             <div class="card">
-                <div class="card-header">
-                    <div style="display: flex; gap: 10px;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
                         <select id="calendarViewMode" onchange="changeCalendarView()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                             <option value="daily">Daily</option>
-                            <option value="weekly" selected>Weekly</option>
-                            <option value="fortnightly">Fortnightly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="annually">Annually</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly" selected>Monthly</option>
                         </select>
-                        <button class="btn btn-secondary" onclick="calendarToday()">Today</button>
-                        <button class="btn btn-secondary" onclick="calendarPrevious()">← Previous</button>
-                        <button class="btn btn-secondary" onclick="calendarNext()">Next →</button>
+                        <button class="btn btn-secondary btn-small" onclick="calendarPrevious()">←</button>
+                        <span id="calendarCurrentDate" style="font-weight: 600; min-width: 200px; text-align: center;">Loading...</span>
+                        <button class="btn btn-secondary btn-small" onclick="calendarNext()">→</button>
+                        <button class="btn btn-secondary btn-small" onclick="calendarToday()">Today</button>
                     </div>
-                    <button class="btn btn-primary" onclick="syncGoogleCalendar()">🔄 Sync Google Calendar</button>
+                    <button class="btn btn-primary" onclick="openEventModal()">+ Add Event</button>
                 </div>
-                <div id="calendarView" style="min-height: 500px; margin-top: 20px;">
-                    <div style="text-align: center; padding: 60px; color: #999;">
-                        <p style="font-size: 18px; margin-bottom: 12px;">📅 Calendar View</p>
-                        <p>Calendar integration coming soon. Will show:</p>
-                        <ul style="list-style: none; padding: 0; margin-top: 16px;">
-                            <li>✓ Job timelines and deadlines</li>
-                            <li>✓ Quote expiry dates</li>
-                            <li>✓ Payment due dates</li>
-                            <li>✓ Meetings and appointments</li>
-                            <li>✓ Google Calendar events (two-way sync)</li>
-                        </ul>
+
+                <!-- Calendar Grid -->
+                <div id="calendarView" style="margin-top: 20px;">
+                    <!-- Monthly View -->
+                    <div id="monthlyCalendar" class="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb;">
+                        <!-- Calendar will be rendered here by JavaScript -->
                     </div>
+
+                    <!-- Weekly/Daily View -->
+                    <div id="weeklyCalendar" style="display: none;">
+                        <div id="weeklyGrid"></div>
+                    </div>
+                </div>
+
+                <!-- Events List for Selected Day -->
+                <div id="selectedDayEvents" style="margin-top: 24px; display: none;">
+                    <h3 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Events</h3>
+                    <div id="selectedDayEventsList"></div>
                 </div>
             </div>
         </div>
@@ -1601,43 +1606,84 @@
 
     <!-- Event Modal -->
     <div id="eventModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2 class="modal-title">Schedule Event</h2>
                 <button class="close-btn" onclick="closeModal('eventModal')">×</button>
             </div>
-            <form id="eventForm" onsubmit="saveEvent(event)">
+            <form id="eventForm" onsubmit="saveCalendarEvent(event)">
                 <input type="hidden" id="eventId">
                 <div class="form-group">
                     <label>Title *</label>
                     <input type="text" id="eventTitle" required>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" id="eventDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Time *</label>
-                        <input type="time" id="eventTime" required>
-                    </div>
-                </div>
                 <div class="form-group">
                     <label>Type</label>
                     <select id="eventType">
-                        <option value="appointment">Appointment</option>
-                        <option value="installation">Installation</option>
-                        <option value="inspection">Inspection</option>
+                        <option value="event">Event</option>
+                        <option value="job">Job</option>
                         <option value="meeting">Meeting</option>
+                        <option value="reminder">Reminder</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date *</label>
+                        <input type="date" id="eventStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time" id="eventStartTime">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="eventEndDate">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="time" id="eventEndTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="eventAllDay">
+                        All Day Event
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Recurrence</label>
+                    <select id="eventRecurrence">
+                        <option value="none">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="fortnightly">Fortnightly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="annually">Annually</option>
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="eventLocation" placeholder="Meeting room, job site, etc.">
+                </div>
+                <div class="form-group">
                     <label>Description</label>
-                    <textarea id="eventDesc"></textarea>
+                    <textarea id="eventDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Color</label>
+                        <input type="color" id="eventColor" value="#3b82f6">
+                    </div>
+                    <div class="form-group">
+                        <label>Reminder (minutes before)</label>
+                        <input type="number" id="eventReminder" min="0" value="0" placeholder="0">
+                    </div>
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('eventModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Schedule</button>
+                    <button type="submit" class="btn btn-primary">Save Event</button>
                 </div>
             </form>
         </div>
@@ -4752,6 +4798,7 @@
                                 <td>${p.phone || '-'}</td>
                                 <td>${p.address || '-'}</td>
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addPersonToCalendar('${p.id}', '${p.name}', '${type}')" title="Schedule Meeting">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editPerson('${p.id}', '${type}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deletePerson('${p.id}', '${type}')">Delete</button>
                                 </td>
@@ -4948,6 +4995,7 @@
                                 <td>$${(j.value || 0).toLocaleString()}</td>
                                 ${status === 'recurring' ? `<td>${j.recurring_schedule || '-'}</td>` : ''}
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addJobToCalendar('${j.id}', '${j.name}', '${j.start_date}', '${j.due_date}')" title="Add to Calendar">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editJob('${j.id}', '${status}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deleteJob('${j.id}', '${status}')">Delete</button>
                                 </td>
@@ -5324,6 +5372,7 @@
                                 <td>${p.person_id || '-'}</td>
                                 <td>${p.notes || '-'}</td>
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addPaymentToCalendar('${p.id}', '${p.amount}', '${p.due_date}', '${direction}')" title="Add Payment Reminder">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editPayment('${p.id}', '${direction}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deletePayment('${p.id}', '${direction}')">Delete</button>
                                 </td>
@@ -5428,6 +5477,441 @@
         } catch (e) {
             showToast('Error: ' + e.message, 'error');
         }
+    }
+
+    // ============================================================================
+    // CALENDAR/SCHEDULES MODULE
+    // ============================================================================
+
+    let calendarEvents = [];
+    let currentCalendarDate = new Date();
+    let currentCalendarView = 'monthly';
+    let selectedDate = null;
+
+    // Initialize calendar when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCalendarEvents();
+    });
+
+    async function loadCalendarEvents() {
+        try {
+            const res = await fetch('/api/crm/calendar/events');
+            const data = await res.json();
+
+            if (data.success) {
+                calendarEvents = data.events;
+                renderCalendar();
+            }
+        } catch (e) {
+            console.error('Error loading calendar events:', e);
+        }
+    }
+
+    function renderCalendar() {
+        const viewMode = document.getElementById('calendarViewMode').value;
+        currentCalendarView = viewMode;
+
+        if (viewMode === 'monthly') {
+            renderMonthlyCalendar();
+        } else if (viewMode === 'weekly') {
+            renderWeeklyCalendar();
+        } else if (viewMode === 'daily') {
+            renderDailyCalendar();
+        }
+
+        updateCalendarTitle();
+    }
+
+    function renderMonthlyCalendar() {
+        const monthlyCalendar = document.getElementById('monthlyCalendar');
+        const weeklyCalendar = document.getElementById('weeklyCalendar');
+
+        monthlyCalendar.style.display = 'grid';
+        weeklyCalendar.style.display = 'none';
+
+        const year = currentCalendarDate.getFullYear();
+        const month = currentCalendarDate.getMonth();
+
+        // Get first day of month and number of days
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startDayOfWeek = firstDay.getDay(); // 0 = Sunday
+
+        // Build calendar HTML
+        let html = '';
+
+        // Day headers
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        dayNames.forEach(day => {
+            html += `<div style="background: #f3f4f6; padding: 12px; font-weight: 600; text-align: center; font-size: 14px;">${day}</div>`;
+        });
+
+        // Empty cells before first day
+        for (let i = 0; i < startDayOfWeek; i++) {
+            html += '<div style="background: #fafafa; min-height: 100px;"></div>';
+        }
+
+        // Days of month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dateStr = date.toISOString().split('T')[0];
+            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const isSelected = selectedDate === dateStr;
+
+            // Get events for this day
+            const dayEvents = calendarEvents.filter(e => e.start_date === dateStr);
+
+            html += `
+                <div onclick="selectCalendarDay('${dateStr}')" style="background: white; min-height: 100px; padding: 8px; cursor: pointer; border-left: 3px solid ${isSelected ? '#3b82f6' : 'transparent'}; position: relative;">
+                    <div style="font-weight: ${isToday ? '700' : '500'}; color: ${isToday ? '#3b82f6' : '#374151'}; margin-bottom: 4px; font-size: 14px;">
+                        ${day}
+                        ${isToday ? '<span style="background: #3b82f6; color: white; border-radius: 50%; width: 6px; height: 6px; display: inline-block; margin-left: 4px;"></span>' : ''}
+                    </div>
+                    <div style="font-size: 11px;">
+                        ${dayEvents.slice(0, 3).map(e => `
+                            <div style="background: ${e.color || '#3b82f6'}; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${e.title}">
+                                ${e.title}
+                            </div>
+                        `).join('')}
+                        ${dayEvents.length > 3 ? `<div style="color: #6b7280; padding: 2px 6px;">+${dayEvents.length - 3} more</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        monthlyCalendar.innerHTML = html;
+    }
+
+    function renderWeeklyCalendar() {
+        const monthlyCalendar = document.getElementById('monthlyCalendar');
+        const weeklyCalendar = document.getElementById('weeklyCalendar');
+        const weeklyGrid = document.getElementById('weeklyGrid');
+
+        monthlyCalendar.style.display = 'none';
+        weeklyCalendar.style.display = 'block';
+
+        // Get week start (Sunday)
+        const weekStart = new Date(currentCalendarDate);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb;">';
+
+        // Day headers
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            const isToday = dateStr === new Date().toISOString().split('T')[0];
+
+            html += `
+                <div style="background: #f3f4f6; padding: 16px; text-align: center;">
+                    <div style="font-weight: 600; font-size: 14px;">${dayNames[i]}</div>
+                    <div style="font-size: 24px; font-weight: ${isToday ? '700' : '500'}; color: ${isToday ? '#3b82f6' : '#374151'}; margin-top: 8px;">
+                        ${date.getDate()}
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+
+        // Events for each day
+        html += '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb; margin-top: 1px;">';
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            const dayEvents = calendarEvents.filter(e => e.start_date === dateStr);
+
+            html += `
+                <div style="background: white; min-height: 300px; padding: 12px;">
+                    ${dayEvents.map(e => `
+                        <div onclick="editCalendarEvent('${e.id}')" style="background: ${e.color || '#3b82f6'}; color: white; padding: 8px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; font-size: 13px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">${e.title}</div>
+                            <div style="font-size: 11px; opacity: 0.9;">
+                                ${e.start_time || 'All day'}
+                                ${e.location ? `<br/>📍 ${e.location}` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        html += '</div>';
+
+        weeklyGrid.innerHTML = html;
+    }
+
+    function renderDailyCalendar() {
+        // For daily view, show similar to weekly but just one day
+        renderWeeklyCalendar();
+    }
+
+    function updateCalendarTitle() {
+        const titleEl = document.getElementById('calendarCurrentDate');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        if (currentCalendarView === 'monthly') {
+            titleEl.textContent = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+        } else if (currentCalendarView === 'weekly') {
+            const weekStart = new Date(currentCalendarDate);
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            titleEl.textContent = `${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} - ${monthNames[weekEnd.getMonth()]} ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+        } else {
+            titleEl.textContent = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getDate()}, ${currentCalendarDate.getFullYear()}`;
+        }
+    }
+
+    function selectCalendarDay(dateStr) {
+        selectedDate = dateStr;
+        renderCalendar();
+
+        // Show events for selected day
+        const dayEvents = calendarEvents.filter(e => e.start_date === dateStr);
+        const eventsContainer = document.getElementById('selectedDayEvents');
+        const eventsList = document.getElementById('selectedDayEventsList');
+
+        if (dayEvents.length > 0) {
+            eventsContainer.style.display = 'block';
+            eventsList.innerHTML = dayEvents.map(e => `
+                <div style="background: #f9fafb; border-left: 4px solid ${e.color || '#3b82f6'}; padding: 12px; margin-bottom: 8px; border-radius: 6px; cursor: pointer;" onclick="editCalendarEvent('${e.id}')">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">${e.title}</div>
+                            <div style="font-size: 13px; color: #6b7280;">
+                                ${e.start_time || 'All day'}${e.end_time ? ' - ' + e.end_time : ''}
+                                ${e.location ? `<br/>📍 ${e.location}` : ''}
+                                ${e.description ? `<br/>${e.description}` : ''}
+                            </div>
+                        </div>
+                        <button onclick="event.stopPropagation(); deleteCalendarEvent('${e.id}')" class="btn btn-danger btn-small">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            eventsContainer.style.display = 'none';
+        }
+    }
+
+    function changeCalendarView() {
+        renderCalendar();
+    }
+
+    function calendarToday() {
+        currentCalendarDate = new Date();
+        selectedDate = null;
+        renderCalendar();
+    }
+
+    function calendarPrevious() {
+        if (currentCalendarView === 'monthly') {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+        } else if (currentCalendarView === 'weekly') {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() - 7);
+        } else {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() - 1);
+        }
+        renderCalendar();
+    }
+
+    function calendarNext() {
+        if (currentCalendarView === 'monthly') {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+        } else if (currentCalendarView === 'weekly') {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() + 7);
+        } else {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() + 1);
+        }
+        renderCalendar();
+    }
+
+    function openEventModal(date = null) {
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = '';
+        document.getElementById('eventType').value = 'event';
+        document.getElementById('eventStartDate').value = date || selectedDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '';
+        document.getElementById('eventEndDate').value = '';
+        document.getElementById('eventEndTime').value = '';
+        document.getElementById('eventAllDay').checked = false;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = '';
+        document.getElementById('eventColor').value = '#3b82f6';
+        document.getElementById('eventReminder').value = '0';
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Event';
+        openModal('eventModal');
+    }
+
+    function editCalendarEvent(id) {
+        fetch(`/api/crm/calendar/events/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const e = data.event;
+                    document.getElementById('eventId').value = e.id;
+                    document.getElementById('eventTitle').value = e.title;
+                    document.getElementById('eventType').value = e.type || 'event';
+                    document.getElementById('eventStartDate').value = e.start_date;
+                    document.getElementById('eventStartTime').value = e.start_time || '';
+                    document.getElementById('eventEndDate').value = e.end_date || '';
+                    document.getElementById('eventEndTime').value = e.end_time || '';
+                    document.getElementById('eventAllDay').checked = e.all_day || false;
+                    document.getElementById('eventRecurrence').value = e.recurrence || 'none';
+                    document.getElementById('eventLocation').value = e.location || '';
+                    document.getElementById('eventDescription').value = e.description || '';
+                    document.getElementById('eventColor').value = e.color || '#3b82f6';
+                    document.getElementById('eventReminder').value = e.reminder_minutes || '0';
+
+                    document.querySelector('#eventModal h2').textContent = 'Edit Event';
+                    openModal('eventModal');
+                }
+            });
+    }
+
+    async function saveCalendarEvent(e) {
+        e.preventDefault();
+        const id = document.getElementById('eventId').value;
+
+        const data = {
+            title: document.getElementById('eventTitle').value,
+            type: document.getElementById('eventType').value,
+            start_date: document.getElementById('eventStartDate').value,
+            start_time: document.getElementById('eventStartTime').value,
+            end_date: document.getElementById('eventEndDate').value || document.getElementById('eventStartDate').value,
+            end_time: document.getElementById('eventEndTime').value,
+            all_day: document.getElementById('eventAllDay').checked,
+            recurrence: document.getElementById('eventRecurrence').value,
+            location: document.getElementById('eventLocation').value,
+            description: document.getElementById('eventDescription').value,
+            color: document.getElementById('eventColor').value,
+            reminder_minutes: parseInt(document.getElementById('eventReminder').value) || 0
+        };
+
+        try {
+            const url = id ? `/api/crm/calendar/events/${id}` : '/api/crm/calendar/events';
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeModal('eventModal');
+                await loadCalendarEvents();
+                showToast('Event saved successfully!', 'success');
+            } else {
+                showToast('Error saving: ' + result.error, 'error');
+            }
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function deleteCalendarEvent(id) {
+        if (!confirm('Are you sure you want to delete this event?')) return;
+
+        try {
+            const res = await fetch(`/api/crm/calendar/events/${id}`, {method: 'DELETE'});
+            const result = await res.json();
+
+            if (result.success) {
+                await loadCalendarEvents();
+                showToast('Event deleted successfully', 'success');
+            } else {
+                showToast('Error deleting: ' + result.error, 'error');
+            }
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    function syncGoogleCalendar() {
+        showToast('Google Calendar sync will be available after connecting your Google account', 'info');
+        // This will be implemented when Google Calendar integration is set up
+    }
+
+    // ============================================================================
+    // QUICK ADD TO CALENDAR FUNCTIONS
+    // ============================================================================
+
+    function addJobToCalendar(jobId, jobName, startDate, dueDate) {
+        // Pre-fill event modal with job details
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `Job: ${jobName}`;
+        document.getElementById('eventType').value = 'job';
+        document.getElementById('eventStartDate').value = startDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '09:00';
+        document.getElementById('eventEndDate').value = dueDate || startDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '17:00';
+        document.getElementById('eventAllDay').checked = false;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Scheduled work for job: ${jobName}`;
+        document.getElementById('eventColor').value = '#10b981'; // Green for jobs
+        document.getElementById('eventReminder').value = '60'; // 1 hour reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Job in Calendar';
+        openModal('eventModal');
+        showToast('Job details loaded - adjust and save to calendar', 'info');
+    }
+
+    function addPersonToCalendar(personId, personName, personType) {
+        // Pre-fill event modal for meeting with person
+        const typeLabels = {
+            'customer': 'Customer Meeting',
+            'supplier': 'Supplier Meeting',
+            'contractor': 'Contractor Meeting',
+            'employee': 'Employee Meeting',
+            'contact': 'Meeting'
+        };
+
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `${typeLabels[personType]}: ${personName}`;
+        document.getElementById('eventType').value = 'meeting';
+        document.getElementById('eventStartDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '10:00';
+        document.getElementById('eventEndDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '11:00';
+        document.getElementById('eventAllDay').checked = false;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Meeting with ${personName}`;
+        document.getElementById('eventColor').value = '#3b82f6'; // Blue for meetings
+        document.getElementById('eventReminder').value = '30'; // 30 min reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Meeting';
+        openModal('eventModal');
+        showToast('Meeting details loaded - adjust and save to calendar', 'info');
+    }
+
+    function addPaymentToCalendar(paymentId, amount, dueDate, direction) {
+        // Pre-fill event modal for payment reminder
+        const directionLabel = direction === 'to_suppliers' ? 'Payment to Supplier' : 'Payment Due';
+        const amountFormatted = parseFloat(amount).toLocaleString();
+
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `${directionLabel}: $${amountFormatted}`;
+        document.getElementById('eventType').value = 'reminder';
+        document.getElementById('eventStartDate').value = dueDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '09:00';
+        document.getElementById('eventEndDate').value = dueDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '';
+        document.getElementById('eventAllDay').checked = true;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Payment reminder: $${amountFormatted} ${direction === 'to_suppliers' ? 'to supplier' : 'due from customer'}`;
+        document.getElementById('eventColor').value = '#f59e0b'; // Orange for payment reminders
+        document.getElementById('eventReminder').value = '1440'; // 1 day reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Payment Reminder';
+        openModal('eventModal');
+        showToast('Payment reminder loaded - adjust and save to calendar', 'info');
     }
 </script>
 
