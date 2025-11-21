@@ -1029,22 +1029,28 @@
 
             if (floorplanUrl) {
                 fabric.Image.fromURL(floorplanUrl, (img) => {
-                    // Set canvas size
+                    // Set canvas size to match container
                     const canvasWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
-                    const scaleFactor = Math.min(canvasWidth / img.width, 0.8); // Start at 80% to give room for resizing
-                    const canvasHeight = Math.max(img.height * scaleFactor + 200, 800); // Extra space for movement
+
+                    // Calculate scale to fit the image within the canvas width (at 95% to leave small margin)
+                    const scaleToFitWidth = (canvasWidth * 0.95) / img.width;
+
+                    // Set canvas height based on scaled image height with small padding
+                    const scaledImageHeight = img.height * scaleToFitWidth;
+                    const canvasHeight = scaledImageHeight + 100; // Small padding for controls
 
                     canvas.setWidth(canvasWidth);
                     canvas.setHeight(canvasHeight);
 
                     // Make the floorplan image a movable/resizable object (not background)
+                    // Position it to fill most of the canvas
                     img.set({
                         left: canvasWidth / 2,
-                        top: canvasHeight / 2,
+                        top: scaledImageHeight / 2 + 50, // Centered vertically with padding
                         originX: 'center',
                         originY: 'center',
-                        scaleX: scaleFactor,
-                        scaleY: scaleFactor,
+                        scaleX: scaleToFitWidth,
+                        scaleY: scaleToFitWidth,
                         selectable: true,
                         evented: true,
                         hasControls: true,
