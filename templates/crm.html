@@ -2400,15 +2400,23 @@
         let revenueChart, projectStatusChart, monthlyRevenueChart, customerGrowthChart;
 
         function initializeCharts(stats) {
-            // Check if current theme is dark
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const textColor = isDark ? '#e0e0e0' : '#1d1d1f';
-            const gridColor = isDark ? '#3a3a3a' : '#d2d2d7';
+            try {
+                // Check if Chart.js is loaded
+                if (typeof Chart === 'undefined') {
+                    console.warn('Chart.js not loaded yet, skipping chart initialization');
+                    return;
+                }
 
-            // Revenue Overview (Doughnut)
-            const revenueCtx = document.getElementById('revenueChart');
-            if (revenueChart) revenueChart.destroy();
-            revenueChart = new Chart(revenueCtx, {
+                // Check if current theme is dark
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                const textColor = isDark ? '#e0e0e0' : '#1d1d1f';
+                const gridColor = isDark ? '#3a3a3a' : '#d2d2d7';
+
+                // Revenue Overview (Doughnut)
+                const revenueCtx = document.getElementById('revenueChart');
+                if (!revenueCtx) return;
+                if (revenueChart) revenueChart.destroy();
+                revenueChart = new Chart(revenueCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Completed Revenue', 'Pending Revenue'],
@@ -2432,6 +2440,7 @@
 
             // Project Status (Bar)
             const projectCtx = document.getElementById('projectStatusChart');
+            if (!projectCtx) return;
             if (projectStatusChart) projectStatusChart.destroy();
             projectStatusChart = new Chart(projectCtx, {
                 type: 'bar',
@@ -2470,6 +2479,7 @@
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
             const monthlyData = months.map((m, i) => Math.floor(stats.revenue.total / 6 * (0.8 + Math.random() * 0.4)));
             const monthlyCtx = document.getElementById('monthlyRevenueChart');
+            if (!monthlyCtx) return;
             if (monthlyRevenueChart) monthlyRevenueChart.destroy();
             monthlyRevenueChart = new Chart(monthlyCtx, {
                 type: 'line',
@@ -2512,6 +2522,7 @@
             // Customer Growth (Line)
             const customerData = months.map((m, i) => Math.floor(stats.customers.total / 6 * (i + 1)));
             const customerCtx = document.getElementById('customerGrowthChart');
+            if (!customerCtx) return;
             if (customerGrowthChart) customerGrowthChart.destroy();
             customerGrowthChart = new Chart(customerCtx, {
                 type: 'line',
@@ -2550,6 +2561,9 @@
                     }
                 }
             });
+            } catch (e) {
+                console.error('Chart initialization error:', e);
+            }
         }
 
         async function loadCustomers() {
