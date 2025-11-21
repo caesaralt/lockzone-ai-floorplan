@@ -735,6 +735,342 @@
             </div>
         </div>
 
+        <!-- ========== PEOPLE MODULE ========== -->
+
+        <!-- PEOPLE - EMPLOYEES -->
+        <div id="people-employees" class="section">
+            <h1 class="page-title">👔 Employees</h1>
+            <p class="page-subtitle">Manage your team members</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="employeeSearch" placeholder="Search employees..." onkeyup="searchPeople('employee')">
+                    <button class="btn btn-primary" onclick="openPersonModal('employee')">+ Add Employee</button>
+                </div>
+                <div id="employeesTable"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CUSTOMERS -->
+        <div id="people-customers" class="section">
+            <h1 class="page-title">👥 Customers</h1>
+            <p class="page-subtitle">Manage your customer relationships</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="customerSearch" placeholder="Search customers..." onkeyup="searchPeople('customer')">
+                    <button class="btn btn-primary" onclick="openPersonModal('customer')">+ Add Customer</button>
+                </div>
+                <div id="customersTableNew"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - SUPPLIERS -->
+        <div id="people-suppliers" class="section">
+            <h1 class="page-title">🏭 Suppliers</h1>
+            <p class="page-subtitle">Manage your supplier network</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="suppliersSearch" placeholder="Search suppliers..." onkeyup="searchPeople('supplier')">
+                    <button class="btn btn-primary" onclick="openPersonModal('supplier')">+ Add Supplier</button>
+                </div>
+                <div id="suppliersTableNew"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CONTRACTORS -->
+        <div id="people-contractors" class="section">
+            <h1 class="page-title">🔧 Contractors</h1>
+            <p class="page-subtitle">Manage external contractors</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="contractorSearch" placeholder="Search contractors..." onkeyup="searchPeople('contractor')">
+                    <button class="btn btn-primary" onclick="openPersonModal('contractor')">+ Add Contractor</button>
+                </div>
+                <div id="contractorsTable"></div>
+            </div>
+        </div>
+
+        <!-- PEOPLE - CONTACTS -->
+        <div id="people-contacts" class="section">
+            <h1 class="page-title">📇 Contacts</h1>
+            <p class="page-subtitle">General contact directory</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="contactSearch" placeholder="Search contacts..." onkeyup="searchPeople('contact')">
+                    <button class="btn btn-primary" onclick="openPersonModal('contact')">+ Add Contact</button>
+                </div>
+                <div id="contactsTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== JOBS MODULE ========== -->
+
+        <!-- JOBS - IN PROGRESS -->
+        <div id="jobs-in-progress" class="section">
+            <h1 class="page-title">⚙️ Jobs In Progress</h1>
+            <p class="page-subtitle">Currently active jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsInProgressSearch" placeholder="Search jobs..." onkeyup="searchJobs('in_progress')">
+                    <button class="btn btn-primary" onclick="openJobModal('in_progress')">+ Add Job</button>
+                </div>
+                <div id="jobsInProgressTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - UPCOMING -->
+        <div id="jobs-upcoming" class="section">
+            <h1 class="page-title">📅 Upcoming Jobs</h1>
+            <p class="page-subtitle">Scheduled future jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsUpcomingSearch" placeholder="Search jobs..." onkeyup="searchJobs('upcoming')">
+                    <button class="btn btn-primary" onclick="openJobModal('upcoming')">+ Add Job</button>
+                </div>
+                <div id="jobsUpcomingTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - PENDING -->
+        <div id="jobs-pending" class="section">
+            <h1 class="page-title">⏸️ Pending Jobs</h1>
+            <p class="page-subtitle">Jobs awaiting approval or start</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsPendingSearch" placeholder="Search jobs..." onkeyup="searchJobs('pending')">
+                    <button class="btn btn-primary" onclick="openJobModal('pending')">+ Add Job</button>
+                </div>
+                <div id="jobsPendingTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - FINISHED -->
+        <div id="jobs-finished" class="section">
+            <h1 class="page-title">✅ Finished Jobs</h1>
+            <p class="page-subtitle">Completed jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsFinishedSearch" placeholder="Search jobs..." onkeyup="searchJobs('finished')">
+                    <button class="btn btn-primary" onclick="openJobModal('finished')">+ Add Job</button>
+                </div>
+                <div id="jobsFinishedTable"></div>
+            </div>
+        </div>
+
+        <!-- JOBS - RECURRING -->
+        <div id="jobs-recurring" class="section">
+            <h1 class="page-title">🔄 Recurring Jobs</h1>
+            <p class="page-subtitle">Repeating maintenance and service jobs</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="jobsRecurringSearch" placeholder="Search jobs..." onkeyup="searchJobs('recurring')">
+                    <button class="btn btn-primary" onclick="openJobModal('recurring')">+ Add Job</button>
+                </div>
+                <div id="jobsRecurringTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== MATERIALS MODULE ========== -->
+
+        <!-- MATERIALS - STOCK -->
+        <div id="materials-stock" class="section">
+            <h1 class="page-title">📦 Stock</h1>
+            <p class="page-subtitle">Manage inventory and stock levels</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="stockSearch" placeholder="Search stock..." onkeyup="searchMaterials('stock')" style="flex: 1;">
+                        <select id="stockLocationFilter" onchange="filterMaterials('stock')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Locations</option>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openMaterialModal('stock')">+ Add Stock</button>
+                </div>
+                <div id="stockTable"></div>
+            </div>
+        </div>
+
+        <!-- MATERIALS - ORDERS -->
+        <div id="materials-orders" class="section">
+            <h1 class="page-title">🛒 Orders</h1>
+            <p class="page-subtitle">Track materials to order and incoming orders</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="ordersSearch" placeholder="Search orders..." onkeyup="searchMaterials('order')" style="flex: 1;">
+                        <select id="ordersLocationFilter" onchange="filterMaterials('order')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Locations</option>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openMaterialModal('order')">+ Add Order</button>
+                </div>
+                <div id="ordersTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== PAYMENTS MODULE ========== -->
+
+        <!-- PAYMENTS - TO SUPPLIERS -->
+        <div id="payments-to-suppliers" class="section">
+            <h1 class="page-title">💸 Payments to Suppliers</h1>
+            <p class="page-subtitle">Track money we owe to suppliers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="paymentsToSuppliersSearch" placeholder="Search payments..." style="flex: 1;">
+                        <select id="paymentsToSuppliersFilter" onchange="filterPayments('to_suppliers')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Statuses</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credits</option>
+                            <option value="retention">Retentions</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPaymentModal('to_suppliers')">+ Add Payment</button>
+                </div>
+                <div id="paymentsToSuppliersTable"></div>
+            </div>
+        </div>
+
+        <!-- PAYMENTS - TO US -->
+        <div id="payments-to-us" class="section">
+            <h1 class="page-title">💰 Payments to Us</h1>
+            <p class="page-subtitle">Track money owed to us by customers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px; flex: 1;">
+                        <input type="text" class="search-input" id="paymentsToUsSearch" placeholder="Search payments..." style="flex: 1;">
+                        <select id="paymentsToUsFilter" onchange="filterPayments('to_us')" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="">All Statuses</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credits</option>
+                            <option value="retention">Retentions</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPaymentModal('to_us')">+ Add Payment</button>
+                </div>
+                <div id="paymentsToUsTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== QUOTES ENHANCED ========== -->
+
+        <!-- QUOTES - OPEN -->
+        <div id="quotes-open" class="section">
+            <h1 class="page-title">📋 Open Quotes</h1>
+            <p class="page-subtitle">Active quotes awaiting response</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesOpenSearch" placeholder="Search quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('open')">+ New Quote</button>
+                </div>
+                <div id="quotesOpenTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - SENT -->
+        <div id="quotes-sent" class="section">
+            <h1 class="page-title">📤 Sent Quotes</h1>
+            <p class="page-subtitle">Quotes sent to customers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesSentSearch" placeholder="Search quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('sent')">+ New Quote</button>
+                </div>
+                <div id="quotesSentTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - EXPIRED -->
+        <div id="quotes-expired" class="section">
+            <h1 class="page-title">⏰ Expired Quotes</h1>
+            <p class="page-subtitle">Quotes past their expiry date</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesExpiredSearch" placeholder="Search quotes...">
+                </div>
+                <div id="quotesExpiredTable"></div>
+            </div>
+        </div>
+
+        <!-- QUOTES - SUPPLIER -->
+        <div id="quotes-supplier" class="section">
+            <h1 class="page-title">📥 Supplier Quotes</h1>
+            <p class="page-subtitle">Quotes received from our suppliers</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <input type="text" class="search-input" id="quotesSupplierSearch" placeholder="Search supplier quotes...">
+                    <button class="btn btn-primary" onclick="openQuoteModal('supplier')">+ Add Supplier Quote</button>
+                </div>
+                <div id="quotesSupplierTable"></div>
+            </div>
+        </div>
+
+        <!-- ========== SCHEDULES / CALENDAR ========== -->
+
+        <!-- SCHEDULES - CALENDAR -->
+        <div id="schedules-calendar" class="section">
+            <h1 class="page-title">📆 Calendar & Schedules</h1>
+            <p class="page-subtitle">View and manage all scheduled events</p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 10px;">
+                        <select id="calendarViewMode" onchange="changeCalendarView()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="daily">Daily</option>
+                            <option value="weekly" selected>Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="annually">Annually</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="calendarToday()">Today</button>
+                        <button class="btn btn-secondary" onclick="calendarPrevious()">← Previous</button>
+                        <button class="btn btn-secondary" onclick="calendarNext()">Next →</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="syncGoogleCalendar()">🔄 Sync Google Calendar</button>
+                </div>
+                <div id="calendarView" style="min-height: 500px; margin-top: 20px;">
+                    <div style="text-align: center; padding: 60px; color: #999;">
+                        <p style="font-size: 18px; margin-bottom: 12px;">📅 Calendar View</p>
+                        <p>Calendar integration coming soon. Will show:</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 16px;">
+                            <li>✓ Job timelines and deadlines</li>
+                            <li>✓ Quote expiry dates</li>
+                            <li>✓ Payment due dates</li>
+                            <li>✓ Meetings and appointments</li>
+                            <li>✓ Google Calendar events (two-way sync)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- INTEGRATIONS -->
         <div id="integrations" class="section">
             <h1 class="page-title">Integrations</h1>
@@ -1459,6 +1795,224 @@
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('commModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== NEW MODALS FOR EXTENDED CRM ========== -->
+
+    <!-- Person Modal (for all people types) -->
+    <div id="personModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="personModalTitle">Add Person</h2>
+                <button class="close-btn" onclick="closeModal('personModal')">×</button>
+            </div>
+            <form id="personForm" onsubmit="savePerson(event)">
+                <input type="hidden" id="personId">
+                <input type="hidden" id="personType">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="personName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Company</label>
+                        <input type="text" id="personCompany">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="personEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="personPhone">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea id="personAddress" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="personNotes" rows="3"></textarea>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('personModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Job Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="jobModalTitle">Add Job</h2>
+                <button class="close-btn" onclick="closeModal('jobModal')">×</button>
+            </div>
+            <form id="jobForm" onsubmit="saveJob(event)">
+                <input type="hidden" id="jobId">
+                <input type="hidden" id="jobStatus">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Job Name *</label>
+                        <input type="text" id="jobName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <select id="jobCustomer">
+                            <option value="">Select Customer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="jobDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="jobStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="jobDueDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Value ($)</label>
+                        <input type="number" id="jobValue" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Recurring Schedule</label>
+                        <select id="jobRecurring">
+                            <option value="">None</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('jobModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Material Modal -->
+    <div id="materialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="materialModalTitle">Add Material</h2>
+                <button class="close-btn" onclick="closeModal('materialModal')">×</button>
+            </div>
+            <form id="materialForm" onsubmit="saveMaterial(event)">
+                <input type="hidden" id="materialId">
+                <input type="hidden" id="materialType">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="materialName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" id="materialCategory" placeholder="e.g., Lighting, Switches">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <select id="materialLocation" required>
+                            <option value="sydney">Sydney</option>
+                            <option value="melbourne">Melbourne</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="materialQuantity" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Price ($)</label>
+                        <input type="number" id="materialPrice" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Supplier</label>
+                        <select id="materialSupplier">
+                            <option value="">Select Supplier</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="paymentModalTitle">Add Payment</h2>
+                <button class="close-btn" onclick="closeModal('paymentModal')">×</button>
+            </div>
+            <form id="paymentForm" onsubmit="savePayment(event)">
+                <input type="hidden" id="paymentId">
+                <input type="hidden" id="paymentDirection">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount ($) *</label>
+                        <input type="number" id="paymentAmount" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status *</label>
+                        <select id="paymentStatus" required>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="pending">Pending</option>
+                            <option value="due">Due</option>
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credit</option>
+                            <option value="retention">Retention</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="paymentDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Paid Date</label>
+                        <input type="date" id="paymentPaidDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label id="paymentPersonLabel">Person</label>
+                    <select id="paymentPerson">
+                        <option value="">Select Person</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="paymentNotes" rows="3"></textarea>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('paymentModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
