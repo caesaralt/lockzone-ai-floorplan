@@ -4,86 +4,288 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ config.logo_text if config else 'Integratd Living' }} - Complete Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide-static/0.294.0/lucide.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            /* Light mode colors */
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #666666;
+            --border-color: rgba(0, 0, 0, 0.05);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+            /* Header colors */
+            --header-bg: #ffffff;
+            --header-border: rgba(0, 0, 0, 0.1);
+
+            /* Icon backgrounds (light mode) */
+            --icon-bg-blue: #e8f0fe;
+            --icon-bg-yellow: #fef7e8;
+            --icon-bg-orange: #fff0ed;
+            --icon-bg-amber: #fff4e5;
+            --icon-bg-gray: #f5f5f5;
+            --icon-bg-green: #e8f5f0;
+            --icon-bg-pink: #fce8f3;
+            --icon-bg-purple: #ede9fe;
+            --icon-bg-cyan: #e0f7fa;
+        }
+
+        [data-theme="dark"] {
+            /* Dark mode colors */
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+            /* Header colors */
+            --header-bg: #1e1e1e;
+            --header-border: rgba(255, 255, 255, 0.1);
+
+            /* Icon backgrounds (dark mode) */
+            --icon-bg-blue: #1e3a5f;
+            --icon-bg-yellow: #4a3e1f;
+            --icon-bg-orange: #4a2820;
+            --icon-bg-amber: #4a3620;
+            --icon-bg-gray: #2a2a2a;
+            --icon-bg-green: #1f3d32;
+            --icon-bg-pink: #3d1f32;
+            --icon-bg-purple: #2d1f3d;
+            --icon-bg-cyan: #1f3a3d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: {{ config.background_color if config else '#f5f5f7' }};
-            color: #1d1d1f;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* TOP HEADER */
+        .top-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--header-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 16px;
+            width: 300px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-icon {
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-primary);
+        }
+
+        .theme-toggle svg {
+            width: 24px;
+            height: 24px;
+            color: var(--text-primary);
         }
 
         /* WELCOME SCREEN */
         .welcome-container {
-            max-width: 1200px;
-            margin: 60px auto;
+            max-width: 1400px;
+            margin: 100px auto 60px;
             padding: 0 40px;
         }
 
         .welcome-header {
-            text-align: center;
-            margin-bottom: 60px;
+            text-align: left;
+            margin-bottom: 40px;
         }
 
         .welcome-title {
-            font-size: 48px;
+            font-size: 36px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
         .welcome-subtitle {
-            font-size: 20px;
-            color: #666;
+            font-size: 16px;
+            color: var(--text-secondary);
         }
 
         .modules-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 24px;
             margin-top: 40px;
         }
 
         .module-card {
-            background: white;
-            border-radius: 16px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
             padding: 32px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            transition: all 0.2s;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
             cursor: pointer;
             text-decoration: none;
             color: inherit;
             display: block;
+            border: 1px solid var(--border-color);
         }
 
         .module-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(85, 107, 47, 0.15);
+            box-shadow: var(--shadow-hover);
         }
 
-        .module-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .module-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease;
         }
+
+        .module-icon-wrapper svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Icon color variants */
+        .icon-blue { background: var(--icon-bg-blue); color: #1a73e8; }
+        .icon-yellow { background: var(--icon-bg-yellow); color: #f59e0b; }
+        .icon-orange { background: var(--icon-bg-orange); color: #f97316; }
+        .icon-amber { background: var(--icon-bg-amber); color: #f59e0b; }
+        .icon-gray { background: var(--icon-bg-gray); color: #6b7280; }
+        .icon-green { background: var(--icon-bg-green); color: #10b981; }
+        .icon-pink { background: var(--icon-bg-pink); color: #ec4899; }
+        .icon-purple { background: var(--icon-bg-purple); color: #8b5cf6; }
+        .icon-cyan { background: var(--icon-bg-cyan); color: #06b6d4; }
 
         .module-title {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: 600;
             margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
         .module-description {
-            font-size: 15px;
-            color: #666;
-            line-height: 1.5;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
+    <!-- TOP HEADER -->
+    <div class="top-header">
+        <div class="logo-section">
+            <h1 class="logo-text">{{ config.logo_text if config else 'Integratd Living' }}</h1>
+        </div>
+        <div class="header-controls">
+            <div class="search-box">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" placeholder="Search...">
+            </div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg id="moonIcon" class="moon-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
 
     <!-- WELCOME CONTENT -->
     <div class="welcome-container">
         <div class="welcome-header">
-            <h1 class="welcome-title">{{ config.welcome_title if config else 'Welcome to Integratd Living' }}</h1>
+            <h1 class="welcome-title">{{ config.welcome_title if config else 'Integratd Living' }}</h1>
             <p class="welcome-subtitle">{{ config.welcome_subtitle if config else 'Your complete business automation platform' }}</p>
         </div>
 
@@ -91,7 +293,7 @@
             {% if config and config.modules %}
                 {% for module in config.modules %}
                 <a href="{{ module.href }}" class="module-card">
-                    <div class="module-icon">{{ module.icon }}</div>
+                    <div class="module-icon-wrapper">{{ module.icon }}</div>
                     <h2 class="module-title">{{ module.title }}</h2>
                     <p class="module-description">{{ module.description }}</p>
                 </a>
@@ -99,7 +301,14 @@
             {% else %}
             {% if 'crm' in user_permissions or 'admin' in user_permissions %}
             <a href="/crm" class="module-card">
-                <div class="module-icon">📊</div>
+                <div class="module-icon-wrapper icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                </div>
                 <h2 class="module-title">CRM Dashboard</h2>
                 <p class="module-description">Manage customers, projects, scheduling, inventory, and more in one place.</p>
             </a>
@@ -107,7 +316,15 @@
 
             {% if 'quotes' in user_permissions or 'admin' in user_permissions %}
             <a href="/quotes" class="module-card">
-                <div class="module-icon">💰</div>
+                <div class="module-icon-wrapper icon-yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
                 <h2 class="module-title">Quote Automation</h2>
                 <p class="module-description">Upload floor plans and let AI generate accurate quotes automatically.</p>
             </a>
@@ -115,7 +332,14 @@
 
             {% if 'canvas' in user_permissions or 'admin' in user_permissions %}
             <a href="/canvas" class="module-card">
-                <div class="module-icon">🎨</div>
+                <div class="module-icon-wrapper icon-orange">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        <path d="M2 2l7.586 7.586"></path>
+                        <circle cx="11" cy="11" r="2"></circle>
+                    </svg>
+                </div>
                 <h2 class="module-title">Canvas Editor</h2>
                 <p class="module-description">Professional floor plan editor with zoom, pan, and symbol management.</p>
             </a>
@@ -123,7 +347,11 @@
 
             {% if 'mapping' in user_permissions or 'admin' in user_permissions %}
             <a href="/mapping" class="module-card">
-                <div class="module-icon">⚡</div>
+                <div class="module-icon-wrapper icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
                 <h2 class="module-title">Electrical Mapping</h2>
                 <p class="module-description">Professional electrical mapping with wiring, circuits, and component management.</p>
             </a>
@@ -131,23 +359,42 @@
 
             {% if 'board_builder' in user_permissions or 'admin' in user_permissions %}
             <a href="/board-builder" class="module-card">
-                <div class="module-icon">🔌</div>
+                <div class="module-icon-wrapper icon-gray">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                    </svg>
+                </div>
                 <h2 class="module-title">Loxone Board Builder</h2>
-                <p class="module-description">Design professional Loxone boards with AI generation and integration with mapping data.</p>
+                <p class="module-description">Design professional Loxone boards with AI generation and integration.</p>
             </a>
             {% endif %}
 
             {% if 'electrical_cad' in user_permissions or 'admin' in user_permissions %}
             <a href="/electrical-cad" class="module-card">
-                <div class="module-icon">📟</div>
+                <div class="module-icon-wrapper icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6M12 17v6M4.2 4.2l4.2 4.2M15.6 15.6l4.2 4.2M1 12h6M17 12h6M4.2 19.8l4.2-4.2M15.6 8.4l4.2-4.2"></path>
+                    </svg>
+                </div>
                 <h2 class="module-title">Electrical CAD Designer</h2>
-                <p class="module-description">Professional-grade CAD drawings with AI generation, DXF export, and full electrical standards compliance.</p>
+                <p class="module-description">Professional-grade CAD drawings with AI generation and DXF export.</p>
             </a>
             {% endif %}
 
             {% if 'learning' in user_permissions or 'admin' in user_permissions %}
             <a href="/learning" class="module-card">
-                <div class="module-icon">🧠</div>
+                <div class="module-icon-wrapper icon-pink">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </div>
                 <h2 class="module-title">AI Learning</h2>
                 <p class="module-description">Train the system with examples to improve accuracy over time.</p>
             </a>
@@ -155,7 +402,14 @@
 
             {% if 'kanban' in user_permissions or 'admin' in user_permissions %}
             <a href="/kanban" class="module-card">
-                <div class="module-icon">📋</div>
+                <div class="module-icon-wrapper icon-purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
                 <h2 class="module-title">Operations Board</h2>
                 <p class="module-description">Kanban task management system for team workflow and project tracking.</p>
             </a>
@@ -163,7 +417,14 @@
 
             {% if 'admin' in user_permissions %}
             <a href="/admin" class="module-card">
-                <div class="module-icon">👤</div>
+                <div class="module-icon-wrapper icon-cyan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
                 <h2 class="module-title">Admin Panel</h2>
                 <p class="module-description">Manage users, assign permissions, and configure system access controls.</p>
             </a>
@@ -171,7 +432,12 @@
 
             {% if 'simpro' in user_permissions or 'admin' in user_permissions %}
             <a href="/simpro" class="module-card">
-                <div class="module-icon">🔗</div>
+                <div class="module-icon-wrapper icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                </div>
                 <h2 class="module-title">Simpro Integration</h2>
                 <p class="module-description">Connect and sync with Simpro for seamless workflow integration.</p>
             </a>
@@ -179,7 +445,16 @@
 
             {% if 'ai_mapping' in user_permissions or 'admin' in user_permissions %}
             <a href="/ai-mapping" class="module-card">
-                <div class="module-icon">🤖</div>
+                <div class="module-icon-wrapper icon-purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 8V4H8"></path>
+                        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                        <path d="M2 14h4"></path>
+                        <path d="M20 14h2"></path>
+                        <path d="M15 13v-1"></path>
+                        <path d="M9 13v-1"></path>
+                    </svg>
+                </div>
                 <h2 class="module-title">AI Mapping</h2>
                 <p class="module-description">Advanced AI-powered mapping and analysis tools.</p>
             </a>
@@ -189,13 +464,66 @@
     </div>
 
     <!-- Footer -->
-    <footer style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <footer style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; transition: color 0.3s ease;">
         © 2025 Integratd Living. All rights reserved.
     </footer>
 
-
     <!-- AI Assistant Chatbot -->
     {% include 'chatbot_component.html' %}
+
+    <script>
+        // Dark mode toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
+
+        // Check for saved theme preference or default to 'light' mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+
+        // Set initial theme
+        if (currentTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        }
+
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', function() {
+            const theme = htmlElement.getAttribute('data-theme');
+
+            if (theme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+        });
+
+        // Simple search functionality
+        const searchInput = document.querySelector('.search-box input');
+        const moduleCards = document.querySelectorAll('.module-card');
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            moduleCards.forEach(card => {
+                const title = card.querySelector('.module-title').textContent.toLowerCase();
+                const description = card.querySelector('.module-description').textContent.toLowerCase();
+
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
