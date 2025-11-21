@@ -4798,6 +4798,7 @@
                                 <td>${p.phone || '-'}</td>
                                 <td>${p.address || '-'}</td>
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addPersonToCalendar('${p.id}', '${p.name}', '${type}')" title="Schedule Meeting">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editPerson('${p.id}', '${type}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deletePerson('${p.id}', '${type}')">Delete</button>
                                 </td>
@@ -4994,6 +4995,7 @@
                                 <td>$${(j.value || 0).toLocaleString()}</td>
                                 ${status === 'recurring' ? `<td>${j.recurring_schedule || '-'}</td>` : ''}
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addJobToCalendar('${j.id}', '${j.name}', '${j.start_date}', '${j.due_date}')" title="Add to Calendar">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editJob('${j.id}', '${status}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deleteJob('${j.id}', '${status}')">Delete</button>
                                 </td>
@@ -5370,6 +5372,7 @@
                                 <td>${p.person_id || '-'}</td>
                                 <td>${p.notes || '-'}</td>
                                 <td>
+                                    <button class="btn btn-secondary btn-small" onclick="addPaymentToCalendar('${p.id}', '${p.amount}', '${p.due_date}', '${direction}')" title="Add Payment Reminder">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editPayment('${p.id}', '${direction}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deletePayment('${p.id}', '${direction}')">Delete</button>
                                 </td>
@@ -5831,6 +5834,84 @@
     function syncGoogleCalendar() {
         showToast('Google Calendar sync will be available after connecting your Google account', 'info');
         // This will be implemented when Google Calendar integration is set up
+    }
+
+    // ============================================================================
+    // QUICK ADD TO CALENDAR FUNCTIONS
+    // ============================================================================
+
+    function addJobToCalendar(jobId, jobName, startDate, dueDate) {
+        // Pre-fill event modal with job details
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `Job: ${jobName}`;
+        document.getElementById('eventType').value = 'job';
+        document.getElementById('eventStartDate').value = startDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '09:00';
+        document.getElementById('eventEndDate').value = dueDate || startDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '17:00';
+        document.getElementById('eventAllDay').checked = false;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Scheduled work for job: ${jobName}`;
+        document.getElementById('eventColor').value = '#10b981'; // Green for jobs
+        document.getElementById('eventReminder').value = '60'; // 1 hour reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Job in Calendar';
+        openModal('eventModal');
+        showToast('Job details loaded - adjust and save to calendar', 'info');
+    }
+
+    function addPersonToCalendar(personId, personName, personType) {
+        // Pre-fill event modal for meeting with person
+        const typeLabels = {
+            'customer': 'Customer Meeting',
+            'supplier': 'Supplier Meeting',
+            'contractor': 'Contractor Meeting',
+            'employee': 'Employee Meeting',
+            'contact': 'Meeting'
+        };
+
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `${typeLabels[personType]}: ${personName}`;
+        document.getElementById('eventType').value = 'meeting';
+        document.getElementById('eventStartDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '10:00';
+        document.getElementById('eventEndDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '11:00';
+        document.getElementById('eventAllDay').checked = false;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Meeting with ${personName}`;
+        document.getElementById('eventColor').value = '#3b82f6'; // Blue for meetings
+        document.getElementById('eventReminder').value = '30'; // 30 min reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Meeting';
+        openModal('eventModal');
+        showToast('Meeting details loaded - adjust and save to calendar', 'info');
+    }
+
+    function addPaymentToCalendar(paymentId, amount, dueDate, direction) {
+        // Pre-fill event modal for payment reminder
+        const directionLabel = direction === 'to_suppliers' ? 'Payment to Supplier' : 'Payment Due';
+        const amountFormatted = parseFloat(amount).toLocaleString();
+
+        document.getElementById('eventId').value = '';
+        document.getElementById('eventTitle').value = `${directionLabel}: $${amountFormatted}`;
+        document.getElementById('eventType').value = 'reminder';
+        document.getElementById('eventStartDate').value = dueDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventStartTime').value = '09:00';
+        document.getElementById('eventEndDate').value = dueDate || new Date().toISOString().split('T')[0];
+        document.getElementById('eventEndTime').value = '';
+        document.getElementById('eventAllDay').checked = true;
+        document.getElementById('eventRecurrence').value = 'none';
+        document.getElementById('eventLocation').value = '';
+        document.getElementById('eventDescription').value = `Payment reminder: $${amountFormatted} ${direction === 'to_suppliers' ? 'to supplier' : 'due from customer'}`;
+        document.getElementById('eventColor').value = '#f59e0b'; // Orange for payment reminders
+        document.getElementById('eventReminder').value = '1440'; // 1 day reminder
+
+        document.querySelector('#eventModal h2').textContent = 'Schedule Payment Reminder';
+        openModal('eventModal');
+        showToast('Payment reminder loaded - adjust and save to calendar', 'info');
     }
 </script>
 
