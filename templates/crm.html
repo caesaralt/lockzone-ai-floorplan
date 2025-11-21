@@ -441,79 +441,94 @@
             </div>
         </div>
 
-        {% if 'crm_customers' in crm_permissions or 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
+        <!-- PEOPLE -->
         <div class="nav-section">
-            <div class="nav-section-title">Customers</div>
-            {% if 'crm_customers' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="customers">
-                <span>👥</span> All Customers
+            <div class="nav-section-title">People</div>
+            <div class="nav-item" data-section="people-employees">
+                <span>👔</span> Employees
             </div>
-            {% endif %}
-            {% if 'crm_communications' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="communications">
-                <span>💬</span> Communications
+            <div class="nav-item" data-section="people-customers">
+                <span>👥</span> Customers
             </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if 'crm_projects' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Projects</div>
-            <div class="nav-item" data-section="projects">
-                <span>📁</span> All Projects
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="nav-section">
-            <div class="nav-section-title">Quotes</div>
-            <div class="nav-item" data-section="quotes">
-                <span>📋</span> All Quotes
-            </div>
-        </div>
-
-        {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Inventory</div>
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> All Inventory
-            </div>
-        </div>
-        {% endif %}
-
-        {% if 'crm_calendar' in crm_permissions or 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Scheduling</div>
-            {% if 'crm_calendar' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="calendar">
-                <span>📅</span> Calendar
-            </div>
-            {% endif %}
-            {% if 'crm_technicians' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="technicians">
-                <span>👷</span> Technicians
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if 'crm_inventory' in crm_permissions or 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
-        <div class="nav-section">
-            <div class="nav-section-title">Resources</div>
-            {% if 'crm_inventory' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="inventory">
-                <span>📦</span> Stock
-            </div>
-            {% endif %}
-            {% if 'crm_suppliers' in crm_permissions or 'admin' in user_permissions %}
-            <div class="nav-item" data-section="suppliers">
+            <div class="nav-item" data-section="people-suppliers">
                 <span>🏭</span> Suppliers
             </div>
-            {% endif %}
+            <div class="nav-item" data-section="people-contractors">
+                <span>🔧</span> Contractors
+            </div>
+            <div class="nav-item" data-section="people-contacts">
+                <span>📇</span> Contacts
+            </div>
         </div>
-        {% endif %}
 
+        <!-- QUOTES -->
+        <div class="nav-section">
+            <div class="nav-section-title">Quotes</div>
+            <div class="nav-item" data-section="quotes-open">
+                <span>📋</span> Open
+            </div>
+            <div class="nav-item" data-section="quotes-sent">
+                <span>📤</span> Sent
+            </div>
+            <div class="nav-item" data-section="quotes-expired">
+                <span>⏰</span> Expired
+            </div>
+            <div class="nav-item" data-section="quotes-supplier">
+                <span>📥</span> Supplier Quotes
+            </div>
+        </div>
+
+        <!-- JOBS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Jobs</div>
+            <div class="nav-item" data-section="jobs-in-progress">
+                <span>⚙️</span> In Progress
+            </div>
+            <div class="nav-item" data-section="jobs-upcoming">
+                <span>📅</span> Upcoming
+            </div>
+            <div class="nav-item" data-section="jobs-pending">
+                <span>⏸️</span> Pending
+            </div>
+            <div class="nav-item" data-section="jobs-finished">
+                <span>✅</span> Finished
+            </div>
+            <div class="nav-item" data-section="jobs-recurring">
+                <span>🔄</span> Recurring
+            </div>
+        </div>
+
+        <!-- SCHEDULES -->
+        <div class="nav-section">
+            <div class="nav-section-title">Schedules</div>
+            <div class="nav-item" data-section="schedules-calendar">
+                <span>📆</span> Calendar
+            </div>
+        </div>
+
+        <!-- MATERIALS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Materials</div>
+            <div class="nav-item" data-section="materials-stock">
+                <span>📦</span> Stock
+            </div>
+            <div class="nav-item" data-section="materials-orders">
+                <span>🛒</span> Orders
+            </div>
+        </div>
+
+        <!-- PAYMENTS -->
+        <div class="nav-section">
+            <div class="nav-section-title">Payments</div>
+            <div class="nav-item" data-section="payments-to-suppliers">
+                <span>💸</span> To Suppliers
+            </div>
+            <div class="nav-item" data-section="payments-to-us">
+                <span>💰</span> To Us
+            </div>
+        </div>
+
+        <!-- SYSTEM -->
         <div class="nav-section">
             <div class="nav-section-title">System</div>
             <div class="nav-item" data-section="integrations">
