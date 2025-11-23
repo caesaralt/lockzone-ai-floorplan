@@ -3314,6 +3314,33 @@
             }
         }
 
+        function openQuoteModal(status = 'draft') {
+            // Reset form for new quote
+            document.getElementById('quoteId').value = '';
+            document.getElementById('quoteNumber').value = '';
+            document.getElementById('quoteCustomer').value = '';
+            document.getElementById('quoteTitle').value = '';
+            document.getElementById('quoteDesc').value = '';
+            document.getElementById('quoteStatus').value = status;
+            document.getElementById('quoteValidUntil').value = '';
+            document.getElementById('quoteMaterialsCost').value = '';
+            document.getElementById('quoteLaborCost').value = '';
+            document.getElementById('quoteMarkupPct').value = '20';
+            document.getElementById('quoteAmount').value = '';
+            document.getElementById('quoteNotes').value = '';
+
+            // Update modal title based on status
+            const statusLabels = {
+                'open': 'New Quote (Open)',
+                'sent': 'New Quote (Sent)',
+                'supplier': 'New Supplier Quote',
+                'draft': 'New Quote'
+            };
+            document.querySelector('#quoteModal h2').textContent = statusLabels[status] || 'New Quote';
+
+            openModal('quoteModal');
+        }
+
         async function convertToProject(quoteId) {
             if (!confirm('Convert this quote to a project? This will mark the quote as accepted.')) return;
             try {
