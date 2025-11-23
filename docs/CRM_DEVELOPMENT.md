@@ -8,13 +8,18 @@ This is the main CRM dashboard file. **Important notes for developers:**
 
 #### JavaScript Structure
 
-**ONE UNIFIED SCRIPT BLOCK**: All JavaScript code is contained in a single `<script>` block (lines ~2299-6391).
+**TWO SCRIPT BLOCKS**: The file contains two `<script>` blocks:
+1. **Main CRM Functions** (lines ~2299-4524): Customer, project, quote, job, calendar, payment functions
+2. **AI Chat & Dark Mode** (lines ~4668-6536): AI assistant and theme toggle functions
 
-⚠️ **CRITICAL**: Do NOT create additional `<script>` blocks in this file. This causes:
-- "Function not defined" errors
-- Variables not accessible across blocks
-- Event listeners failing to attach
-- Buttons and UI elements breaking
+⚠️ **CRITICAL**: Each script block has its OWN `DOMContentLoaded` listener for initialization:
+- **Block 1**: Initializes `setupNavigation()`, `loadAllData()`, `checkForImportedData()`
+- **Block 2**: Initializes `initDarkMode()` for the theme toggle
+
+⚠️ **DO NOT**:
+- Create additional `<script>` blocks
+- Try to call functions from one block in the other block's DOMContentLoaded
+- Move `initDarkMode()` call to Block 1 (it won't work - function is defined in Block 2)
 
 #### Code Organization Within the Script Block
 
