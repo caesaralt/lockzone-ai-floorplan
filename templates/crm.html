@@ -2308,12 +2308,15 @@
         let communications = [];
 
         // INIT
+        console.log('CRM Script Block 1: Loaded');
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('CRM: DOM Content Loaded - Initializing...');
             setupNavigation();
             loadAllData();
 
             // Check for imported data from Quote Automation
             checkForImportedData();
+            console.log('CRM: Initialization complete');
         });
 
         // Handle imported data from Quote Automation
@@ -4500,12 +4503,14 @@
         }
 
         function openModal(modalId) {
+            console.log('openModal called with ID:', modalId);
             const modal = document.getElementById(modalId);
             if (!modal) {
                 console.error(`Modal with ID "${modalId}" not found`);
                 return;
             }
             modal.classList.add('active');
+            console.log('Modal opened:', modalId);
             // Reset form if new
             const form = modal.querySelector('form');
             if (form) {
@@ -4666,10 +4671,15 @@
 </style>
 
 <script>
+    console.log('CRM Script Block 2: Loaded (AI Chat & Dark Mode)');
     // Initialize dark mode when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('CRM Block 2: DOM ready - Initializing dark mode');
         if (typeof initDarkMode === 'function') {
             initDarkMode();
+            console.log('CRM: Dark mode initialized');
+        } else {
+            console.error('CRM: initDarkMode function not found!');
         }
     });
 
