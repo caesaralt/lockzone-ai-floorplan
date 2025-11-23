@@ -1862,6 +1862,46 @@
                     <label>Description</label>
                     <textarea id="eventDescription" rows="3"></textarea>
                 </div>
+
+                <!-- LINKING SECTION -->
+                <div style="border-top: 2px solid var(--border-color); padding-top: 16px; margin-top: 16px; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">🔗 Link to Records</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Link to Job</label>
+                            <select id="eventLinkedJob">
+                                <option value="">-- No Job Linked --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Link to Quote</label>
+                            <select id="eventLinkedQuote">
+                                <option value="">-- No Quote Linked --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Link to Customer</label>
+                            <select id="eventLinkedCustomer">
+                                <option value="">-- No Customer Linked --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Link to Project</label>
+                            <select id="eventLinkedProject">
+                                <option value="">-- No Project Linked --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Link to Person</label>
+                        <select id="eventLinkedPerson">
+                            <option value="">-- No Person Linked --</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Color</label>
@@ -2608,6 +2648,7 @@
                 const data = await res.json();
                 if (data.success) {
                     customers = data.customers;
+                    window.allCustomers = customers; // Store globally for event linking
                     renderCustomers();
                     populateCustomerDropdowns();
                 }
@@ -2741,6 +2782,7 @@
                 const data = await res.json();
                 if (data.success) {
                     projects = data.projects;
+                    window.allProjects = projects; // Store globally for event linking
                     renderProjects();
                 }
             } catch (e) {
@@ -3079,6 +3121,7 @@
                 const data = await res.json();
                 if (data.success) {
                     quotes = data.quotes;
+                    window.allQuotes = quotes; // Store globally for event linking
                     renderQuotes();
                     populateQuoteCustomerSelect();
                 }
@@ -4403,11 +4446,19 @@
         }
 
         function openModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
+            const modal = document.getElementById(modalId);
+            if (!modal) {
+                console.error(`Modal with ID "${modalId}" not found`);
+                return;
+            }
+            modal.classList.add('active');
             // Reset form if new
-            const form = document.querySelector(`#${modalId} form`);
-            if (form && !form.querySelector('input[type="hidden"]').value) {
-                form.reset();
+            const form = modal.querySelector('form');
+            if (form) {
+                const hiddenInput = form.querySelector('input[type="hidden"]');
+                if (hiddenInput && !hiddenInput.value) {
+                    form.reset();
+                }
             }
         }
 
@@ -5119,6 +5170,10 @@
             const res = await fetch(`/api/crm/people?type=${type}`);
             const data = await res.json();
             if (data.success) {
+                // Store globally for event linking
+                if (!window.allPeople) window.allPeople = [];
+                // Add or update people for this type
+                window.allPeople = window.allPeople.filter(p => p.type !== type).concat(data.people);
                 renderPeople(data.people, type);
             }
         } catch (e) {
@@ -5312,6 +5367,10 @@
             const res = await fetch(`/api/crm/jobs?status=${status}`);
             const data = await res.json();
             if (data.success) {
+                // Store globally for event linking
+                if (!window.allJobs) window.allJobs = [];
+                // Add or update jobs for this status
+                window.allJobs = window.allJobs.filter(j => j.status !== status).concat(data.jobs);
                 renderJobs(data.jobs, status);
             }
         } catch (e) {
@@ -6121,8 +6180,80 @@
         document.getElementById('eventColor').value = '#3b82f6';
         document.getElementById('eventReminder').value = '0';
 
+        // Reset linking fields
+        if (document.getElementById('eventLinkedJob')) document.getElementById('eventLinkedJob').value = '';
+        if (document.getElementById('eventLinkedQuote')) document.getElementById('eventLinkedQuote').value = '';
+        if (document.getElementById('eventLinkedCustomer')) document.getElementById('eventLinkedCustomer').value = '';
+        if (document.getElementById('eventLinkedProject')) document.getElementById('eventLinkedProject').value = '';
+        if (document.getElementById('eventLinkedPerson')) document.getElementById('eventLinkedPerson').value = '';
+
+        // Populate linking dropdowns with available data
+        populateEventLinkingDropdowns();
+
         document.querySelector('#eventModal h2').textContent = 'Schedule Event';
         openModal('eventModal');
+    }
+
+    function populateEventLinkingDropdowns() {
+        // Jobs
+        const jobsSelect = document.getElementById('eventLinkedJob');
+        if (jobsSelect && window.allJobs) {
+            jobsSelect.innerHTML = '<option value="">-- No Job Linked --</option>';
+            window.allJobs.forEach(job => {
+                const opt = document.createElement('option');
+                opt.value = job.id;
+                opt.textContent = `${job.name || job.title || 'Job #' + job.id}`;
+                jobsSelect.appendChild(opt);
+            });
+        }
+
+        // Quotes
+        const quotesSelect = document.getElementById('eventLinkedQuote');
+        if (quotesSelect && window.allQuotes) {
+            quotesSelect.innerHTML = '<option value="">-- No Quote Linked --</option>';
+            window.allQuotes.forEach(quote => {
+                const opt = document.createElement('option');
+                opt.value = quote.id;
+                opt.textContent = `Quote #${quote.id} - ${quote.customer_name || ''}`;
+                quotesSelect.appendChild(opt);
+            });
+        }
+
+        // Customers
+        const customersSelect = document.getElementById('eventLinkedCustomer');
+        if (customersSelect && window.allCustomers) {
+            customersSelect.innerHTML = '<option value="">-- No Customer Linked --</option>';
+            window.allCustomers.forEach(customer => {
+                const opt = document.createElement('option');
+                opt.value = customer.id;
+                opt.textContent = customer.name || `Customer #${customer.id}`;
+                customersSelect.appendChild(opt);
+            });
+        }
+
+        // Projects
+        const projectsSelect = document.getElementById('eventLinkedProject');
+        if (projectsSelect && window.allProjects) {
+            projectsSelect.innerHTML = '<option value="">-- No Project Linked --</option>';
+            window.allProjects.forEach(project => {
+                const opt = document.createElement('option');
+                opt.value = project.id;
+                opt.textContent = project.name || `Project #${project.id}`;
+                projectsSelect.appendChild(opt);
+            });
+        }
+
+        // People
+        const peopleSelect = document.getElementById('eventLinkedPerson');
+        if (peopleSelect && window.allPeople) {
+            peopleSelect.innerHTML = '<option value="">-- No Person Linked --</option>';
+            window.allPeople.forEach(person => {
+                const opt = document.createElement('option');
+                opt.value = person.id;
+                opt.textContent = `${person.name || ''} (${person.type || ''})`.trim();
+                peopleSelect.appendChild(opt);
+            });
+        }
     }
 
     function editCalendarEvent(id) {
@@ -6167,7 +6298,12 @@
             location: document.getElementById('eventLocation').value,
             description: document.getElementById('eventDescription').value,
             color: document.getElementById('eventColor').value,
-            reminder_minutes: parseInt(document.getElementById('eventReminder').value) || 0
+            reminder_minutes: parseInt(document.getElementById('eventReminder').value) || 0,
+            linked_job_id: document.getElementById('eventLinkedJob')?.value || null,
+            linked_quote_id: document.getElementById('eventLinkedQuote')?.value || null,
+            linked_customer_id: document.getElementById('eventLinkedCustomer')?.value || null,
+            linked_project_id: document.getElementById('eventLinkedProject')?.value || null,
+            linked_person_id: document.getElementById('eventLinkedPerson')?.value || null
         };
 
         try {
