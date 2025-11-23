@@ -2314,6 +2314,9 @@
 
             // Check for imported data from Quote Automation
             checkForImportedData();
+
+            // Initialize dark mode toggle
+            initDarkMode();
         });
 
         // Handle imported data from Quote Automation
@@ -6432,43 +6435,45 @@
     // DARK MODE TOGGLE
     // ============================================================================
 
-    const themeToggle = document.getElementById('themeToggle');
-    const sunIcon = document.getElementById('sunIcon');
-    const moonIcon = document.getElementById('moonIcon');
-    const htmlElement = document.documentElement;
+    function initDarkMode() {
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
 
-    if (themeToggle && sunIcon && moonIcon) {
-        // Check for saved theme preference or default to 'light' mode
-        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (themeToggle && sunIcon && moonIcon) {
+            // Check for saved theme preference or default to 'light' mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
 
-        // Set initial theme
-        if (currentTheme === 'dark') {
-            htmlElement.setAttribute('data-theme', 'dark');
-            sunIcon.style.display = 'none';
-            moonIcon.style.display = 'block';
-        }
-
-        // Toggle theme on button click
-        themeToggle.addEventListener('click', function() {
-            const theme = htmlElement.getAttribute('data-theme');
-
-            if (theme === 'dark') {
-                htmlElement.setAttribute('data-theme', 'light');
-                localStorage.setItem('theme', 'light');
-                sunIcon.style.display = 'block';
-                moonIcon.style.display = 'none';
-            } else {
+            // Set initial theme
+            if (currentTheme === 'dark') {
                 htmlElement.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
                 sunIcon.style.display = 'none';
                 moonIcon.style.display = 'block';
             }
 
-            // Reinitialize charts with new theme colors
-            setTimeout(() => {
-                loadStats();
-            }, 100);
-        });
+            // Toggle theme on button click
+            themeToggle.addEventListener('click', function() {
+                const theme = htmlElement.getAttribute('data-theme');
+
+                if (theme === 'dark') {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                } else {
+                    htmlElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                }
+
+                // Reinitialize charts with new theme colors
+                setTimeout(() => {
+                    loadStats();
+                }, 100);
+            });
+        }
     }
 </script>
 
