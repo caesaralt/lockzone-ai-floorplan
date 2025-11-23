@@ -166,11 +166,62 @@
             gap: 12px;
         }
 
+        .nav-item span {
+            font-size: 24px; /* Make menu icons larger */
+        }
+
         .nav-item:hover { background: var(--hover-bg); }
         .nav-item.active {
             background: #556B2F;
             color: white;
             font-weight: 600;
+        }
+
+        /* Collapsible Menu Styles */
+        .nav-section-title {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        .nav-section-title::after {
+            content: '▼';
+            position: absolute;
+            right: 24px;
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .nav-section-title.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .nav-section-items {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .nav-section-items.collapsed {
+            max-height: 0;
+        }
+
+        /* Mobile: subcategories appear on click */
+        @media (max-width: 768px) {
+            .nav-section-items.collapsed {
+                max-height: 0;
+            }
+        }
+
+        /* Desktop: subcategories appear on hover */
+        @media (min-width: 769px) {
+            .nav-section:hover .nav-section-items.collapsed {
+                max-height: 1000px;
+            }
+
+            .nav-section:hover .nav-section-title.collapsed::after {
+                transform: rotate(0deg);
+            }
         }
 
         /* MAIN CONTENT */
@@ -548,99 +599,113 @@
 
         <!-- PEOPLE -->
         <div class="nav-section">
-            <div class="nav-section-title">People</div>
-            <div class="nav-item" data-section="people-employees">
-                <span>👔</span> Employees
-            </div>
-            <div class="nav-item" data-section="people-customers">
-                <span>👥</span> Customers
-            </div>
-            <div class="nav-item" data-section="people-suppliers">
-                <span>🏭</span> Suppliers
-            </div>
-            <div class="nav-item" data-section="people-contractors">
-                <span>🔧</span> Contractors
-            </div>
-            <div class="nav-item" data-section="people-contacts">
-                <span>📇</span> Contacts
+            <div class="nav-section-title collapsed">People</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="people-employees">
+                    <span>👔</span> Employees
+                </div>
+                <div class="nav-item" data-section="people-customers">
+                    <span>👥</span> Customers
+                </div>
+                <div class="nav-item" data-section="people-suppliers">
+                    <span>🏭</span> Suppliers
+                </div>
+                <div class="nav-item" data-section="people-contractors">
+                    <span>🔧</span> Contractors
+                </div>
+                <div class="nav-item" data-section="people-contacts">
+                    <span>📇</span> Contacts
+                </div>
             </div>
         </div>
 
         <!-- QUOTES -->
         <div class="nav-section">
-            <div class="nav-section-title">Quotes</div>
-            <div class="nav-item" data-section="quotes-open">
-                <span>📋</span> Open
-            </div>
-            <div class="nav-item" data-section="quotes-sent">
-                <span>📤</span> Sent
-            </div>
-            <div class="nav-item" data-section="quotes-expired">
-                <span>⏰</span> Expired
-            </div>
-            <div class="nav-item" data-section="quotes-supplier">
-                <span>📥</span> Supplier Quotes
+            <div class="nav-section-title collapsed">Quotes</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="quotes-open">
+                    <span>📋</span> Open
+                </div>
+                <div class="nav-item" data-section="quotes-sent">
+                    <span>📤</span> Sent
+                </div>
+                <div class="nav-item" data-section="quotes-expired">
+                    <span>⏰</span> Expired
+                </div>
+                <div class="nav-item" data-section="quotes-supplier">
+                    <span>📥</span> Supplier Quotes
+                </div>
             </div>
         </div>
 
         <!-- JOBS -->
         <div class="nav-section">
-            <div class="nav-section-title">Jobs</div>
-            <div class="nav-item" data-section="jobs-in-progress">
-                <span>⚙️</span> In Progress
-            </div>
-            <div class="nav-item" data-section="jobs-upcoming">
-                <span>📅</span> Upcoming
-            </div>
-            <div class="nav-item" data-section="jobs-pending">
-                <span>⏸️</span> Pending
-            </div>
-            <div class="nav-item" data-section="jobs-finished">
-                <span>✅</span> Finished
-            </div>
-            <div class="nav-item" data-section="jobs-recurring">
-                <span>🔄</span> Recurring
+            <div class="nav-section-title collapsed">Jobs</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="jobs-in-progress">
+                    <span>⚙️</span> In Progress
+                </div>
+                <div class="nav-item" data-section="jobs-upcoming">
+                    <span>📅</span> Upcoming
+                </div>
+                <div class="nav-item" data-section="jobs-pending">
+                    <span>⏸️</span> Pending
+                </div>
+                <div class="nav-item" data-section="jobs-finished">
+                    <span>✅</span> Finished
+                </div>
+                <div class="nav-item" data-section="jobs-recurring">
+                    <span>🔄</span> Recurring
+                </div>
             </div>
         </div>
 
         <!-- SCHEDULES -->
         <div class="nav-section">
-            <div class="nav-section-title">Schedules</div>
-            <div class="nav-item" data-section="schedules-calendar">
-                <span>📆</span> Calendar
+            <div class="nav-section-title collapsed">Schedules</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="schedules-calendar">
+                    <span>📆</span> Calendar
+                </div>
             </div>
         </div>
 
         <!-- MATERIALS -->
         <div class="nav-section">
-            <div class="nav-section-title">Materials</div>
-            <div class="nav-item" data-section="materials-stock">
-                <span>📦</span> Stock
-            </div>
-            <div class="nav-item" data-section="materials-orders">
-                <span>🛒</span> Orders
+            <div class="nav-section-title collapsed">Materials</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="materials-stock">
+                    <span>📦</span> Stock
+                </div>
+                <div class="nav-item" data-section="materials-orders">
+                    <span>🛒</span> Orders
+                </div>
             </div>
         </div>
 
         <!-- PAYMENTS -->
         <div class="nav-section">
-            <div class="nav-section-title">Payments</div>
-            <div class="nav-item" data-section="payments-to-suppliers">
-                <span>💸</span> To Suppliers
-            </div>
-            <div class="nav-item" data-section="payments-to-us">
-                <span>💰</span> To Us
+            <div class="nav-section-title collapsed">Payments</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="payments-to-suppliers">
+                    <span>💸</span> To Suppliers
+                </div>
+                <div class="nav-item" data-section="payments-to-us">
+                    <span>💰</span> To Us
+                </div>
             </div>
         </div>
 
         <!-- SYSTEM -->
         <div class="nav-section">
-            <div class="nav-section-title">System</div>
-            <div class="nav-item" data-section="integrations">
-                <span>🔗</span> Integrations
-            </div>
-            <div class="nav-item" data-section="google-integrations">
-                <span>🔌</span> Google Integration
+            <div class="nav-section-title collapsed">System</div>
+            <div class="nav-section-items collapsed">
+                <div class="nav-item" data-section="integrations">
+                    <span>🔗</span> Integrations
+                </div>
+                <div class="nav-item" data-section="google-integrations">
+                    <span>🔌</span> Google Integration
+                </div>
             </div>
         </div>
     </div>
@@ -2344,6 +2409,20 @@
                 item.addEventListener('click', function() {
                     const section = this.getAttribute('data-section');
                     showSection(section);
+                });
+            });
+
+            // Setup collapsible menu (for mobile)
+            document.querySelectorAll('.nav-section-title').forEach(title => {
+                title.addEventListener('click', function() {
+                    // On mobile, toggle the collapsed state on click
+                    if (window.innerWidth <= 768) {
+                        this.classList.toggle('collapsed');
+                        const items = this.nextElementSibling;
+                        if (items && items.classList.contains('nav-section-items')) {
+                            items.classList.toggle('collapsed');
+                        }
+                    }
                 });
             });
         }
@@ -6266,37 +6345,39 @@
     const moonIcon = document.getElementById('moonIcon');
     const htmlElement = document.documentElement;
 
-    // Check for saved theme preference or default to 'light' mode
-    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (themeToggle && sunIcon && moonIcon) {
+        // Check for saved theme preference or default to 'light' mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
 
-    // Set initial theme
-    if (currentTheme === 'dark') {
-        htmlElement.setAttribute('data-theme', 'dark');
-        sunIcon.style.display = 'none';
-        moonIcon.style.display = 'block';
-    }
-
-    // Toggle theme on button click
-    themeToggle.addEventListener('click', function() {
-        const theme = htmlElement.getAttribute('data-theme');
-
-        if (theme === 'dark') {
-            htmlElement.setAttribute('data-theme', 'light');
-            localStorage.setItem('theme', 'light');
-            sunIcon.style.display = 'block';
-            moonIcon.style.display = 'none';
-        } else {
+        // Set initial theme
+        if (currentTheme === 'dark') {
             htmlElement.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
             sunIcon.style.display = 'none';
             moonIcon.style.display = 'block';
         }
 
-        // Reinitialize charts with new theme colors
-        setTimeout(() => {
-            loadStats();
-        }, 100);
-    });
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', function() {
+            const theme = htmlElement.getAttribute('data-theme');
+
+            if (theme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+
+            // Reinitialize charts with new theme colors
+            setTimeout(() => {
+                loadStats();
+            }, 100);
+        });
+    }
 </script>
 
 <!-- Footer -->
