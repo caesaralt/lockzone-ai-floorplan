@@ -2314,9 +2314,6 @@
 
             // Check for imported data from Quote Automation
             checkForImportedData();
-
-            // Initialize dark mode toggle
-            initDarkMode();
         });
 
         // Handle imported data from Quote Automation
@@ -4669,6 +4666,13 @@
 </style>
 
 <script>
+    // Initialize dark mode when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof initDarkMode === 'function') {
+            initDarkMode();
+        }
+    });
+
     let agentMode = false;
 
     function toggleAIChat() {
