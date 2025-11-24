@@ -139,6 +139,7 @@ CALENDAR_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'calendar.json')
 TECHNICIANS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'technicians.json')
 INVENTORY_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'inventory.json')
 SUPPLIERS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'suppliers.json')
+PRICE_CLASSES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'price_classes.json')
 INTEGRATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'integrations.json')
 QUOTES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'quotes.json')
 STOCK_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'stock.json')
@@ -7678,6 +7679,59 @@ def handle_inventory_item(item_id):
         elif request.method == 'DELETE':
             inventory.pop(idx)
             save_json_file(INVENTORY_FILE, inventory)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/price-classes', methods=['GET', 'POST'])
+def handle_price_classes():
+    """Handle price class management for automation symbols"""
+    try:
+        if request.method == 'GET':
+            price_classes = load_json_file(PRICE_CLASSES_FILE, [])
+            return jsonify({'success': True, 'price_classes': price_classes})
+        else:
+            data = request.json
+            price_classes = load_json_file(PRICE_CLASSES_FILE, [])
+            price_class = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', ''),
+                'description': data.get('description', ''),
+                'icon': data.get('icon', None),  # Base64 encoded image
+                'items': data.get('items', []),  # List of inventory items with quantities
+                'created_at': datetime.now().isoformat()
+            }
+            price_classes.append(price_class)
+            save_json_file(PRICE_CLASSES_FILE, price_classes)
+            return jsonify({'success': True, 'price_class': price_class})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/price-classes/<class_id>', methods=['PUT', 'DELETE'])
+def handle_price_class_item(class_id):
+    """Handle individual price class operations"""
+    try:
+        price_classes = load_json_file(PRICE_CLASSES_FILE, [])
+        idx = next((i for i, pc in enumerate(price_classes) if pc['id'] == class_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Price class not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.json
+            price_class = price_classes[idx]
+            for field in ['name', 'description', 'icon', 'items']:
+                if field in data:
+                    price_class[field] = data[field]
+            price_class['updated_at'] = datetime.now().isoformat()
+            price_classes[idx] = price_class
+            save_json_file(PRICE_CLASSES_FILE, price_classes)
+            return jsonify({'success': True, 'price_class': price_class})
+
+        elif request.method == 'DELETE':
+            price_classes.pop(idx)
+            save_json_file(PRICE_CLASSES_FILE, price_classes)
             return jsonify({'success': True})
 
     except Exception as e:
