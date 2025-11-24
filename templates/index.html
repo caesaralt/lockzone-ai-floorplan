@@ -567,6 +567,103 @@
         let editorCanvas = null;
         let currentQuoteData = null;
         let componentSymbols = [];
+        let priceClasses = [];  // Store loaded price classes
+
+        // Load price classes from CRM
+        async function loadPriceClasses() {
+            try {
+                const response = await fetch('/api/crm/price-classes');
+                const data = await response.json();
+                if (data.success && data.price_classes) {
+                    priceClasses = data.price_classes;
+                    renderPriceClassButtons();
+                }
+            } catch (error) {
+                console.error('Error loading price classes:', error);
+            }
+        }
+
+        // Render price class symbol buttons
+        function renderPriceClassButtons() {
+            const container = document.getElementById('priceClassSymbols');
+            if (!priceClasses || priceClasses.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            // Clear existing buttons (except the label)
+            const label = container.querySelector('span');
+            container.innerHTML = '';
+            container.appendChild(label);
+
+            // Add button for each price class
+            priceClasses.forEach(priceClass => {
+                const button = document.createElement('button');
+                button.onclick = () => addPriceClassSymbol(priceClass);
+                button.className = 'group relative px-3 py-2 bg-purple-50 hover:bg-purple-100 border-2 border-purple-400 rounded-lg transition-all duration-200 transform hover:scale-105';
+                button.title = `Add ${priceClass.name}`;
+
+                // Icon or emoji
+                const iconSpan = document.createElement('span');
+                if (priceClass.icon) {
+                    const img = document.createElement('img');
+                    img.src = priceClass.icon;
+                    img.style.width = '32px';
+                    img.style.height = '32px';
+                    img.style.objectFit = 'contain';
+                    iconSpan.appendChild(img);
+                } else {
+                    iconSpan.textContent = '🏷️';
+                    iconSpan.className = 'text-2xl';
+                }
+                button.appendChild(iconSpan);
+
+                // Tooltip
+                const tooltip = document.createElement('span');
+                tooltip.className = 'absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10';
+
+                // Calculate total price
+                const totalPrice = priceClass.items ? priceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+                tooltip.textContent = `${priceClass.name} - $${totalPrice.toFixed(2)}`;
+                button.appendChild(tooltip);
+
+                container.appendChild(button);
+            });
+
+            container.style.display = 'flex';
+        }
+
+        // Add price class symbol with all its items
+        function addPriceClassSymbol(priceClass) {
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            // Create component with price class data
+            const newComponent = {
+                id: `priceclass_${priceClass.id}_${Date.now()}`,
+                type: 'price_class',
+                priceClassName: priceClass.name,
+                priceClassId: priceClass.id,
+                priceClassIcon: priceClass.icon,
+                items: priceClass.items || [],
+                location: { x: 0.5, y: 0.5 },
+                room: 'New'
+            };
+
+            addComponentToCanvas(newComponent, componentSymbols.length);
+            updateSymbolCount();
+
+            const totalPrice = priceClass.items ? priceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+            showToast(`${priceClass.name} added ($${totalPrice.toFixed(2)})`, 'success');
+            updateLiveQuoteTotal();
+            canvas.renderAll();
+        }
+
+        // Load price classes on page load
+        loadPriceClasses();
 
         function displayResults(data) {
             currentQuoteData = data;
@@ -694,6 +791,11 @@
                                         </button>
                                     </div>
 
+                                    <!-- Price Class Symbols (dynamically populated) -->
+                                    <div id="priceClassSymbols" class="flex items-center space-x-2 border-l border-gray-300 pl-3" style="display: none;">
+                                        <span class="text-sm font-semibold text-gray-700">Price Classes:</span>
+                                    </div>
+
                                     <!-- Zoom Controls -->
                                     <div class="flex items-center space-x-2 border-l border-gray-300 pl-3">
                                         <span class="text-sm font-semibold text-gray-700">Zoom:</span>
@@ -743,9 +845,9 @@
                             </div>
 
                             <!-- Canvas Container -->
-                            <div id="canvasContainer" class="p-6 bg-gray-100" style="flex: 1; overflow: auto;">
-                                <div class="relative bg-white rounded-lg shadow-inner" style="min-height: 800px; max-height: 1200px; overflow: auto;">
-                                    <canvas id="floorplanCanvas" class="w-full"></canvas>
+                            <div id="canvasContainer" class="p-6 bg-gray-100" style="flex: 1; overflow: auto; min-height: 100vh;">
+                                <div class="relative bg-white rounded-lg shadow-inner" style="min-height: 1400px; height: auto; overflow: visible;">
+                                    <canvas id="floorplanCanvas" class="w-full" style="min-height: 1400px;"></canvas>
                                 </div>
                             </div>
 
@@ -966,6 +1068,17 @@
                                     <span class="text-3xl font-bold text-olive-600">$${data.costs.grand_total.toFixed(2)}</span>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Save to CRM Button -->
+                        <div class="mb-6">
+                            <button onclick="saveQuoteToCRM()" class="w-full group bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-5 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-3">
+                                <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                                </svg>
+                                <span class="text-xl">💾 Save Complete Quote to CRM</span>
+                            </button>
+                            <p class="text-center text-sm text-gray-600 mt-2">Saves quote details, pricing, and floorplan with markups to CRM</p>
                         </div>
 
                         <!-- Download & Export Section -->
@@ -1207,12 +1320,33 @@
                 'security': { emoji: '🔐', color: '#FCA5A5', borderColor: '#EF4444' },
                 'security_access': { emoji: '🔐', color: '#FCA5A5', borderColor: '#EF4444' },
                 'climate': { emoji: '🌡️', color: '#FDBA74', borderColor: '#F97316' },
-                'audio': { emoji: '🔊', color: '#F9A8D4', borderColor: '#EC4899' }
+                'audio': { emoji: '🔊', color: '#F9A8D4', borderColor: '#EC4899' },
+                'price_class': { emoji: '🏷️', color: '#DDD6FE', borderColor: '#8B5CF6' }
             };
 
             const symbolInfo = symbolMap[component.type] || { emoji: '📍', color: '#E5E7EB', borderColor: '#9CA3AF' };
 
-            // Create group with background circle and emoji
+            // For price classes, use custom icon if available
+            let symbolElement;
+            if (component.type === 'price_class' && component.priceClassIcon) {
+                // Create image element for price class icon
+                fabric.Image.fromURL(component.priceClassIcon, function(img) {
+                    img.set({
+                        scaleX: 40 / img.width,
+                        scaleY: 40 / img.height,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    // Replace text with image in group
+                    const group = componentSymbols[componentSymbols.length - 1];
+                    if (group) {
+                        group._objects[1] = img;
+                        canvas.renderAll();
+                    }
+                });
+            }
+
+            // Create group with background circle and emoji/icon
             const circle = new fabric.Circle({
                 radius: 20,
                 fill: symbolInfo.color,
@@ -1240,7 +1374,16 @@
             });
 
             // Store component data with enhanced structure
-            if (!component.components) {
+            if (component.type === 'price_class' && component.items) {
+                // For price classes, use the assigned items
+                component.components = component.items.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.unit_price
+                }));
+                component.totalPrice = component.items.reduce((sum, item) =>
+                    sum + (item.quantity * item.unit_price), 0);
+            } else if (!component.components) {
                 component.components = [{
                     name: component.type || 'Main Component',
                     quantity: component.quantity || 1,
@@ -1975,6 +2118,104 @@
             link.click();
 
             showToast('Floorplan PDF download complete', 'success');
+        }
+
+        // =============================
+        // SAVE TO CRM
+        // =============================
+
+        async function saveQuoteToCRM() {
+            if (!currentQuoteData) {
+                showToast('No quote data to save', 'error');
+                return;
+            }
+
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            try {
+                showToast('Saving quote to CRM...', 'info');
+
+                // Deselect all objects for clean export
+                canvas.discardActiveObject();
+                canvas.renderAll();
+
+                // Export floorplan as base64 image
+                const floorplanImage = canvas.toDataURL({
+                    format: 'png',
+                    quality: 0.9,
+                    multiplier: 2  // Higher resolution
+                });
+
+                // Collect all component data with modifications
+                const components = componentSymbols.map(obj => ({
+                    id: obj.componentData.id,
+                    type: obj.componentData.type,
+                    room: obj.componentData.room,
+                    position: { x: obj.left, y: obj.top },
+                    scale: { x: obj.scaleX || 1, y: obj.scaleY || 1 },
+                    components: obj.componentData.components || [],
+                    totalPrice: obj.componentData.totalPrice || 0
+                }));
+
+                // Calculate total price from all symbols
+                let totalPrice = 0;
+                componentSymbols.forEach(symbol => {
+                    if (symbol.componentData && symbol.componentData.totalPrice) {
+                        totalPrice += symbol.componentData.totalPrice;
+                    }
+                });
+
+                // Prepare quote data for CRM
+                const quoteData = {
+                    title: currentQuoteData.project_name || 'Untitled Quote',
+                    description: `AI-generated quote from Quote Automation\n\nProperty Type: ${currentQuoteData.analysis?.property_type || 'Unknown'}\nTotal Rooms: ${currentQuoteData.analysis?.total_rooms || 0}`,
+                    status: 'draft',
+                    total_amount: totalPrice,
+                    costs: currentQuoteData.costs,
+                    analysis: currentQuoteData.analysis,
+                    components: components,
+                    floorplan_image: floorplanImage,
+                    canvas_state: canvas.toJSON(),  // Save canvas state for editing later
+                    source: 'quote-automation',
+                    created_at: new Date().toISOString()
+                };
+
+                // Send to backend API
+                const response = await fetch('/api/crm/quotes/save-from-automation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(quoteData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('Quote saved to CRM successfully!', 'success');
+
+                    // Ask user if they want to view in CRM
+                    setTimeout(() => {
+                        if (confirm('Quote saved! Would you like to view it in the CRM?')) {
+                            window.location.href = '/crm';
+                        }
+                    }, 500);
+                } else {
+                    throw new Error(result.error || 'Failed to save quote');
+                }
+
+            } catch (error) {
+                console.error('Error saving quote to CRM:', error);
+                showToast(`Failed to save: ${error.message}`, 'error');
+            }
         }
 
         // =============================
