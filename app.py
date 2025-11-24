@@ -2546,24 +2546,64 @@ def export_board_to_crm():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/crm/stock', methods=['GET'])
-def get_crm_stock():
-    """Get CRM stock data"""
-    try:
-        if os.path.exists(STOCK_FILE):
-            with open(STOCK_FILE, 'r') as f:
-                stock_data = json.load(f)
+@app.route('/api/crm/stock', methods=['GET', 'POST'])
+def get_or_create_crm_stock():
+    """Get or create CRM stock data"""
+    if request.method == 'GET':
+        try:
+            if os.path.exists(STOCK_FILE):
+                with open(STOCK_FILE, 'r') as f:
+                    stock_data = json.load(f)
+                    return jsonify({
+                        'success': True,
+                        'stock': stock_data if isinstance(stock_data, list) else []
+                    })
+            else:
                 return jsonify({
                     'success': True,
-                    'stock': stock_data if isinstance(stock_data, list) else []
+                    'stock': []
                 })
-        else:
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+
+            # Validate required fields
+            name = data.get('name', '').strip()
+            if not name:
+                return jsonify({'success': False, 'error': 'Stock item name is required'}), 400
+
+            # Load existing stock
+            stock_data = load_json_file(STOCK_FILE, [])
+
+            # Create new stock item
+            new_item = {
+                'id': str(uuid.uuid4()),
+                'name': name,
+                'sku': data.get('sku', ''),
+                'category': data.get('category', 'general'),
+                'quantity': int(data.get('quantity', 0)),
+                'unit_price': float(data.get('unit_price', 0)),
+                'location': data.get('location', ''),
+                'reorder_level': int(data.get('reorder_level', 5)),
+                'serial_numbers': data.get('serial_numbers', []),
+                'image': data.get('image', ''),  # Base64 encoded image
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+
+            stock_data.append(new_item)
+            save_json_file(STOCK_FILE, stock_data)
+
             return jsonify({
                 'success': True,
-                'stock': []
+                'id': new_item['id'],
+                'message': f'Stock item "{name}" created successfully'
             })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/crm/stock/add', methods=['POST'])
 def add_to_crm_stock():
@@ -6173,6 +6213,89 @@ def delete_quote_stock_item(quote_id, item_id):
             return jsonify({'success': False, 'error': 'Stock item not found'}), 404
 
         quote['stock_items'].pop(item_idx)
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/labour', methods=['GET', 'POST'])
+def handle_quote_labour(quote_id):
+    """Manage labour items linked to a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'labour_items' not in quote:
+            quote['labour_items'] = []
+
+        if request.method == 'GET':
+            # Calculate totals
+            total_cost = sum(item.get('total', 0) for item in quote['labour_items'])
+            total_hours = sum(item.get('hours', 0) for item in quote['labour_items'])
+
+            return jsonify({
+                'success': True,
+                'labour_items': quote['labour_items'],
+                'total': total_cost,
+                'total_hours': total_hours,
+                'quote_id': quote_id
+            })
+
+        else:  # POST - Add labour item
+            data = request.json
+            labour_item = {
+                'id': str(uuid.uuid4()),
+                'description': data.get('description', ''),
+                'hours': float(data.get('hours', 0)),
+                'rate': float(data.get('rate', 0)),
+                'total': float(data.get('total', 0)),
+                'added_at': datetime.now().isoformat()
+            }
+
+            quote['labour_items'].append(labour_item)
+            quote['updated_at'] = datetime.now().isoformat()
+            quotes[idx] = quote
+            save_json_file(QUOTES_FILE, quotes)
+
+            return jsonify({
+                'success': True,
+                'labour_item': labour_item,
+                'quote': quote
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/labour/<labour_id>', methods=['DELETE'])
+def delete_quote_labour(quote_id, labour_id):
+    """Remove a labour item from a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        if 'labour_items' not in quote:
+            return jsonify({'success': False, 'error': 'No labour items on this quote'}), 404
+
+        item_idx = next((i for i, l in enumerate(quote['labour_items']) if l['id'] == labour_id), None)
+
+        if item_idx is None:
+            return jsonify({'success': False, 'error': 'Labour item not found'}), 404
+
+        quote['labour_items'].pop(item_idx)
         quote['updated_at'] = datetime.now().isoformat()
         quotes[idx] = quote
         save_json_file(QUOTES_FILE, quotes)
