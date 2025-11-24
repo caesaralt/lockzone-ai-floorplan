@@ -2698,6 +2698,111 @@ def assign_item_to_job(job_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/crm/quotes/save-from-automation', methods=['POST'])
+def save_quote_from_automation():
+    """Save a quote from Quote Automation to CRM with floorplan"""
+    try:
+        quote_data = request.get_json()
+
+        if not quote_data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        # Generate unique ID for the quote
+        quote_id = f"quote_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{os.urandom(4).hex()}"
+
+        # Load existing quotes
+        quotes = []
+        if os.path.exists(QUOTES_FILE):
+            try:
+                with open(QUOTES_FILE, 'r') as f:
+                    quotes = json.load(f)
+            except:
+                quotes = []
+
+        # Prepare quote record
+        new_quote = {
+            'id': quote_id,
+            'title': quote_data.get('title', 'Untitled Quote'),
+            'description': quote_data.get('description', ''),
+            'status': quote_data.get('status', 'draft'),
+            'total_amount': quote_data.get('total_amount', 0),
+            'costs': quote_data.get('costs', {}),
+            'analysis': quote_data.get('analysis', {}),
+            'components': quote_data.get('components', []),
+            'source': 'quote-automation',
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+
+        # Save floorplan image if provided
+        floorplan_image = quote_data.get('floorplan_image')
+        if floorplan_image:
+            # Create floorplans directory if it doesn't exist
+            floorplans_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'floorplans')
+            os.makedirs(floorplans_dir, exist_ok=True)
+
+            # Save the base64 image to a file
+            image_filename = f"{quote_id}.png"
+            image_path = os.path.join(floorplans_dir, image_filename)
+
+            # Remove the data URL prefix if present
+            if ',' in floorplan_image:
+                floorplan_image = floorplan_image.split(',')[1]
+
+            # Decode and save
+            import base64
+            with open(image_path, 'wb') as f:
+                f.write(base64.b64decode(floorplan_image))
+
+            new_quote['floorplan_image'] = f"/api/crm/quotes/{quote_id}/floorplan"
+
+        # Save canvas state if provided (for future editing)
+        canvas_state = quote_data.get('canvas_state')
+        if canvas_state:
+            canvas_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'canvas_states')
+            os.makedirs(canvas_dir, exist_ok=True)
+
+            canvas_filename = f"{quote_id}.json"
+            canvas_path = os.path.join(canvas_dir, canvas_filename)
+
+            with open(canvas_path, 'w') as f:
+                json.dump(canvas_state, f, indent=2)
+
+            new_quote['canvas_state_file'] = canvas_filename
+
+        # Add to quotes list
+        quotes.append(new_quote)
+
+        # Save quotes file
+        with open(QUOTES_FILE, 'w') as f:
+            json.dump(quotes, f, indent=2)
+
+        return jsonify({
+            'success': True,
+            'quote_id': quote_id,
+            'message': 'Quote saved successfully to CRM'
+        })
+
+    except Exception as e:
+        print(f"Error saving quote from automation: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/floorplan')
+def get_quote_floorplan(quote_id):
+    """Get the floorplan image for a specific quote"""
+    try:
+        floorplans_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'floorplans')
+        image_path = os.path.join(floorplans_dir, f"{quote_id}.png")
+
+        if not os.path.exists(image_path):
+            return jsonify({'error': 'Floorplan not found'}), 404
+
+        return send_file(image_path, mimetype='image/png')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""

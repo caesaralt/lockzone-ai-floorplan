@@ -2302,6 +2302,45 @@
         </div>
     </div>
 
+    <!-- Floorplan Viewer Modal -->
+    <div id="floorplanViewerModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="floorplanViewerTitle">Quote Floorplan</h2>
+                <button class="close-btn" onclick="closeModal('floorplanViewerModal')">×</button>
+            </div>
+            <div style="padding: 24px;">
+                <p id="floorplanViewerDescription" style="color: var(--text-secondary); margin-bottom: 20px;"></p>
+
+                <!-- Floorplan Image -->
+                <div style="background: var(--bg-primary); border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center;">
+                    <img id="floorplanViewerImage" alt="Floorplan" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                </div>
+
+                <!-- Components List -->
+                <div id="floorplanComponentsList" style="display: none;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600;">
+                        Components & Pricing
+                    </h3>
+                    <div id="floorplanComponents" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Components will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeModal('floorplanViewerModal')">Close</button>
+                    <button class="btn btn-primary" onclick="downloadFloorplanFromModal()">
+                        <svg style="width: 18px; height: 18px; display: inline-block; margin-right: 6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Floorplan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // STATE
         let customers = [];
@@ -3213,6 +3252,7 @@
                             <tr>
                                 <th>Quote #</th>
                                 <th>Title</th>
+                                <th>Floorplan</th>
                                 <th>Customer</th>
                                 <th>Status</th>
                                 <th>Amount</th>
@@ -3226,13 +3266,24 @@
                                 const customer = customers.find(c => c.id === q.customer_id);
                                 const markupCount = (q.markups || []).length;
                                 const stockCount = (q.stock_items || []).length;
+                                const hasFloorplan = q.floorplan_image || q.source === 'quote-automation';
                                 return `
                                     <tr>
                                         <td><strong>${q.quote_number || '-'}</strong></td>
-                                        <td>${q.title}</td>
+                                        <td>
+                                            ${q.title}
+                                            ${q.source === 'quote-automation' ? '<span style="font-size: 10px; background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600;">AI</span>' : ''}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            ${hasFloorplan ? `
+                                                <button onclick="viewQuoteFloorplan('${q.id}')" style="border: none; background: none; cursor: pointer; padding: 0;" title="View floorplan">
+                                                    <img src="${q.floorplan_image}" alt="Floorplan preview" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                                                </button>
+                                            ` : '<span style="color: #999;">-</span>'}
+                                        </td>
                                         <td>${customer ? customer.name : '-'}</td>
                                         <td><span class="status-badge ${statusColors[q.status] || ''}">${q.status}</span></td>
-                                        <td>$${(q.quote_amount || 0).toLocaleString()}</td>
+                                        <td>$${(q.quote_amount || q.total_amount || 0).toLocaleString()}</td>
                                         <td>
                                             <button class="btn btn-secondary btn-small" onclick="openQuoteMarkupsModal('${q.id}')" style="display: flex; align-items: center; gap: 6px;">
                                                 <span>📎</span> ${markupCount} / ${stockCount} items
@@ -3318,6 +3369,75 @@
             } catch (e) {
                 alert('Error: ' + e.message);
             }
+        }
+
+        function viewQuoteFloorplan(quoteId) {
+            // Find the quote
+            const quote = quotes.find(q => q.id === quoteId);
+            if (!quote) {
+                alert('Quote not found');
+                return;
+            }
+
+            if (!quote.floorplan_image) {
+                alert('This quote does not have a floorplan');
+                return;
+            }
+
+            // Populate modal with quote details
+            const modal = document.getElementById('floorplanViewerModal');
+            document.getElementById('floorplanViewerTitle').textContent = quote.title || 'Quote Floorplan';
+            document.getElementById('floorplanViewerDescription').textContent = quote.description || '';
+            document.getElementById('floorplanViewerImage').src = quote.floorplan_image;
+
+            // Display components if available
+            const componentsContainer = document.getElementById('floorplanComponentsList');
+            if (quote.components && quote.components.length > 0) {
+                componentsContainer.style.display = 'block';
+                const componentsList = document.getElementById('floorplanComponents');
+                componentsList.innerHTML = quote.components.map(comp => {
+                    const totalPrice = comp.totalPrice || 0;
+                    const componentsDetails = (comp.components || []).map(c =>
+                        `${c.name} (${c.quantity}x @ $${c.price})`
+                    ).join(', ');
+                    return `
+                        <div style="padding: 12px; background: var(--card-bg); border-radius: 8px; margin-bottom: 8px;">
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                ${comp.type || 'Component'} - ${comp.room || 'Unknown Room'}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                                ${componentsDetails}
+                            </div>
+                            <div style="font-weight: 600; color: var(--primary-color);">
+                                Total: $${totalPrice.toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                componentsContainer.style.display = 'none';
+            }
+
+            // Open the modal
+            openModal('floorplanViewerModal');
+        }
+
+        function downloadFloorplanFromModal() {
+            const img = document.getElementById('floorplanViewerImage');
+            const title = document.getElementById('floorplanViewerTitle').textContent;
+
+            if (!img.src) {
+                alert('No floorplan to download');
+                return;
+            }
+
+            // Create a temporary link to download the image
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_floorplan.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function openQuoteModal(status = 'draft') {

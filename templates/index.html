@@ -968,6 +968,17 @@
                             </div>
                         </div>
 
+                        <!-- Save to CRM Button -->
+                        <div class="mb-6">
+                            <button onclick="saveQuoteToCRM()" class="w-full group bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-5 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-3">
+                                <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                                </svg>
+                                <span class="text-xl">💾 Save Complete Quote to CRM</span>
+                            </button>
+                            <p class="text-center text-sm text-gray-600 mt-2">Saves quote details, pricing, and floorplan with markups to CRM</p>
+                        </div>
+
                         <!-- Download & Export Section -->
                         <div class="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-6">
                             <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
@@ -1975,6 +1986,104 @@
             link.click();
 
             showToast('Floorplan PDF download complete', 'success');
+        }
+
+        // =============================
+        // SAVE TO CRM
+        // =============================
+
+        async function saveQuoteToCRM() {
+            if (!currentQuoteData) {
+                showToast('No quote data to save', 'error');
+                return;
+            }
+
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            try {
+                showToast('Saving quote to CRM...', 'info');
+
+                // Deselect all objects for clean export
+                canvas.discardActiveObject();
+                canvas.renderAll();
+
+                // Export floorplan as base64 image
+                const floorplanImage = canvas.toDataURL({
+                    format: 'png',
+                    quality: 0.9,
+                    multiplier: 2  // Higher resolution
+                });
+
+                // Collect all component data with modifications
+                const components = componentSymbols.map(obj => ({
+                    id: obj.componentData.id,
+                    type: obj.componentData.type,
+                    room: obj.componentData.room,
+                    position: { x: obj.left, y: obj.top },
+                    scale: { x: obj.scaleX || 1, y: obj.scaleY || 1 },
+                    components: obj.componentData.components || [],
+                    totalPrice: obj.componentData.totalPrice || 0
+                }));
+
+                // Calculate total price from all symbols
+                let totalPrice = 0;
+                componentSymbols.forEach(symbol => {
+                    if (symbol.componentData && symbol.componentData.totalPrice) {
+                        totalPrice += symbol.componentData.totalPrice;
+                    }
+                });
+
+                // Prepare quote data for CRM
+                const quoteData = {
+                    title: currentQuoteData.project_name || 'Untitled Quote',
+                    description: `AI-generated quote from Quote Automation\n\nProperty Type: ${currentQuoteData.analysis?.property_type || 'Unknown'}\nTotal Rooms: ${currentQuoteData.analysis?.total_rooms || 0}`,
+                    status: 'draft',
+                    total_amount: totalPrice,
+                    costs: currentQuoteData.costs,
+                    analysis: currentQuoteData.analysis,
+                    components: components,
+                    floorplan_image: floorplanImage,
+                    canvas_state: canvas.toJSON(),  // Save canvas state for editing later
+                    source: 'quote-automation',
+                    created_at: new Date().toISOString()
+                };
+
+                // Send to backend API
+                const response = await fetch('/api/crm/quotes/save-from-automation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(quoteData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('Quote saved to CRM successfully!', 'success');
+
+                    // Ask user if they want to view in CRM
+                    setTimeout(() => {
+                        if (confirm('Quote saved! Would you like to view it in the CRM?')) {
+                            window.location.href = '/crm';
+                        }
+                    }, 500);
+                } else {
+                    throw new Error(result.error || 'Failed to save quote');
+                }
+
+            } catch (error) {
+                console.error('Error saving quote to CRM:', error);
+                showToast(`Failed to save: ${error.message}`, 'error');
+            }
         }
 
         // =============================
