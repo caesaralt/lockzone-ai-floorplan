@@ -1800,6 +1800,48 @@
                 <div id="quoteStockItemsList"></div>
             </div>
 
+            <!-- Labour Section -->
+            <div class="card" style="margin-top: 20px; border: 2px solid #FF9800;">
+                <div class="card-header" style="background: #FFF3E0; margin: -1px; padding: 16px; border-radius: 6px 6px 0 0;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #E65100;">👷 Labour Costs</h3>
+                </div>
+                <div style="padding: 16px;">
+                    <form id="addQuoteLabourForm" onsubmit="addQuoteLabour(event)" style="margin-bottom: 16px;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Description</label>
+                                <input type="text" id="labourDescription" placeholder="e.g., Installation, Configuration" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Hours</label>
+                                <input type="number" id="labourHours" step="0.5" min="0" placeholder="8" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Rate per Hour ($)</label>
+                                <input type="number" id="labourRate" step="0.01" min="0" placeholder="75.00" required>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <button type="submit" class="btn btn-primary btn-small" style="background: #FF9800; border-color: #FF9800;">+ Add Labour</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Labour Summary -->
+                    <div id="quoteLabourSummary" style="background: #FFF3E0; padding: 12px; border-radius: 6px; margin-bottom: 16px; display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 12px; color: #E65100; font-weight: 600;">Total Labour Cost</div>
+                                <div style="font-size: 11px; color: #666;" id="labourHoursSummary">0 hours</div>
+                            </div>
+                            <div style="font-size: 20px; font-weight: 700; color: #E65100;" id="labourTotalCost">$0.00</div>
+                        </div>
+                    </div>
+
+                    <!-- Labour Items List -->
+                    <div id="quoteLabourList"></div>
+                </div>
+            </div>
+
             <!-- Cost Centres Section -->
             <div class="card" style="margin-top: 20px;">
                 <div class="card-header" style="margin-bottom: 16px;">
@@ -2073,6 +2115,49 @@
                         </select>
                         <input type="number" id="itemQuantity" placeholder="Qty" value="1" min="1" style="width: 80px; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                         <button type="button" class="btn btn-secondary" onclick="addItemToPriceClass()">+ Add</button>
+                        <button type="button" class="btn btn-primary" onclick="toggleNewItemForm()" style="white-space: nowrap;">✨ Create New Item</button>
+                    </div>
+
+                    <!-- Quick Create New Stock Item Form -->
+                    <div id="quickCreateItemForm" style="display: none; background: #f0f7ff; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976D2;">Create New Stock Item</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 12px; color: #666;">Item Name *</label>
+                                <input type="text" id="quickItemName" placeholder="e.g., Lutron Dimmer Switch" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;" required>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666;">SKU</label>
+                                <input type="text" id="quickItemSKU" placeholder="e.g., LUT-001" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666;">Category *</label>
+                                <select id="quickItemCategory" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="lighting">Lighting</option>
+                                    <option value="security">Security</option>
+                                    <option value="climate">Climate</option>
+                                    <option value="audio">Audio</option>
+                                    <option value="networking">Networking</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666;">Unit Price *</label>
+                                <input type="number" id="quickItemPrice" placeholder="0.00" step="0.01" min="0" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;" required>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666;">Initial Stock Quantity</label>
+                                <input type="number" id="quickItemQuantity" placeholder="0" min="0" value="0" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666;">Location</label>
+                                <input type="text" id="quickItemLocation" placeholder="e.g., Warehouse A" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end;">
+                            <button type="button" class="btn btn-secondary btn-small" onclick="cancelNewItemForm()">Cancel</button>
+                            <button type="button" class="btn btn-primary btn-small" onclick="saveNewStockItem()">💾 Save & Add to Price Class</button>
+                        </div>
                     </div>
 
                     <!-- Assigned Items Table -->
@@ -2342,6 +2427,16 @@
                             <option value="">Select Supplier</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Item Image</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" id="materialImage" accept="image/*" onchange="previewMaterialImage(event)" style="flex: 1;">
+                        <div id="materialImagePreview" style="width: 80px; height: 80px; border: 2px solid #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #f9f9f9; overflow: hidden;">
+                            <span style="font-size: 32px; color: #ccc;" id="materialImagePreviewContent">📦</span>
+                        </div>
+                    </div>
+                    <small style="color: #666;">Upload an image of the item for easy identification</small>
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
@@ -3738,10 +3833,12 @@
 
             document.getElementById('addQuoteMarkupForm').reset();
             document.getElementById('addQuoteStockForm').reset();
+            document.getElementById('addQuoteLabourForm').reset();
 
             openModal('quoteMarkupsModal');
             await loadQuoteMarkups(quoteId);
             await loadQuoteStockItems(quoteId);
+            await loadQuoteLabour(quoteId);
             await loadQuoteCostCentres(quoteId);
         }
 
@@ -3938,6 +4035,120 @@
                 await fetch(`/api/crm/quotes/${currentQuoteId}/stock-items/${itemId}`, {method: 'DELETE'});
                 await loadQuoteStockItems(currentQuoteId);
             } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ==================== LABOUR MANAGEMENT ====================
+
+        async function addQuoteLabour(e) {
+            e.preventDefault();
+            if (!currentQuoteId) return;
+
+            const description = document.getElementById('labourDescription').value;
+            const hours = parseFloat(document.getElementById('labourHours').value) || 0;
+            const rate = parseFloat(document.getElementById('labourRate').value) || 0;
+
+            const data = {
+                description: description,
+                hours: hours,
+                rate: rate,
+                total: hours * rate
+            };
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/labour`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('addQuoteLabourForm').reset();
+                    await loadQuoteLabour(currentQuoteId);
+                } else {
+                    alert('Error adding labour: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error adding labour:', e);
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function loadQuoteLabour(quoteId) {
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/labour`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderQuoteLabour(data.labour_items || [], data.total || 0, data.total_hours || 0);
+                }
+            } catch (e) {
+                console.error('Error loading labour:', e);
+            }
+        }
+
+        function renderQuoteLabour(labourItems, totalCost, totalHours) {
+            const listContainer = document.getElementById('quoteLabourList');
+            const summaryContainer = document.getElementById('quoteLabourSummary');
+            const hoursSummary = document.getElementById('labourHoursSummary');
+            const totalCostEl = document.getElementById('labourTotalCost');
+
+            if (!labourItems || labourItems.length === 0) {
+                listContainer.innerHTML = '<p style="font-size: 12px; color: #999; text-align: center; padding: 12px;">No labour items yet. Add one to get started.</p>';
+                summaryContainer.style.display = 'none';
+                return;
+            }
+
+            // Show and update summary
+            summaryContainer.style.display = 'block';
+            hoursSummary.textContent = `${totalHours.toFixed(1)} hours`;
+            totalCostEl.textContent = `$${totalCost.toFixed(2)}`;
+
+            // Render labour items
+            listContainer.innerHTML = `
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #FFF3E0;">
+                            <th style="padding: 8px; text-align: left; border-bottom: 2px solid #FF9800;">Description</th>
+                            <th style="padding: 8px; text-align: center; border-bottom: 2px solid #FF9800;">Hours</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 2px solid #FF9800;">Rate/Hr</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 2px solid #FF9800;">Total</th>
+                            <th style="padding: 8px; text-align: center; border-bottom: 2px solid #FF9800;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${labourItems.map(item => `
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 8px;">${item.description}</td>
+                                <td style="padding: 8px; text-align: center;">${item.hours}</td>
+                                <td style="padding: 8px; text-align: right;">$${item.rate.toFixed(2)}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: 600; color: #E65100;">$${item.total.toFixed(2)}</td>
+                                <td style="padding: 8px; text-align: center;">
+                                    <button onclick="deleteQuoteLabour('${item.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function deleteQuoteLabour(labourId) {
+            if (!confirm('Delete this labour item?')) return;
+
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentQuoteId}/labour/${labourId}`, {
+                    method: 'DELETE'
+                });
+                const result = await res.json();
+                if (result.success) {
+                    await loadQuoteLabour(currentQuoteId);
+                } else {
+                    alert('Error deleting labour: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error deleting labour:', e);
                 alert('Error: ' + e.message);
             }
         }
@@ -4597,6 +4808,7 @@
         let priceClasses = [];
         let tempAssignedItems = []; // Temporary storage for items being added to a price class
         let currentPriceClassIcon = null; // Store the icon data URL
+        let currentMaterialImage = null; // Store the material image data URL
 
         async function loadPriceClasses() {
             try {
@@ -4672,6 +4884,18 @@
                 reader.onload = function(e) {
                     currentPriceClassIcon = e.target.result;
                     document.getElementById('iconPreviewContent').innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: contain;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function previewMaterialImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentMaterialImage = e.target.result;
+                    document.getElementById('materialImagePreviewContent').innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: contain;">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -4828,6 +5052,96 @@
             currentPriceClassIcon = null;
             document.getElementById('iconPreviewContent').innerHTML = '<span style="font-size: 24px;">🏷️</span>';
             renderAssignedItems();
+            // Also hide the quick create form if it's open
+            document.getElementById('quickCreateItemForm').style.display = 'none';
+        }
+
+        function toggleNewItemForm() {
+            const form = document.getElementById('quickCreateItemForm');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                // Clear any previous values
+                document.getElementById('quickItemName').value = '';
+                document.getElementById('quickItemSKU').value = '';
+                document.getElementById('quickItemCategory').value = 'lighting';
+                document.getElementById('quickItemPrice').value = '';
+                document.getElementById('quickItemQuantity').value = '0';
+                document.getElementById('quickItemLocation').value = '';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        function cancelNewItemForm() {
+            document.getElementById('quickCreateItemForm').style.display = 'none';
+        }
+
+        async function saveNewStockItem() {
+            const name = document.getElementById('quickItemName').value.trim();
+            const sku = document.getElementById('quickItemSKU').value.trim();
+            const category = document.getElementById('quickItemCategory').value;
+            const price = parseFloat(document.getElementById('quickItemPrice').value);
+            const quantity = parseInt(document.getElementById('quickItemQuantity').value) || 0;
+            const location = document.getElementById('quickItemLocation').value.trim();
+
+            // Validation
+            if (!name) {
+                alert('Please enter an item name');
+                return;
+            }
+            if (!price || price <= 0) {
+                alert('Please enter a valid unit price');
+                return;
+            }
+
+            const stockData = {
+                name: name,
+                sku: sku,
+                category: category,
+                quantity: quantity,
+                unit_price: price,
+                location: location,
+                reorder_level: 5, // Default reorder level
+                serial_numbers: []
+            };
+
+            try {
+                // Save to stock
+                const res = await fetch('/api/crm/stock', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(stockData)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    // Reload inventory to update the dropdown
+                    await loadInventory();
+
+                    // Add the newly created item to the price class
+                    const newItemId = result.id || result.stock?.id;
+                    if (newItemId) {
+                        tempAssignedItems.push({
+                            id: newItemId,
+                            name: name,
+                            unit_price: price,
+                            quantity: 1
+                        });
+                        renderAssignedItems();
+                    }
+
+                    // Hide the form
+                    cancelNewItemForm();
+
+                    // Show success message
+                    alert(`✅ "${name}" created and added to stock!`);
+                } else {
+                    alert('Error creating item: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error creating stock item:', e);
+                alert('Error creating item: ' + e.message);
+            }
         }
 
         // Initialize inventory select when modal opens
@@ -6401,7 +6715,8 @@
             location: document.getElementById('materialLocation').value,
             quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
             unit_price: parseFloat(document.getElementById('materialPrice').value) || 0,
-            supplier_id: document.getElementById('materialSupplier').value
+            supplier_id: document.getElementById('materialSupplier').value,
+            image: currentMaterialImage // Include the image data
         };
 
         try {
@@ -6417,6 +6732,9 @@
                 closeModal('materialModal');
                 loadMaterials(type);
                 showToast('Material saved successfully!', 'success');
+                // Reset the image after saving
+                currentMaterialImage = null;
+                document.getElementById('materialImagePreviewContent').innerHTML = '<span style="font-size: 32px; color: #ccc;">📦</span>';
             } else {
                 showToast('Error saving: ' + result.error, 'error');
             }
