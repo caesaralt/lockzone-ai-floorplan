@@ -3397,10 +3397,13 @@
             document.getElementById('materialName').value = '';
             document.getElementById('materialCategory').value = '';
             document.getElementById('materialQuantity').value = '';
-            document.getElementById('materialUnit').value = '';
-            document.getElementById('materialCost').value = '';
+            // materialUnit doesn't exist in the HTML form
+            // document.getElementById('materialCost') should be materialPrice
+            if (document.getElementById('materialPrice')) {
+                document.getElementById('materialPrice').value = '';
+            }
             document.getElementById('materialSupplier').value = '';
-            document.getElementById('materialNotes').value = '';
+            // materialNotes doesn't exist in the HTML form
 
             const labels = {
                 'stock': 'Stock Item',
@@ -3414,12 +3417,17 @@
             document.getElementById('paymentId').value = '';
             document.getElementById('paymentDirection').value = direction;
             document.getElementById('paymentAmount').value = '';
-            document.getElementById('paymentMethod').value = '';
-            document.getElementById('paymentDate').value = '';
+            // paymentMethod doesn't exist in HTML
+            // paymentDate doesn't exist, they have paymentPaidDate
+            if (document.getElementById('paymentPaidDate')) {
+                document.getElementById('paymentPaidDate').value = '';
+            }
             document.getElementById('paymentDueDate').value = '';
             document.getElementById('paymentStatus').value = 'pending';
-            document.getElementById('paymentReference').value = '';
-            document.getElementById('paymentNotes').value = '';
+            // paymentReference doesn't exist
+            if (document.getElementById('paymentNotes')) {
+                document.getElementById('paymentNotes').value = '';
+            }
 
             const labels = {
                 'to_suppliers': 'Payment to Supplier',
@@ -4795,61 +4803,75 @@
     // ============================================================================
 
     function initDarkMode() {
-        console.log('initDarkMode function called');
+        console.log('🌙 initDarkMode function called');
         const themeToggle = document.getElementById('themeToggle');
         const sunIcon = document.getElementById('sunIcon');
         const moonIcon = document.getElementById('moonIcon');
         const htmlElement = document.documentElement;
 
-        console.log('Theme toggle elements:', { themeToggle, sunIcon, moonIcon });
+        console.log('🔍 Looking for theme toggle elements...');
+        console.log('  - themeToggle button:', themeToggle);
+        console.log('  - sunIcon:', sunIcon);
+        console.log('  - moonIcon:', moonIcon);
 
-        if (themeToggle && sunIcon && moonIcon) {
-            // Check for saved theme preference or default to 'light' mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            console.log('Current theme from localStorage:', currentTheme);
+        if (!themeToggle) {
+            console.error('❌ CRITICAL: Theme toggle button not found! id="themeToggle" does not exist in DOM');
+            return;
+        }
+        if (!sunIcon) {
+            console.error('❌ CRITICAL: Sun icon not found! id="sunIcon" does not exist in DOM');
+            return;
+        }
+        if (!moonIcon) {
+            console.error('❌ CRITICAL: Moon icon not found! id="moonIcon" does not exist in DOM');
+            return;
+        }
 
-            // Set initial theme
-            if (currentTheme === 'dark') {
+        console.log('✅ All theme toggle elements found successfully');
+
+        // Check for saved theme preference or default to 'light' mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        console.log('💾 Current theme from localStorage:', currentTheme);
+
+        // Set initial theme
+        if (currentTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+            console.log('🌙 Initial theme set to DARK');
+        } else {
+            console.log('☀️ Initial theme set to LIGHT');
+        }
+
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', function(e) {
+            console.log('🖱️ THEME TOGGLE CLICKED!', e);
+            const theme = htmlElement.getAttribute('data-theme');
+            console.log('📊 Current theme attribute:', theme);
+
+            if (theme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+                console.log('☀️ Switched to LIGHT mode');
+            } else {
                 htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
                 sunIcon.style.display = 'none';
                 moonIcon.style.display = 'block';
+                console.log('🌙 Switched to DARK mode');
             }
 
-            // Toggle theme on button click
-            themeToggle.addEventListener('click', function() {
-                console.log('Theme toggle clicked!');
-                const theme = htmlElement.getAttribute('data-theme');
-                console.log('Current theme attribute:', theme);
-
-                if (theme === 'dark') {
-                    htmlElement.setAttribute('data-theme', 'light');
-                    localStorage.setItem('theme', 'light');
-                    sunIcon.style.display = 'block';
-                    moonIcon.style.display = 'none';
-                    console.log('Switched to light mode');
-                } else {
-                    htmlElement.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                    sunIcon.style.display = 'none';
-                    moonIcon.style.display = 'block';
-                    console.log('Switched to dark mode');
+            // Reinitialize charts with new theme colors
+            setTimeout(() => {
+                if (typeof loadStats === 'function') {
+                    loadStats();
+                    console.log('📊 Charts reloaded with new theme');
                 }
-
-                // Reinitialize charts with new theme colors
-                setTimeout(() => {
-                    if (typeof loadStats === 'function') {
-                        loadStats();
-                    }
-                }, 100);
-            });
-            console.log('Dark mode event listener attached successfully');
-        } else {
-            console.error('Dark mode initialization failed - missing elements:', {
-                hasToggle: !!themeToggle,
-                hasSun: !!sunIcon,
-                hasMoon: !!moonIcon
-            });
-        }
+            }, 100);
+        });
+        console.log('✅ Dark mode click event listener attached successfully to button');
     }
 
     // Initialize dark mode when DOM is ready
