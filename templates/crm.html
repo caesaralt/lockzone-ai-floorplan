@@ -3341,6 +3341,123 @@
             openModal('quoteModal');
         }
 
+        function openPersonModal(type) {
+            document.getElementById('personId').value = '';
+            document.getElementById('personType').value = type;
+            document.getElementById('personName').value = '';
+            document.getElementById('personCompany').value = '';
+            document.getElementById('personEmail').value = '';
+            document.getElementById('personPhone').value = '';
+            document.getElementById('personAddress').value = '';
+            document.getElementById('personNotes').value = '';
+
+            const labels = {
+                'employee': 'Employee',
+                'customer': 'Customer',
+                'supplier': 'Supplier',
+                'contractor': 'Contractor',
+                'contact': 'Contact'
+            };
+            document.querySelector('#personModal h2').textContent = `Add ${labels[type]}`;
+            openModal('personModal');
+        }
+
+        function openJobModal(status) {
+            document.getElementById('jobId').value = '';
+            document.getElementById('jobStatus').value = status;
+            document.getElementById('jobName').value = '';
+            document.getElementById('jobCustomer').value = '';
+            document.getElementById('jobDescription').value = '';
+            document.getElementById('jobStartDate').value = '';
+            document.getElementById('jobDueDate').value = '';
+            document.getElementById('jobValue').value = '';
+            document.getElementById('jobRecurring').value = '';
+
+            const labels = {
+                'in_progress': 'In Progress Job',
+                'upcoming': 'Upcoming Job',
+                'pending': 'Pending Job',
+                'finished': 'Finished Job',
+                'recurring': 'Recurring Job'
+            };
+            document.querySelector('#jobModal h2').textContent = `Add ${labels[status]}`;
+
+            // Show/hide recurring schedule field
+            const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
+            if (recurringField) {
+                recurringField.style.display = status === 'recurring' ? 'block' : 'none';
+            }
+
+            openModal('jobModal');
+        }
+
+        function openMaterialModal(type) {
+            document.getElementById('materialId').value = '';
+            document.getElementById('materialType').value = type;
+            document.getElementById('materialName').value = '';
+            document.getElementById('materialCategory').value = '';
+            document.getElementById('materialQuantity').value = '';
+            document.getElementById('materialUnit').value = '';
+            document.getElementById('materialCost').value = '';
+            document.getElementById('materialSupplier').value = '';
+            document.getElementById('materialNotes').value = '';
+
+            const labels = {
+                'stock': 'Stock Item',
+                'order': 'Order Item'
+            };
+            document.querySelector('#materialModal h2').textContent = `Add ${labels[type]}`;
+            openModal('materialModal');
+        }
+
+        function openPaymentModal(direction) {
+            document.getElementById('paymentId').value = '';
+            document.getElementById('paymentDirection').value = direction;
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentMethod').value = '';
+            document.getElementById('paymentDate').value = '';
+            document.getElementById('paymentDueDate').value = '';
+            document.getElementById('paymentStatus').value = 'pending';
+            document.getElementById('paymentReference').value = '';
+            document.getElementById('paymentNotes').value = '';
+
+            const labels = {
+                'to_suppliers': 'Payment to Supplier',
+                'to_us': 'Payment to Us'
+            };
+            document.querySelector('#paymentModal h2').textContent = `Add ${labels[direction]}`;
+            openModal('paymentModal');
+        }
+
+        function openEventModal(date = null) {
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventType').value = 'meeting';
+            document.getElementById('eventStartDate').value = date || new Date().toISOString().split('T')[0];
+            document.getElementById('eventStartTime').value = '';
+            document.getElementById('eventEndDate').value = date || new Date().toISOString().split('T')[0];
+            document.getElementById('eventEndTime').value = '';
+            document.getElementById('eventAllDay').checked = false;
+            document.getElementById('eventRecurrence').value = 'none';
+            document.getElementById('eventLocation').value = '';
+            document.getElementById('eventDescription').value = '';
+            document.getElementById('eventColor').value = '#3b82f6';
+            document.getElementById('eventReminder').value = '30';
+
+            // Reset linking dropdowns
+            if (document.getElementById('eventLinkedJob')) document.getElementById('eventLinkedJob').value = '';
+            if (document.getElementById('eventLinkedQuote')) document.getElementById('eventLinkedQuote').value = '';
+            if (document.getElementById('eventLinkedCustomer')) document.getElementById('eventLinkedCustomer').value = '';
+            if (document.getElementById('eventLinkedProject')) document.getElementById('eventLinkedProject').value = '';
+            if (document.getElementById('eventLinkedPerson')) document.getElementById('eventLinkedPerson').value = '';
+
+            // Populate linking dropdowns
+            populateEventLinkingDropdowns();
+
+            document.querySelector('#eventModal h2').textContent = 'Add Event';
+            openModal('eventModal');
+        }
+
         async function convertToProject(quoteId) {
             if (!confirm('Convert this quote to a project? This will mark the quote as accepted.')) return;
             try {
@@ -4672,15 +4789,74 @@
 
 <script>
     console.log('CRM Script Block 2: Loaded (AI Chat & Dark Mode)');
+
+    // ============================================================================
+    // DARK MODE TOGGLE - Define this first so DOMContentLoaded can find it
+    // ============================================================================
+
+    function initDarkMode() {
+        console.log('initDarkMode function called');
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
+
+        console.log('Theme toggle elements:', { themeToggle, sunIcon, moonIcon });
+
+        if (themeToggle && sunIcon && moonIcon) {
+            // Check for saved theme preference or default to 'light' mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            console.log('Current theme from localStorage:', currentTheme);
+
+            // Set initial theme
+            if (currentTheme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+
+            // Toggle theme on button click
+            themeToggle.addEventListener('click', function() {
+                console.log('Theme toggle clicked!');
+                const theme = htmlElement.getAttribute('data-theme');
+                console.log('Current theme attribute:', theme);
+
+                if (theme === 'dark') {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                    console.log('Switched to light mode');
+                } else {
+                    htmlElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                    console.log('Switched to dark mode');
+                }
+
+                // Reinitialize charts with new theme colors
+                setTimeout(() => {
+                    if (typeof loadStats === 'function') {
+                        loadStats();
+                    }
+                }, 100);
+            });
+            console.log('Dark mode event listener attached successfully');
+        } else {
+            console.error('Dark mode initialization failed - missing elements:', {
+                hasToggle: !!themeToggle,
+                hasSun: !!sunIcon,
+                hasMoon: !!moonIcon
+            });
+        }
+    }
+
     // Initialize dark mode when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         console.log('CRM Block 2: DOM ready - Initializing dark mode');
-        if (typeof initDarkMode === 'function') {
-            initDarkMode();
-            console.log('CRM: Dark mode initialized');
-        } else {
-            console.error('CRM: initDarkMode function not found!');
-        }
+        initDarkMode();
+        console.log('CRM: Dark mode initialization complete');
     });
 
     let agentMode = false;
@@ -5326,26 +5502,8 @@
         loadPeople(type, search);
     }
 
-    function openPersonModal(type) {
-        document.getElementById('personId').value = '';
-        document.getElementById('personType').value = type;
-        document.getElementById('personName').value = '';
-        document.getElementById('personCompany').value = '';
-        document.getElementById('personEmail').value = '';
-        document.getElementById('personPhone').value = '';
-        document.getElementById('personAddress').value = '';
-        document.getElementById('personNotes').value = '';
+    // openPersonModal moved to first script block
 
-        const labels = {
-            'employee': 'Employee',
-            'customer': 'Customer',
-            'supplier': 'Supplier',
-            'contractor': 'Contractor',
-            'contact': 'Contact'
-        };
-        document.querySelector('#personModal h2').textContent = `Add ${labels[type]}`;
-        openModal('personModal');
-    }
 
     function editPerson(id, type) {
         fetch(`/api/crm/people/${id}`)
@@ -5528,32 +5686,8 @@
         loadJobs(status, search);
     }
 
-    function openJobModal(status) {
-        document.getElementById('jobId').value = '';
-        document.getElementById('jobStatus').value = status;
-        document.getElementById('jobName').value = '';
-        document.getElementById('jobCustomer').value = '';
-        document.getElementById('jobDescription').value = '';
-        document.getElementById('jobStartDate').value = '';
-        document.getElementById('jobDueDate').value = '';
-        document.getElementById('jobValue').value = '';
-        document.getElementById('jobRecurring').value = '';
+    // openJobModal moved to first script block
 
-        const labels = {
-            'in_progress': 'In Progress Job',
-            'upcoming': 'Upcoming Job',
-            'pending': 'Pending Job',
-            'finished': 'Finished Job',
-            'recurring': 'Recurring Job'
-        };
-        document.querySelector('#jobModal h2').textContent = `Add ${labels[status]}`;
-
-        // Show/hide recurring schedule field
-        const recurringField = document.querySelector('#jobRecurring').closest('.form-group');
-        recurringField.style.display = status === 'recurring' ? 'block' : 'none';
-
-        openModal('jobModal');
-    }
 
     function editJob(id, status) {
         fetch(`/api/crm/jobs/${id}`)
@@ -5726,19 +5860,8 @@
         loadMaterials(type, null, search);
     }
 
-    function openMaterialModal(type) {
-        document.getElementById('materialId').value = '';
-        document.getElementById('materialType').value = type;
-        document.getElementById('materialName').value = '';
-        document.getElementById('materialCategory').value = '';
-        document.getElementById('materialLocation').value = 'sydney';
-        document.getElementById('materialQuantity').value = '';
-        document.getElementById('materialPrice').value = '';
-        document.getElementById('materialSupplier').value = '';
+    // openMaterialModal moved to first script block
 
-        document.querySelector('#materialModal h2').textContent = type === 'stock' ? 'Add Stock Item' : 'Add Order';
-        openModal('materialModal');
-    }
 
     function editMaterial(id, type) {
         fetch(`/api/crm/materials/${id}`)
@@ -5898,19 +6021,8 @@
         loadPayments(direction, null, search);
     }
 
-    function openPaymentModal(direction) {
-        document.getElementById('paymentId').value = '';
-        document.getElementById('paymentDirection').value = direction;
-        document.getElementById('paymentAmount').value = '';
-        document.getElementById('paymentStatus').value = 'pending';
-        document.getElementById('paymentDueDate').value = '';
-        document.getElementById('paymentPaidDate').value = '';
-        document.getElementById('paymentPerson').value = '';
-        document.getElementById('paymentNotes').value = '';
+    // openPaymentModal moved to first script block
 
-        document.querySelector('#paymentModal h2').textContent = direction === 'to_suppliers' ? 'Add Payment to Supplier' : 'Add Payment to Us';
-        openModal('paymentModal');
-    }
 
     function editPayment(id, direction) {
         fetch(`/api/crm/payments/${id}`)
@@ -6236,34 +6348,8 @@
         renderCalendar();
     }
 
-    function openEventModal(date = null) {
-        document.getElementById('eventId').value = '';
-        document.getElementById('eventTitle').value = '';
-        document.getElementById('eventType').value = 'event';
-        document.getElementById('eventStartDate').value = date || selectedDate || new Date().toISOString().split('T')[0];
-        document.getElementById('eventStartTime').value = '';
-        document.getElementById('eventEndDate').value = '';
-        document.getElementById('eventEndTime').value = '';
-        document.getElementById('eventAllDay').checked = false;
-        document.getElementById('eventRecurrence').value = 'none';
-        document.getElementById('eventLocation').value = '';
-        document.getElementById('eventDescription').value = '';
-        document.getElementById('eventColor').value = '#3b82f6';
-        document.getElementById('eventReminder').value = '0';
+    // openEventModal moved to first script block
 
-        // Reset linking fields
-        if (document.getElementById('eventLinkedJob')) document.getElementById('eventLinkedJob').value = '';
-        if (document.getElementById('eventLinkedQuote')) document.getElementById('eventLinkedQuote').value = '';
-        if (document.getElementById('eventLinkedCustomer')) document.getElementById('eventLinkedCustomer').value = '';
-        if (document.getElementById('eventLinkedProject')) document.getElementById('eventLinkedProject').value = '';
-        if (document.getElementById('eventLinkedPerson')) document.getElementById('eventLinkedPerson').value = '';
-
-        // Populate linking dropdowns with available data
-        populateEventLinkingDropdowns();
-
-        document.querySelector('#eventModal h2').textContent = 'Schedule Event';
-        openModal('eventModal');
-    }
 
     function populateEventLinkingDropdowns() {
         // Jobs
@@ -6499,50 +6585,8 @@
         showToast('Payment reminder loaded - adjust and save to calendar', 'info');
     }
 
-    // ============================================================================
-    // DARK MODE TOGGLE
-    // ============================================================================
+    // initDarkMode moved to top of script block (line ~4797) for proper initialization order
 
-    function initDarkMode() {
-        const themeToggle = document.getElementById('themeToggle');
-        const sunIcon = document.getElementById('sunIcon');
-        const moonIcon = document.getElementById('moonIcon');
-        const htmlElement = document.documentElement;
-
-        if (themeToggle && sunIcon && moonIcon) {
-            // Check for saved theme preference or default to 'light' mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-
-            // Set initial theme
-            if (currentTheme === 'dark') {
-                htmlElement.setAttribute('data-theme', 'dark');
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-            }
-
-            // Toggle theme on button click
-            themeToggle.addEventListener('click', function() {
-                const theme = htmlElement.getAttribute('data-theme');
-
-                if (theme === 'dark') {
-                    htmlElement.setAttribute('data-theme', 'light');
-                    localStorage.setItem('theme', 'light');
-                    sunIcon.style.display = 'block';
-                    moonIcon.style.display = 'none';
-                } else {
-                    htmlElement.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                    sunIcon.style.display = 'none';
-                    moonIcon.style.display = 'block';
-                }
-
-                // Reinitialize charts with new theme colors
-                setTimeout(() => {
-                    loadStats();
-                }, 100);
-            });
-        }
-    }
 </script>
 
 <!-- Footer -->
