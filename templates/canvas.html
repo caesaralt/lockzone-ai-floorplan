@@ -66,33 +66,6 @@
             display: none;
         }
 
-        .zoom-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .zoom-btn {
-            padding: 6px 12px;
-            background: #2c3e50;
-            border: none;
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-
-        .zoom-btn:hover {
-            background: #34495e;
-        }
-
-        .zoom-level {
-            color: #95a5a6;
-            font-size: 0.9em;
-            min-width: 60px;
-            text-align: center;
-        }
-
         .app-container {
             display: flex;
             height: calc(100vh - 52px);
@@ -397,28 +370,32 @@
 <body>
     <div class="top-toolbar">
         <div class="toolbar-left">
-            <a href="/" class="project-title" style="text-decoration: none; cursor: pointer;" title="Go to Home">🎨 Canvas Editor</a>
+            <a href="/" class="project-title" style="text-decoration: none; cursor: pointer;" title="Go to Home">🏠</a>
+            <span class="project-title" style="margin-left: 10px;">New Project</span>
         </div>
-        <div class="zoom-controls">
-            <button class="zoom-btn" onclick="zoomIn()">+</button>
-            <span class="zoom-level" id="zoomLevel">100%</span>
-            <button class="zoom-btn" onclick="zoomOut()">-</button>
-            <button class="zoom-btn" onclick="resetView()">Reset</button>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
             <!-- Collapsible Menu Button -->
             <div style="position: relative;">
-                <button id="menuToggleBtn" onclick="toggleToolbarMenu()" class="toolbar-btn" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); font-size: 1.2em; padding: 6px 12px;">
-                    <span id="menuIcon">+</span>
+                <button id="menuToggleBtn" onclick="toggleToolbarMenu()" class="toolbar-btn" style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); font-size: 1.2em; padding: 6px 12px;">
+                    <span id="menuIcon">☰</span>
                 </button>
                 <!-- Dropdown Menu -->
-                <div id="toolbarMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #1a252f; border: 2px solid #34495e; border-radius: 8px; padding: 10px; min-width: 180px; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                <div id="toolbarMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #1a252f; border: 2px solid #34495e; border-radius: 8px; padding: 10px; min-width: 200px; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                    <div style="margin-bottom: 8px;">
+                        <div style="color: #95a5a6; font-size: 0.85em; margin-bottom: 6px; font-weight: 600;">ZOOM CONTROLS</div>
+                        <div style="display: flex; gap: 8px; align-items: center; padding: 8px; background: #2c3e50; border-radius: 6px;">
+                            <button class="toolbar-btn" onclick="zoomIn(); event.stopPropagation();" style="flex: 1; padding: 8px;">+</button>
+                            <span class="zoom-level" id="zoomLevel" style="color: #95a5a6; font-size: 0.9em; min-width: 60px; text-align: center;">100%</span>
+                            <button class="toolbar-btn" onclick="zoomOut(); event.stopPropagation();" style="flex: 1; padding: 8px;">-</button>
+                            <button class="toolbar-btn" onclick="resetView(); event.stopPropagation();" style="flex: 1; padding: 8px;">Reset</button>
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
                     <label class="toolbar-btn" style="width: 100%; margin-bottom: 6px; justify-content: flex-start; display: flex; cursor: pointer;">
                         📁 Upload PDF
                         <input type="file" id="pdfUpload" accept=".pdf,image/*" style="display: none;">
                     </label>
                     <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
-                    <button class="toolbar-btn" onclick="window.location.href='/'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🏠 Home</button>
                     <button class="toolbar-btn" onclick="window.location.href='/mapping'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">⚡ Mapping</button>
                     <button class="toolbar-btn" onclick="window.location.href='/board-builder'" style="width: 100%; margin-bottom: 6px; justify-content: flex-start;">🔌 Board Builder</button>
                     <div style="border-top: 1px solid #34495e; margin: 8px 0;"></div>
@@ -437,7 +414,7 @@
                 icon.textContent = '×';
             } else {
                 menu.style.display = 'none';
-                icon.textContent = '+';
+                icon.textContent = '☰';
             }
         }
         document.addEventListener('click', function(e) {
@@ -445,7 +422,7 @@
             const btn = document.getElementById('menuToggleBtn');
             if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
                 menu.style.display = 'none';
-                document.getElementById('menuIcon').textContent = '+';
+                document.getElementById('menuIcon').textContent = '☰';
             }
         });
     </script>

@@ -2045,6 +2045,12 @@
                         <input type="text" id="invSKU">
                     </div>
                     <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" id="invModel" placeholder="e.g., ABC-123">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Category</label>
                         <select id="invCategory">
                             <option value="lighting">Lighting</option>
@@ -2053,6 +2059,9 @@
                             <option value="audio">Audio</option>
                             <option value="other">Other</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <!-- Spacer for alignment -->
                     </div>
                 </div>
                 <div class="form-row">
@@ -3492,6 +3501,7 @@
                                         <td>${q.valid_until || '-'}</td>
                                         <td style="white-space: nowrap;">
                                             <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')">Edit</button>
+                                            <button class="btn btn-primary btn-small" onclick="generateQuotePDF('${q.id}')" title="Generate PDF">📄 PDF</button>
                                             ${q.status !== 'accepted' ? `<button class="btn btn-primary btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">Convert</button>` : ''}
                                             ${q.converted_to_project_id ? `<button class="btn btn-primary btn-small" onclick="goToProject('${q.converted_to_project_id}')">View Project</button>` : ''}
                                             <button class="btn btn-danger btn-small" onclick="deleteQuote('${q.id}')">Delete</button>
@@ -3568,6 +3578,32 @@
                 loadStats();
             } catch (e) {
                 alert('Error: ' + e.message);
+            }
+        }
+
+        async function generateQuotePDF(quoteId) {
+            try {
+                const response = await fetch(`/api/crm/quotes/${quoteId}/pdf`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `quote_${quoteId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    alert('✅ PDF generated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('❌ Failed to generate PDF: ' + (error.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('❌ Error generating PDF: ' + e.message);
             }
         }
 
@@ -4755,6 +4791,7 @@
             const data = {
                 name: document.getElementById('invName').value,
                 sku: document.getElementById('invSKU').value,
+                model: document.getElementById('invModel').value,
                 category: document.getElementById('invCategory').value,
                 quantity: parseInt(document.getElementById('invQty').value) || 0,
                 unit_cost: parseFloat(document.getElementById('invCost').value) || 0
@@ -4786,6 +4823,7 @@
                 document.getElementById('invId').value = item.id;
                 document.getElementById('invName').value = item.name;
                 document.getElementById('invSKU').value = item.sku || '';
+                document.getElementById('invModel').value = item.model || '';
                 document.getElementById('invCategory').value = item.category;
                 document.getElementById('invQty').value = item.quantity || 0;
                 document.getElementById('invCost').value = item.unit_cost || 0;

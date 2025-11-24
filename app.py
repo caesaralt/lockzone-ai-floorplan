@@ -6360,6 +6360,188 @@ def convert_quote_to_project(quote_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/crm/quotes/<quote_id>/pdf', methods=['POST'])
+def generate_quote_pdf(quote_id):
+    """Generate a PDF for a quote with custom formatting"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote = next((q for q in quotes if q['id'] == quote_id), None)
+
+        if not quote:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        # Get customer details
+        customers = load_json_file(CUSTOMERS_FILE, [])
+        customer = next((c for c in customers if c['id'] == quote.get('customer_id')), None)
+
+        # Create PDF in memory
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#2196F3'),
+            spaceAfter=30,
+            alignment=1  # Center
+        )
+
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=14,
+            textColor=colors.HexColor('#1976D2'),
+            spaceAfter=12
+        )
+
+        # Title
+        story.append(Paragraph("QUOTE", title_style))
+        story.append(Spacer(1, 0.2*inch))
+
+        # Quote details
+        quote_info = [
+            ['Quote Number:', quote.get('quote_number', 'N/A')],
+            ['Date:', datetime.now().strftime('%B %d, %Y')],
+            ['Valid Until:', quote.get('valid_until', 'N/A')],
+            ['Status:', quote.get('status', 'draft').upper()]
+        ]
+
+        info_table = Table(quote_info, colWidths=[2*inch, 4*inch])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#666666')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 0.3*inch))
+
+        # Customer Information
+        if customer:
+            story.append(Paragraph("Customer Information", heading_style))
+            customer_info = [
+                ['Name:', customer.get('name', 'N/A')],
+                ['Email:', customer.get('email', 'N/A')],
+                ['Phone:', customer.get('phone', 'N/A')],
+                ['Address:', customer.get('address', 'N/A')]
+            ]
+            customer_table = Table(customer_info, colWidths=[2*inch, 4*inch])
+            customer_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#666666')),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            story.append(customer_table)
+            story.append(Spacer(1, 0.3*inch))
+
+        # Quote Details
+        story.append(Paragraph("Quote Details", heading_style))
+        story.append(Paragraph(f"<b>Title:</b> {quote.get('title', 'N/A')}", styles['Normal']))
+        story.append(Spacer(1, 0.1*inch))
+        if quote.get('description'):
+            story.append(Paragraph(f"<b>Description:</b><br/>{quote.get('description', '')}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+
+        # Items (Stock Items)
+        stock_items = quote.get('stock_items', [])
+        if stock_items:
+            story.append(Paragraph("Items", heading_style))
+            items_data = [['Item', 'Quantity', 'Unit Price', 'Total']]
+            for item in stock_items:
+                qty = item.get('quantity', 1)
+                price = item.get('price', 0)
+                total = qty * price
+                items_data.append([
+                    item.get('name', 'N/A'),
+                    str(qty),
+                    f"${price:.2f}",
+                    f"${total:.2f}"
+                ])
+
+            items_table = Table(items_data, colWidths=[3*inch, 1*inch, 1.2*inch, 1.2*inch])
+            items_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2196F3')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(items_table)
+            story.append(Spacer(1, 0.3*inch))
+
+        # Pricing Summary
+        story.append(Paragraph("Pricing Summary", heading_style))
+        materials_cost = quote.get('materials_cost', 0)
+        labor_cost = quote.get('labor_cost', 0)
+        subtotal = materials_cost + labor_cost
+        markup_pct = quote.get('markup_percentage', 0)
+        markup_amount = subtotal * (markup_pct / 100)
+        total = subtotal + markup_amount
+
+        # Calculate total from stock items if available
+        if stock_items:
+            stock_total = sum(item.get('quantity', 1) * item.get('price', 0) for item in stock_items)
+            subtotal = max(subtotal, stock_total)
+            markup_amount = subtotal * (markup_pct / 100)
+            total = subtotal + markup_amount
+
+        pricing_data = [
+            ['Materials Cost:', f"${materials_cost:.2f}"],
+            ['Labor Cost:', f"${labor_cost:.2f}"],
+            ['Subtotal:', f"${subtotal:.2f}"],
+            [f'Markup ({markup_pct}%):', f"${markup_amount:.2f}"],
+            ['TOTAL:', f"${total:.2f}"]
+        ]
+
+        pricing_table = Table(pricing_data, colWidths=[4*inch, 2*inch])
+        pricing_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (0, -2), 'Helvetica'),
+            ('FONTNAME', (1, 0), (1, -2), 'Helvetica'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -1), (-1, -1), 14),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2196F3')),
+            ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#2196F3')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(pricing_table)
+        story.append(Spacer(1, 0.5*inch))
+
+        # Footer
+        story.append(Paragraph("Terms & Conditions", heading_style))
+        story.append(Paragraph(
+            "This quote is valid until the date specified above. "
+            "Payment terms and conditions apply. Thank you for your business!",
+            styles['Normal']
+        ))
+
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+
+        # Return PDF as downloadable file
+        response = make_response(buffer.read())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=quote_{quote.get("quote_number", quote_id)}.pdf'
+        return response
+
+    except Exception as e:
+        logger.error(f"Error generating PDF: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ============================================================================
 # COST CENTRES MANAGEMENT ENDPOINTS
 # ============================================================================
@@ -7766,6 +7948,7 @@ def handle_inventory():
                 'id': str(uuid.uuid4()),
                 'name': data.get('name', ''),
                 'sku': data.get('sku', ''),
+                'model': data.get('model', ''),
                 'category': data.get('category', ''),
                 'quantity': data.get('quantity', 0),
                 'unit_cost': unit_cost,
@@ -7791,7 +7974,7 @@ def handle_inventory_item(item_id):
         if request.method == 'PUT':
             data = request.json
             item = inventory[idx]
-            for field in ['name', 'sku', 'category', 'quantity', 'unit_cost', 'price', 'reorder_level']:
+            for field in ['name', 'sku', 'model', 'category', 'quantity', 'unit_cost', 'price', 'reorder_level']:
                 if field in data:
                     item[field] = data[field]
             item['updated_at'] = datetime.now().isoformat()
