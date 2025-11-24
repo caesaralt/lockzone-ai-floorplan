@@ -9085,12 +9085,6 @@ def generate_final_quote():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/generate-quote-pdf', methods=['POST'])
-def generate_quote_pdf():
-    """Generate quote PDF with current progress"""
-    return generate_final_quote()
-
-
 @app.route('/api/generate-annotated-floorplan', methods=['POST'])
 def generate_annotated_floorplan():
     """Generate annotated floorplan PDF with symbols marked"""
