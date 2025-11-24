@@ -562,6 +562,12 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // TEST: Verify JavaScript is working
+        console.log('🚀 CRM PAGE LOADED - JavaScript is working!');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('⏰ Load time:', new Date().toISOString());
+    </script>
 </head>
 <body>
 
@@ -569,7 +575,7 @@
     <nav class="top-nav">
         <div class="nav-container">
             <a href="/" class="top-logo">🏠 Integratd Living</a>
-            <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
+            <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode" onclick="console.log('🖱️ BUTTON CLICKED INLINE!'); alert('Button click registered!');">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
