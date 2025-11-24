@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quote PDF Editor - CRM</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-tertiary: #e0e0e0;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border-color: #cccccc;
+            --accent-color: #2196F3;
+            --accent-hover: #1976D2;
+            --success-color: #4CAF50;
+            --warning-color: #FF9800;
+            --danger-color: #F44336;
+            --toolbar-bg: #2c3e50;
+            --toolbar-hover: #34495e;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #444444;
+            --toolbar-bg: #1e1e1e;
+            --toolbar-hover: #2e2e2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: var(--toolbar-bg);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .top-bar h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            padding: 5px;
+            border-right: 1px solid var(--border-color);
+            align-items: center;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-group label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-right: 5px;
+        }
+
+        .toolbar-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-color);
+        }
+
+        .toolbar-btn:active {
+            transform: scale(0.95);
+        }
+
+        .toolbar-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .toolbar-select, .toolbar-input {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .toolbar-input[type="number"] {
+            width: 70px;
+        }
+
+        .toolbar-input[type="color"] {
+            width: 50px;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            height: calc(100vh - 180px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            border-right: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .sidebar-tab:last-child {
+            border-right: none;
+        }
+
+        .sidebar-tab:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .sidebar-tab.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        .data-field {
+            background: var(--bg-secondary);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            cursor: grab;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .data-field:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-color);
+        }
+
+        .data-field:active {
+            cursor: grabbing;
+        }
+
+        .data-field-name {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .data-field-value {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Canvas Area */
+        .canvas-container-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            padding: 20px;
+            background: var(--bg-secondary);
+        }
+
+        .canvas-wrapper {
+            background: white;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        /* Properties Panel */
+        .properties-panel {
+            width: 300px;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .properties-panel h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .property-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .property-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .property-row .property-input {
+            flex: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e68900;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        /* Layers Panel */
+        .layer-item {
+            background: var(--bg-secondary);
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .layer-item:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-color);
+        }
+
+        .layer-item.selected {
+            border-color: var(--accent-color);
+            background: var(--bg-tertiary);
+        }
+
+        .layer-name {
+            font-size: 13px;
+        }
+
+        .layer-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .layer-actions button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .layer-actions button:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Templates List */
+        .template-item {
+            background: var(--bg-secondary);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .template-info h4 {
+            font-size: 15px;
+            margin-bottom: 5px;
+        }
+
+        .template-info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Sync Status */
+        .sync-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-primary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 999;
+        }
+
+        .sync-status.active {
+            display: flex;
+        }
+
+        .sync-status .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: var(--bg-primary);
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1>📄 Quote PDF Editor - <span id="quote-title">Loading...</span></h1>
+        <div class="top-bar-actions">
+            <button class="btn btn-secondary" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
+            <button class="btn btn-warning" onclick="saveToCRM()">💾 Save to CRM</button>
+            <button class="btn btn-success" onclick="exportPDF()">📥 Export PDF</button>
+            <button class="btn btn-secondary" onclick="goBackToCRM()">← Back to CRM</button>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <!-- Text Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="addText()" title="Add Text">
+                <span>T</span> Text
+            </button>
+            <select class="toolbar-select" id="font-family" onchange="updateTextStyle()">
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+            <input type="number" class="toolbar-input" id="font-size" value="16" min="8" max="200" onchange="updateTextStyle()">
+            <button class="toolbar-btn" onclick="toggleBold()" id="btn-bold" title="Bold">
+                <strong>B</strong>
+            </button>
+            <button class="toolbar-btn" onclick="toggleItalic()" id="btn-italic" title="Italic">
+                <em>I</em>
+            </button>
+            <button class="toolbar-btn" onclick="toggleUnderline()" id="btn-underline" title="Underline">
+                <u>U</u>
+            </button>
+            <input type="color" class="toolbar-input" id="text-color" value="#000000" onchange="updateTextStyle()" title="Text Color">
+        </div>
+
+        <!-- Alignment Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="setTextAlign('left')" title="Align Left">≡</button>
+            <button class="toolbar-btn" onclick="setTextAlign('center')" title="Align Center">≡</button>
+            <button class="toolbar-btn" onclick="setTextAlign('right')" title="Align Right">≡</button>
+        </div>
+
+        <!-- Image Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="showImageUpload()" title="Add Image">
+                🖼️ Image
+            </button>
+            <input type="file" id="image-upload" accept="image/*" style="display:none" onchange="uploadImage(this)">
+        </div>
+
+        <!-- Shape Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="addRectangle()" title="Add Rectangle">▭ Rect</button>
+            <button class="toolbar-btn" onclick="addCircle()" title="Add Circle">● Circle</button>
+            <button class="toolbar-btn" onclick="addLine()" title="Add Line">─ Line</button>
+            <input type="color" class="toolbar-input" id="fill-color" value="#4CAF50" title="Fill Color">
+            <input type="color" class="toolbar-input" id="stroke-color" value="#000000" title="Stroke Color">
+        </div>
+
+        <!-- Layer Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="bringForward()" title="Bring Forward">⬆️</button>
+            <button class="toolbar-btn" onclick="sendBackward()" title="Send Backward">⬇️</button>
+            <button class="toolbar-btn" onclick="deleteSelected()" title="Delete">🗑️</button>
+            <button class="toolbar-btn" onclick="duplicateSelected()" title="Duplicate">📋</button>
+        </div>
+
+        <!-- Canvas Tools -->
+        <div class="toolbar-group">
+            <label>Zoom:</label>
+            <button class="toolbar-btn" onclick="zoomIn()">+</button>
+            <button class="toolbar-btn" onclick="zoomOut()">-</button>
+            <button class="toolbar-btn" onclick="resetZoom()">100%</button>
+            <button class="toolbar-btn" onclick="setCanvasBackground()" title="Canvas Background">🎨 BG</button>
+        </div>
+
+        <!-- Template Tools -->
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="showTemplateModal('save')">💾 Save Template</button>
+            <button class="toolbar-btn" onclick="showTemplateModal('load')">📂 Load Template</button>
+            <button class="toolbar-btn" onclick="clearCanvas()">🗑️ Clear All</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" onclick="switchSidebarTab('fields')">CRM Fields</button>
+                <button class="sidebar-tab" onclick="switchSidebarTab('layers')">Layers</button>
+            </div>
+            <div class="sidebar-content">
+                <!-- CRM Fields Tab -->
+                <div id="tab-fields" class="tab-content">
+                    <div class="sidebar-section">
+                        <h3>📋 Quote Information</h3>
+                        <div id="quote-fields-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3>👤 Customer Information</h3>
+                        <div id="customer-fields-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3>💰 Pricing</h3>
+                        <div id="pricing-fields-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3>📦 Items</h3>
+                        <div id="items-fields-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layers Tab -->
+                <div id="tab-layers" class="tab-content" style="display:none;">
+                    <div id="layers-container">
+                        <p style="color: var(--text-secondary); font-size: 13px;">No objects on canvas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container-wrapper">
+            <div class="canvas-wrapper">
+                <canvas id="pdf-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Properties Panel -->
+        <div class="properties-panel">
+            <h3>Properties</h3>
+            <div id="properties-container">
+                <p style="color: var(--text-secondary); font-size: 13px;">Select an object to view properties</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Modal -->
+    <div class="modal" id="template-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="template-modal-title">Save Template</h2>
+                <button class="modal-close" onclick="closeTemplateModal()">×</button>
+            </div>
+            <div class="modal-body" id="template-modal-body">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="sync-status" id="sync-status">
+        <div class="spinner"></div>
+        <span id="sync-message">Syncing...</span>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let canvas;
+        let quoteId;
+        let quoteData = {};
+        let customerData = {};
+        let currentTemplate = null;
+        let autoSaveInterval;
+        let syncInProgress = false;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePDFEditor();
+        });
+
+        // Initialize PDF Editor
+        async function initializePDFEditor() {
+            try {
+                // Get quote ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                quoteId = urlParams.get('quote_id');
+
+                if (!quoteId) {
+                    alert('No quote ID provided');
+                    window.location.href = '/crm';
+                    return;
+                }
+
+                // Initialize Fabric.js canvas
+                canvas = new fabric.Canvas('pdf-canvas', {
+                    width: 816,  // A4 width in pixels at 96 DPI (8.5in * 96)
+                    height: 1056, // A4 height in pixels at 96 DPI (11in * 96)
+                    backgroundColor: '#ffffff'
+                });
+
+                // Canvas event listeners
+                canvas.on('selection:created', updatePropertiesPanel);
+                canvas.on('selection:updated', updatePropertiesPanel);
+                canvas.on('selection:cleared', clearPropertiesPanel);
+                canvas.on('object:modified', handleObjectModified);
+                canvas.on('object:added', updateLayersPanel);
+                canvas.on('object:removed', updateLayersPanel);
+
+                // Load quote data
+                await loadQuoteData();
+
+                // Load theme preference
+                loadThemePreference();
+
+                // Setup auto-save (every 30 seconds)
+                autoSaveInterval = setInterval(autoSave, 30000);
+
+                // Try to load last saved template for this quote
+                await loadLastTemplate();
+
+            } catch (error) {
+                console.error('Error initializing PDF editor:', error);
+                alert('Error initializing editor: ' + error.message);
+            }
+        }
+
+        // Load Quote Data from CRM
+        async function loadQuoteData() {
+            try {
+                showLoading(true);
+
+                const response = await fetch(`/api/crm/quotes/${quoteId}`);
+                if (!response.ok) throw new Error('Failed to load quote');
+
+                quoteData = await response.json();
+                document.getElementById('quote-title').textContent = quoteData.title || 'Untitled Quote';
+
+                // Load customer data
+                if (quoteData.customer_id) {
+                    const customerResponse = await fetch(`/api/crm/customers/${quoteData.customer_id}`);
+                    if (customerResponse.ok) {
+                        customerData = await customerResponse.json();
+                    }
+                }
+
+                // Load cost centres
+                const costCentresResponse = await fetch(`/api/crm/quotes/${quoteId}/cost-centres`);
+                if (costCentresResponse.ok) {
+                    quoteData.cost_centres = await costCentresResponse.json();
+                }
+
+                // Load labour items
+                const labourResponse = await fetch(`/api/crm/quotes/${quoteId}/labour`);
+                if (labourResponse.ok) {
+                    quoteData.labour_items = await labourResponse.json();
+                }
+
+                // Load stock items
+                const stockResponse = await fetch(`/api/crm/quotes/${quoteId}/stock-items`);
+                if (stockResponse.ok) {
+                    quoteData.stock_items = await stockResponse.json();
+                }
+
+                // Populate CRM fields sidebar
+                populateCRMFields();
+
+                showLoading(false);
+            } catch (error) {
+                showLoading(false);
+                console.error('Error loading quote:', error);
+                alert('Error loading quote data: ' + error.message);
+            }
+        }
+
+        // Populate CRM Fields Sidebar
+        function populateCRMFields() {
+            // Quote fields
+            const quoteFieldsContainer = document.getElementById('quote-fields-container');
+            quoteFieldsContainer.innerHTML = '';
+
+            const quoteFields = [
+                { key: 'quote_number', label: 'Quote Number', value: quoteData.quote_number },
+                { key: 'title', label: 'Title', value: quoteData.title },
+                { key: 'description', label: 'Description', value: quoteData.description },
+                { key: 'status', label: 'Status', value: quoteData.status },
+                { key: 'valid_until', label: 'Valid Until', value: quoteData.valid_until }
+            ];
+
+            quoteFields.forEach(field => {
+                if (field.value) {
+                    const fieldEl = createDraggableField(field);
+                    quoteFieldsContainer.appendChild(fieldEl);
+                }
+            });
+
+            // Customer fields
+            const customerFieldsContainer = document.getElementById('customer-fields-container');
+            customerFieldsContainer.innerHTML = '';
+
+            if (customerData && customerData.id) {
+                const customerFields = [
+                    { key: 'customer_name', label: 'Customer Name', value: customerData.name },
+                    { key: 'customer_email', label: 'Email', value: customerData.email },
+                    { key: 'customer_phone', label: 'Phone', value: customerData.phone },
+                    { key: 'customer_address', label: 'Address', value: customerData.address }
+                ];
+
+                customerFields.forEach(field => {
+                    if (field.value) {
+                        const fieldEl = createDraggableField(field);
+                        customerFieldsContainer.appendChild(fieldEl);
+                    }
+                });
+            }
+
+            // Pricing fields
+            const pricingFieldsContainer = document.getElementById('pricing-fields-container');
+            pricingFieldsContainer.innerHTML = '';
+
+            const pricingFields = [
+                { key: 'materials_cost', label: 'Materials Cost', value: '$' + (quoteData.materials_cost || 0).toFixed(2) },
+                { key: 'labor_cost', label: 'Labor Cost', value: '$' + (quoteData.labor_cost || 0).toFixed(2) },
+                { key: 'markup_percentage', label: 'Markup %', value: (quoteData.markup_percentage || 0) + '%' },
+                { key: 'quote_amount', label: 'Total Amount', value: '$' + (quoteData.quote_amount || 0).toFixed(2) }
+            ];
+
+            pricingFields.forEach(field => {
+                const fieldEl = createDraggableField(field);
+                pricingFieldsContainer.appendChild(fieldEl);
+            });
+
+            // Items summary
+            const itemsFieldsContainer = document.getElementById('items-fields-container');
+            itemsFieldsContainer.innerHTML = '';
+
+            if (quoteData.cost_centres && quoteData.cost_centres.length > 0) {
+                const field = {
+                    key: 'cost_centres_summary',
+                    label: 'Cost Centres',
+                    value: `${quoteData.cost_centres.length} centres`,
+                    type: 'table',
+                    data: quoteData.cost_centres
+                };
+                const fieldEl = createDraggableField(field);
+                itemsFieldsContainer.appendChild(fieldEl);
+            }
+
+            if (quoteData.labour_items && quoteData.labour_items.items && quoteData.labour_items.items.length > 0) {
+                const field = {
+                    key: 'labour_items',
+                    label: 'Labour Items',
+                    value: `${quoteData.labour_items.items.length} items`,
+                    type: 'table',
+                    data: quoteData.labour_items.items
+                };
+                const fieldEl = createDraggableField(field);
+                itemsFieldsContainer.appendChild(fieldEl);
+            }
+
+            if (quoteData.stock_items && quoteData.stock_items.length > 0) {
+                const field = {
+                    key: 'stock_items',
+                    label: 'Stock Items',
+                    value: `${quoteData.stock_items.length} items`,
+                    type: 'table',
+                    data: quoteData.stock_items
+                };
+                const fieldEl = createDraggableField(field);
+                itemsFieldsContainer.appendChild(fieldEl);
+            }
+        }
+
+        // Create Draggable Field Element
+        function createDraggableField(field) {
+            const div = document.createElement('div');
+            div.className = 'data-field';
+            div.draggable = true;
+            div.dataset.field = JSON.stringify(field);
+
+            div.innerHTML = `
+                <div class="data-field-name">${field.label}</div>
+                <div class="data-field-value">${field.value}</div>
+            `;
+
+            div.addEventListener('dragstart', function(e) {
+                e.dataTransfer.setData('field', JSON.stringify(field));
+            });
+
+            div.addEventListener('click', function() {
+                addFieldToCanvas(field);
+            });
+
+            return div;
+        }
+
+        // Add Field to Canvas
+        function addFieldToCanvas(field) {
+            if (field.type === 'table') {
+                addTableToCanvas(field);
+            } else {
+                const text = new fabric.IText(`${field.label}: ${field.value}`, {
+                    left: 100,
+                    top: 100,
+                    fontSize: 14,
+                    fill: '#000000',
+                    fontFamily: 'Arial',
+                    editable: true
+                });
+
+                text.set('dataBinding', {
+                    field: field.key,
+                    type: 'text'
+                });
+
+                canvas.add(text);
+                canvas.setActiveObject(text);
+                canvas.renderAll();
+            }
+        }
+
+        // Add Table to Canvas
+        function addTableToCanvas(field) {
+            const data = field.data;
+            if (!data || data.length === 0) return;
+
+            // Create table group
+            const tableObjects = [];
+            let yOffset = 0;
+            const cellHeight = 30;
+            const cellWidth = 150;
+            const fontSize = 12;
+
+            // Header
+            const headerBg = new fabric.Rect({
+                left: 0,
+                top: yOffset,
+                width: cellWidth * 3,
+                height: cellHeight,
+                fill: '#2196F3',
+                stroke: '#000000',
+                strokeWidth: 1
+            });
+            tableObjects.push(headerBg);
+
+            // Determine headers based on data type
+            let headers = [];
+            if (field.key === 'cost_centres_summary') {
+                headers = ['Centre', 'Items', 'Total'];
+            } else if (field.key === 'labour_items') {
+                headers = ['Description', 'Hours', 'Cost'];
+            } else if (field.key === 'stock_items') {
+                headers = ['Item', 'Qty', 'Price'];
+            }
+
+            headers.forEach((header, i) => {
+                const headerText = new fabric.Text(header, {
+                    left: cellWidth * i + 10,
+                    top: yOffset + 8,
+                    fontSize: fontSize,
+                    fill: '#ffffff',
+                    fontWeight: 'bold',
+                    fontFamily: 'Arial'
+                });
+                tableObjects.push(headerText);
+            });
+
+            yOffset += cellHeight;
+
+            // Data rows
+            data.slice(0, 10).forEach((row, rowIndex) => {
+                // Row background
+                const rowBg = new fabric.Rect({
+                    left: 0,
+                    top: yOffset,
+                    width: cellWidth * 3,
+                    height: cellHeight,
+                    fill: rowIndex % 2 === 0 ? '#f5f5f5' : '#ffffff',
+                    stroke: '#000000',
+                    strokeWidth: 1
+                });
+                tableObjects.push(rowBg);
+
+                // Cell data
+                let cellData = [];
+                if (field.key === 'cost_centres_summary') {
+                    cellData = [
+                        row.name || '',
+                        (row.items || []).length.toString(),
+                        '$' + (row.total || 0).toFixed(2)
+                    ];
+                } else if (field.key === 'labour_items') {
+                    cellData = [
+                        row.description || '',
+                        (row.hours || 0).toString(),
+                        '$' + ((row.hours || 0) * (row.hourly_rate || 0)).toFixed(2)
+                    ];
+                } else if (field.key === 'stock_items') {
+                    cellData = [
+                        row.item_name || '',
+                        (row.quantity || 0).toString(),
+                        '$' + (row.total_price || 0).toFixed(2)
+                    ];
+                }
+
+                cellData.forEach((cell, i) => {
+                    const cellText = new fabric.Text(cell, {
+                        left: cellWidth * i + 10,
+                        top: yOffset + 8,
+                        fontSize: fontSize,
+                        fill: '#000000',
+                        fontFamily: 'Arial'
+                    });
+                    tableObjects.push(cellText);
+                });
+
+                yOffset += cellHeight;
+            });
+
+            // Group all objects
+            const group = new fabric.Group(tableObjects, {
+                left: 100,
+                top: 100,
+                selectable: true
+            });
+
+            group.set('dataBinding', {
+                field: field.key,
+                type: 'table'
+            });
+
+            canvas.add(group);
+            canvas.setActiveObject(group);
+            canvas.renderAll();
+        }
+
+        // Text Tools
+        function addText() {
+            const text = new fabric.IText('Click to edit text', {
+                left: 100,
+                top: 100,
+                fontSize: 16,
+                fill: '#000000',
+                fontFamily: 'Arial'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            canvas.renderAll();
+        }
+
+        function updateTextStyle() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.type !== 'i-text') return;
+
+            const fontFamily = document.getElementById('font-family').value;
+            const fontSize = parseInt(document.getElementById('font-size').value);
+            const textColor = document.getElementById('text-color').value;
+
+            activeObject.set({
+                fontFamily: fontFamily,
+                fontSize: fontSize,
+                fill: textColor
+            });
+
+            canvas.renderAll();
+        }
+
+        function toggleBold() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.type !== 'i-text') return;
+
+            const currentWeight = activeObject.fontWeight;
+            activeObject.set('fontWeight', currentWeight === 'bold' ? 'normal' : 'bold');
+            document.getElementById('btn-bold').classList.toggle('active');
+            canvas.renderAll();
+        }
+
+        function toggleItalic() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.type !== 'i-text') return;
+
+            const currentStyle = activeObject.fontStyle;
+            activeObject.set('fontStyle', currentStyle === 'italic' ? 'normal' : 'italic');
+            document.getElementById('btn-italic').classList.toggle('active');
+            canvas.renderAll();
+        }
+
+        function toggleUnderline() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.type !== 'i-text') return;
+
+            const current = activeObject.underline;
+            activeObject.set('underline', !current);
+            document.getElementById('btn-underline').classList.toggle('active');
+            canvas.renderAll();
+        }
+
+        function setTextAlign(alignment) {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject || activeObject.type !== 'i-text') return;
+
+            activeObject.set('textAlign', alignment);
+            canvas.renderAll();
+        }
+
+        // Image Tools
+        function showImageUpload() {
+            document.getElementById('image-upload').click();
+        }
+
+        function uploadImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fabric.Image.fromURL(e.target.result, function(img) {
+                        img.scaleToWidth(200);
+                        img.set({
+                            left: 100,
+                            top: 100
+                        });
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.renderAll();
+                    });
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Shape Tools
+        function addRectangle() {
+            const fillColor = document.getElementById('fill-color').value;
+            const strokeColor = document.getElementById('stroke-color').value;
+
+            const rect = new fabric.Rect({
+                left: 100,
+                top: 100,
+                width: 150,
+                height: 100,
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2
+            });
+            canvas.add(rect);
+            canvas.setActiveObject(rect);
+            canvas.renderAll();
+        }
+
+        function addCircle() {
+            const fillColor = document.getElementById('fill-color').value;
+            const strokeColor = document.getElementById('stroke-color').value;
+
+            const circle = new fabric.Circle({
+                left: 100,
+                top: 100,
+                radius: 50,
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2
+            });
+            canvas.add(circle);
+            canvas.setActiveObject(circle);
+            canvas.renderAll();
+        }
+
+        function addLine() {
+            const strokeColor = document.getElementById('stroke-color').value;
+
+            const line = new fabric.Line([50, 50, 200, 50], {
+                stroke: strokeColor,
+                strokeWidth: 3
+            });
+            canvas.add(line);
+            canvas.setActiveObject(line);
+            canvas.renderAll();
+        }
+
+        // Layer Tools
+        function bringForward() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.bringForward(activeObject);
+                canvas.renderAll();
+                updateLayersPanel();
+            }
+        }
+
+        function sendBackward() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.sendBackwards(activeObject);
+                canvas.renderAll();
+                updateLayersPanel();
+            }
+        }
+
+        function deleteSelected() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length > 0) {
+                if (confirm('Delete selected object(s)?')) {
+                    activeObjects.forEach(obj => canvas.remove(obj));
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                }
+            }
+        }
+
+        function duplicateSelected() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.clone(function(cloned) {
+                    cloned.set({
+                        left: cloned.left + 20,
+                        top: cloned.top + 20
+                    });
+                    canvas.add(cloned);
+                    canvas.setActiveObject(cloned);
+                    canvas.renderAll();
+                });
+            }
+        }
+
+        // Canvas Tools
+        function zoomIn() {
+            const zoom = canvas.getZoom();
+            canvas.setZoom(zoom * 1.1);
+            canvas.renderAll();
+        }
+
+        function zoomOut() {
+            const zoom = canvas.getZoom();
+            canvas.setZoom(zoom * 0.9);
+            canvas.renderAll();
+        }
+
+        function resetZoom() {
+            canvas.setZoom(1);
+            canvas.renderAll();
+        }
+
+        function setCanvasBackground() {
+            const color = prompt('Enter background color (hex, rgb, or color name):', '#ffffff');
+            if (color) {
+                canvas.backgroundColor = color;
+                canvas.renderAll();
+            }
+        }
+
+        function clearCanvas() {
+            if (confirm('Clear entire canvas? This cannot be undone.')) {
+                canvas.clear();
+                canvas.backgroundColor = '#ffffff';
+                canvas.renderAll();
+            }
+        }
+
+        // Properties Panel
+        function updatePropertiesPanel() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject) {
+                clearPropertiesPanel();
+                return;
+            }
+
+            const container = document.getElementById('properties-container');
+            container.innerHTML = '';
+
+            // Position
+            const posGroup = document.createElement('div');
+            posGroup.className = 'property-group';
+            posGroup.innerHTML = `
+                <label>Position</label>
+                <div class="property-row">
+                    <input type="number" class="property-input" id="prop-left" value="${Math.round(activeObject.left)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-top" value="${Math.round(activeObject.top)}" placeholder="Y">
+                </div>
+            `;
+            container.appendChild(posGroup);
+
+            // Size
+            const sizeGroup = document.createElement('div');
+            sizeGroup.className = 'property-group';
+            sizeGroup.innerHTML = `
+                <label>Size</label>
+                <div class="property-row">
+                    <input type="number" class="property-input" id="prop-width" value="${Math.round(activeObject.width * activeObject.scaleX)}" placeholder="Width">
+                    <input type="number" class="property-input" id="prop-height" value="${Math.round(activeObject.height * activeObject.scaleY)}" placeholder="Height">
+                </div>
+            `;
+            container.appendChild(sizeGroup);
+
+            // Rotation
+            const rotGroup = document.createElement('div');
+            rotGroup.className = 'property-group';
+            rotGroup.innerHTML = `
+                <label>Rotation</label>
+                <input type="number" class="property-input" id="prop-angle" value="${Math.round(activeObject.angle)}" placeholder="Angle">
+            `;
+            container.appendChild(rotGroup);
+
+            // Opacity
+            const opacityGroup = document.createElement('div');
+            opacityGroup.className = 'property-group';
+            opacityGroup.innerHTML = `
+                <label>Opacity</label>
+                <input type="range" class="property-input" id="prop-opacity" min="0" max="1" step="0.1" value="${activeObject.opacity}">
+            `;
+            container.appendChild(opacityGroup);
+
+            // Apply button
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'btn btn-primary';
+            applyBtn.textContent = 'Apply Changes';
+            applyBtn.style.width = '100%';
+            applyBtn.style.marginTop = '10px';
+            applyBtn.onclick = applyProperties;
+            container.appendChild(applyBtn);
+
+            // Data binding info
+            if (activeObject.dataBinding) {
+                const bindingGroup = document.createElement('div');
+                bindingGroup.className = 'property-group';
+                bindingGroup.innerHTML = `
+                    <label>Data Binding</label>
+                    <div style="background: var(--bg-secondary); padding: 10px; border-radius: 4px; font-size: 12px;">
+                        <strong>Field:</strong> ${activeObject.dataBinding.field}<br>
+                        <strong>Type:</strong> ${activeObject.dataBinding.type}
+                    </div>
+                `;
+                container.appendChild(bindingGroup);
+            }
+        }
+
+        function applyProperties() {
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject) return;
+
+            const left = parseFloat(document.getElementById('prop-left').value);
+            const top = parseFloat(document.getElementById('prop-top').value);
+            const width = parseFloat(document.getElementById('prop-width').value);
+            const height = parseFloat(document.getElementById('prop-height').value);
+            const angle = parseFloat(document.getElementById('prop-angle').value);
+            const opacity = parseFloat(document.getElementById('prop-opacity').value);
+
+            activeObject.set({
+                left: left,
+                top: top,
+                scaleX: width / activeObject.width,
+                scaleY: height / activeObject.height,
+                angle: angle,
+                opacity: opacity
+            });
+
+            activeObject.setCoords();
+            canvas.renderAll();
+        }
+
+        function clearPropertiesPanel() {
+            const container = document.getElementById('properties-container');
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Select an object to view properties</p>';
+        }
+
+        // Layers Panel
+        function updateLayersPanel() {
+            const container = document.getElementById('layers-container');
+            const objects = canvas.getObjects();
+
+            if (objects.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">No objects on canvas</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            objects.forEach((obj, index) => {
+                const layerItem = document.createElement('div');
+                layerItem.className = 'layer-item';
+
+                const name = obj.dataBinding ? obj.dataBinding.field : (obj.type || 'Object');
+                layerItem.innerHTML = `
+                    <span class="layer-name">${index + 1}. ${name}</span>
+                    <div class="layer-actions">
+                        <button onclick="selectLayer(${index})" title="Select">👁️</button>
+                        <button onclick="deleteLayer(${index})" title="Delete">🗑️</button>
+                    </div>
+                `;
+
+                if (canvas.getActiveObject() === obj) {
+                    layerItem.classList.add('selected');
+                }
+
+                container.appendChild(layerItem);
+            });
+        }
+
+        function selectLayer(index) {
+            const objects = canvas.getObjects();
+            if (objects[index]) {
+                canvas.setActiveObject(objects[index]);
+                canvas.renderAll();
+                updateLayersPanel();
+            }
+        }
+
+        function deleteLayer(index) {
+            const objects = canvas.getObjects();
+            if (objects[index]) {
+                if (confirm('Delete this layer?')) {
+                    canvas.remove(objects[index]);
+                    canvas.renderAll();
+                }
+            }
+        }
+
+        // Object Modified Handler (for bidirectional sync)
+        function handleObjectModified(e) {
+            const obj = e.target;
+
+            // Check if object has data binding
+            if (obj.dataBinding && obj.dataBinding.field) {
+                // Extract quantity if it's in the text
+                if (obj.type === 'i-text' || obj.type === 'text') {
+                    const text = obj.text;
+                    const quantityMatch = text.match(/(\d+(\.\d+)?)/);
+
+                    if (quantityMatch) {
+                        const quantity = parseFloat(quantityMatch[1]);
+                        // Update CRM data
+                        updateCRMFromPDF(obj.dataBinding.field, quantity);
+                    }
+                }
+            }
+        }
+
+        // Update CRM from PDF changes (bidirectional sync)
+        async function updateCRMFromPDF(field, value) {
+            try {
+                console.log(`Updating CRM field ${field} with value ${value}`);
+
+                // Determine which endpoint to call based on field
+                if (field.includes('cost_centre') || field.includes('item')) {
+                    // Handle cost centre item updates
+                    // This would require parsing the field to get IDs
+                    showSyncStatus('Detected change in cost centre item');
+                } else if (field.includes('labour')) {
+                    showSyncStatus('Detected change in labour item');
+                } else if (field.includes('stock')) {
+                    showSyncStatus('Detected change in stock item');
+                }
+
+                // For now, just mark that sync is needed
+                showSyncStatus('Changes detected - click Save to CRM to sync');
+
+            } catch (error) {
+                console.error('Error updating CRM:', error);
+            }
+        }
+
+        // Sidebar Tab Switching
+        function switchSidebarTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.sidebar-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show/hide tab content
+            if (tab === 'fields') {
+                document.getElementById('tab-fields').style.display = 'block';
+                document.getElementById('tab-layers').style.display = 'none';
+            } else if (tab === 'layers') {
+                document.getElementById('tab-fields').style.display = 'none';
+                document.getElementById('tab-layers').style.display = 'block';
+                updateLayersPanel();
+            }
+        }
+
+        // Template Management
+        function showTemplateModal(mode) {
+            const modal = document.getElementById('template-modal');
+            const title = document.getElementById('template-modal-title');
+            const body = document.getElementById('template-modal-body');
+
+            if (mode === 'save') {
+                title.textContent = 'Save Template';
+                body.innerHTML = `
+                    <div class="form-group">
+                        <label>Template Name</label>
+                        <input type="text" class="form-control" id="template-name" placeholder="e.g., Standard Quote Template">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" id="template-description" rows="3" placeholder="Describe this template..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeTemplateModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+                    </div>
+                `;
+            } else if (mode === 'load') {
+                title.textContent = 'Load Template';
+                loadTemplatesList(body);
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+        }
+
+        async function loadTemplatesList(container) {
+            try {
+                const response = await fetch(`/api/pdf-editor/templates?quote_id=${quoteId}`);
+                if (!response.ok) throw new Error('Failed to load templates');
+
+                const templates = await response.json();
+
+                if (templates.length === 0) {
+                    container.innerHTML = `
+                        <p style="color: var(--text-secondary); text-align: center; padding: 20px;">
+                            No templates found. Create your first template by clicking "Save Template".
+                        </p>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeTemplateModal()">Close</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '<div>';
+                templates.forEach(template => {
+                    html += `
+                        <div class="template-item">
+                            <div class="template-info">
+                                <h4>${template.name}</h4>
+                                <p>${template.description || 'No description'}</p>
+                                <p style="font-size: 11px; color: var(--text-secondary);">
+                                    Created: ${new Date(template.created_at).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <div class="template-actions">
+                                <button class="btn btn-primary" onclick="loadTemplate('${template.id}')">Load</button>
+                                <button class="btn btn-danger" onclick="deleteTemplate('${template.id}')">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                html += `
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeTemplateModal()">Close</button>
+                    </div>
+                `;
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                container.innerHTML = `
+                    <p style="color: var(--danger-color); text-align: center; padding: 20px;">
+                        Error loading templates: ${error.message}
+                    </p>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeTemplateModal()">Close</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function saveTemplate() {
+            try {
+                const name = document.getElementById('template-name').value.trim();
+                if (!name) {
+                    alert('Please enter a template name');
+                    return;
+                }
+
+                const description = document.getElementById('template-description').value.trim();
+                const canvasData = JSON.stringify(canvas.toJSON(['dataBinding']));
+
+                const response = await fetch('/api/pdf-editor/templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quote_id: quoteId,
+                        name: name,
+                        description: description,
+                        canvas_data: canvasData
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to save template');
+
+                alert('Template saved successfully!');
+                closeTemplateModal();
+
+            } catch (error) {
+                console.error('Error saving template:', error);
+                alert('Error saving template: ' + error.message);
+            }
+        }
+
+        async function loadTemplate(templateId) {
+            try {
+                showLoading(true);
+
+                const response = await fetch(`/api/pdf-editor/templates/${templateId}`);
+                if (!response.ok) throw new Error('Failed to load template');
+
+                const template = await response.json();
+                const canvasData = JSON.parse(template.canvas_data);
+
+                canvas.loadFromJSON(canvasData, function() {
+                    canvas.renderAll();
+                    currentTemplate = template;
+                    showLoading(false);
+                    closeTemplateModal();
+                    updateLayersPanel();
+                });
+
+            } catch (error) {
+                showLoading(false);
+                console.error('Error loading template:', error);
+                alert('Error loading template: ' + error.message);
+            }
+        }
+
+        async function loadLastTemplate() {
+            try {
+                const response = await fetch(`/api/pdf-editor/templates/last?quote_id=${quoteId}`);
+                if (response.ok) {
+                    const template = await response.json();
+                    if (template && template.canvas_data) {
+                        const canvasData = JSON.parse(template.canvas_data);
+                        canvas.loadFromJSON(canvasData, function() {
+                            canvas.renderAll();
+                            currentTemplate = template;
+                            updateLayersPanel();
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading last template:', error);
+                // Silently fail - it's OK if there's no last template
+            }
+        }
+
+        async function deleteTemplate(templateId) {
+            if (!confirm('Delete this template?')) return;
+
+            try {
+                const response = await fetch(`/api/pdf-editor/templates/${templateId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete template');
+
+                // Reload templates list
+                const body = document.getElementById('template-modal-body');
+                loadTemplatesList(body);
+
+            } catch (error) {
+                console.error('Error deleting template:', error);
+                alert('Error deleting template: ' + error.message);
+            }
+        }
+
+        // Auto-save
+        async function autoSave() {
+            if (syncInProgress) return;
+
+            try {
+                const canvasData = JSON.stringify(canvas.toJSON(['dataBinding']));
+
+                await fetch('/api/pdf-editor/autosave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quote_id: quoteId,
+                        canvas_data: canvasData
+                    })
+                });
+
+                console.log('Auto-saved at', new Date().toLocaleTimeString());
+
+            } catch (error) {
+                console.error('Auto-save error:', error);
+            }
+        }
+
+        // Save to CRM
+        async function saveToCRM() {
+            try {
+                syncInProgress = true;
+                showSyncStatus('Saving to CRM...', true);
+                showLoading(true);
+
+                // Save current canvas state
+                const canvasData = JSON.stringify(canvas.toJSON(['dataBinding']));
+
+                const response = await fetch('/api/pdf-editor/save-to-crm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quote_id: quoteId,
+                        canvas_data: canvasData
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save to CRM');
+                }
+
+                const result = await response.json();
+
+                showLoading(false);
+
+                // Show updates made
+                if (result.updates_made && result.updates_made.length > 0) {
+                    const updatesList = result.updates_made.join('\n• ');
+                    alert(`✅ ${result.message}\n\nUpdates:\n• ${updatesList}`);
+                } else {
+                    showSyncStatus('Saved to CRM successfully!', false);
+                }
+
+                setTimeout(() => {
+                    hideSyncStatus();
+                    syncInProgress = false;
+                }, 3000);
+
+            } catch (error) {
+                showLoading(false);
+                syncInProgress = false;
+                console.error('Error saving to CRM:', error);
+                alert('❌ Error saving to CRM: ' + error.message);
+                hideSyncStatus();
+            }
+        }
+
+        // Export PDF
+        async function exportPDF() {
+            try {
+                showLoading(true);
+
+                // Get canvas data URL
+                const dataURL = canvas.toDataURL({
+                    format: 'png',
+                    quality: 1,
+                    multiplier: 2 // Higher resolution
+                });
+
+                // Send to backend for PDF generation
+                const response = await fetch('/api/pdf-editor/export-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quote_id: quoteId,
+                        image_data: dataURL,
+                        quote_data: quoteData
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to generate PDF');
+
+                // Download PDF
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Quote_${quoteData.quote_number}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showLoading(false);
+                alert('PDF exported successfully!');
+
+            } catch (error) {
+                showLoading(false);
+                console.error('Error exporting PDF:', error);
+                alert('Error exporting PDF: ' + error.message);
+            }
+        }
+
+        // Utility Functions
+        function showSyncStatus(message, loading = false) {
+            const statusEl = document.getElementById('sync-status');
+            const messageEl = document.getElementById('sync-message');
+            const spinner = statusEl.querySelector('.spinner');
+
+            messageEl.textContent = message;
+            spinner.style.display = loading ? 'block' : 'none';
+            statusEl.classList.add('active');
+        }
+
+        function hideSyncStatus() {
+            document.getElementById('sync-status').classList.remove('active');
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+
+        function toggleDarkMode() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+        }
+
+        function goBackToCRM() {
+            if (confirm('Return to CRM? Unsaved changes will be lost.')) {
+                window.location.href = '/crm';
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function(e) {
+            // Auto-save before leaving
+            autoSave();
+        });
+    </script>
+</body>
+</html>

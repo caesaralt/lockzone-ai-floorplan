@@ -3511,6 +3511,7 @@
                                         <td>${q.valid_until || '-'}</td>
                                         <td style="white-space: nowrap;">
                                             <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')">Edit</button>
+                                            <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="Open PDF Editor">🎨 PDF Editor</button>
                                             <button class="btn btn-primary btn-small" onclick="generateQuotePDF('${q.id}')" title="Generate PDF">📄 PDF</button>
                                             ${q.status !== 'accepted' ? `<button class="btn btn-primary btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">Convert</button>` : ''}
                                             ${q.converted_to_project_id ? `<button class="btn btn-primary btn-small" onclick="goToProject('${q.converted_to_project_id}')">View Project</button>` : ''}
@@ -3578,6 +3579,11 @@
                 document.getElementById('quoteNotes').value = q.notes || '';
                 openModal('quoteModal');
             }
+        }
+
+        function openPDFEditor(quoteId) {
+            // Open PDF editor in new tab
+            window.open(`/pdf-editor?quote_id=${quoteId}`, '_blank');
         }
 
         async function deleteQuote(id) {
