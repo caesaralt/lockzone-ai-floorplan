@@ -4789,15 +4789,74 @@
 
 <script>
     console.log('CRM Script Block 2: Loaded (AI Chat & Dark Mode)');
+
+    // ============================================================================
+    // DARK MODE TOGGLE - Define this first so DOMContentLoaded can find it
+    // ============================================================================
+
+    function initDarkMode() {
+        console.log('initDarkMode function called');
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
+
+        console.log('Theme toggle elements:', { themeToggle, sunIcon, moonIcon });
+
+        if (themeToggle && sunIcon && moonIcon) {
+            // Check for saved theme preference or default to 'light' mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            console.log('Current theme from localStorage:', currentTheme);
+
+            // Set initial theme
+            if (currentTheme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+
+            // Toggle theme on button click
+            themeToggle.addEventListener('click', function() {
+                console.log('Theme toggle clicked!');
+                const theme = htmlElement.getAttribute('data-theme');
+                console.log('Current theme attribute:', theme);
+
+                if (theme === 'dark') {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                    console.log('Switched to light mode');
+                } else {
+                    htmlElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                    console.log('Switched to dark mode');
+                }
+
+                // Reinitialize charts with new theme colors
+                setTimeout(() => {
+                    if (typeof loadStats === 'function') {
+                        loadStats();
+                    }
+                }, 100);
+            });
+            console.log('Dark mode event listener attached successfully');
+        } else {
+            console.error('Dark mode initialization failed - missing elements:', {
+                hasToggle: !!themeToggle,
+                hasSun: !!sunIcon,
+                hasMoon: !!moonIcon
+            });
+        }
+    }
+
     // Initialize dark mode when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         console.log('CRM Block 2: DOM ready - Initializing dark mode');
-        if (typeof initDarkMode === 'function') {
-            initDarkMode();
-            console.log('CRM: Dark mode initialized');
-        } else {
-            console.error('CRM: initDarkMode function not found!');
-        }
+        initDarkMode();
+        console.log('CRM: Dark mode initialization complete');
     });
 
     let agentMode = false;
@@ -6526,50 +6585,8 @@
         showToast('Payment reminder loaded - adjust and save to calendar', 'info');
     }
 
-    // ============================================================================
-    // DARK MODE TOGGLE
-    // ============================================================================
+    // initDarkMode moved to top of script block (line ~4797) for proper initialization order
 
-    function initDarkMode() {
-        const themeToggle = document.getElementById('themeToggle');
-        const sunIcon = document.getElementById('sunIcon');
-        const moonIcon = document.getElementById('moonIcon');
-        const htmlElement = document.documentElement;
-
-        if (themeToggle && sunIcon && moonIcon) {
-            // Check for saved theme preference or default to 'light' mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-
-            // Set initial theme
-            if (currentTheme === 'dark') {
-                htmlElement.setAttribute('data-theme', 'dark');
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-            }
-
-            // Toggle theme on button click
-            themeToggle.addEventListener('click', function() {
-                const theme = htmlElement.getAttribute('data-theme');
-
-                if (theme === 'dark') {
-                    htmlElement.setAttribute('data-theme', 'light');
-                    localStorage.setItem('theme', 'light');
-                    sunIcon.style.display = 'block';
-                    moonIcon.style.display = 'none';
-                } else {
-                    htmlElement.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                    sunIcon.style.display = 'none';
-                    moonIcon.style.display = 'block';
-                }
-
-                // Reinitialize charts with new theme colors
-                setTimeout(() => {
-                    loadStats();
-                }, 100);
-            });
-        }
-    }
 </script>
 
 <!-- Footer -->
