@@ -1,0 +1,72 @@
+================================================================================
+CRM-CANVAS EDITOR INTEGRATION FIXES - QUICK REFERENCE
+================================================================================
+
+CHANGES MADE:
+-------------
+
+1. BIDIRECTIONAL SYNC ✓
+   - Added API endpoint: GET /api/crm/quotes/<quote_id>/canvas-state
+   - Added API endpoint: POST /api/crm/quotes/<quote_id>/update-from-canvas
+   - Added loadQuoteFromCRM() function in canvas editor
+   - Added syncChangesToCRM() function in canvas editor
+   - Added "Sync Changes to CRM" button in canvas editor UI
+   - Items added/modified in canvas now properly sync back to CRM
+
+2. OPEN FLOORPLANS FROM CRM ✓
+   - Added "Edit Floorplan" button in CRM quote list (next to PDF Editor)
+   - Added editQuoteFloorplan() function to navigate to canvas editor
+   - Canvas editor auto-loads quote via URL parameter (?quote_id=...)
+   - Full canvas state restoration with all components
+
+3. DASHBOARD CRM DATA ✓
+   - Already working properly
+   - Fetches from /api/crm/stats endpoint
+   - Displays customers, projects, revenue, stock stats
+   - Updates in real-time after data changes
+
+FILES MODIFIED:
+--------------
+1. app.py (2 new API endpoints)
+2. templates/index.html (load & sync functions + UI button)
+3. templates/crm.html (edit button + navigation function)
+
+HOW TO USE:
+-----------
+
+FROM QUOTE AUTOMATION:
+1. Generate quote
+2. Click "💾 Save Complete Quote to CRM"
+3. Quote saved with floorplan and canvas state
+
+FROM CRM TO CANVAS EDITOR:
+1. Go to CRM → Quotes
+2. Find quote with floorplan
+3. Click "✏️ Edit Floorplan"
+4. Canvas editor opens with quote loaded
+5. Add/modify/delete components
+6. Click "🔄 Sync Changes to CRM"
+7. All changes saved back to CRM
+
+DASHBOARD:
+1. Go to CRM → Dashboard
+2. View real-time stats
+3. Stats update automatically
+
+KEY ENDPOINTS:
+-------------
+GET  /api/crm/stats                               - Dashboard statistics
+GET  /api/crm/quotes/<quote_id>/canvas-state     - Load quote for editing
+POST /api/crm/quotes/<quote_id>/update-from-canvas - Save canvas changes
+POST /api/crm/quotes/save-from-automation        - Save new quote
+GET  /api/crm/quotes/<quote_id>/floorplan        - Get floorplan image
+
+TESTING:
+--------
+1. Create quote in automation → Save to CRM → Edit from CRM → Sync changes
+2. Verify components persist correctly
+3. Verify total price updates
+4. Verify floorplan image updates
+5. Check dashboard shows correct stats
+
+================================================================================

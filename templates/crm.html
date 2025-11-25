@@ -3579,6 +3579,7 @@
                                         <td>${q.valid_until || '-'}</td>
                                         <td style="white-space: nowrap;">
                                             <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')">Edit</button>
+                                            ${q.floorplan_image ? `<button class="btn btn-primary btn-small" onclick="editQuoteFloorplan('${q.id}')" title="Edit Floorplan in Canvas Editor">✏️ Edit Floorplan</button>` : ''}
                                             <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="Open PDF Editor">🎨 PDF Editor</button>
                                             <button class="btn btn-primary btn-small" onclick="generateQuotePDF('${q.id}')" title="Generate PDF">📄 PDF</button>
                                             ${q.status !== 'accepted' ? `<button class="btn btn-primary btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">Convert</button>` : ''}
@@ -4005,6 +4006,11 @@
                 const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
                 if (row) row.scrollIntoView({behavior: 'smooth'});
             }, 100);
+        }
+
+        function editQuoteFloorplan(quoteId) {
+            // Open the quote in the canvas editor for editing
+            window.location.href = `/?quote_id=${quoteId}`;
         }
 
         // Quote Markups Management

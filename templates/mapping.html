@@ -468,15 +468,117 @@
                     try {
                         const data = JSON.parse(importData);
                         console.log('Imported data to Mapping:', data);
-                        showImportToast(`Data imported: ${data.project_name}`, 'success');
+
+                        // Import floorplan image if available
+                        if (data.floorplan_image) {
+                            const img = new Image();
+                            img.onload = function() {
+                                floorplanImage = img;
+
+                                // Resize canvas to match imported dimensions
+                                if (data.canvas_dimensions) {
+                                    canvas.width = data.canvas_dimensions.width;
+                                    canvas.height = data.canvas_dimensions.height;
+                                } else {
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                }
+
+                                // Import components if available
+                                if (data.components && Array.isArray(data.components)) {
+                                    importComponents(data.components);
+                                }
+
+                                // Render the canvas
+                                render();
+
+                                showImportToast(`Floorplan imported: ${data.project_name} (${data.components?.length || 0} components)`, 'success');
+                                console.log('Floorplan loaded successfully:', {
+                                    width: canvas.width,
+                                    height: canvas.height,
+                                    components: components.length
+                                });
+                            };
+                            img.onerror = function(e) {
+                                console.error('Error loading floorplan image:', e);
+                                showImportToast('Error loading floorplan image', 'error');
+                            };
+                            img.src = data.floorplan_image;
+                        } else {
+                            // No floorplan image, but might have components
+                            if (data.components && Array.isArray(data.components)) {
+                                importComponents(data.components);
+                                render();
+                            }
+                            showImportToast(`Data imported: ${data.project_name}`, 'success');
+                        }
+
                         sessionStorage.removeItem('import_data');
                         sessionStorage.removeItem('import_source');
                     } catch (e) {
                         console.error('Import error:', e);
+                        showImportToast('Error importing data: ' + e.message, 'error');
                     }
                 }
             }
         })();
+
+        // Function to import components from canvas editor to mapping tool
+        function importComponents(importedComponents) {
+            if (!importedComponents || !Array.isArray(importedComponents)) {
+                console.log('No components to import');
+                return;
+            }
+
+            console.log('Importing components:', importedComponents.length);
+
+            importedComponents.forEach((comp, index) => {
+                // Map component type to mapping tool format
+                let componentType = 'outlet'; // default
+
+                // Try to map the component type
+                const typeLower = (comp.type || comp.name || '').toLowerCase();
+                if (typeLower.includes('light')) componentType = 'light';
+                else if (typeLower.includes('switch')) componentType = 'switch';
+                else if (typeLower.includes('outlet') || typeLower.includes('socket')) componentType = 'outlet';
+                else if (typeLower.includes('panel')) componentType = 'panel';
+                else if (typeLower.includes('junction')) componentType = 'junction';
+                else if (typeLower.includes('sensor')) componentType = 'sensor';
+                else if (typeLower.includes('dimmer')) componentType = 'dimmer';
+                else if (typeLower.includes('fan')) componentType = 'fan';
+
+                // Get component config or use custom
+                const config = componentConfig[componentType] || {
+                    name: comp.name || 'Component',
+                    emoji: comp.emoji || '📦',
+                    width: 30,
+                    height: 30
+                };
+
+                // Create component in mapping tool format
+                const newComponent = {
+                    id: `imported-${Date.now()}-${index}`,
+                    type: componentType,
+                    x: comp.position?.x || 100,
+                    y: comp.position?.y || 100,
+                    width: config.width * (comp.scale?.x || 1),
+                    height: config.height * (comp.scale?.y || 1),
+                    rotation: comp.rotation || 0,
+                    label: comp.name || config.name,
+                    emoji: comp.emoji || config.emoji,
+                    customData: {
+                        totalPrice: comp.totalPrice,
+                        components: comp.components,
+                        originalData: comp
+                    }
+                };
+
+                components.push(newComponent);
+                console.log('Imported component:', newComponent);
+            });
+
+            console.log('Total components after import:', components.length);
+        }
 
         function showImportToast(message, type) {
             const toast = document.createElement('div');
@@ -1949,7 +2051,75 @@
         }
 
         function exportMapping() {
-            alert('PDF export feature - would generate comprehensive electrical mapping report');
+            // Prepare export data with all mapping information
+            const exportData = {
+                project_name: 'Electrical Mapping',
+                source: 'electrical-mapping',
+                timestamp: Date.now(),
+                canvas_dimensions: {
+                    width: canvas.width,
+                    height: canvas.height
+                },
+                components: components.map(comp => ({
+                    ...comp,
+                    position: { x: comp.x, y: comp.y },
+                    scale: { x: comp.width / (componentConfig[comp.type]?.width || 30), y: comp.height / (componentConfig[comp.type]?.height || 30) },
+                    rotation: comp.rotation || 0,
+                    type: comp.type,
+                    name: comp.label || comp.type,
+                    emoji: comp.emoji || componentConfig[comp.type]?.emoji || '📦'
+                })),
+                wires: wires,
+                circuits: circuits,
+                annotations: annotations
+            };
+
+            // Export the canvas as floorplan image
+            try {
+                // Create a temporary canvas to render the full scene
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Draw floorplan if available
+                if (floorplanImage) {
+                    tempCtx.drawImage(floorplanImage, 0, 0);
+                }
+
+                // Draw all components, wires, etc. on temp canvas
+                // Copy current canvas content
+                tempCtx.drawImage(canvas, 0, 0);
+
+                exportData.floorplan_image = tempCanvas.toDataURL('image/png', 0.9);
+                console.log('Exported mapping as floorplan image');
+            } catch (e) {
+                console.error('Error exporting canvas image:', e);
+            }
+
+            // Offer download or export options
+            const exportChoice = confirm('Export Options:\nOK = Download as JSON\nCancel = Export to Canvas Editor');
+
+            if (exportChoice) {
+                // Download as JSON
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `electrical-mapping-${Date.now()}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+                showImportToast('Mapping exported as JSON', 'success');
+            } else {
+                // Export to Canvas Editor
+                sessionStorage.setItem('import_data', JSON.stringify(exportData));
+                sessionStorage.setItem('import_source', 'electrical-mapping');
+                showImportToast('Exporting to Canvas Editor...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/canvas?import=true';
+                }, 500);
+            }
         }
 
         function runAIMapping() {

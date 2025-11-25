@@ -568,6 +568,66 @@
         let currentQuoteData = null;
         let componentSymbols = [];
         let priceClasses = [];  // Store loaded price classes
+        let currentQuoteId = null;  // Track CRM quote ID for bidirectional sync
+
+        // Check for imported data on page load
+        (function checkForImportedData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('import') === 'true') {
+                const importData = sessionStorage.getItem('import_data');
+                if (importData) {
+                    try {
+                        const data = JSON.parse(importData);
+                        console.log('Imported data to Canvas Editor:', data);
+
+                        // Create a mock quote data structure from imported data
+                        currentQuoteData = {
+                            project_name: data.project_name || 'Imported Project',
+                            costs: data.costs || {},
+                            analysis: data.analysis || { components: [] },
+                            files: {}
+                        };
+
+                        // If there's a floorplan image, use it
+                        if (data.floorplan_image) {
+                            currentQuoteData.files.floor_plan_preview = data.floorplan_image;
+                        }
+
+                        // Convert imported components to analysis format
+                        if (data.components && Array.isArray(data.components)) {
+                            currentQuoteData.analysis.components = data.components.map(comp => ({
+                                type: comp.name || comp.type || 'Component',
+                                category: comp.type,
+                                name: comp.name || 'Component',
+                                emoji: comp.emoji || '📦',
+                                location: comp.position ?
+                                    { x: comp.position.x / (data.canvas_dimensions?.width || 800),
+                                      y: comp.position.y / (data.canvas_dimensions?.height || 600) }
+                                    : { x: 0.5, y: 0.5 },
+                                x: comp.position?.x,
+                                y: comp.position?.y,
+                                room: comp.room || 'Imported',
+                                items: comp.components || [],
+                                totalPrice: comp.totalPrice || 0,
+                                scale: comp.scale || { x: 1, y: 1 },
+                                rotation: comp.rotation || 0
+                            }));
+                        }
+
+                        // Display the imported data
+                        displayResults(currentQuoteData);
+                        showToast(`Imported: ${data.project_name} (${data.components?.length || 0} components)`, 'success');
+
+                        // Clean up session storage
+                        sessionStorage.removeItem('import_data');
+                        sessionStorage.removeItem('import_source');
+                    } catch (e) {
+                        console.error('Import error:', e);
+                        showToast('Error importing data: ' + e.message, 'error');
+                    }
+                }
+            }
+        })();
 
         // Load price classes from CRM
         async function loadPriceClasses() {
@@ -586,6 +646,13 @@
         // Render price class symbol buttons
         function renderPriceClassButtons() {
             const container = document.getElementById('priceClassSymbols');
+
+            // Check if container exists
+            if (!container) {
+                console.warn('Price class symbols container not found');
+                return;
+            }
+
             if (!priceClasses || priceClasses.length === 0) {
                 container.style.display = 'none';
                 return;
@@ -594,7 +661,9 @@
             // Clear existing buttons (except the label)
             const label = container.querySelector('span');
             container.innerHTML = '';
-            container.appendChild(label);
+            if (label) {
+                container.appendChild(label);
+            }
 
             // Add button for each price class
             priceClasses.forEach(priceClass => {
@@ -1079,6 +1148,17 @@
                                 <span class="text-xl">💾 Save Complete Quote to CRM</span>
                             </button>
                             <p class="text-center text-sm text-gray-600 mt-2">Saves quote details, pricing, and floorplan with markups to CRM</p>
+                        </div>
+
+                        <!-- Sync to CRM Button (for existing quotes) -->
+                        <div id="syncToCRMButton" class="mb-6 hidden">
+                            <button onclick="syncChangesToCRM()" class="w-full group bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-5 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-3">
+                                <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span class="text-xl">🔄 Sync Changes to CRM</span>
+                            </button>
+                            <p class="text-center text-sm text-gray-600 mt-2">Updates the existing CRM quote with your changes</p>
                         </div>
 
                         <!-- Download & Export Section -->
@@ -2031,15 +2111,51 @@
                 analysis: currentQuoteData.analysis
             };
 
-            // Add components with enhanced data
+            // Add canvas data if editor is initialized
             if (editorCanvas) {
+                const canvasData = editorCanvas.toJSON();
+                exportData.canvas_state = canvasData;
+
+                // Export the entire canvas as a floorplan image (data URL)
+                try {
+                    const canvasDataURL = editorCanvas.toDataURL({
+                        format: 'png',
+                        quality: 0.9,
+                        multiplier: 1
+                    });
+                    exportData.floorplan_image = canvasDataURL;
+                    console.log('Exported canvas as floorplan image for CRM');
+                } catch (e) {
+                    console.error('Error exporting canvas image:', e);
+                }
+
+                // Export enhanced component data with all modifications
                 exportData.components = componentSymbols.map(obj => ({
                     ...obj.componentData,
                     position: { x: obj.left, y: obj.top },
                     scale: { x: obj.scaleX, y: obj.scaleY },
+                    rotation: obj.angle || 0,
                     components: obj.componentData.components || [],
-                    totalPrice: obj.componentData.totalPrice || 0
+                    totalPrice: obj.componentData.totalPrice || 0,
+                    type: obj.componentData.category || obj.componentData.name || 'component',
+                    name: obj.componentData.name || 'Component',
+                    emoji: obj.componentData.emoji || '📦'
                 }));
+
+                // Export updated totals
+                let exportTotal = 0;
+                componentSymbols.forEach(symbol => {
+                    if (symbol.componentData && symbol.componentData.totalPrice) {
+                        exportTotal += symbol.componentData.totalPrice;
+                    }
+                });
+                exportData.updated_grand_total = exportTotal;
+
+                // Export canvas dimensions
+                exportData.canvas_dimensions = {
+                    width: editorCanvas.width,
+                    height: editorCanvas.height
+                };
             }
 
             // Add project info if applicable
@@ -2219,6 +2335,189 @@
         }
 
         // =============================
+        // LOAD QUOTE FROM CRM
+        // =============================
+
+        async function loadQuoteFromCRM(quoteId) {
+            try {
+                showToast('Loading quote from CRM...', 'info');
+
+                // Fetch quote data and canvas state
+                const response = await fetch(`/api/crm/quotes/${quoteId}/canvas-state`);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load quote');
+                }
+
+                const quote = result.quote;
+                const canvasState = result.canvas_state;
+
+                // Set up quote data
+                currentQuoteData = {
+                    project_name: quote.title,
+                    costs: quote.costs || {},
+                    analysis: quote.analysis || {}
+                };
+                currentQuoteId = quoteId;
+
+                // Initialize editor if not already done
+                if (!editorCanvas) {
+                    editorCanvas = new fabric.Canvas('canvas', {
+                        width: 800,
+                        height: 600,
+                        backgroundColor: '#f9fafb'
+                    });
+                }
+
+                // Clear existing canvas
+                editorCanvas.clear();
+                componentSymbols = [];
+
+                // Load canvas state if available
+                if (canvasState) {
+                    editorCanvas.loadFromJSON(canvasState, function() {
+                        // After loading, identify component symbols
+                        editorCanvas.getObjects().forEach(obj => {
+                            if (obj.componentData) {
+                                componentSymbols.push(obj);
+                                // Re-attach double-click event
+                                obj.on('mousedblclick', () => {
+                                    editSymbol(obj);
+                                });
+                            }
+                        });
+                        editorCanvas.renderAll();
+                        updateSymbolCount();
+                    });
+                } else if (quote.components && quote.components.length > 0) {
+                    // If no canvas state but we have components, add them
+                    quote.components.forEach((component, index) => {
+                        addComponentToCanvas(component, index);
+                    });
+                }
+
+                // Show editor section
+                document.getElementById('editor-section').classList.remove('hidden');
+
+                // Update UI to show we're editing a CRM quote
+                showToast('Quote loaded successfully! You can now edit it.', 'success');
+
+                // Show sync button
+                const syncButton = document.getElementById('syncToCRMButton');
+                if (syncButton) {
+                    syncButton.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error loading quote from CRM:', error);
+                showToast(`Failed to load quote: ${error.message}`, 'error');
+            }
+        }
+
+        // =============================
+        // SYNC CHANGES TO CRM
+        // =============================
+
+        async function syncChangesToCRM() {
+            if (!currentQuoteId) {
+                showToast('No CRM quote loaded', 'error');
+                return;
+            }
+
+            const canvas = editorCanvas;
+            if (!canvas) {
+                showToast('Editor not initialized', 'error');
+                return;
+            }
+
+            try {
+                showToast('Syncing changes to CRM...', 'info');
+
+                // Deselect all objects for clean export
+                canvas.discardActiveObject();
+                canvas.renderAll();
+
+                // Export floorplan as base64 image
+                const floorplanImage = canvas.toDataURL({
+                    format: 'png',
+                    quality: 0.9,
+                    multiplier: 2
+                });
+
+                // Collect all component data
+                const components = componentSymbols.map(obj => ({
+                    id: obj.componentData.id,
+                    type: obj.componentData.type,
+                    room: obj.componentData.room,
+                    position: { x: obj.left, y: obj.top },
+                    scale: { x: obj.scaleX || 1, y: obj.scaleY || 1 },
+                    components: obj.componentData.components || [],
+                    totalPrice: obj.componentData.totalPrice || 0
+                }));
+
+                // Calculate total price
+                let totalPrice = 0;
+                componentSymbols.forEach(symbol => {
+                    if (symbol.componentData && symbol.componentData.totalPrice) {
+                        totalPrice += symbol.componentData.totalPrice;
+                    }
+                });
+
+                // Prepare update data
+                const updateData = {
+                    components: components,
+                    total_amount: totalPrice,
+                    canvas_state: canvas.toJSON(),
+                    floorplan_image: floorplanImage
+                };
+
+                // Send to backend API
+                const response = await fetch(`/api/crm/quotes/${currentQuoteId}/update-from-canvas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('Changes synced to CRM successfully!', 'success');
+                } else {
+                    throw new Error(result.error || 'Failed to sync changes');
+                }
+
+            } catch (error) {
+                console.error('Error syncing to CRM:', error);
+                showToast(`Failed to sync: ${error.message}`, 'error');
+            }
+        }
+
+        // Check URL parameters on page load to see if we should load a quote from CRM
+        (function checkForQuoteParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const quoteId = urlParams.get('quote_id');
+
+            if (quoteId) {
+                // Wait a bit for the page to fully load
+                setTimeout(() => {
+                    loadQuoteFromCRM(quoteId);
+                }, 500);
+            }
+        })();
+
+        // =============================
         // EXPORT TO MODULES
         // =============================
 
@@ -2242,13 +2541,31 @@
                 const canvasData = editorCanvas.toJSON();
                 exportData.canvas_state = canvasData;
 
+                // Export the entire canvas as a floorplan image (data URL)
+                try {
+                    const canvasDataURL = editorCanvas.toDataURL({
+                        format: 'png',
+                        quality: 0.9,
+                        multiplier: 1
+                    });
+                    exportData.floorplan_image = canvasDataURL;
+                    console.log('Exported canvas as floorplan image');
+                } catch (e) {
+                    console.error('Error exporting canvas image:', e);
+                }
+
                 // Export enhanced component data with all modifications
                 exportData.components = componentSymbols.map(obj => ({
                     ...obj.componentData,
                     position: { x: obj.left, y: obj.top },
                     scale: { x: obj.scaleX, y: obj.scaleY },
+                    rotation: obj.angle || 0,
                     components: obj.componentData.components || [],
-                    totalPrice: obj.componentData.totalPrice || 0
+                    totalPrice: obj.componentData.totalPrice || 0,
+                    // Map component type for mapping tool compatibility
+                    type: obj.componentData.category || obj.componentData.name || 'component',
+                    name: obj.componentData.name || 'Component',
+                    emoji: obj.componentData.emoji || '📦'
                 }));
 
                 // Export updated totals
@@ -2259,6 +2576,18 @@
                     }
                 });
                 exportData.updated_grand_total = exportTotal;
+
+                // Export canvas dimensions
+                exportData.canvas_dimensions = {
+                    width: editorCanvas.width,
+                    height: editorCanvas.height
+                };
+
+                console.log('Export data prepared:', {
+                    components: exportData.components.length,
+                    hasFloorplan: !!exportData.floorplan_image,
+                    dimensions: exportData.canvas_dimensions
+                });
             }
 
             // Module-specific formatting
