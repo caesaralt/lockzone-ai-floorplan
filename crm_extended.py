@@ -36,7 +36,13 @@ def load_people(person_type=None):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 data = json.load(f)
-                people = data.get('people', [])
+                # Handle both list and dict formats
+                if isinstance(data, list):
+                    people = data
+                elif isinstance(data, dict):
+                    people = data.get('people', [])
+                else:
+                    people = []
 
                 if person_type:
                     return [p for p in people if p.get('type') == person_type]
@@ -134,7 +140,13 @@ def load_jobs(status=None):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 data = json.load(f)
-                jobs = data.get('jobs', [])
+                # Handle both list and dict formats
+                if isinstance(data, list):
+                    jobs = data
+                elif isinstance(data, dict):
+                    jobs = data.get('jobs', [])
+                else:
+                    jobs = []
 
                 if status:
                     return [j for j in jobs if j.get('status') == status]
@@ -231,7 +243,13 @@ def load_materials(mat_type=None, location=None):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 data = json.load(f)
-                materials = data.get('materials', [])
+                # Handle both list and dict formats
+                if isinstance(data, list):
+                    materials = data
+                elif isinstance(data, dict):
+                    materials = data.get('materials', [])
+                else:
+                    materials = []
 
                 if mat_type:
                     materials = [m for m in materials if m.get('type') == mat_type]
@@ -330,7 +348,13 @@ def load_payments(direction=None, status=None):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 data = json.load(f)
-                payments = data.get('payments', [])
+                # Handle both list and dict formats
+                if isinstance(data, list):
+                    payments = data
+                elif isinstance(data, dict):
+                    payments = data.get('payments', [])
+                else:
+                    payments = []
 
                 if direction:
                     payments = [p for p in payments if p.get('direction') == direction]
@@ -438,7 +462,13 @@ def load_events():
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 data = json.load(f)
-                return data.get('events', [])
+                # Handle both list and dict formats
+                if isinstance(data, list):
+                    return data
+                elif isinstance(data, dict):
+                    return data.get('events', [])
+                else:
+                    return []
         return []
     except Exception as e:
         logger.error(f"Error loading events: {e}")

@@ -811,8 +811,7 @@
                 quoteId = urlParams.get('quote_id');
 
                 if (!quoteId) {
-                    alert('No quote ID provided');
-                    window.location.href = '/crm';
+                    showNoQuoteModal();
                     return;
                 }
 
@@ -1946,6 +1945,50 @@
             if (confirm('Return to CRM? Unsaved changes will be lost.')) {
                 window.location.href = '/crm';
             }
+        }
+
+        // Show modal when no quote ID is provided
+        function showNoQuoteModal() {
+            const modal = document.getElementById('template-modal');
+            const title = document.getElementById('template-modal-title');
+            const body = document.getElementById('template-modal-body');
+
+            title.textContent = 'No Quote Selected';
+            body.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">📋</div>
+                    <p style="font-size: 16px; color: var(--text-primary); margin-bottom: 10px;">
+                        <strong>Quote ID Required</strong>
+                    </p>
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 30px;">
+                        The PDF Editor needs a quote to work with. Please select a quote from the CRM to edit its PDF layout.
+                    </p>
+                    <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 30px; text-align: left;">
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+                            <strong>How to use the PDF Editor:</strong>
+                        </p>
+                        <ol style="font-size: 13px; color: var(--text-secondary); margin-left: 20px; line-height: 1.6;">
+                            <li>Go to the CRM page</li>
+                            <li>Select a quote from your quotes list</li>
+                            <li>Click the "Edit PDF" button</li>
+                            <li>Design your custom quote layout</li>
+                        </ol>
+                    </div>
+                    <div class="modal-footer" style="justify-content: center; gap: 15px;">
+                        <button class="btn btn-primary" onclick="window.location.href='/crm'" style="min-width: 150px;">
+                            Go to CRM
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.add('active');
+
+            // Disable canvas and toolbar
+            document.querySelector('.toolbar').style.pointerEvents = 'none';
+            document.querySelector('.toolbar').style.opacity = '0.5';
+            document.querySelector('.canvas-container-wrapper').style.pointerEvents = 'none';
+            document.querySelector('.canvas-container-wrapper').style.opacity = '0.5';
         }
 
         // Cleanup on page unload

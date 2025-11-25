@@ -2844,6 +2844,118 @@ def get_quote_floorplan(quote_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/crm/quotes/<quote_id>/canvas-state')
+def get_quote_canvas_state(quote_id):
+    """Get the canvas state for a specific quote to enable editing"""
+    try:
+        # Load quotes to get the quote details
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote = next((q for q in quotes if q['id'] == quote_id), None)
+
+        if not quote:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        # Load canvas state if it exists
+        canvas_state = None
+        if quote.get('canvas_state_file'):
+            canvas_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'canvas_states')
+            canvas_path = os.path.join(canvas_dir, quote['canvas_state_file'])
+
+            if os.path.exists(canvas_path):
+                with open(canvas_path, 'r') as f:
+                    canvas_state = json.load(f)
+
+        return jsonify({
+            'success': True,
+            'quote': {
+                'id': quote['id'],
+                'title': quote.get('title', ''),
+                'description': quote.get('description', ''),
+                'total_amount': quote.get('total_amount', 0),
+                'components': quote.get('components', []),
+                'costs': quote.get('costs', {}),
+                'analysis': quote.get('analysis', {})
+            },
+            'canvas_state': canvas_state
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/update-from-canvas', methods=['POST'])
+def update_quote_from_canvas(quote_id):
+    """Update a quote with new components and canvas state from canvas editor"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        # Load quotes
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+
+        quote = quotes[idx]
+
+        # Update components if provided
+        if 'components' in data:
+            quote['components'] = data['components']
+
+        # Update total amount if provided
+        if 'total_amount' in data:
+            quote['total_amount'] = data['total_amount']
+
+        # Update canvas state if provided
+        if 'canvas_state' in data:
+            canvas_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'canvas_states')
+            os.makedirs(canvas_dir, exist_ok=True)
+
+            canvas_filename = quote.get('canvas_state_file', f"{quote_id}.json")
+            canvas_path = os.path.join(canvas_dir, canvas_filename)
+
+            with open(canvas_path, 'w') as f:
+                json.dump(data['canvas_state'], f, indent=2)
+
+            quote['canvas_state_file'] = canvas_filename
+
+        # Update floorplan image if provided
+        if 'floorplan_image' in data:
+            floorplans_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'floorplans')
+            os.makedirs(floorplans_dir, exist_ok=True)
+
+            image_filename = f"{quote_id}.png"
+            image_path = os.path.join(floorplans_dir, image_filename)
+
+            # Remove the data URL prefix if present
+            floorplan_image = data['floorplan_image']
+            if ',' in floorplan_image:
+                floorplan_image = floorplan_image.split(',')[1]
+
+            # Decode and save
+            import base64
+            with open(image_path, 'wb') as f:
+                f.write(base64.b64decode(floorplan_image))
+
+            quote['floorplan_image'] = f"/api/crm/quotes/{quote_id}/floorplan"
+
+        # Update timestamp
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+
+        return jsonify({
+            'success': True,
+            'message': 'Quote updated successfully',
+            'quote': quote
+        })
+
+    except Exception as e:
+        print(f"Error updating quote from canvas: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """General download endpoint for generated files"""
@@ -9177,7 +9289,7 @@ If users attach images, you can:
    - When assigned, serial number status automatically updates to 'assigned'
    - When marked as installed, timestamp is recorded
    - Helps installers know "what goes where" for efficient installation
-   - API: /api/crm/projects/{id}/room-assignments
+   - API: /api/crm/projects/{{id}}/room-assignments
 
 4. QUOTES MANAGEMENT:
    - Create quotes linked to customers
@@ -9194,7 +9306,7 @@ If users attach images, you can:
    - Subtotals calculated per cost centre
    - Total cost displayed visually with color-coded breakdown
    - Search inventory to add items directly
-   - API: /api/crm/projects/{id}/cost-centres
+   - API: /api/crm/projects/{{id}}/cost-centres
 
 6. GOOGLE CALENDAR INTEGRATION:
    - OAuth2 connection to Google account
