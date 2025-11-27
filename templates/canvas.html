@@ -450,6 +450,13 @@
             </div>
 
             <div class="panel-section">
+                <h3>🏷️ Price Classes</h3>
+                <div id="priceClassSymbolsContainer">
+                    <p style="color: #666; font-size: 12px; padding: 8px;">Loading price classes...</p>
+                </div>
+            </div>
+
+            <div class="panel-section">
                 <h3>⚙️ Actions</h3>
                 <button class="symbol-btn" onclick="deleteSelected()">
                     <span class="symbol-emoji">🗑️</span> Delete Selected
@@ -573,6 +580,68 @@
                 inventory = data.inventory || [];
             })
             .catch(err => console.error('Failed to load inventory:', err));
+
+        // Load price classes from CRM
+        let priceClasses = [];
+        async function loadPriceClasses() {
+            try {
+                const response = await fetch('/api/crm/price-classes');
+                const data = await response.json();
+                if (data.success && data.price_classes) {
+                    priceClasses = data.price_classes;
+                    renderPriceClassButtons();
+                }
+            } catch (error) {
+                console.error('Error loading price classes:', error);
+                document.getElementById('priceClassSymbolsContainer').innerHTML = 
+                    '<p style="color: #999; font-size: 12px; padding: 8px;">No price classes available</p>';
+            }
+        }
+
+        function renderPriceClassButtons() {
+            const container = document.getElementById('priceClassSymbolsContainer');
+            if (!container) return;
+            
+            if (!priceClasses || priceClasses.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-size: 12px; padding: 8px;">No price classes created yet. Create them in CRM.</p>';
+                return;
+            }
+
+            container.innerHTML = priceClasses.map(pc => {
+                const totalPrice = pc.items ? pc.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+                const iconHtml = pc.icon 
+                    ? `<img src="${pc.icon}" style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">`
+                    : '<span class="symbol-emoji">🏷️</span>';
+                
+                return `
+                    <button class="symbol-btn" onclick="addPriceClassSymbol('${pc.id}')" title="${pc.name} - $${totalPrice.toFixed(2)}">
+                        ${iconHtml}
+                        <span style="flex: 1; text-align: left; margin-left: 8px;">${pc.name}</span>
+                        <span style="color: #2ecc71; font-size: 11px;">$${totalPrice.toFixed(2)}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function addPriceClassSymbol(priceClassId) {
+            const priceClass = priceClasses.find(pc => pc.id === priceClassId);
+            if (!priceClass) {
+                alert('Price class not found');
+                return;
+            }
+
+            pendingSymbolType = 'price_class';
+            pendingPriceClass = priceClass;
+            currentTool = 'place';
+            
+            const totalPrice = priceClass.items ? priceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+            alert(`Click on floor plan to place: ${priceClass.name} ($${totalPrice.toFixed(2)})`);
+        }
+
+        let pendingPriceClass = null;
+
+        // Load price classes on page load
+        loadPriceClasses();
 
         // Check for imported data on page load
         (function() {
@@ -731,7 +800,8 @@
                 'climate': { color: '#00CED1', emoji: '🌡️' },
                 'audio': { color: '#9370DB', emoji: '🔊' },
                 'networking': { color: '#4169E1', emoji: '🌐' },
-                'power': { color: '#32CD32', emoji: '⚡' }
+                'power': { color: '#32CD32', emoji: '⚡' },
+                'price_class': { color: '#8B5CF6', emoji: '🏷️' }
             };
             return configs[type] || { color: '#808080', emoji: '•' };
         }
@@ -814,17 +884,43 @@
                 const x = (e.clientX - rect.left) / rect.width;
                 const y = (e.clientY - rect.top) / rect.height;
 
-                const newSymbol = {
-                    id: pendingSymbolType.toUpperCase()[0] + (symbols.length + 1),
-                    type: pendingSymbolType,
-                    automation_category: pendingSymbolType,
-                    x: x,
-                    y: y,
-                    label: `${pendingSymbolType.toUpperCase()}_${symbols.length + 1}`,
-                    room: '',
-                    items: [],
-                    custom_image_data: null
-                };
+                let newSymbol;
+                
+                if (pendingSymbolType === 'price_class' && pendingPriceClass) {
+                    // Handle price class symbol
+                    const totalPrice = pendingPriceClass.items ? 
+                        pendingPriceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+                    
+                    newSymbol = {
+                        id: `PC_${pendingPriceClass.id}_${Date.now()}`,
+                        type: 'price_class',
+                        automation_category: 'price_class',
+                        x: x,
+                        y: y,
+                        label: pendingPriceClass.name,
+                        room: '',
+                        items: pendingPriceClass.items || [],
+                        custom_image_data: pendingPriceClass.icon || null,
+                        priceClassId: pendingPriceClass.id,
+                        priceClassName: pendingPriceClass.name,
+                        totalPrice: totalPrice
+                    };
+                    pendingPriceClass = null;
+                } else {
+                    // Handle regular symbol
+                    newSymbol = {
+                        id: pendingSymbolType.toUpperCase()[0] + (symbols.length + 1),
+                        type: pendingSymbolType,
+                        automation_category: pendingSymbolType,
+                        x: x,
+                        y: y,
+                        label: `${pendingSymbolType.toUpperCase()}_${symbols.length + 1}`,
+                        room: '',
+                        items: [],
+                        custom_image_data: null
+                    };
+                }
+                
                 symbols.push(newSymbol);
                 render();
             }

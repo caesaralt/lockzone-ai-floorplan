@@ -183,6 +183,14 @@
                     </div>
                 </div>
 
+                <!-- Price Classes Section -->
+                <div class="animate-fade-in">
+                    <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">🏷️ Price Classes</h3>
+                    <div id="priceClassSymbolsContainer" class="space-y-2">
+                        <p class="text-gray-500 text-xs px-2">Loading price classes...</p>
+                    </div>
+                </div>
+
                 <!-- Actions Section -->
                 <div class="animate-fade-in">
                     <h3 class="text-olive-600 font-bold text-sm uppercase tracking-wide mb-3 pb-2 border-b-2 border-olive-200">⚙️ Actions</h3>
@@ -464,6 +472,72 @@
             }
         }
 
+        // Price Classes from CRM
+        let priceClasses = [];
+        let pendingPriceClass = null;
+
+        // Load price classes on page load
+        loadPriceClasses();
+
+        async function loadPriceClasses() {
+            try {
+                const response = await fetch('/api/crm/price-classes');
+                const data = await response.json();
+                if (data.success && data.price_classes) {
+                    priceClasses = data.price_classes;
+                    renderPriceClassButtons();
+                    console.log(`✅ Loaded ${priceClasses.length} price classes from CRM`);
+                }
+            } catch (error) {
+                console.error('Error loading price classes:', error);
+                document.getElementById('priceClassSymbolsContainer').innerHTML = 
+                    '<p class="text-gray-500 text-xs px-2">No price classes available</p>';
+            }
+        }
+
+        function renderPriceClassButtons() {
+            const container = document.getElementById('priceClassSymbolsContainer');
+            if (!container) return;
+            
+            if (!priceClasses || priceClasses.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-xs px-2">No price classes created yet. Create them in CRM.</p>';
+                return;
+            }
+
+            container.innerHTML = priceClasses.map(pc => {
+                const totalPrice = pc.items ? pc.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+                const iconHtml = pc.icon 
+                    ? `<img src="${pc.icon}" class="w-6 h-6 object-contain rounded">`
+                    : '<span class="text-lg mr-3">🏷️</span>';
+                
+                return `
+                    <button onclick="addPriceClassSymbol('${pc.id}')" 
+                            class="w-full flex items-center px-3 py-2.5 bg-purple-50 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded-lg transition-all font-medium text-sm border-2 border-transparent hover:border-purple-300"
+                            title="${pc.name} - $${totalPrice.toFixed(2)}">
+                        ${iconHtml}
+                        <span class="flex-1 text-left ml-2">${pc.name}</span>
+                        <span class="text-green-600 text-xs font-semibold">$${totalPrice.toFixed(2)}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function addPriceClassSymbol(priceClassId) {
+            const priceClass = priceClasses.find(pc => pc.id === priceClassId);
+            if (!priceClass) {
+                showToast('Price class not found', 'error');
+                return;
+            }
+
+            pendingSymbolType = 'price_class';
+            pendingPriceClass = priceClass;
+            currentTool = 'place';
+            setTool('place');
+            
+            const totalPrice = priceClass.items ? priceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+            showToast(`Click on floor plan to place: ${priceClass.name} ($${totalPrice.toFixed(2)})`, 'info');
+        }
+
         // PDF Upload
         document.getElementById('pdfUpload').addEventListener('change', handleFileUpload);
 
@@ -605,7 +679,8 @@
                 'climate': { color: '#00CED1', emoji: '🌡️' },
                 'audio': { color: '#9370DB', emoji: '🔊' },
                 'networking': { color: '#4169E1', emoji: '🌐' },
-                'power': { color: '#32CD32', emoji: '⚡' }
+                'power': { color: '#32CD32', emoji: '⚡' },
+                'price_class': { color: '#8B5CF6', emoji: '🏷️' }
             };
             return configs[type] || { color: '#808080', emoji: '•' };
         }
@@ -699,17 +774,44 @@
                     lastPanY = e.clientY;
                 }
             } else if (currentTool === 'place' && pendingSymbolType && floorplanImage) {
-                const newSymbol = {
-                    id: pendingSymbolType.toUpperCase()[0] + (symbols.length + 1),
-                    type: pendingSymbolType,
-                    automation_category: pendingSymbolType,
-                    x: x,
-                    y: y,
-                    label: `${pendingSymbolType.toUpperCase()}_${symbols.length + 1}`,
-                    room: '',
-                    items: [],
-                    custom_image_data: null
-                };
+                let newSymbol;
+                
+                if (pendingSymbolType === 'price_class' && pendingPriceClass) {
+                    // Handle price class symbol
+                    const totalPrice = pendingPriceClass.items ? 
+                        pendingPriceClass.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) : 0;
+                    
+                    newSymbol = {
+                        id: `PC_${pendingPriceClass.id}_${Date.now()}`,
+                        type: 'price_class',
+                        automation_category: 'price_class',
+                        x: x,
+                        y: y,
+                        label: pendingPriceClass.name,
+                        room: '',
+                        items: pendingPriceClass.items || [],
+                        custom_image_data: pendingPriceClass.icon || null,
+                        priceClassId: pendingPriceClass.id,
+                        priceClassName: pendingPriceClass.name,
+                        totalPrice: totalPrice
+                    };
+                    pendingPriceClass = null;
+                    showToast(`${newSymbol.label} placed ($${totalPrice.toFixed(2)})`, 'success');
+                } else {
+                    // Handle regular symbol
+                    newSymbol = {
+                        id: pendingSymbolType.toUpperCase()[0] + (symbols.length + 1),
+                        type: pendingSymbolType,
+                        automation_category: pendingSymbolType,
+                        x: x,
+                        y: y,
+                        label: `${pendingSymbolType.toUpperCase()}_${symbols.length + 1}`,
+                        room: '',
+                        items: [],
+                        custom_image_data: null
+                    };
+                }
+                
                 symbols.push(newSymbol);
                 render();
             }

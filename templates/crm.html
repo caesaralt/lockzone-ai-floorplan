@@ -1594,7 +1594,9 @@
                 <input type="hidden" id="projectId">
                 <div class="form-group">
                     <label>Customer</label>
-                    <select id="projectCustomer"></select>
+                    <select id="projectCustomer">
+                        <option value="">Select Customer...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Project Title *</label>
@@ -1799,7 +1801,9 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Customer / Supplier</label>
-                        <select id="quoteCustomer"></select>
+                        <select id="quoteCustomer">
+                            <option value="">Select Customer...</option>
+                        </select>
                     </div>
                     <div class="form-group" id="supplierNameGroup" style="display: none;">
                         <label>Supplier Name</label>
@@ -2502,7 +2506,9 @@
                 <input type="hidden" id="commId">
                 <div class="form-group">
                     <label>Customer</label>
-                    <select id="commCustomer"></select>
+                    <select id="commCustomer">
+                        <option value="">Select Customer...</option>
+                    </select>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -3232,6 +3238,7 @@
                     window.allCustomers = customers; // Store globally for event linking
                     renderCustomers();
                     populateCustomerDropdowns();
+                    populatePersonDropdowns();
                 }
             } catch (e) {
                 console.error('Customers error:', e);
@@ -3365,6 +3372,7 @@
                     projects = data.projects;
                     window.allProjects = projects; // Store globally for event linking
                     renderProjects();
+                    populateProjectDropdowns();
                 }
             } catch (e) {
                 console.error('Projects error:', e);
@@ -3706,6 +3714,7 @@
                     window.allQuotes = quotes; // Store globally for event linking
                     renderQuotes();
                     populateQuoteCustomerSelect();
+                    populateQuoteDropdowns();
                     
                     // Also render section-specific quote tables
                     renderQuotesBySection();
@@ -3857,6 +3866,13 @@
             document.getElementById('quoteForm').reset();
             document.getElementById('quoteId').value = '';
             document.getElementById('quoteSource').value = '';
+            
+            // Populate customer dropdown
+            const customerSelect = document.getElementById('quoteCustomer');
+            if (customerSelect) {
+                customerSelect.innerHTML = '<option value="">Select Customer...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+            }
             
             // Set default status based on section
             const statusMap = {
@@ -4269,7 +4285,9 @@
             document.body.removeChild(link);
         }
 
-        function openQuoteModal(status = 'draft') {
+        // Note: This function is overridden by the one defined earlier in the script
+        // Keeping for backward compatibility but the earlier definition handles sections properly
+        function openQuoteModalLegacy(status = 'draft') {
             // Reset form for new quote
             document.getElementById('quoteId').value = '';
             document.getElementById('quoteNumber').value = '';
@@ -4283,6 +4301,13 @@
             document.getElementById('quoteMarkupPct').value = '20';
             document.getElementById('quoteAmount').value = '';
             document.getElementById('quoteNotes').value = '';
+            
+            // Populate customer dropdown
+            const customerSelect = document.getElementById('quoteCustomer');
+            if (customerSelect) {
+                customerSelect.innerHTML = '<option value="">Select Customer...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+            }
 
             // Update modal title based on status
             const statusLabels = {
@@ -4328,6 +4353,13 @@
             document.getElementById('jobValue').value = '';
             document.getElementById('jobRecurring').value = '';
 
+            // Populate customer dropdown
+            const customerSelect = document.getElementById('jobCustomer');
+            if (customerSelect) {
+                customerSelect.innerHTML = '<option value="">Select Customer...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+            }
+
             const labels = {
                 'in_progress': 'In Progress Job',
                 'upcoming': 'Upcoming Job',
@@ -4359,6 +4391,13 @@
             }
             document.getElementById('materialSupplier').value = '';
             // materialNotes doesn't exist in the HTML form
+
+            // Populate supplier dropdown
+            const supplierSelect = document.getElementById('materialSupplier');
+            if (supplierSelect) {
+                supplierSelect.innerHTML = '<option value="">Select Supplier...</option>' +
+                    suppliers.map(s => `<option value="${s.id}">${s.name}${s.company ? ' (' + s.company + ')' : ''}</option>`).join('');
+            }
 
             const labels = {
                 'stock': 'Stock Item',
@@ -4495,7 +4534,15 @@
             // Populate customer dropdown
             const customerSelect = document.getElementById('linkQuoteCustomer');
             customerSelect.innerHTML = '<option value="">Select Customer...</option>' + 
-                customers.map(c => `<option value="${c.id}" ${quote && quote.customer_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+                customers.map(c => `<option value="${c.id}" ${quote && quote.customer_id === c.id ? 'selected' : ''}>${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+            
+            // Populate project dropdown
+            const projectSelect = document.getElementById('linkQuoteProject');
+            if (projectSelect) {
+                projectSelect.disabled = false;
+                projectSelect.innerHTML = '<option value="">Select Project...</option>' + 
+                    projects.map(p => `<option value="${p.id}" ${quote && quote.project_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
+            }
             
             document.getElementById('addCostCentreForm').reset();
             openModal('quoteCostCentresModal');
@@ -6136,19 +6183,90 @@
             }
         }
 
-        function populateInventorySelect() {
+        async function populateInventorySelect() {
             const select = document.getElementById('inventoryItemSelect');
-            select.innerHTML = '<option value="">Select items from inventory...</option>';
+            select.innerHTML = '<option value="">Loading items...</option>';
 
-            if (inventory && inventory.length > 0) {
-                inventory.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = `${item.name} - $${(item.unit_cost || 0).toFixed(2)}`;
-                    option.dataset.price = item.unit_cost || 0;
-                    option.dataset.name = item.name;
-                    select.appendChild(option);
+            try {
+                // Load both inventory and stock items
+                const [inventoryRes, stockRes] = await Promise.all([
+                    fetch('/api/crm/inventory'),
+                    fetch('/api/crm/stock')
+                ]);
+                
+                const inventoryData = await inventoryRes.json();
+                const stockData = await stockRes.json();
+                
+                // Combine both sources
+                let allItems = [];
+                
+                if (inventoryData.success && inventoryData.inventory) {
+                    allItems = allItems.concat(inventoryData.inventory.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.unit_cost || item.unit_price || 0,
+                        source: 'inventory',
+                        category: item.category || 'General'
+                    })));
+                }
+                
+                if (stockData.success && stockData.stock) {
+                    allItems = allItems.concat(stockData.stock.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.unit_price || item.unit_cost || 0,
+                        source: 'stock',
+                        category: item.category || 'General'
+                    })));
+                }
+                
+                // Also use the local inventory variable as fallback
+                if (allItems.length === 0 && inventory && inventory.length > 0) {
+                    allItems = inventory.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.unit_cost || item.unit_price || 0,
+                        source: 'local',
+                        category: item.category || 'General'
+                    }));
+                }
+                
+                select.innerHTML = '<option value="">Select items from inventory/stock...</option>';
+                
+                if (allItems.length === 0) {
+                    select.innerHTML = '<option value="">No items available - create stock first</option>';
+                    return;
+                }
+                
+                // Group by category
+                const categories = {};
+                allItems.forEach(item => {
+                    const cat = item.category || 'General';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push(item);
                 });
+                
+                // Add options grouped by category
+                Object.keys(categories).sort().forEach(category => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = category;
+                    
+                    categories[category].forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = `${item.name} - $${item.price.toFixed(2)}`;
+                        option.dataset.price = item.price;
+                        option.dataset.name = item.name;
+                        option.dataset.source = item.source;
+                        optgroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(optgroup);
+                });
+                
+            } catch (e) {
+                console.error('Error loading items for price class:', e);
+                select.innerHTML = '<option value="">Error loading items</option>';
             }
         }
 
@@ -6400,7 +6518,9 @@
                 const data = await res.json();
                 if (data.success) {
                     suppliers = data.suppliers;
+                    window.allSuppliers = suppliers; // Store globally
                     renderSuppliers();
+                    populateSupplierDropdowns();
                 }
             } catch (e) {
                 console.error('Suppliers error:', e);
@@ -6647,14 +6767,263 @@
             `;
         }
 
-        // HELPERS
-        function populateCustomerDropdowns() {
-            const selects = ['projectCustomer', 'commCustomer', 'quoteCustomer'];
-            selects.forEach(id => {
+        // HELPERS - Populate ALL dropdown menus with CRM data
+        function populateAllDropdowns() {
+            // Populate customer dropdowns
+            populateCustomerDropdowns();
+            // Populate supplier dropdowns
+            populateSupplierDropdowns();
+            // Populate project dropdowns
+            populateProjectDropdowns();
+            // Populate quote dropdowns
+            populateQuoteDropdowns();
+            // Populate job dropdowns
+            populateJobDropdowns();
+        }
+
+        async function populateCustomerDropdowns() {
+            const customerSelects = [
+                'projectCustomer', 
+                'commCustomer', 
+                'quoteCustomer', 
+                'jobCustomer',
+                'linkQuoteCustomer',
+                'eventLinkedCustomer'
+            ];
+            
+            // Combine customers from multiple sources:
+            // 1. Main customers array
+            // 2. People with type 'customer'
+            // 3. Window globals as fallback
+            
+            let allCustomers = [];
+            
+            // Add from main customers array
+            if (customers && customers.length > 0) {
+                allCustomers = allCustomers.concat(customers);
+            }
+            
+            // Add from window.allCustomers
+            if (window.allCustomers && window.allCustomers.length > 0) {
+                window.allCustomers.forEach(c => {
+                    if (!allCustomers.find(existing => existing.id === c.id)) {
+                        allCustomers.push(c);
+                    }
+                });
+            }
+            
+            // Add from People > Customers (window.allPeople with type customer)
+            if (window.allPeople && window.allPeople.length > 0) {
+                window.allPeople.filter(p => p.type === 'customer').forEach(c => {
+                    if (!allCustomers.find(existing => existing.id === c.id)) {
+                        allCustomers.push(c);
+                    }
+                });
+            }
+            
+            // Always try to fetch from both APIs to ensure we have all customers
+            try {
+                const customersRes = await fetch('/api/crm/customers');
+                const customersData = await customersRes.json();
+                
+                if (customersData.success && customersData.customers) {
+                    customersData.customers.forEach(c => {
+                        if (!allCustomers.find(existing => existing.id === c.id)) {
+                            allCustomers.push(c);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching main customers:', e);
+            }
+            
+            // Try to fetch from people API (requires auth)
+            try {
+                const peopleRes = await fetch('/api/crm/people?type=customer');
+                const peopleData = await peopleRes.json();
+                
+                if (peopleData.success && peopleData.people) {
+                    peopleData.people.forEach(c => {
+                        if (!allCustomers.find(existing => existing.id === c.id)) {
+                            allCustomers.push(c);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching people customers (may require auth):', e);
+            }
+            
+            console.log(`Populating customer dropdowns with ${allCustomers.length} customers`);
+            
+            customerSelects.forEach(id => {
                 const select = document.getElementById(id);
                 if (select) {
-                    select.innerHTML = '<option value="">Select customer...</option>' +
+                    const currentValue = select.value;
+                    if (allCustomers.length === 0) {
+                        select.innerHTML = '<option value="">No customers yet - create one first</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Select Customer...</option>' +
+                            allCustomers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+                    }
+                    if (currentValue) select.value = currentValue;
+                }
+            });
+        }
+
+        async function populateSupplierDropdowns() {
+            const supplierSelects = ['materialSupplier'];
+            
+            // Combine suppliers from multiple sources
+            let allSuppliers = [];
+            
+            // Add from main suppliers array
+            if (suppliers && suppliers.length > 0) {
+                allSuppliers = allSuppliers.concat(suppliers);
+            }
+            
+            // Add from window.allSuppliers
+            if (window.allSuppliers && window.allSuppliers.length > 0) {
+                window.allSuppliers.forEach(s => {
+                    if (!allSuppliers.find(existing => existing.id === s.id)) {
+                        allSuppliers.push(s);
+                    }
+                });
+            }
+            
+            // Add from People > Suppliers (window.allPeople with type supplier)
+            if (window.allPeople && window.allPeople.length > 0) {
+                window.allPeople.filter(p => p.type === 'supplier').forEach(s => {
+                    if (!allSuppliers.find(existing => existing.id === s.id)) {
+                        allSuppliers.push(s);
+                    }
+                });
+            }
+            
+            // Always try to fetch from both APIs
+            try {
+                const suppliersRes = await fetch('/api/crm/suppliers');
+                const suppliersData = await suppliersRes.json();
+                
+                if (suppliersData.success && suppliersData.suppliers) {
+                    suppliersData.suppliers.forEach(s => {
+                        if (!allSuppliers.find(existing => existing.id === s.id)) {
+                            allSuppliers.push(s);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching main suppliers:', e);
+            }
+            
+            // Try to fetch from people API (requires auth)
+            try {
+                const peopleRes = await fetch('/api/crm/people?type=supplier');
+                const peopleData = await peopleRes.json();
+                
+                if (peopleData.success && peopleData.people) {
+                    peopleData.people.forEach(s => {
+                        if (!allSuppliers.find(existing => existing.id === s.id)) {
+                            allSuppliers.push(s);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching people suppliers (may require auth):', e);
+            }
+            
+            supplierSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    const currentValue = select.value;
+                    if (allSuppliers.length === 0) {
+                        select.innerHTML = '<option value="">No suppliers yet - create one first</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Select Supplier...</option>' +
+                            allSuppliers.map(s => `<option value="${s.id}">${s.name}${s.company ? ' (' + s.company + ')' : ''}</option>`).join('');
+                    }
+                    if (currentValue) select.value = currentValue;
+                }
+            });
+        }
+
+        function populateProjectDropdowns() {
+            const projectSelects = [
+                'linkQuoteProject',
+                'eventLinkedProject'
+            ];
+            
+            // Use global projects array or window.allProjects as fallback
+            const projectData = projects && projects.length > 0 ? projects : (window.allProjects || []);
+            
+            projectSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    const currentValue = select.value;
+                    if (projectData.length === 0) {
+                        select.innerHTML = '<option value="">No projects yet</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Select Project...</option>' +
+                            projectData.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                    }
+                    if (currentValue) select.value = currentValue;
+                    // Enable if it was disabled
+                    if (id === 'linkQuoteProject' && projectData.length > 0) {
+                        select.disabled = false;
+                    }
+                }
+            });
+        }
+
+        function populateQuoteDropdowns() {
+            const quoteSelects = ['eventLinkedQuote'];
+            
+            // Use global quotes array or window.allQuotes as fallback
+            const quoteData = quotes && quotes.length > 0 ? quotes : (window.allQuotes || []);
+            
+            quoteSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    const currentValue = select.value;
+                    if (quoteData.length === 0) {
+                        select.innerHTML = '<option value="">No quotes yet</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Select Quote...</option>' +
+                            quoteData.map(q => `<option value="${q.id}">${q.title || q.quote_number || 'Quote ' + q.id.slice(0,8)}</option>`).join('');
+                    }
+                    if (currentValue) select.value = currentValue;
+                }
+            });
+        }
+
+        function populateJobDropdowns() {
+            const jobSelects = ['eventLinkedJob'];
+            
+            // Get jobs from the global variable (may need to be loaded)
+            const jobsData = window.allJobs || window.jobs || jobs || [];
+            
+            jobSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Select Job...</option>' +
+                        jobsData.map(j => `<option value="${j.id}">${j.name || 'Job ' + j.id.slice(0,8)}</option>`).join('');
+                    if (currentValue) select.value = currentValue;
+                }
+            });
+        }
+
+        // Also populate person dropdown for events
+        function populatePersonDropdowns() {
+            const personSelects = ['eventLinkedPerson'];
+            
+            // Use customers as "persons" for now
+            personSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Select Person...</option>' +
                         customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    if (currentValue) select.value = currentValue;
                 }
             });
         }
@@ -6666,6 +7035,37 @@
                 console.error(`Modal with ID "${modalId}" not found`);
                 return;
             }
+            
+            // Populate relevant dropdowns based on modal type
+            try {
+                if (modalId === 'projectModal') {
+                    populateCustomerDropdowns();
+                } else if (modalId === 'quoteModal') {
+                    populateCustomerDropdowns();
+                } else if (modalId === 'jobModal') {
+                    populateCustomerDropdowns();
+                } else if (modalId === 'materialModal') {
+                    populateSupplierDropdowns();
+                } else if (modalId === 'eventModal') {
+                    // populateEventLinkingDropdowns is defined in a later script block
+                    if (typeof populateEventLinkingDropdowns === 'function') {
+                        populateEventLinkingDropdowns();
+                    } else {
+                        // Fallback: populate dropdowns manually
+                        populateCustomerDropdowns();
+                        populateProjectDropdowns();
+                        populateQuoteDropdowns();
+                        populateJobDropdowns();
+                        populatePersonDropdowns();
+                    }
+                } else if (modalId === 'quoteCostCentresModal') {
+                    populateCustomerDropdowns();
+                    populateProjectDropdowns();
+                }
+            } catch (e) {
+                console.warn('Error populating dropdowns:', e);
+            }
+            
             modal.classList.add('active');
             console.log('Modal opened:', modalId);
             // Reset form if new
@@ -7476,6 +7876,15 @@
                 // Add or update people for this type
                 window.allPeople = window.allPeople.filter(p => p.type !== type).concat(data.people);
                 renderPeople(data.people, type);
+                
+                // If loading customers, also update the customer dropdowns
+                if (type === 'customer') {
+                    populateCustomerDropdowns();
+                }
+                // If loading suppliers, also update the supplier dropdowns
+                if (type === 'supplier') {
+                    populateSupplierDropdowns();
+                }
             }
         } catch (e) {
             console.error(`Error loading ${type}:`, e);
@@ -7654,7 +8063,10 @@
                 if (!window.allJobs) window.allJobs = [];
                 // Add or update jobs for this status
                 window.allJobs = window.allJobs.filter(j => j.status !== status).concat(data.jobs);
+                window.jobs = window.allJobs; // Also set window.jobs for compatibility
+                jobs = window.allJobs; // Update local variable
                 renderJobs(data.jobs, status);
+                populateJobDropdowns();
             }
         } catch (e) {
             console.error(`Error loading ${status} jobs:`, e);
@@ -8410,59 +8822,64 @@
 
 
     function populateEventLinkingDropdowns() {
-        // Jobs
+        // Jobs - use fallbacks
+        const jobsData = window.allJobs || window.jobs || jobs || [];
         const jobsSelect = document.getElementById('eventLinkedJob');
-        if (jobsSelect && window.allJobs) {
+        if (jobsSelect) {
             jobsSelect.innerHTML = '<option value="">-- No Job Linked --</option>';
-            window.allJobs.forEach(job => {
+            jobsData.forEach(job => {
                 const opt = document.createElement('option');
                 opt.value = job.id;
-                opt.textContent = `${job.name || job.title || 'Job #' + job.id}`;
+                opt.textContent = `${job.name || job.title || 'Job #' + job.id.slice(0,8)}`;
                 jobsSelect.appendChild(opt);
             });
         }
 
-        // Quotes
+        // Quotes - use fallbacks
+        const quotesData = window.allQuotes || quotes || [];
         const quotesSelect = document.getElementById('eventLinkedQuote');
-        if (quotesSelect && window.allQuotes) {
+        if (quotesSelect) {
             quotesSelect.innerHTML = '<option value="">-- No Quote Linked --</option>';
-            window.allQuotes.forEach(quote => {
+            quotesData.forEach(quote => {
                 const opt = document.createElement('option');
                 opt.value = quote.id;
-                opt.textContent = `Quote #${quote.id} - ${quote.customer_name || ''}`;
+                opt.textContent = `${quote.title || quote.quote_number || 'Quote #' + quote.id.slice(0,8)}`;
                 quotesSelect.appendChild(opt);
             });
         }
 
-        // Customers
+        // Customers - use fallbacks
+        const customersData = window.allCustomers || customers || [];
         const customersSelect = document.getElementById('eventLinkedCustomer');
-        if (customersSelect && window.allCustomers) {
+        if (customersSelect) {
             customersSelect.innerHTML = '<option value="">-- No Customer Linked --</option>';
-            window.allCustomers.forEach(customer => {
+            customersData.forEach(customer => {
                 const opt = document.createElement('option');
                 opt.value = customer.id;
-                opt.textContent = customer.name || `Customer #${customer.id}`;
+                opt.textContent = customer.name || `Customer #${customer.id.slice(0,8)}`;
                 customersSelect.appendChild(opt);
             });
         }
 
-        // Projects
+        // Projects - use fallbacks
+        const projectsData = window.allProjects || projects || [];
         const projectsSelect = document.getElementById('eventLinkedProject');
-        if (projectsSelect && window.allProjects) {
+        if (projectsSelect) {
             projectsSelect.innerHTML = '<option value="">-- No Project Linked --</option>';
-            window.allProjects.forEach(project => {
+            projectsData.forEach(project => {
                 const opt = document.createElement('option');
                 opt.value = project.id;
-                opt.textContent = project.name || `Project #${project.id}`;
+                opt.textContent = project.name || `Project #${project.id.slice(0,8)}`;
                 projectsSelect.appendChild(opt);
             });
         }
 
-        // People
+        // People - use customers as fallback for people
+        const peopleData = window.allPeople || window.allCustomers || customers || [];
         const peopleSelect = document.getElementById('eventLinkedPerson');
-        if (peopleSelect && window.allPeople) {
+        if (peopleSelect) {
             peopleSelect.innerHTML = '<option value="">-- No Person Linked --</option>';
-            window.allPeople.forEach(person => {
+            peopleData.forEach(person => {
                 const opt = document.createElement('option');
                 opt.value = person.id;
                 opt.textContent = `${person.name || ''} (${person.type || ''})`.trim();

@@ -5749,10 +5749,12 @@ def handle_customers():
             customer = {
                 'id': str(uuid.uuid4()),
                 'name': name,
+                'company': data.get('company', '').strip(),
                 'email': data.get('email', '').strip(),
                 'phone': data.get('phone', '').strip(),
                 'address': data.get('address', '').strip(),
                 'status': data.get('status', 'active'),
+                'notes': data.get('notes', '').strip(),
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
@@ -5778,7 +5780,7 @@ def handle_customer(customer_id):
                 return jsonify({'success': False, 'error': 'Not found'}), 404
             data = request.json
             customer = customers[idx]
-            for field in ['name', 'email', 'phone', 'address', 'status']:
+            for field in ['name', 'company', 'email', 'phone', 'address', 'status', 'notes']:
                 if field in data:
                     customer[field] = data[field]
             customer['updated_at'] = datetime.now().isoformat()
