@@ -102,18 +102,17 @@ def setup_security_headers(app: Flask):
         if not app.debug:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-        # Content Security Policy (relaxed for development)
-        if app.debug:
-            csp = "default-src 'self' 'unsafe-inline' 'unsafe-eval' *; img-src * data: blob:;"
-        else:
-            csp = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com cdn.jsdelivr.net cdnjs.cloudflare.com; "
-                "style-src 'self' 'unsafe-inline' cdn.tailwindcss.com fonts.googleapis.com; "
-                "font-src 'self' fonts.gstatic.com; "
-                "img-src 'self' data: blob: *; "
-                "connect-src 'self' *;"
-            )
+        # Content Security Policy (relaxed for development and production)
+        # Allow all CDN resources needed by the app
+        csp = (
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.tailwindcss.com cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com; "
+            "style-src 'self' 'unsafe-inline' cdn.tailwindcss.com fonts.googleapis.com cdnjs.cloudflare.com unpkg.com; "
+            "style-src-elem 'self' 'unsafe-inline' cdn.tailwindcss.com fonts.googleapis.com cdnjs.cloudflare.com unpkg.com; "
+            "font-src 'self' fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: *; "
+            "connect-src 'self' *;"
+        )
         response.headers['Content-Security-Policy'] = csp
 
         # Referrer Policy

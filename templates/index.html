@@ -553,12 +553,42 @@
                     displayResults(data);
                     showToast('Quote generated successfully!', 'success');
                 } else {
-                    showError(data.error);
+                    // Provide helpful error messages based on error type
+                    let errorMessage = data.error || 'Unknown error occurred';
+                    let helpText = '';
+                    
+                    if (errorMessage.includes('API key') || errorMessage.includes('not configured')) {
+                        helpText = '<br><br>💡 <strong>Tip:</strong> The AI service needs to be configured by an administrator.';
+                    } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+                        helpText = '<br><br>💡 <strong>Tip:</strong> AI service is temporarily busy. Please try again in a few minutes.';
+                    } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+                        helpText = '<br><br>💡 <strong>Tip:</strong> The analysis took too long. Try uploading a simpler floor plan.';
+                    } else if (errorMessage.includes('fallback')) {
+                        // Fallback mode - not an error, just limited functionality
+                        helpText = '<br><br>ℹ️ <strong>Note:</strong> Running in fallback mode with estimated values.';
+                    } else if (errorMessage.includes('PDF') || errorMessage.includes('image')) {
+                        helpText = '<br><br>💡 <strong>Tip:</strong> Make sure the PDF is a clear floor plan image. Try a different file.';
+                    }
+                    
+                    showError(errorMessage + helpText);
                     showToast('Error generating quote', 'error');
                 }
             } catch (error) {
                 document.getElementById('loading').classList.add('hidden');
-                showError('An error occurred: ' + error.message);
+                
+                // Provide helpful error messages for network errors
+                let errorMessage = error.message;
+                let helpText = '';
+                
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorMessage = 'Network connection failed';
+                    helpText = '<br><br>💡 <strong>Tip:</strong> Check your internet connection and try again.';
+                } else if (error.message.includes('timeout')) {
+                    errorMessage = 'Request timed out';
+                    helpText = '<br><br>💡 <strong>Tip:</strong> The server is taking too long. Try again or contact support.';
+                }
+                
+                showError('An error occurred: ' + errorMessage + helpText);
                 showToast('An error occurred', 'error');
             }
         });
@@ -1261,8 +1291,12 @@
 
             if (floorplanUrl) {
                 fabric.Image.fromURL(floorplanUrl, (img) => {
-                    // Set canvas size to match container
-                    const canvasWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                    // Get canvas container - traverse up to find the actual container
+                    const canvasElement = document.getElementById('floorplanCanvas');
+                    const canvasContainer = document.getElementById('canvasContainer');
+                    // Use the container width, falling back to parent or a reasonable default
+                    const canvasWidth = canvasContainer ? canvasContainer.clientWidth - 48 : // subtract padding
+                                        (canvasElement.parentElement ? canvasElement.parentElement.clientWidth : 1000);
 
                     // Calculate scale to fit the image within the canvas width (at 95% to leave small margin)
                     const scaleToFitWidth = (canvasWidth * 0.95) / img.width;
@@ -1319,9 +1353,12 @@
                 }, { crossOrigin: 'anonymous' });
             } else {
                 // No floorplan image, just set canvas size
-                const canvasWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                const canvasElement = document.getElementById('floorplanCanvas');
+                const canvasContainer = document.getElementById('canvasContainer');
+                const canvasWidth = canvasContainer ? canvasContainer.clientWidth - 48 : 
+                                    (canvasElement.parentElement ? canvasElement.parentElement.clientWidth : 1000);
                 canvas.setWidth(canvasWidth);
-                canvas.setHeight(600);
+                canvas.setHeight(800);
                 canvas.setBackgroundColor('#f5f5f5', canvas.renderAll.bind(canvas));
             }
 
@@ -1362,12 +1399,86 @@
 
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
+                const isInput = document.activeElement.tagName === 'INPUT' || 
+                               document.activeElement.tagName === 'TEXTAREA';
+                const modKey = e.ctrlKey || e.metaKey;
+                
+                // Delete/Backspace - Delete selected
                 if (e.key === 'Delete' || e.key === 'Backspace') {
-                    if (canvas.getActiveObject()) {
+                    if (!isInput && canvas.getActiveObject()) {
                         deleteSelected();
                         e.preventDefault();
                     }
                 }
+                
+                // Ctrl/Cmd+D - Duplicate selected
+                if (modKey && e.key === 'd') {
+                    if (!isInput && canvas.getActiveObject()) {
+                        duplicateSelected();
+                        e.preventDefault();
+                    }
+                }
+                
+                // Ctrl/Cmd+A - Select all symbols
+                if (modKey && e.key === 'a') {
+                    if (!isInput) {
+                        selectAllSymbols();
+                        e.preventDefault();
+                    }
+                }
+                
+                // Escape - Deselect all
+                if (e.key === 'Escape') {
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                    document.getElementById('selectedSymbol').textContent = 'None';
+                }
+                
+                // + or = - Zoom in
+                if ((e.key === '+' || e.key === '=') && !isInput) {
+                    zoomIn();
+                    e.preventDefault();
+                }
+                
+                // - - Zoom out
+                if (e.key === '-' && !isInput) {
+                    zoomOut();
+                    e.preventDefault();
+                }
+                
+                // 0 - Reset zoom
+                if (e.key === '0' && !isInput) {
+                    resetZoom();
+                    e.preventDefault();
+                }
+            });
+            
+            // Log keyboard shortcuts to console
+            console.log(`
+🎹 Keyboard Shortcuts:
+- Delete/Backspace: Delete selected symbol
+- Ctrl/Cmd+D: Duplicate selected
+- Ctrl/Cmd+A: Select all symbols
+- Escape: Deselect all
+- +/=: Zoom in
+- -: Zoom out
+- 0: Reset zoom
+            `);
+
+            // Handle window resize to keep canvas responsive
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    const canvasContainer = document.getElementById('canvasContainer');
+                    if (canvasContainer && canvas) {
+                        const newWidth = canvasContainer.clientWidth - 48;
+                        if (Math.abs(canvas.width - newWidth) > 50) { // Only resize if significant change
+                            canvas.setWidth(newWidth);
+                            canvas.renderAll();
+                        }
+                    }
+                }, 250);
             });
         }
 
@@ -1560,6 +1671,67 @@
         function toggleEditorHelp() {
             const helpPanel = document.getElementById('editorHelpPanel');
             helpPanel.classList.toggle('hidden');
+        }
+
+        // Duplicate selected symbol
+        function duplicateSelected() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            const activeObject = canvas.getActiveObject();
+            if (!activeObject) {
+                showToast('No symbol selected to duplicate', 'warning');
+                return;
+            }
+
+            // Don't allow duplicating the floorplan
+            if (activeObject.isFloorplan) {
+                showToast('Cannot duplicate floorplan image', 'warning');
+                return;
+            }
+
+            // Clone the object
+            activeObject.clone(function(cloned) {
+                // Offset the clone
+                cloned.set({
+                    left: activeObject.left + 30,
+                    top: activeObject.top + 30,
+                    evented: true
+                });
+
+                // Copy component data
+                if (activeObject.componentData) {
+                    cloned.componentData = JSON.parse(JSON.stringify(activeObject.componentData));
+                    cloned.componentData.id = 'component_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                }
+
+                canvas.add(cloned);
+                componentSymbols.push(cloned);
+                canvas.setActiveObject(cloned);
+                canvas.renderAll();
+                updateSymbolCount();
+                updateLiveQuoteTotal();
+                showToast('Symbol duplicated', 'success');
+            });
+        }
+
+        // Select all symbols (not the floorplan)
+        function selectAllSymbols() {
+            const canvas = editorCanvas;
+            if (!canvas) return;
+
+            const symbols = canvas.getObjects().filter(obj => !obj.isFloorplan);
+            
+            if (symbols.length === 0) {
+                showToast('No symbols to select', 'info');
+                return;
+            }
+
+            canvas.discardActiveObject();
+            const selection = new fabric.ActiveSelection(symbols, { canvas: canvas });
+            canvas.setActiveObject(selection);
+            canvas.renderAll();
+            showToast(`Selected ${symbols.length} symbol(s)`, 'success');
         }
 
         // =============================

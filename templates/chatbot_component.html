@@ -1,7 +1,7 @@
 <!-- AI Assistant Chatbot Component -->
 <div class="ai-chatbot-container" id="aiChatbot">
-    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
-        🤖 AI Assistant
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()" title="AI Assistant">
+        🤖
     </button>
 
     <div class="chatbot-panel" id="chatbotPanel" style="display: none;">
@@ -19,17 +19,8 @@
 
         <div class="chatbot-messages" id="chatbotMessages">
             <div class="chatbot-message assistant">
-                <div class="message-content">
-                    👋 Hi! I'm your AI assistant with <strong>premium capabilities</strong>:
-                    <ul style="margin: 8px 0; padding-left: 20px;">
-                        <li>💭 <strong>Extended Thinking</strong> - Deep reasoning for complex questions</li>
-                        <li>🌐 <strong>Web Search</strong> - Real-time information from the internet</li>
-                        <li>🤖 <strong>Agentic Mode</strong> - Autonomous task execution & iterative research</li>
-                        <li>👁️ <strong>Vision</strong> - Analyze floorplans, diagrams, and images</li>
-                        <li>📚 <strong>Learning</strong> - Learns from your projects to improve</li>
-                        <li>📊 <strong>Data Analysis</strong> - Analyze your projects and quotes</li>
-                    </ul>
-                    Ask me anything! Upload images with 📎, and I'll analyze electrical codes, pricing, components, floorplans & more.
+                <div class="message-content" id="welcomeMessage">
+                    👋 Hi <span id="chatUserName">there</span>, how can I help?
                 </div>
             </div>
         </div>
@@ -367,6 +358,23 @@ let isProcessing = false;
 let uploadedImage = null;
 let learningContext = null;
 
+// Load user name for personalized greeting
+(function loadUserName() {
+    fetch('/api/auth/current-user')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.user && data.user.display_name) {
+                const nameEl = document.getElementById('chatUserName');
+                if (nameEl) {
+                    nameEl.textContent = data.user.display_name.split(' ')[0]; // First name only
+                }
+            }
+        })
+        .catch(() => {
+            // Silently fail - will just show "there"
+        });
+})();
+
 function toggleChatbot() {
     const panel = document.getElementById('chatbotPanel');
     const isVisible = panel.style.display === 'block';
@@ -461,6 +469,9 @@ async function sendMessage() {
     const message = input.value.trim();
 
     if (!message || isProcessing) return;
+    
+    // Store for retry functionality
+    lastUserMessage = message;
 
     const useExtendedThinking = document.getElementById('useExtendedThinking').checked;
     const useWebSearch = document.getElementById('useWebSearch').checked;
@@ -533,7 +544,19 @@ async function sendMessage() {
                 }
             }
         } else {
-            addMessage('assistant', '❌ Error: ' + (data.error || 'Unknown error occurred'));
+            // Provide helpful error messages based on error type
+            let errorMessage = data.error || 'Unknown error occurred';
+            let helpText = '';
+            
+            if (errorMessage.includes('API key') || errorMessage.includes('not configured')) {
+                helpText = '\n\n💡 **Tip:** The AI service needs to be configured. Contact your administrator.';
+            } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+                helpText = '\n\n💡 **Tip:** AI service is temporarily busy. Please try again in a moment.';
+            } else if (errorMessage.includes('timeout')) {
+                helpText = '\n\n💡 **Tip:** The request took too long. Try a simpler question or try again.';
+            }
+            
+            addMessage('assistant', `❌ **Error:** ${errorMessage}${helpText}`);
         }
 
         // Clear uploaded image after sending
@@ -542,12 +565,37 @@ async function sendMessage() {
         }
     } catch (error) {
         console.error('Chat error:', error);
-        addMessage('assistant', '❌ Failed to get response: ' + error.message);
+        
+        // Provide helpful error messages for network/fetch errors
+        let errorMessage = error.message;
+        let helpText = '';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Network connection failed';
+            helpText = '\n\n💡 **Tip:** Check your internet connection and try again.';
+        } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+            errorMessage = 'Request timed out';
+            helpText = '\n\n💡 **Tip:** The AI is taking too long. Try a simpler question.';
+        }
+        
+        const retryButton = `<button onclick="retryLastMessage()" style="margin-top: 8px; padding: 6px 12px; background: #6B8E23; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Retry</button>`;
+        
+        addMessage('assistant', `❌ **Failed to get response:** ${errorMessage}${helpText}\n\n${retryButton}`);
     } finally {
         isProcessing = false;
         document.getElementById('chatbotStatus').textContent = 'Ready';
         document.getElementById('sendIcon').innerHTML = '📤';
         document.querySelector('.chatbot-send-btn').classList.remove('chatbot-loading');
+    }
+}
+
+let lastUserMessage = '';
+
+function retryLastMessage() {
+    if (lastUserMessage && !isProcessing) {
+        const input = document.getElementById('chatbotInput');
+        input.value = lastUserMessage;
+        sendMessage();
     }
 }
 

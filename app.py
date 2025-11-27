@@ -2,12 +2,12 @@
 Lockzone AI Floorplan Application
 Million-dollar quality electrical automation platform with AI-powered features
 """
-from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, make_response
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 import os
 import json
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import numpy as np
 import uuid
@@ -33,6 +33,9 @@ import auth
 
 # CRM Integration module
 import crm_integration
+
+# CRM Data Layer - robust data operations
+from crm_data_layer import CRMDataLayer, get_crm_data_layer
 
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
@@ -143,6 +146,9 @@ PRICE_CLASSES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'price_classes.
 INTEGRATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'integrations.json')
 QUOTES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'quotes.json')
 STOCK_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'stock.json')
+
+# Initialize CRM Data Layer for robust data operations
+crm_data = get_crm_data_layer(app.config['CRM_DATA_FOLDER'])
 
 DEFAULT_DATA = {
     "automation_types": {
@@ -1781,6 +1787,11 @@ def get_usernames():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    """Serve uploaded files"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/')
 def index():
     """Render landing page - requires login"""
@@ -2748,29 +2759,54 @@ def save_quote_from_automation():
         if not quote_data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
 
-        # Generate unique ID for the quote
-        quote_id = f"quote_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{os.urandom(4).hex()}"
+        # Generate unique UUID for the quote (consistent with CRM format)
+        quote_id = str(uuid.uuid4())
+        quote_number = f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         # Load existing quotes
-        quotes = []
-        if os.path.exists(QUOTES_FILE):
-            try:
-                with open(QUOTES_FILE, 'r') as f:
-                    quotes = json.load(f)
-            except:
-                quotes = []
+        quotes = load_json_file(QUOTES_FILE, [])
 
-        # Prepare quote record
+        # Calculate costs from components
+        total_amount = quote_data.get('total_amount', 0)
+        materials_cost = 0
+        labor_cost = 0
+        
+        # Extract costs from the automation data
+        if quote_data.get('costs'):
+            costs = quote_data['costs']
+            materials_cost = costs.get('materials', 0) or costs.get('total_materials', 0) or 0
+            labor_cost = costs.get('labor', 0) or costs.get('total_labor', 0) or 0
+            if not total_amount:
+                total_amount = costs.get('total', 0) or (materials_cost + labor_cost)
+
+        # Prepare quote record in CRM-compatible format
         new_quote = {
             'id': quote_id,
+            'quote_number': quote_number,
+            'customer_id': quote_data.get('customer_id'),  # Can be linked later
             'title': quote_data.get('title', 'Untitled Quote'),
             'description': quote_data.get('description', ''),
             'status': quote_data.get('status', 'draft'),
-            'total_amount': quote_data.get('total_amount', 0),
-            'costs': quote_data.get('costs', {}),
-            'analysis': quote_data.get('analysis', {}),
-            'components': quote_data.get('components', []),
+            'quote_amount': float(total_amount),
+            'materials_cost': float(materials_cost),
+            'labor_cost': float(labor_cost),
+            'markup_percentage': 20.0,
+            'valid_until': (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+            'notes': f"Generated from Quote Automation tool",
+            # Automation-specific data
             'source': 'quote-automation',
+            'automation_data': {
+                'costs': quote_data.get('costs', {}),
+                'analysis': quote_data.get('analysis', {}),
+                'components': quote_data.get('components', [])
+            },
+            # Standard CRM fields
+            'markups': [],
+            'stock_items': [],
+            'takeoffs_session_id': None,
+            'mapping_session_id': None,
+            'cad_session_id': None,
+            'board_session_id': None,
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
@@ -2791,7 +2827,6 @@ def save_quote_from_automation():
                 floorplan_image = floorplan_image.split(',')[1]
 
             # Decode and save
-            import base64
             with open(image_path, 'wb') as f:
                 f.write(base64.b64decode(floorplan_image))
 
@@ -2815,17 +2850,19 @@ def save_quote_from_automation():
         quotes.append(new_quote)
 
         # Save quotes file
-        with open(QUOTES_FILE, 'w') as f:
-            json.dump(quotes, f, indent=2)
+        save_json_file(QUOTES_FILE, quotes)
+
+        logger.info(f"Quote saved from automation: {quote_id} - {new_quote['title']}")
 
         return jsonify({
             'success': True,
             'quote_id': quote_id,
+            'quote': new_quote,
             'message': 'Quote saved successfully to CRM'
         })
 
     except Exception as e:
-        print(f"Error saving quote from automation: {str(e)}")
+        logger.error(f"Error saving quote from automation: {str(e)}")
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -6041,19 +6078,28 @@ def handle_quotes():
                 return jsonify({'success': False, 'error': 'Quote title is required'}), 400
 
             quotes = load_json_file(QUOTES_FILE, [])
+            
+            # Generate quote number with prefix based on type
+            source = data.get('source', 'manual')
+            quote_prefix = 'SQ-' if source == 'supplier' else 'Q-'
+            quote_number = data.get('quote_number') or f"{quote_prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            
             quote = {
                 'id': str(uuid.uuid4()),
-                'quote_number': data.get('quote_number', f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"),
-                'customer_id': data.get('customer_id'),
+                'quote_number': quote_number,
+                'customer_id': data.get('customer_id') or None,
                 'title': title,
                 'description': data.get('description', '').strip(),
                 'status': data.get('status', 'draft'),  # draft, sent, accepted, rejected, expired
-                'quote_amount': data.get('quote_amount', 0.0),
-                'labor_cost': data.get('labor_cost', 0.0),
-                'materials_cost': data.get('materials_cost', 0.0),
-                'markup_percentage': data.get('markup_percentage', 20.0),
-                'valid_until': data.get('valid_until'),
+                'quote_amount': float(data.get('quote_amount', 0.0)),
+                'labor_cost': float(data.get('labor_cost', 0.0)),
+                'materials_cost': float(data.get('materials_cost', 0.0)),
+                'markup_percentage': float(data.get('markup_percentage', 20.0)),
+                'valid_until': data.get('valid_until') or None,
                 'notes': data.get('notes', ''),
+                # Quote source/type
+                'source': source,  # manual, quote-automation, supplier
+                'supplier_name': data.get('supplier_name') if source == 'supplier' else None,
                 # Linked sessions for different modules
                 'takeoffs_session_id': data.get('takeoffs_session_id'),
                 'mapping_session_id': data.get('mapping_session_id'),
@@ -6062,11 +6108,13 @@ def handle_quotes():
                 # Attachments and linked items
                 'markups': [],
                 'stock_items': [],  # Linked inventory items
+                'cost_centres': [],  # Cost centres for the quote
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
             quotes.append(quote)
             save_json_file(QUOTES_FILE, quotes)
+            logger.info(f"Quote created: {quote['id']} - {quote['title']} (source: {source})")
             return jsonify({'success': True, 'quote': quote})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -6090,7 +6138,8 @@ def handle_quote(quote_id):
             for field in ['title', 'description', 'status', 'quote_amount', 'labor_cost',
                          'materials_cost', 'markup_percentage', 'valid_until', 'notes',
                          'customer_id', 'takeoffs_session_id', 'mapping_session_id',
-                         'cad_session_id', 'board_session_id', 'quote_number']:
+                         'cad_session_id', 'board_session_id', 'quote_number',
+                         'source', 'supplier_name']:
                 if field in data:
                     quote[field] = data[field]
             quote['updated_at'] = datetime.now().isoformat()
@@ -7092,6 +7141,7 @@ def handle_quote_cost_centre_item(quote_id, centre_id, item_id):
 
 # PDF Editor Templates Storage
 PDF_TEMPLATES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'pdf_templates.json')
+PDF_FORMS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'pdf_forms.json')
 PDF_EDITOR_AUTOSAVE_DIR = os.path.join(app.config['CRM_DATA_FOLDER'], 'pdf_editor_autosave')
 
 # Ensure directories exist
@@ -7215,19 +7265,22 @@ def get_last_template():
 
 @app.route('/api/pdf-editor/autosave', methods=['POST'])
 def autosave_pdf_editor():
-    """Autosave PDF editor state"""
+    """Autosave PDF editor state - works with or without quote_id"""
     try:
         data = request.json
         quote_id = data.get('quote_id')
+        form_id = data.get('form_id')
         canvas_data = data.get('canvas_data')
 
-        if not quote_id:
-            return jsonify({'success': False, 'error': 'quote_id required'}), 400
+        # Use quote_id, form_id, or generate a session-based ID
+        save_id = quote_id or form_id or 'standalone_' + session.get('session_id', str(uuid.uuid4())[:8])
 
         # Save to autosave file
-        autosave_file = os.path.join(PDF_EDITOR_AUTOSAVE_DIR, f'{quote_id}.json')
+        autosave_file = os.path.join(PDF_EDITOR_AUTOSAVE_DIR, f'{save_id}.json')
         autosave_data = {
+            'id': save_id,
             'quote_id': quote_id,
+            'form_id': form_id,
             'canvas_data': canvas_data,
             'updated_at': datetime.now().isoformat()
         }
@@ -7235,10 +7288,152 @@ def autosave_pdf_editor():
         with open(autosave_file, 'w') as f:
             json.dump(autosave_data, f)
 
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'save_id': save_id})
 
     except Exception as e:
         logger.error(f"Error autosaving PDF editor: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== PDF FORMS API (Standalone Forms) ====================
+
+@app.route('/api/pdf-forms', methods=['GET', 'POST'])
+def handle_pdf_forms():
+    """Get all forms or create a new form"""
+    try:
+        if request.method == 'GET':
+            forms = load_json_file(PDF_FORMS_FILE, [])
+            return jsonify(forms)
+
+        elif request.method == 'POST':
+            data = request.json
+            forms = load_json_file(PDF_FORMS_FILE, [])
+
+            # Create new form
+            form = {
+                'id': str(uuid.uuid4()),
+                'name': data.get('name', 'Untitled Form'),
+                'quote_id': data.get('quote_id'),
+                'canvas_data': data.get('canvas_data'),
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+
+            forms.append(form)
+            save_json_file(PDF_FORMS_FILE, forms)
+
+            return jsonify({'success': True, 'form': form})
+
+    except Exception as e:
+        logger.error(f"Error handling PDF forms: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/pdf-forms/<form_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_pdf_form(form_id):
+    """Get, update, or delete a specific form"""
+    try:
+        forms = load_json_file(PDF_FORMS_FILE, [])
+        idx = next((i for i, f in enumerate(forms) if f['id'] == form_id), None)
+
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Form not found'}), 404
+
+        if request.method == 'GET':
+            return jsonify(forms[idx])
+
+        elif request.method == 'PUT':
+            data = request.json
+            form = forms[idx]
+
+            for field in ['name', 'canvas_data', 'quote_id']:
+                if field in data:
+                    form[field] = data[field]
+
+            form['updated_at'] = datetime.now().isoformat()
+            forms[idx] = form
+            save_json_file(PDF_FORMS_FILE, forms)
+
+            return jsonify({'success': True, 'form': form})
+
+        elif request.method == 'DELETE':
+            forms.pop(idx)
+            save_json_file(PDF_FORMS_FILE, forms)
+            return jsonify({'success': True})
+
+    except Exception as e:
+        logger.error(f"Error handling PDF form: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/pdf-templates/<template_id>', methods=['GET'])
+def get_pdf_template_by_id(template_id):
+    """Get a specific PDF template by ID"""
+    try:
+        templates = load_json_file(PDF_TEMPLATES_FILE, [])
+        template = next((t for t in templates if t['id'] == template_id), None)
+        
+        if template:
+            return jsonify(template)
+        return jsonify({'success': False, 'error': 'Template not found'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting PDF template: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/pdf-to-image', methods=['POST'])
+def convert_pdf_to_image_api():
+    """Convert uploaded PDF to image for use as background"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+            
+        # Save uploaded file temporarily
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{uuid.uuid4()}_{filename}')
+        file.save(temp_path)
+        
+        try:
+            # Convert PDF to image using PyMuPDF
+            import fitz  # PyMuPDF
+            
+            doc = fitz.open(temp_path)
+            page = doc[0]  # Get first page
+            
+            # Render at higher resolution
+            zoom = 2.0
+            mat = fitz.Matrix(zoom, zoom)
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Save as PNG
+            output_filename = f'pdf_bg_{uuid.uuid4()}.png'
+            output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+            pix.save(output_path)
+            
+            doc.close()
+            
+            # Clean up temp file
+            os.remove(temp_path)
+            
+            # Return URL to the image
+            image_url = url_for('static', filename=f'uploads/{output_filename}', _external=False)
+            # Actually use the uploads folder path
+            image_url = f'/uploads/{output_filename}'
+            
+            return jsonify({
+                'success': True,
+                'image_url': image_url
+            })
+            
+        except Exception as e:
+            # Clean up on error
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise e
+            
+    except Exception as e:
+        logger.error(f"Error converting PDF to image: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/pdf-editor/save-to-crm', methods=['POST'])
@@ -7365,15 +7560,16 @@ def save_pdf_editor_to_crm():
 
 @app.route('/api/pdf-editor/export-pdf', methods=['POST'])
 def export_pdf_from_editor():
-    """Export PDF from editor canvas"""
+    """Export PDF from editor canvas - works with or without quote_id"""
     try:
         data = request.json
         quote_id = data.get('quote_id')
         image_data = data.get('image_data')  # Base64 image
         quote_data = data.get('quote_data', {})
+        form_name = data.get('form_name', 'Form')
 
-        if not quote_id or not image_data:
-            return jsonify({'success': False, 'error': 'Missing required data'}), 400
+        if not image_data:
+            return jsonify({'success': False, 'error': 'Missing image data'}), 400
 
         # Remove data URL prefix if present
         if ',' in image_data:
@@ -7383,7 +7579,11 @@ def export_pdf_from_editor():
         image_bytes = base64.b64decode(image_data)
 
         # Create PDF using reportlab
-        pdf_filename = f"Quote_{quote_data.get('quote_number', quote_id)}.pdf"
+        if quote_id:
+            pdf_filename = f"Quote_{quote_data.get('quote_number', quote_id)}.pdf"
+        else:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            pdf_filename = f"{form_name.replace(' ', '_')}_{timestamp}.pdf"
         pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], pdf_filename)
 
         # Use PyMuPDF for better quality
@@ -7607,8 +7807,9 @@ def manage_room_assignments(project_id):
             'item_id': item_id,
             'item_name': item_name,
             'notes': notes,
+            'status': 'pending',  # pending, installed
             'assigned_at': datetime.now().isoformat(),
-            'installed': False,
+            'installed': False,  # Legacy support
             'installed_at': None
         }
 
@@ -7700,11 +7901,31 @@ def update_room_assignment(project_id, assignment_id):
 
         # PUT - Update assignment
         data = request.get_json()
-        assignment['room_name'] = data.get('room_name', assignment['room_name'])
-        assignment['notes'] = data.get('notes', assignment.get('notes', ''))
-        assignment['installed'] = data.get('installed', assignment.get('installed', False))
-        if data.get('installed') and not assignment.get('installed_at'):
-            assignment['installed_at'] = datetime.now().isoformat()
+        
+        # Handle toggle_status for easy status switching
+        if data.get('toggle_status'):
+            current_status = assignment.get('status', 'pending')
+            if current_status == 'installed':
+                assignment['status'] = 'pending'
+                assignment['installed_at'] = None
+            else:
+                assignment['status'] = 'installed'
+                assignment['installed_at'] = datetime.now().isoformat()
+        else:
+            # Regular update
+            if 'room_name' in data:
+                assignment['room_name'] = data['room_name']
+            if 'notes' in data:
+                assignment['notes'] = data['notes']
+            if 'status' in data:
+                assignment['status'] = data['status']
+                if data['status'] == 'installed' and not assignment.get('installed_at'):
+                    assignment['installed_at'] = datetime.now().isoformat()
+            # Legacy support for 'installed' boolean
+            if 'installed' in data:
+                assignment['status'] = 'installed' if data['installed'] else 'pending'
+                if data['installed'] and not assignment.get('installed_at'):
+                    assignment['installed_at'] = datetime.now().isoformat()
 
         project['updated_at'] = datetime.now().isoformat()
         save_json_file(PROJECTS_FILE, projects)
@@ -8602,6 +8823,277 @@ def get_crm_stats():
             }
         })
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# ENHANCED CRM API v2 - Using CRM Data Layer
+# ============================================================================
+
+@app.route('/api/v2/crm/stats', methods=['GET'])
+def get_crm_stats_v2():
+    """Get comprehensive CRM statistics with quote stats"""
+    try:
+        result = crm_data.get_stats()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting CRM stats: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/customers', methods=['GET', 'POST'])
+def handle_customers_v2():
+    """Enhanced customer management with pagination and search"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_customers(
+                search=request.args.get('search'),
+                status=request.args.get('status'),
+                page=int(request.args.get('page', 1)),
+                per_page=int(request.args.get('per_page', 50)),
+                sort_by=request.args.get('sort_by', 'created_at'),
+                sort_order=request.args.get('sort_order', 'desc')
+            )
+            return jsonify(result)
+        else:
+            result = crm_data.create_customer(request.json)
+            if result['success']:
+                return jsonify(result), 201
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Error handling customers: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/customers/<customer_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_customer_v2(customer_id):
+    """Enhanced single customer management with related data"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_customer(customer_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+        
+        elif request.method == 'PUT':
+            result = crm_data.update_customer(customer_id, request.json)
+            if not result['success']:
+                return jsonify(result), 400 if 'not found' not in result.get('error', '').lower() else 404
+            return jsonify(result)
+        
+        elif request.method == 'DELETE':
+            cascade = request.args.get('cascade', 'false').lower() == 'true'
+            result = crm_data.delete_customer(customer_id, cascade=cascade)
+            if not result['success']:
+                return jsonify(result), 400 if 'related' in result else 404
+            return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error handling customer {customer_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/projects', methods=['GET', 'POST'])
+def handle_projects_v2():
+    """Enhanced project management with pagination and search"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_projects(
+                customer_id=request.args.get('customer_id'),
+                status=request.args.get('status'),
+                search=request.args.get('search'),
+                page=int(request.args.get('page', 1)),
+                per_page=int(request.args.get('per_page', 50)),
+                sort_by=request.args.get('sort_by', 'created_at'),
+                sort_order=request.args.get('sort_order', 'desc')
+            )
+            return jsonify(result)
+        else:
+            result = crm_data.create_project(request.json)
+            if result['success']:
+                return jsonify(result), 201
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Error handling projects: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/projects/<project_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_project_v2(project_id):
+    """Enhanced single project management with related data"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_project(project_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+        
+        elif request.method == 'PUT':
+            result = crm_data.update_project(project_id, request.json)
+            if not result['success']:
+                return jsonify(result), 400 if 'not found' not in result.get('error', '').lower() else 404
+            return jsonify(result)
+        
+        elif request.method == 'DELETE':
+            result = crm_data.delete_project(project_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error handling project {project_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/quotes', methods=['GET', 'POST'])
+def handle_quotes_v2():
+    """Enhanced quote management with pagination and search"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_quotes(
+                customer_id=request.args.get('customer_id'),
+                status=request.args.get('status'),
+                search=request.args.get('search'),
+                page=int(request.args.get('page', 1)),
+                per_page=int(request.args.get('per_page', 50)),
+                sort_by=request.args.get('sort_by', 'created_at'),
+                sort_order=request.args.get('sort_order', 'desc')
+            )
+            return jsonify(result)
+        else:
+            result = crm_data.create_quote(request.json)
+            if result['success']:
+                return jsonify(result), 201
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Error handling quotes: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/quotes/<quote_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_quote_v2(quote_id):
+    """Enhanced single quote management with related data"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_quote(quote_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+        
+        elif request.method == 'PUT':
+            result = crm_data.update_quote(quote_id, request.json)
+            if not result['success']:
+                return jsonify(result), 400 if 'not found' not in result.get('error', '').lower() else 404
+            return jsonify(result)
+        
+        elif request.method == 'DELETE':
+            result = crm_data.delete_quote(quote_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error handling quote {quote_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/quotes/<quote_id>/convert', methods=['POST'])
+def convert_quote_v2(quote_id):
+    """Convert a quote to a project using the data layer"""
+    try:
+        result = crm_data.convert_quote_to_project(quote_id)
+        if not result['success']:
+            return jsonify(result), 400
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error converting quote {quote_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/stock', methods=['GET', 'POST'])
+def handle_stock_v2():
+    """Enhanced stock management with pagination and search"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_stock(
+                category=request.args.get('category'),
+                search=request.args.get('search'),
+                low_stock_only=request.args.get('low_stock', 'false').lower() == 'true',
+                page=int(request.args.get('page', 1)),
+                per_page=int(request.args.get('per_page', 50)),
+                sort_by=request.args.get('sort_by', 'name'),
+                sort_order=request.args.get('sort_order', 'asc')
+            )
+            return jsonify(result)
+        else:
+            result = crm_data.create_stock_item(request.json)
+            if result['success']:
+                return jsonify(result), 201
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Error handling stock: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/stock/<item_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_stock_item_v2(item_id):
+    """Enhanced single stock item management"""
+    try:
+        if request.method == 'GET':
+            result = crm_data.get_stock_item(item_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+        
+        elif request.method == 'PUT':
+            result = crm_data.update_stock_item(item_id, request.json)
+            if not result['success']:
+                return jsonify(result), 400 if 'not found' not in result.get('error', '').lower() else 404
+            return jsonify(result)
+        
+        elif request.method == 'DELETE':
+            result = crm_data.delete_stock_item(item_id)
+            if not result['success']:
+                return jsonify(result), 404
+            return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error handling stock item {item_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/stock/<item_id>/adjust', methods=['POST'])
+def adjust_stock_v2(item_id):
+    """Adjust stock quantity"""
+    try:
+        data = request.json
+        adjustment = int(data.get('adjustment', 0))
+        reason = data.get('reason', '')
+        
+        result = crm_data.adjust_stock_quantity(item_id, adjustment, reason)
+        if not result['success']:
+            return jsonify(result), 400
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error adjusting stock {item_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/integrity', methods=['GET'])
+def check_crm_integrity():
+    """Check CRM data integrity"""
+    try:
+        result = crm_data.check_data_integrity()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error checking integrity: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/v2/crm/integrity/repair', methods=['POST'])
+def repair_crm_integrity():
+    """Repair CRM data integrity issues"""
+    try:
+        result = crm_data.repair_data_integrity()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error repairing integrity: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

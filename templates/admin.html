@@ -508,10 +508,11 @@
         }
 
         .stat-card {
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-md);
+            transition: background-color 0.3s ease;
         }
 
         .stat-value {
@@ -520,9 +521,13 @@
             color: #556B2F;
         }
 
+        [data-theme="dark"] .stat-value {
+            color: #8FBC8F;
+        }
+
         .stat-label {
             font-size: 14px;
-            color: #666;
+            color: var(--text-secondary);
             margin-top: 8px;
         }
     </style>
@@ -532,12 +537,8 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="top-logo">🏠 Integratd Living</a>
-            <ul class="top-nav-menu">
-                <li><a href="/crm" class="top-nav-item">CRM Dashboard</a></li>
-                <li><a href="/quotes" class="top-nav-item">Quote Automation</a></li>
-                <li><a href="/admin" class="top-nav-item active">Admin Panel</a></li>
-            </ul>
+            <a href="/" class="top-logo">Integratd Living</a>
+            <div style="flex: 1;"></div>
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -563,9 +564,7 @@
 
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <div class="logo">👤 Admin Panel</div>
-        
-        <div class="nav-section">
+        <div class="nav-section" style="padding-top: 0;">
             <div class="nav-section-title">Management</div>
             <div class="nav-item active" data-section="users">
                 <span>👥</span> User Management

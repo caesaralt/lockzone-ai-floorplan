@@ -574,7 +574,7 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="top-logo">🏠 Integratd Living</a>
+            <a href="/" class="top-logo">Integratd Living</a>
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -733,17 +733,21 @@
             <p class="page-subtitle">Overview of your business</p>
 
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card" onclick="showSection('customers')" style="cursor: pointer;">
                     <div class="stat-value" id="statCustomers">0</div>
                     <div class="stat-label">Total Customers</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="showSection('projects')" style="cursor: pointer;">
                     <div class="stat-value" id="statProjects">0</div>
                     <div class="stat-label">Total Projects</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="showSection('projects')" style="cursor: pointer;">
                     <div class="stat-value" id="statActive">0</div>
                     <div class="stat-label">Active Projects</div>
+                </div>
+                <div class="stat-card" onclick="showSection('quotes')" style="cursor: pointer;">
+                    <div class="stat-value" id="statQuotes">0</div>
+                    <div class="stat-label">Total Quotes</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="statRevenue">$0</div>
@@ -753,8 +757,12 @@
                     <div class="stat-value" id="statPending">$0</div>
                     <div class="stat-label">Pending Revenue</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statStock">0</div>
+                <div class="stat-card" onclick="showSection('stock')" style="cursor: pointer;">
+                    <div class="stat-value" id="statStock">$0</div>
+                    <div class="stat-label">Stock Value</div>
+                </div>
+                <div class="stat-card" onclick="showSection('stock')" style="cursor: pointer;">
+                    <div class="stat-value" id="statLowStock" style="color: #e74c3c;">0</div>
                     <div class="stat-label">Low Stock Items</div>
                 </div>
             </div>
@@ -1714,6 +1722,54 @@
                 <!-- Cost Centres List -->
                 <div id="projectCostCentresList"></div>
             </div>
+
+            <!-- Room Assignments Section -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-header" style="margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">🏠 Room Assignments</h3>
+                    <button type="button" class="btn btn-primary btn-small" onclick="openRoomAssignmentForm()">+ Assign Serial to Room</button>
+                </div>
+                
+                <div id="roomAssignmentForm" style="display: none; margin-bottom: 20px; padding: 16px; background: var(--hover-bg); border-radius: 10px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Room Name *</label>
+                            <input type="text" id="assignmentRoomName" placeholder="e.g., Living Room, Master Bedroom" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock Item</label>
+                            <select id="assignmentStockItem" onchange="populateSerialNumbers()">
+                                <option value="">Select stock item...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Serial Number *</label>
+                            <select id="assignmentSerial">
+                                <option value="">Select or enter serial...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input type="text" id="assignmentNotes" placeholder="Optional notes...">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="saveRoomAssignment()">Save Assignment</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeRoomAssignmentForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Assignments List -->
+                <div id="roomAssignmentsList">
+                    <div class="empty-state" style="padding: 30px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">🏠</div>
+                        <div style="font-weight: 600; margin-bottom: 5px;">No Room Assignments</div>
+                        <p style="color: var(--text-secondary); font-size: 13px;">Assign serial numbers to rooms for installation tracking</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1726,14 +1782,28 @@
             </div>
             <form id="quoteForm" onsubmit="saveQuote(event)">
                 <input type="hidden" id="quoteId">
+                <input type="hidden" id="quoteSource" value="">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Quote Number</label>
                         <input type="text" id="quoteNumber" placeholder="Auto-generated if empty">
                     </div>
                     <div class="form-group">
-                        <label>Customer</label>
+                        <label>Quote Type</label>
+                        <select id="quoteType">
+                            <option value="customer">Customer Quote (Outgoing)</option>
+                            <option value="supplier">Supplier Quote (Incoming)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Customer / Supplier</label>
                         <select id="quoteCustomer"></select>
+                    </div>
+                    <div class="form-group" id="supplierNameGroup" style="display: none;">
+                        <label>Supplier Name</label>
+                        <input type="text" id="quoteSupplierName" placeholder="Enter supplier name">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1940,6 +2010,108 @@
 
                 <!-- Cost Centres List -->
                 <div id="quoteCostCentresList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quote Cost Centres Modal (Standalone) -->
+    <div id="quoteCostCentresModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📊 Quote Cost Centres</h2>
+                <button class="close-btn" onclick="closeModal('quoteCostCentresModal')">×</button>
+            </div>
+            
+            <!-- Quote Info -->
+            <div id="quoteCostCentresInfo" style="margin-bottom: 20px; padding: 16px; background: var(--hover-bg); border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <strong id="quoteCostCentresTitle" style="font-size: 18px;">Loading...</strong>
+                        <div id="quoteCostCentresCustomer" style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;"></div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 24px; font-weight: 700; color: #556B2F;" id="quoteTotalAmount">$0.00</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Quote Total</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Cost Centre Form -->
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">➕ Add Cost Centre</h3>
+                <form id="addCostCentreForm" onsubmit="addCostCentreToQuote(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cost Centre Name *</label>
+                            <input type="text" id="costCentreName" placeholder="e.g., Lighting, HVAC, Security" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="costCentreCategory">
+                                <option value="materials">Materials</option>
+                                <option value="labor">Labor</option>
+                                <option value="equipment">Equipment</option>
+                                <option value="subcontractor">Subcontractor</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end;">
+                            <button type="submit" class="btn btn-primary">+ Add Cost Centre</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Cost Summary -->
+            <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f8fdf8, #e8f5e9);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                    <div style="text-align: center; padding: 16px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #2e7d32;" id="ccMaterialsTotal">$0</div>
+                        <div style="font-size: 12px; color: #666;">Materials</div>
+                    </div>
+                    <div style="text-align: center; padding: 16px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #1565c0;" id="ccLaborTotal">$0</div>
+                        <div style="font-size: 12px; color: #666;">Labor</div>
+                    </div>
+                    <div style="text-align: center; padding: 16px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #7b1fa2;" id="ccEquipmentTotal">$0</div>
+                        <div style="font-size: 12px; color: #666;">Equipment</div>
+                    </div>
+                    <div style="text-align: center; padding: 16px; border-left: 2px solid #ddd;">
+                        <div style="font-size: 28px; font-weight: 700; color: #556B2F;" id="ccGrandTotal">$0</div>
+                        <div style="font-size: 12px; color: #666;">Grand Total</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Centres List -->
+            <div id="quoteCostCentresListStandalone">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading cost centres...</p>
+                </div>
+            </div>
+
+            <!-- Link to Customer/Project -->
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">🔗 Link Quote</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Link to Customer</label>
+                        <select id="linkQuoteCustomer" onchange="linkQuoteToCustomer()">
+                            <option value="">Select Customer...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Link to Project</label>
+                        <select id="linkQuoteProject" disabled>
+                            <option value="">Select Project...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-success" onclick="saveQuoteLinks()">Save Links</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -2785,13 +2957,19 @@
         }
 
         function showSection(sectionId) {
-            // Update nav
+            // Update nav - safely handle missing elements
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.querySelector(`[data-section="${sectionId}"]`).classList.add('active');
+            const navItem = document.querySelector(`[data-section="${sectionId}"]`);
+            if (navItem) {
+                navItem.classList.add('active');
+            }
             
-            // Update content
+            // Update content - safely handle missing sections
             document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
-            document.getElementById(sectionId).classList.add('active');
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.add('active');
+            }
         }
 
         // LOAD DATA
@@ -2813,23 +2991,64 @@
 
         async function loadStats() {
             try {
-                const res = await fetch('/api/crm/stats');
+                // Use enhanced v2 API for comprehensive stats
+                const res = await fetch('/api/v2/crm/stats');
                 const data = await res.json();
                 if (data.success) {
-                    document.getElementById('statCustomers').textContent = data.stats.customers.total;
-                    document.getElementById('statProjects').textContent = data.stats.projects.total;
-                    document.getElementById('statActive').textContent = data.stats.projects.active;
-                    document.getElementById('statRevenue').textContent = '$' + data.stats.revenue.total.toLocaleString();
-                    document.getElementById('statPending').textContent = '$' + data.stats.revenue.pending.toLocaleString();
-                    // Show stock value instead of just low stock count
-                    const stockValue = data.stats.stock ? data.stats.stock.total_value : 0;
+                    const stats = data.stats;
+                    
+                    // Customer stats
+                    document.getElementById('statCustomers').textContent = stats.customers.total;
+                    
+                    // Project stats
+                    document.getElementById('statProjects').textContent = stats.projects.total;
+                    document.getElementById('statActive').textContent = stats.projects.active;
+                    
+                    // Quote stats
+                    const quotesEl = document.getElementById('statQuotes');
+                    if (quotesEl) quotesEl.textContent = stats.quotes.total;
+                    
+                    // Revenue stats
+                    document.getElementById('statRevenue').textContent = '$' + stats.revenue.total.toLocaleString();
+                    document.getElementById('statPending').textContent = '$' + stats.revenue.pending.toLocaleString();
+                    
+                    // Stock stats
+                    const stockValue = stats.stock ? stats.stock.total_value : 0;
                     document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
+                    
+                    const lowStockEl = document.getElementById('statLowStock');
+                    if (lowStockEl) {
+                        lowStockEl.textContent = stats.stock ? stats.stock.low_stock : 0;
+                        // Highlight if there are low stock items
+                        if (stats.stock && stats.stock.low_stock > 0) {
+                            lowStockEl.style.color = '#e74c3c';
+                        } else {
+                            lowStockEl.style.color = '#27ae60';
+                        }
+                    }
 
                     // Initialize charts with data
-                    initializeCharts(data.stats);
+                    initializeCharts(stats);
                 }
             } catch (e) {
                 console.error('Stats error:', e);
+                // Fallback to old API if v2 fails
+                try {
+                    const res = await fetch('/api/crm/stats');
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('statCustomers').textContent = data.stats.customers.total;
+                        document.getElementById('statProjects').textContent = data.stats.projects.total;
+                        document.getElementById('statActive').textContent = data.stats.projects.active;
+                        document.getElementById('statRevenue').textContent = '$' + data.stats.revenue.total.toLocaleString();
+                        document.getElementById('statPending').textContent = '$' + data.stats.revenue.pending.toLocaleString();
+                        const stockValue = data.stats.stock ? data.stats.stock.total_value : 0;
+                        document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
+                        initializeCharts(data.stats);
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback stats error:', fallbackError);
+                }
             }
         }
 
@@ -2882,11 +3101,11 @@
             projectStatusChart = new Chart(projectCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Active', 'Pending', 'Completed'],
+                    labels: ['Active', 'On Hold', 'Completed'],
                     datasets: [{
                         label: 'Projects',
-                        data: [stats.projects.active, stats.projects.pending || 0, stats.projects.completed || 0],
-                        backgroundColor: ['#556B2F', '#6B8E23', '#8FBC8F'],
+                        data: [stats.projects.active, stats.projects.on_hold || 0, stats.projects.completed || 0],
+                        backgroundColor: ['#556B2F', '#f39c12', '#27ae60'],
                         borderWidth: 0
                     }]
                 },
@@ -3289,6 +3508,7 @@
             openModal('markupsModal');
             await loadMarkups(projectId);
             await loadProjectCostCentres(projectId);
+            await loadRoomAssignments(projectId);
         }
 
         async function loadMarkups(projectId) {
@@ -3486,11 +3706,201 @@
                     window.allQuotes = quotes; // Store globally for event linking
                     renderQuotes();
                     populateQuoteCustomerSelect();
+                    
+                    // Also render section-specific quote tables
+                    renderQuotesBySection();
                 }
             } catch (e) {
                 console.error('Quotes error:', e);
             }
         }
+        
+        function renderQuotesBySection() {
+            // Open quotes (draft status, excluding supplier quotes)
+            const openQuotes = quotes.filter(q => q.status === 'draft' && q.source !== 'supplier');
+            renderQuotesTable('quotesOpenTable', openQuotes, 'open');
+            
+            // Sent quotes (excluding supplier quotes)
+            const sentQuotes = quotes.filter(q => q.status === 'sent' && q.source !== 'supplier');
+            renderQuotesTable('quotesSentTable', sentQuotes, 'sent');
+            
+            // Expired quotes
+            const today = new Date().toISOString().split('T')[0];
+            const expiredQuotes = quotes.filter(q => 
+                (q.status === 'expired' || (q.valid_until && q.valid_until < today && q.status !== 'accepted')) 
+                && q.source !== 'supplier'
+            );
+            renderQuotesTable('quotesExpiredTable', expiredQuotes, 'expired');
+            
+            // Supplier quotes (quotes with source === 'supplier')
+            const supplierQuotes = quotes.filter(q => q.source === 'supplier');
+            renderQuotesTable('quotesSupplierTable', supplierQuotes, 'supplier');
+        }
+        
+        function renderQuotesTable(containerId, quotesList, section) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            if (!quotesList || quotesList.length === 0) {
+                const emptyMessages = {
+                    'open': 'No open quotes. Create a new quote to get started.',
+                    'sent': 'No sent quotes yet.',
+                    'expired': 'No expired quotes.',
+                    'supplier': 'No supplier quotes yet. Add quotes received from suppliers.'
+                };
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <div style="font-weight: 600; margin-bottom: 8px;">No Quotes</div>
+                        <p style="color: var(--text-secondary);">${emptyMessages[section] || 'No quotes found.'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const statusColors = {
+                'draft': 'status-pending',
+                'sent': 'status-in-progress',
+                'accepted': 'status-completed',
+                'rejected': 'status-cancelled',
+                'expired': 'status-on-hold'
+            };
+            
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quote #</th>
+                                <th>Title</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Valid Until</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${quotesList.map(q => {
+                                const customer = customers.find(c => c.id === q.customer_id);
+                                return `
+                                    <tr>
+                                        <td><strong>${q.quote_number || '-'}</strong></td>
+                                        <td>
+                                            ${q.title}
+                                            ${q.source === 'quote-automation' ? '<span style="font-size: 10px; background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">AI</span>' : ''}
+                                            ${q.source === 'supplier' ? '<span style="font-size: 10px; background: #9333ea; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Supplier</span>' : ''}
+                                        </td>
+                                        <td>${customer ? customer.name : '<span style="color: #999;">-</span>'}</td>
+                                        <td><strong>$${(q.quote_amount || 0).toLocaleString()}</strong></td>
+                                        <td><span class="status-badge ${statusColors[q.status] || ''}">${q.status}</span></td>
+                                        <td>${q.valid_until || '-'}</td>
+                                        <td style="white-space: nowrap;">
+                                            <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')" title="Edit">✏️</button>
+                                            <button class="btn btn-primary btn-small" onclick="openQuoteCostCentresModal('${q.id}')" title="Cost Centres">📊</button>
+                                            <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="PDF Editor">📄</button>
+                                            ${section === 'open' ? `<button class="btn btn-success btn-small" onclick="markQuoteSent('${q.id}')" title="Mark as Sent">📤 Send</button>` : ''}
+                                            ${section === 'sent' ? `<button class="btn btn-success btn-small" onclick="markQuoteAccepted('${q.id}')" title="Mark as Accepted">✅ Accept</button>` : ''}
+                                            <button class="btn btn-danger btn-small" onclick="deleteQuote('${q.id}')" title="Delete">🗑️</button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        async function markQuoteSent(quoteId) {
+            if (!confirm('Mark this quote as sent to customer?')) return;
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ status: 'sent' })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('✅ Quote marked as sent!');
+                    loadQuotes();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function markQuoteAccepted(quoteId) {
+            if (!confirm('Mark this quote as accepted? This will allow you to convert it to a project.')) return;
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ status: 'accepted' })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('✅ Quote accepted! You can now convert it to a project.');
+                    loadQuotes();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function openQuoteModal(section) {
+            // Reset form
+            document.getElementById('quoteForm').reset();
+            document.getElementById('quoteId').value = '';
+            document.getElementById('quoteSource').value = '';
+            
+            // Set default status based on section
+            const statusMap = {
+                'open': 'draft',
+                'sent': 'sent',
+                'supplier': 'draft'
+            };
+            document.getElementById('quoteStatus').value = statusMap[section] || 'draft';
+            
+            // Set quote type based on section
+            const quoteTypeSelect = document.getElementById('quoteType');
+            if (section === 'supplier') {
+                quoteTypeSelect.value = 'supplier';
+                toggleSupplierFields(true);
+            } else {
+                quoteTypeSelect.value = 'customer';
+                toggleSupplierFields(false);
+            }
+            
+            openModal('quoteModal');
+        }
+        
+        function toggleSupplierFields(isSupplier) {
+            const supplierGroup = document.getElementById('supplierNameGroup');
+            const customerLabel = document.querySelector('label[for="quoteCustomer"]');
+            
+            if (isSupplier) {
+                supplierGroup.style.display = 'block';
+                if (customerLabel) customerLabel.textContent = 'Link to Customer (optional)';
+            } else {
+                supplierGroup.style.display = 'none';
+                if (customerLabel) customerLabel.textContent = 'Customer';
+            }
+        }
+        
+        // Add event listener for quote type change
+        document.addEventListener('DOMContentLoaded', function() {
+            const quoteTypeSelect = document.getElementById('quoteType');
+            if (quoteTypeSelect) {
+                quoteTypeSelect.addEventListener('change', function() {
+                    toggleSupplierFields(this.value === 'supplier');
+                });
+            }
+        });
 
         function populateQuoteCustomerSelect() {
             const select = document.getElementById('quoteCustomer');
@@ -3553,7 +3963,9 @@
                                 const customer = customers.find(c => c.id === q.customer_id);
                                 const markupCount = (q.markups || []).length;
                                 const stockCount = (q.stock_items || []).length;
-                                const hasFloorplan = q.floorplan_image || q.source === 'quote-automation';
+                                const costCentreCount = (q.cost_centres || []).length;
+                                // Only show floorplan if we actually have an image URL
+                                const hasFloorplan = q.floorplan_image && q.floorplan_image !== 'undefined';
                                 return `
                                     <tr>
                                         <td><strong>${q.quote_number || '-'}</strong></td>
@@ -3564,27 +3976,26 @@
                                         <td style="text-align: center;">
                                             ${hasFloorplan ? `
                                                 <button onclick="viewQuoteFloorplan('${q.id}')" style="border: none; background: none; cursor: pointer; padding: 0;" title="View floorplan">
-                                                    <img src="${q.floorplan_image}" alt="Floorplan preview" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                                                    <img src="${q.floorplan_image}" alt="Floorplan preview" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" onerror="this.parentElement.innerHTML='<span style=color:#999>-</span>'">
                                                 </button>
                                             ` : '<span style="color: #999;">-</span>'}
                                         </td>
-                                        <td>${customer ? customer.name : '-'}</td>
+                                        <td>${customer ? customer.name : '<span style="color: #999;">Not linked</span>'}</td>
                                         <td><span class="status-badge ${statusColors[q.status] || ''}">${q.status}</span></td>
-                                        <td>$${(q.quote_amount || q.total_amount || 0).toLocaleString()}</td>
+                                        <td><strong>$${(q.quote_amount || q.total_amount || 0).toLocaleString()}</strong></td>
                                         <td>
-                                            <button class="btn btn-secondary btn-small" onclick="openQuoteMarkupsModal('${q.id}')" style="display: flex; align-items: center; gap: 6px;">
-                                                <span>📎</span> ${markupCount} / ${stockCount} items
+                                            <button class="btn btn-secondary btn-small" onclick="openQuoteCostCentresModal('${q.id}')" style="display: flex; align-items: center; gap: 6px;">
+                                                <span>📊</span> ${costCentreCount} Cost Centres
                                             </button>
                                         </td>
                                         <td>${q.valid_until || '-'}</td>
                                         <td style="white-space: nowrap;">
-                                            <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')">Edit</button>
-                                            ${q.floorplan_image ? `<button class="btn btn-primary btn-small" onclick="editQuoteFloorplan('${q.id}')" title="Edit Floorplan in Canvas Editor">✏️ Edit Floorplan</button>` : ''}
-                                            <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="Open PDF Editor">🎨 PDF Editor</button>
-                                            <button class="btn btn-primary btn-small" onclick="generateQuotePDF('${q.id}')" title="Generate PDF">📄 PDF</button>
-                                            ${q.status !== 'accepted' ? `<button class="btn btn-primary btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">Convert</button>` : ''}
+                                            <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')" title="Edit Quote Details">✏️</button>
+                                            ${hasFloorplan ? `<button class="btn btn-primary btn-small" onclick="editQuoteFloorplan('${q.id}')" title="Edit Floorplan">🗺️</button>` : ''}
+                                            <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="PDF Editor">📄</button>
+                                            ${q.status !== 'accepted' ? `<button class="btn btn-success btn-small" onclick="convertToProject('${q.id}')" title="Convert to Project">✅ Convert</button>` : ''}
                                             ${q.converted_to_project_id ? `<button class="btn btn-primary btn-small" onclick="goToProject('${q.converted_to_project_id}')">View Project</button>` : ''}
-                                            <button class="btn btn-danger btn-small" onclick="deleteQuote('${q.id}')">Delete</button>
+                                            <button class="btn btn-danger btn-small" onclick="deleteQuote('${q.id}')" title="Delete Quote">🗑️</button>
                                         </td>
                                     </tr>
                                 `;
@@ -3597,11 +4008,28 @@
 
         async function saveQuote(e) {
             e.preventDefault();
+            
+            const saveBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+            
             const id = document.getElementById('quoteId').value;
+            const title = document.getElementById('quoteTitle').value.trim();
+            const quoteType = document.getElementById('quoteType').value;
+            
+            // Validate title
+            if (!title) {
+                alert('Please enter a quote title');
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+                return;
+            }
+            
             const data = {
                 quote_number: document.getElementById('quoteNumber').value,
                 customer_id: document.getElementById('quoteCustomer').value,
-                title: document.getElementById('quoteTitle').value,
+                title: title,
                 description: document.getElementById('quoteDesc').value,
                 status: document.getElementById('quoteStatus').value,
                 valid_until: document.getElementById('quoteValidUntil').value,
@@ -3609,33 +4037,48 @@
                 labor_cost: parseFloat(document.getElementById('quoteLaborCost').value) || 0,
                 markup_percentage: parseFloat(document.getElementById('quoteMarkupPct').value) || 20,
                 quote_amount: parseFloat(document.getElementById('quoteAmount').value) || 0,
-                notes: document.getElementById('quoteNotes').value
+                notes: document.getElementById('quoteNotes').value,
+                source: quoteType === 'supplier' ? 'supplier' : (document.getElementById('quoteSource').value || 'manual'),
+                supplier_name: quoteType === 'supplier' ? document.getElementById('quoteSupplierName').value : null
             };
+
+            console.log('Saving quote:', data);
 
             try {
                 const url = id ? `/api/crm/quotes/${id}` : '/api/crm/quotes';
+                console.log('POST to:', url);
+                
                 const res = await fetch(url, {
                     method: id ? 'PUT' : 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
 
+                console.log('Response status:', res.status);
+                
                 if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('Server error:', errorText);
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
 
                 const result = await res.json();
+                console.log('Result:', result);
+                
                 if (result.success) {
                     closeModal('quoteModal');
-                    loadQuotes();
-                    loadStats();
-                    alert('Quote saved successfully!');
+                    await loadQuotes(); // Wait for quotes to reload
+                    await loadStats();
+                    alert('✅ Quote saved successfully!');
                 } else {
-                    alert('Error saving quote: ' + (result.error || 'Unknown error'));
+                    alert('❌ Error saving quote: ' + (result.error || 'Unknown error'));
                 }
             } catch (e) {
                 console.error('Quote save error:', e);
-                alert('Error saving quote: ' + e.message);
+                alert('❌ Error saving quote: ' + e.message);
+            } finally {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
             }
         }
 
@@ -3979,23 +4422,44 @@
         }
 
         async function convertToProject(quoteId) {
-            if (!confirm('Convert this quote to a project? This will mark the quote as accepted.')) return;
+            const quote = quotes.find(q => q.id === quoteId);
+            const quoteName = quote ? quote.title : 'this quote';
+            
+            if (!confirm(`Convert "${quoteName}" to a project?\n\nThis will:\n• Mark the quote as accepted\n• Create a new project with all quote data\n• Copy all cost centres and markups`)) return;
+            
             try {
-                const res = await fetch(`/api/crm/quotes/${quoteId}/convert-to-project`, {
+                // Try v2 API first, fallback to v1
+                let res = await fetch(`/api/v2/crm/quotes/${quoteId}/convert`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'}
                 });
+                
+                // Fallback to old API if v2 not available
+                if (res.status === 404) {
+                    res = await fetch(`/api/crm/quotes/${quoteId}/convert-to-project`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                }
+                
                 const result = await res.json();
                 if (result.success) {
-                    alert('Quote converted to project successfully!');
+                    const projectTitle = result.project ? result.project.title : 'New Project';
+                    alert(`✅ Quote converted successfully!\n\nProject "${projectTitle}" has been created.`);
                     loadQuotes();
                     loadProjects();
                     loadStats();
+                    
+                    // Optionally navigate to the new project
+                    if (result.project && confirm('Would you like to view the new project?')) {
+                        showSection('projects');
+                    }
                 } else {
-                    alert('Error: ' + result.error);
+                    alert('❌ Error: ' + result.error);
                 }
             } catch (e) {
-                alert('Error: ' + e.message);
+                console.error('Convert error:', e);
+                alert('❌ Error: ' + e.message);
             }
         }
 
@@ -4011,6 +4475,280 @@
         function editQuoteFloorplan(quoteId) {
             // Open the quote in the canvas editor for editing
             window.location.href = `/?quote_id=${quoteId}`;
+        }
+
+        // ==================== QUOTE COST CENTRES MODAL ====================
+        let currentCostCentreQuoteId = null;
+
+        async function openQuoteCostCentresModal(quoteId) {
+            currentCostCentreQuoteId = quoteId;
+            const quote = quotes.find(q => q.id === quoteId);
+            
+            if (quote) {
+                document.getElementById('quoteCostCentresTitle').textContent = `${quote.quote_number || 'Quote'}: ${quote.title}`;
+                document.getElementById('quoteTotalAmount').textContent = '$' + (quote.quote_amount || 0).toLocaleString();
+                
+                const customer = customers.find(c => c.id === quote.customer_id);
+                document.getElementById('quoteCostCentresCustomer').textContent = customer ? `Customer: ${customer.name}` : 'No customer linked';
+            }
+            
+            // Populate customer dropdown
+            const customerSelect = document.getElementById('linkQuoteCustomer');
+            customerSelect.innerHTML = '<option value="">Select Customer...</option>' + 
+                customers.map(c => `<option value="${c.id}" ${quote && quote.customer_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+            
+            document.getElementById('addCostCentreForm').reset();
+            openModal('quoteCostCentresModal');
+            await loadQuoteCostCentresStandalone(quoteId);
+        }
+
+        async function loadQuoteCostCentresStandalone(quoteId) {
+            const container = document.getElementById('quoteCostCentresListStandalone');
+            container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading cost centres...</p></div>`;
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/cost-centres`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderQuoteCostCentresStandalone(data.cost_centres || []);
+                    updateCostCentreTotals(data.cost_centres || []);
+                } else {
+                    container.innerHTML = `<div class="empty-state"><p>Error: ${data.error}</p></div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`;
+            }
+        }
+
+        function renderQuoteCostCentresStandalone(costCentres) {
+            const container = document.getElementById('quoteCostCentresListStandalone');
+            
+            if (!costCentres || costCentres.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div style="font-weight: 600; margin-bottom: 8px;">No Cost Centres Yet</div>
+                        <p style="color: var(--text-secondary);">Add cost centres to break down your quote into categories like Materials, Labor, Equipment, etc.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const categoryColors = {
+                'materials': '#4CAF50',
+                'labor': '#2196F3',
+                'equipment': '#9C27B0',
+                'subcontractor': '#FF9800',
+                'other': '#607D8B'
+            };
+            
+            container.innerHTML = costCentres.map(cc => {
+                const items = cc.items || [];
+                const total = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+                const color = categoryColors[cc.category] || '#607D8B';
+                
+                return `
+                    <div class="card" style="margin-bottom: 16px; border-left: 4px solid ${color};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <strong style="font-size: 16px;">${cc.name}</strong>
+                                <span style="font-size: 11px; background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; margin-left: 8px;">${cc.category || 'Other'}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 18px; font-weight: 700; color: ${color};">$${total.toLocaleString()}</span>
+                                <button class="btn btn-danger btn-small" onclick="deleteCostCentreFromQuote('${cc.id}')">🗑️</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Add Item Form -->
+                        <form onsubmit="addItemToCostCentre(event, '${cc.id}')" style="margin-bottom: 12px; padding: 12px; background: var(--hover-bg); border-radius: 8px;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <input type="text" id="itemName_${cc.id}" placeholder="Item name" required style="flex: 2; min-width: 150px;">
+                                <input type="number" id="itemQty_${cc.id}" placeholder="Qty" value="1" min="1" required style="width: 70px;">
+                                <input type="number" id="itemPrice_${cc.id}" placeholder="Unit $" step="0.01" required style="width: 90px;">
+                                <button type="submit" class="btn btn-primary btn-small">+ Add</button>
+                            </div>
+                        </form>
+                        
+                        <!-- Items List -->
+                        ${items.length > 0 ? `
+                            <table style="width: 100%; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: var(--hover-bg);">
+                                        <th style="text-align: left; padding: 8px;">Item</th>
+                                        <th style="text-align: center; padding: 8px;">Qty</th>
+                                        <th style="text-align: right; padding: 8px;">Unit Price</th>
+                                        <th style="text-align: right; padding: 8px;">Total</th>
+                                        <th style="text-align: center; padding: 8px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${items.map(item => `
+                                        <tr>
+                                            <td style="padding: 8px;">${item.name}</td>
+                                            <td style="text-align: center; padding: 8px;">${item.quantity}</td>
+                                            <td style="text-align: right; padding: 8px;">$${item.unit_price.toLocaleString()}</td>
+                                            <td style="text-align: right; padding: 8px; font-weight: 600;">$${(item.quantity * item.unit_price).toLocaleString()}</td>
+                                            <td style="text-align: center; padding: 8px;">
+                                                <button class="btn btn-danger btn-small" onclick="deleteItemFromCostCentre('${cc.id}', '${item.id}')" style="padding: 2px 8px;">×</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p style="color: var(--text-secondary); font-size: 13px; padding: 8px;">No items yet. Add items above.</p>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateCostCentreTotals(costCentres) {
+            let materials = 0, labor = 0, equipment = 0, other = 0;
+            
+            costCentres.forEach(cc => {
+                const total = (cc.items || []).reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+                switch (cc.category) {
+                    case 'materials': materials += total; break;
+                    case 'labor': labor += total; break;
+                    case 'equipment': equipment += total; break;
+                    default: other += total;
+                }
+            });
+            
+            document.getElementById('ccMaterialsTotal').textContent = '$' + materials.toLocaleString();
+            document.getElementById('ccLaborTotal').textContent = '$' + labor.toLocaleString();
+            document.getElementById('ccEquipmentTotal').textContent = '$' + equipment.toLocaleString();
+            document.getElementById('ccGrandTotal').textContent = '$' + (materials + labor + equipment + other).toLocaleString();
+        }
+
+        async function addCostCentreToQuote(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('costCentreName').value.trim();
+            const category = document.getElementById('costCentreCategory').value;
+            
+            if (!name) {
+                alert('Please enter a cost centre name');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentCostCentreQuoteId}/cost-centres`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, category })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    document.getElementById('addCostCentreForm').reset();
+                    await loadQuoteCostCentresStandalone(currentCostCentreQuoteId);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function addItemToCostCentre(e, centreId) {
+            e.preventDefault();
+            
+            const name = document.getElementById(`itemName_${centreId}`).value.trim();
+            const quantity = parseInt(document.getElementById(`itemQty_${centreId}`).value) || 1;
+            const unit_price = parseFloat(document.getElementById(`itemPrice_${centreId}`).value) || 0;
+            
+            if (!name) {
+                alert('Please enter an item name');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentCostCentreQuoteId}/cost-centres/${centreId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, quantity, unit_price })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    await loadQuoteCostCentresStandalone(currentCostCentreQuoteId);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteCostCentreFromQuote(centreId) {
+            if (!confirm('Delete this cost centre and all its items?')) return;
+            
+            try {
+                await fetch(`/api/crm/quotes/${currentCostCentreQuoteId}/cost-centres/${centreId}`, {
+                    method: 'DELETE'
+                });
+                await loadQuoteCostCentresStandalone(currentCostCentreQuoteId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteItemFromCostCentre(centreId, itemId) {
+            try {
+                await fetch(`/api/crm/quotes/${currentCostCentreQuoteId}/cost-centres/${centreId}/items/${itemId}`, {
+                    method: 'DELETE'
+                });
+                await loadQuoteCostCentresStandalone(currentCostCentreQuoteId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function linkQuoteToCustomer() {
+            const customerId = document.getElementById('linkQuoteCustomer').value;
+            const projectSelect = document.getElementById('linkQuoteProject');
+            
+            if (customerId) {
+                // Filter projects by customer
+                const customerProjects = projects.filter(p => p.customer_id === customerId);
+                projectSelect.innerHTML = '<option value="">Select Project...</option>' + 
+                    customerProjects.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+                projectSelect.disabled = false;
+            } else {
+                projectSelect.innerHTML = '<option value="">Select Project...</option>';
+                projectSelect.disabled = true;
+            }
+        }
+
+        async function saveQuoteLinks() {
+            const customerId = document.getElementById('linkQuoteCustomer').value;
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${currentCostCentreQuoteId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ customer_id: customerId || null })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('✅ Quote links saved!');
+                    await loadQuotes();
+                    
+                    // Update the modal info
+                    const customer = customers.find(c => c.id === customerId);
+                    document.getElementById('quoteCostCentresCustomer').textContent = customer ? `Customer: ${customer.name}` : 'No customer linked';
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
 
         // Quote Markups Management
@@ -4728,6 +5466,231 @@
             try {
                 await fetch(`/api/crm/quotes/${currentQuoteId}/cost-centres/${centreId}/items/${itemId}`, {method: 'DELETE'});
                 await loadQuoteCostCentres(currentQuoteId);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ==================== ROOM ASSIGNMENTS ====================
+        
+        async function loadRoomAssignments(projectId) {
+            const container = document.getElementById('roomAssignmentsList');
+            
+            try {
+                const res = await fetch(`/api/crm/projects/${projectId}/room-assignments`);
+                const data = await res.json();
+                
+                if (data.success && data.room_assignments && data.room_assignments.length > 0) {
+                    renderRoomAssignments(data.room_assignments);
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: 30px; text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🏠</div>
+                            <div style="font-weight: 600; margin-bottom: 5px;">No Room Assignments</div>
+                            <p style="color: var(--text-secondary); font-size: 13px;">Assign serial numbers to rooms for installation tracking</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Room assignments error:', e);
+                container.innerHTML = `<p style="color: #e74c3c;">Error loading room assignments</p>`;
+            }
+        }
+        
+        function renderRoomAssignments(assignments) {
+            const container = document.getElementById('roomAssignmentsList');
+            
+            // Group by room
+            const byRoom = {};
+            assignments.forEach(a => {
+                if (!byRoom[a.room_name]) byRoom[a.room_name] = [];
+                byRoom[a.room_name].push(a);
+            });
+            
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Item</th>
+                                <th>Serial Number</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${assignments.map(a => `
+                                <tr>
+                                    <td><strong>🏠 ${a.room_name}</strong></td>
+                                    <td>${a.item_name || 'N/A'}</td>
+                                    <td><code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px;">${a.serial_number}</code></td>
+                                    <td>
+                                        <span class="status-badge status-${a.status || 'pending'}" style="font-size: 11px; padding: 3px 8px;">
+                                            ${(a.status || 'pending').charAt(0).toUpperCase() + (a.status || 'pending').slice(1)}
+                                        </span>
+                                    </td>
+                                    <td style="font-size: 12px; color: var(--text-secondary);">${a.notes || '-'}</td>
+                                    <td>
+                                        <button class="btn btn-small ${a.status === 'installed' ? 'btn-secondary' : 'btn-primary'}" 
+                                                onclick="toggleAssignmentStatus('${a.id}')" 
+                                                title="${a.status === 'installed' ? 'Mark as pending' : 'Mark as installed'}">
+                                            ${a.status === 'installed' ? '↩️ Undo' : '✅ Installed'}
+                                        </button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteRoomAssignment('${a.id}')">🗑️</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        function openRoomAssignmentForm() {
+            const form = document.getElementById('roomAssignmentForm');
+            form.style.display = 'block';
+            
+            // Populate stock items dropdown
+            populateStockItemsDropdown();
+        }
+        
+        function closeRoomAssignmentForm() {
+            document.getElementById('roomAssignmentForm').style.display = 'none';
+            document.getElementById('assignmentRoomName').value = '';
+            document.getElementById('assignmentStockItem').value = '';
+            document.getElementById('assignmentSerial').innerHTML = '<option value="">Select or enter serial...</option>';
+            document.getElementById('assignmentNotes').value = '';
+        }
+        
+        async function populateStockItemsDropdown() {
+            const select = document.getElementById('assignmentStockItem');
+            
+            try {
+                const res = await fetch('/api/crm/stock');
+                const data = await res.json();
+                
+                if (data.success && data.stock) {
+                    select.innerHTML = '<option value="">Select stock item...</option>' + 
+                        data.stock.map(item => `
+                            <option value="${item.id}" data-serials='${JSON.stringify(item.serial_numbers || [])}'>
+                                ${item.name} (${item.quantity} in stock)
+                            </option>
+                        `).join('');
+                }
+            } catch (e) {
+                console.error('Error loading stock:', e);
+            }
+        }
+        
+        function populateSerialNumbers() {
+            const stockSelect = document.getElementById('assignmentStockItem');
+            const serialSelect = document.getElementById('assignmentSerial');
+            const selectedOption = stockSelect.options[stockSelect.selectedIndex];
+            
+            if (!selectedOption || !selectedOption.value) {
+                serialSelect.innerHTML = '<option value="">Select or enter serial...</option>';
+                return;
+            }
+            
+            try {
+                const serials = JSON.parse(selectedOption.getAttribute('data-serials') || '[]');
+                
+                // Filter out already assigned serials
+                const availableSerials = serials.filter(s => {
+                    const serialObj = typeof s === 'string' ? {serial: s} : s;
+                    return serialObj.status !== 'assigned' && serialObj.status !== 'installed';
+                });
+                
+                serialSelect.innerHTML = '<option value="">Select serial number...</option>' + 
+                    availableSerials.map(s => {
+                        const serial = typeof s === 'string' ? s : s.serial;
+                        return `<option value="${serial}">${serial}</option>`;
+                    }).join('');
+                
+                // Add option to enter custom serial
+                serialSelect.innerHTML += '<option value="__custom__">Enter custom serial...</option>';
+            } catch (e) {
+                console.error('Error parsing serials:', e);
+                serialSelect.innerHTML = '<option value="">Enter serial number...</option>';
+            }
+        }
+        
+        async function saveRoomAssignment() {
+            const roomName = document.getElementById('assignmentRoomName').value.trim();
+            let serialNumber = document.getElementById('assignmentSerial').value;
+            const stockItemId = document.getElementById('assignmentStockItem').value;
+            const notes = document.getElementById('assignmentNotes').value.trim();
+            
+            if (!roomName) {
+                alert('Please enter a room name');
+                return;
+            }
+            
+            // Handle custom serial entry
+            if (serialNumber === '__custom__' || !serialNumber) {
+                serialNumber = prompt('Enter serial number:');
+                if (!serialNumber) return;
+            }
+            
+            try {
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/room-assignments`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        room_name: roomName,
+                        serial_number: serialNumber,
+                        item_id: stockItemId,
+                        notes: notes
+                    })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    closeRoomAssignmentForm();
+                    await loadRoomAssignments(currentMarkupsProjectId);
+                    alert('✅ Serial number assigned to room successfully!');
+                } else {
+                    alert('❌ Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function toggleAssignmentStatus(assignmentId) {
+            try {
+                // Get current assignment to toggle status
+                const res = await fetch(`/api/crm/projects/${currentMarkupsProjectId}/room-assignments/${assignmentId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        toggle_status: true
+                    })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    await loadRoomAssignments(currentMarkupsProjectId);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function deleteRoomAssignment(assignmentId) {
+            if (!confirm('Remove this room assignment?')) return;
+            
+            try {
+                await fetch(`/api/crm/projects/${currentMarkupsProjectId}/room-assignments/${assignmentId}`, {
+                    method: 'DELETE'
+                });
+                await loadRoomAssignments(currentMarkupsProjectId);
             } catch (e) {
                 alert('Error: ' + e.message);
             }

@@ -10,6 +10,15 @@ from datetime import datetime
 from functools import wraps
 from flask import session, redirect, url_for, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Use pbkdf2 method which is compatible with older Python/OpenSSL versions
+def safe_generate_password_hash(password):
+    """Generate password hash using pbkdf2 for compatibility"""
+    return generate_password_hash(password, method='pbkdf2:sha256')
+
+def safe_check_password_hash(pwhash, password):
+    """Check password hash with fallback"""
+    return check_password_hash(pwhash, password)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -75,7 +84,7 @@ def init_users_file():
         default_admin = {
             'id': str(uuid.uuid4()),
             'name': 'Admin',
-            'code': generate_password_hash('1234'),  # Simple 4-digit code
+            'code': safe_generate_password_hash('1234'),  # Simple 4-digit code
             'display_name': 'System Administrator',
             'role': 'admin',
             'permissions': list(PERMISSIONS.keys()),
@@ -155,7 +164,7 @@ def create_user(name, code, display_name, role='viewer', custom_permissions=None
     new_user = {
         'id': str(uuid.uuid4()),
         'name': name,
-        'code': generate_password_hash(code),  # Hash the code
+        'code': safe_generate_password_hash(code),  # Hash the code
         'display_name': display_name,
         'role': role,
         'permissions': permissions,
@@ -195,7 +204,7 @@ def update_user(user_id, **kwargs):
             if 'active' in kwargs:
                 user['active'] = kwargs['active']
             if 'code' in kwargs and kwargs['code']:
-                user['code'] = generate_password_hash(kwargs['code'])
+                user['code'] = safe_generate_password_hash(kwargs['code'])
             if 'crm_permissions' in kwargs:
                 user['crm_permissions'] = kwargs['crm_permissions']
 
@@ -240,7 +249,7 @@ def authenticate_user(name, code):
     if not user.get('active', False):
         return None, "Account is deactivated"
 
-    if not check_password_hash(user['code'], code):
+    if not safe_check_password_hash(user['code'], code):
         return None, "Invalid name or code"
 
     # Update last login
