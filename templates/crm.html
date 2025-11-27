@@ -733,35 +733,35 @@
             <p class="page-subtitle">Overview of your business</p>
 
             <div class="stats-grid">
-                <div class="stat-card" onclick="showSection('customers')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('people-customers')" style="cursor: pointer;" title="View all customers">
                     <div class="stat-value" id="statCustomers">0</div>
                     <div class="stat-label">Total Customers</div>
                 </div>
-                <div class="stat-card" onclick="showSection('projects')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('jobs-in-progress')" style="cursor: pointer;" title="View all jobs">
                     <div class="stat-value" id="statProjects">0</div>
-                    <div class="stat-label">Total Projects</div>
+                    <div class="stat-label">Total Jobs</div>
                 </div>
-                <div class="stat-card" onclick="showSection('projects')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('jobs-in-progress')" style="cursor: pointer;" title="View jobs in progress">
                     <div class="stat-value" id="statActive">0</div>
-                    <div class="stat-label">Active Projects</div>
+                    <div class="stat-label">Active Jobs</div>
                 </div>
-                <div class="stat-card" onclick="showSection('quotes')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('quotes-open')" style="cursor: pointer;" title="View all quotes">
                     <div class="stat-value" id="statQuotes">0</div>
                     <div class="stat-label">Total Quotes</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="showSection('payments-to-us')" style="cursor: pointer;" title="View revenue">
                     <div class="stat-value" id="statRevenue">$0</div>
                     <div class="stat-label">Total Revenue</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="showSection('quotes-sent')" style="cursor: pointer;" title="View pending quotes">
                     <div class="stat-value" id="statPending">$0</div>
                     <div class="stat-label">Pending Revenue</div>
                 </div>
-                <div class="stat-card" onclick="showSection('stock')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('materials-stock')" style="cursor: pointer;" title="View stock">
                     <div class="stat-value" id="statStock">$0</div>
                     <div class="stat-label">Stock Value</div>
                 </div>
-                <div class="stat-card" onclick="showSection('stock')" style="cursor: pointer;">
+                <div class="stat-card" onclick="showSection('materials-stock')" style="cursor: pointer;" title="View low stock items">
                     <div class="stat-value" id="statLowStock" style="color: #e74c3c;">0</div>
                     <div class="stat-label">Low Stock Items</div>
                 </div>
@@ -774,7 +774,7 @@
                     <canvas id="revenueChart"></canvas>
                 </div>
                 <div class="chart-card">
-                    <h3 class="chart-title">Project Status</h3>
+                    <h3 class="chart-title">Job Status</h3>
                     <canvas id="projectStatusChart"></canvas>
                 </div>
                 <div class="chart-card">
@@ -792,10 +792,11 @@
                     <h2 class="card-title">Quick Actions</h2>
                 </div>
                 <div class="flex gap-2">
-                    <button class="btn btn-primary" onclick="showSection('customers'); openModal('customerModal')">+ New Customer</button>
-                    <button class="btn btn-primary" onclick="showSection('projects'); openModal('projectModal')">+ New Project</button>
-                    <button class="btn btn-primary" onclick="showSection('calendar'); openModal('eventModal')">+ Schedule Event</button>
-                    <button class="btn btn-primary" onclick="showSection('inventory'); openModal('inventoryModal')">+ Add Inventory</button>
+                    <button class="btn btn-primary" onclick="showSection('people-customers'); openPersonModal('customer')">+ New Customer</button>
+                    <button class="btn btn-primary" onclick="showSection('jobs-in-progress'); openJobModal('in_progress')">+ New Job</button>
+                    <button class="btn btn-primary" onclick="showSection('quotes-open'); openQuoteModal('open')">+ New Quote</button>
+                    <button class="btn btn-primary" onclick="showSection('calendar'); openEventModal()">+ Schedule Event</button>
+                    <button class="btn btn-primary" onclick="showSection('materials-stock'); openMaterialModal('stock')">+ Add Stock</button>
                 </div>
             </div>
         </div>
@@ -2997,64 +2998,153 @@
 
         async function loadStats() {
             try {
-                // Use enhanced v2 API for comprehensive stats
-                const res = await fetch('/api/v2/crm/stats');
-                const data = await res.json();
-                if (data.success) {
-                    const stats = data.stats;
-                    
-                    // Customer stats
-                    document.getElementById('statCustomers').textContent = stats.customers.total;
-                    
-                    // Project stats
-                    document.getElementById('statProjects').textContent = stats.projects.total;
-                    document.getElementById('statActive').textContent = stats.projects.active;
-                    
-                    // Quote stats
-                    const quotesEl = document.getElementById('statQuotes');
-                    if (quotesEl) quotesEl.textContent = stats.quotes.total;
-                    
-                    // Revenue stats
-                    document.getElementById('statRevenue').textContent = '$' + stats.revenue.total.toLocaleString();
-                    document.getElementById('statPending').textContent = '$' + stats.revenue.pending.toLocaleString();
-                    
-                    // Stock stats
-                    const stockValue = stats.stock ? stats.stock.total_value : 0;
-                    document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
-                    
-                    const lowStockEl = document.getElementById('statLowStock');
-                    if (lowStockEl) {
-                        lowStockEl.textContent = stats.stock ? stats.stock.low_stock : 0;
-                        // Highlight if there are low stock items
-                        if (stats.stock && stats.stock.low_stock > 0) {
-                            lowStockEl.style.color = '#e74c3c';
-                        } else {
-                            lowStockEl.style.color = '#27ae60';
-                        }
-                    }
-
-                    // Initialize charts with data
-                    initializeCharts(stats);
+                // Gather stats from multiple sources for accurate dashboard
+                let totalCustomers = 0;
+                let totalJobs = 0;
+                let activeJobs = 0;
+                let totalQuotes = 0;
+                let totalRevenue = 0;
+                let pendingRevenue = 0;
+                let stockValue = 0;
+                let lowStockCount = 0;
+                
+                // Fetch all data sources in parallel
+                const [
+                    customersRes,
+                    peopleRes,
+                    quotesRes,
+                    jobsInProgressRes,
+                    jobsUpcomingRes,
+                    jobsPendingRes,
+                    jobsFinishedRes,
+                    stockRes,
+                    paymentsRes
+                ] = await Promise.all([
+                    fetch('/api/crm/customers').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/people?type=customer').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/quotes').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/jobs?status=in_progress').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/jobs?status=upcoming').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/jobs?status=pending').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/jobs?status=finished').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/stock').catch(() => ({ json: () => ({ success: false }) })),
+                    fetch('/api/crm/payments?direction=to_us').catch(() => ({ json: () => ({ success: false }) }))
+                ]);
+                
+                // Parse responses
+                const [customersData, peopleData, quotesData, jobsInProgress, jobsUpcoming, jobsPending, jobsFinished, stockData, paymentsData] = await Promise.all([
+                    customersRes.json ? customersRes.json() : { success: false },
+                    peopleRes.json ? peopleRes.json() : { success: false },
+                    quotesRes.json ? quotesRes.json() : { success: false },
+                    jobsInProgressRes.json ? jobsInProgressRes.json() : { success: false },
+                    jobsUpcomingRes.json ? jobsUpcomingRes.json() : { success: false },
+                    jobsPendingRes.json ? jobsPendingRes.json() : { success: false },
+                    jobsFinishedRes.json ? jobsFinishedRes.json() : { success: false },
+                    stockRes.json ? stockRes.json() : { success: false },
+                    paymentsRes.json ? paymentsRes.json() : { success: false }
+                ]);
+                
+                // Count customers from both sources
+                if (customersData.success && customersData.customers) {
+                    totalCustomers += customersData.customers.length;
                 }
+                if (peopleData.success && peopleData.people) {
+                    // Add people customers that aren't already counted
+                    const existingIds = customersData.success ? customersData.customers.map(c => c.id) : [];
+                    const additionalCustomers = peopleData.people.filter(p => !existingIds.includes(p.id));
+                    totalCustomers += additionalCustomers.length;
+                }
+                
+                // Count jobs from all statuses
+                if (jobsInProgress.success && jobsInProgress.jobs) {
+                    totalJobs += jobsInProgress.jobs.length;
+                    activeJobs += jobsInProgress.jobs.length;
+                }
+                if (jobsUpcoming.success && jobsUpcoming.jobs) {
+                    totalJobs += jobsUpcoming.jobs.length;
+                }
+                if (jobsPending.success && jobsPending.jobs) {
+                    totalJobs += jobsPending.jobs.length;
+                }
+                if (jobsFinished.success && jobsFinished.jobs) {
+                    totalJobs += jobsFinished.jobs.length;
+                }
+                
+                // Count quotes and calculate revenue
+                if (quotesData.success && quotesData.quotes) {
+                    totalQuotes = quotesData.quotes.length;
+                    quotesData.quotes.forEach(q => {
+                        const amount = q.quote_amount || q.total_amount || 0;
+                        if (q.status === 'accepted' || q.status === 'completed') {
+                            totalRevenue += amount;
+                        } else if (q.status === 'sent' || q.status === 'draft') {
+                            pendingRevenue += amount;
+                        }
+                    });
+                }
+                
+                // Calculate stock value
+                if (stockData.success && stockData.stock) {
+                    stockData.stock.forEach(item => {
+                        const qty = item.quantity || 0;
+                        const price = item.unit_price || item.unit_cost || 0;
+                        stockValue += qty * price;
+                        if (qty < (item.min_quantity || 5)) {
+                            lowStockCount++;
+                        }
+                    });
+                }
+                
+                // Add payments to revenue
+                if (paymentsData.success && paymentsData.payments) {
+                    paymentsData.payments.forEach(p => {
+                        if (p.status === 'paid') {
+                            totalRevenue += p.amount || 0;
+                        }
+                    });
+                }
+                
+                // Update dashboard stats
+                document.getElementById('statCustomers').textContent = totalCustomers;
+                document.getElementById('statProjects').textContent = totalJobs;
+                document.getElementById('statActive').textContent = activeJobs;
+                
+                const quotesEl = document.getElementById('statQuotes');
+                if (quotesEl) quotesEl.textContent = totalQuotes;
+                
+                document.getElementById('statRevenue').textContent = '$' + totalRevenue.toLocaleString();
+                document.getElementById('statPending').textContent = '$' + pendingRevenue.toLocaleString();
+                document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
+                
+                const lowStockEl = document.getElementById('statLowStock');
+                if (lowStockEl) {
+                    lowStockEl.textContent = lowStockCount;
+                    lowStockEl.style.color = lowStockCount > 0 ? '#e74c3c' : '#27ae60';
+                }
+                
+                // Initialize charts with calculated stats
+                const chartStats = {
+                    customers: { total: totalCustomers },
+                    projects: { total: totalJobs, active: activeJobs, completed: jobsFinished.success ? jobsFinished.jobs.length : 0, on_hold: jobsPending.success ? jobsPending.jobs.length : 0 },
+                    quotes: { total: totalQuotes },
+                    revenue: { total: totalRevenue, pending: pendingRevenue },
+                    stock: { total_value: stockValue, low_stock: lowStockCount }
+                };
+                initializeCharts(chartStats);
+                
+                console.log('Dashboard stats loaded:', chartStats);
+                
             } catch (e) {
                 console.error('Stats error:', e);
-                // Fallback to old API if v2 fails
-                try {
-                    const res = await fetch('/api/crm/stats');
-                    const data = await res.json();
-                    if (data.success) {
-                        document.getElementById('statCustomers').textContent = data.stats.customers.total;
-                        document.getElementById('statProjects').textContent = data.stats.projects.total;
-                        document.getElementById('statActive').textContent = data.stats.projects.active;
-                        document.getElementById('statRevenue').textContent = '$' + data.stats.revenue.total.toLocaleString();
-                        document.getElementById('statPending').textContent = '$' + data.stats.revenue.pending.toLocaleString();
-                        const stockValue = data.stats.stock ? data.stats.stock.total_value : 0;
-                        document.getElementById('statStock').textContent = '$' + stockValue.toLocaleString();
-                        initializeCharts(data.stats);
-                    }
-                } catch (fallbackError) {
-                    console.error('Fallback stats error:', fallbackError);
-                }
+                // Show zeros on error
+                document.getElementById('statCustomers').textContent = '0';
+                document.getElementById('statProjects').textContent = '0';
+                document.getElementById('statActive').textContent = '0';
+                document.getElementById('statQuotes').textContent = '0';
+                document.getElementById('statRevenue').textContent = '$0';
+                document.getElementById('statPending').textContent = '$0';
+                document.getElementById('statStock').textContent = '$0';
+                document.getElementById('statLowStock').textContent = '0';
             }
         }
 
@@ -3100,17 +3190,17 @@
                 }
             });
 
-            // Project Status (Bar)
+            // Job Status (Bar) - Using jobs data instead of projects
             const projectCtx = document.getElementById('projectStatusChart');
             if (!projectCtx) return;
             if (projectStatusChart) projectStatusChart.destroy();
             projectStatusChart = new Chart(projectCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Active', 'On Hold', 'Completed'],
+                    labels: ['In Progress', 'Pending', 'Completed'],
                     datasets: [{
-                        label: 'Projects',
-                        data: [stats.projects.active, stats.projects.on_hold || 0, stats.projects.completed || 0],
+                        label: 'Jobs',
+                        data: [stats.projects.active || 0, stats.projects.on_hold || 0, stats.projects.completed || 0],
                         backgroundColor: ['#556B2F', '#f39c12', '#27ae60'],
                         borderWidth: 0
                     }]
