@@ -4308,13 +4308,26 @@ def analyze_floorplan():
         project_name = request.form.get('project_name', 'Untitled Project')
         tier = request.form.get('tier', 'basic')
         automation_types = request.form.getlist('automation_types') or request.form.getlist('automation_types[]')
+        
+        # Check if manual mode is enabled (skip AI analysis)
+        manual_mode = request.form.get('manual_mode') == 'on' or request.form.get('manual_mode') == 'true'
 
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        # Run AI analysis
-        analysis_result = analyze_floorplan_with_ai(filepath)
+        # Run AI analysis only if manual mode is NOT enabled
+        if manual_mode:
+            print("📋 Manual mode enabled - skipping AI analysis")
+            analysis_result = {
+                "rooms": [],
+                "components": [],
+                "notes": "Manual mode - AI analysis skipped. Add symbols manually using the editor.",
+                "manual_mode": True
+            }
+        else:
+            # Run AI analysis
+            analysis_result = analyze_floorplan_with_ai(filepath)
 
         # Log AI analysis result for debugging
         if 'error' in analysis_result:

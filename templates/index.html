@@ -529,14 +529,32 @@
 
             const formData = new FormData(e.target);
             const checkboxes = document.querySelectorAll('input[name="automation_types"]:checked');
+            
+            // Get manual mode checkbox status
+            const manualModeCheckbox = document.getElementById('manualMode');
+            const isManualMode = manualModeCheckbox && manualModeCheckbox.checked;
+            
+            // Explicitly set manual_mode in formData
+            if (isManualMode) {
+                formData.set('manual_mode', 'on');
+                console.log('📋 Manual mode enabled - will skip AI analysis');
+            } else {
+                formData.delete('manual_mode');
+            }
 
             if (checkboxes.length === 0) {
                 showToast('Please select at least one automation type', 'warning');
                 return;
             }
 
-            // Show loading
+            // Show loading with appropriate message
             document.getElementById('loading').classList.remove('hidden');
+            const loadingText = document.querySelector('#loading p');
+            if (loadingText) {
+                loadingText.textContent = isManualMode ? 
+                    'Preparing canvas for manual placement...' : 
+                    'Analyzing floor plan with AI...';
+            }
             document.getElementById('results').innerHTML = '';
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
@@ -1042,14 +1060,41 @@
                                         </div>
                                     </div>
 
+                                    <!-- Price Class CRM Sync Notice (hidden by default) -->
+                                    <div id="priceClassCrmNotice" class="hidden bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-xl p-4 mb-6">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="bg-purple-100 p-2 rounded-lg">
+                                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-semibold text-purple-900">Price Class Symbol</p>
+                                                <p class="text-xs text-purple-700 mt-1">Changes made here will only apply to this project. Use "Save to CRM" to update the price class globally.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Action Buttons -->
-                                    <div class="flex items-center justify-end space-x-3">
-                                        <button onclick="closeSymbolModal()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all duration-200">
-                                            Cancel
-                                        </button>
-                                        <button onclick="saveSymbolChanges()" class="px-6 py-3 bg-gradient-to-r from-olive-500 to-olive-600 hover:from-olive-600 hover:to-olive-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
-                                            Save Changes
-                                        </button>
+                                    <div class="flex items-center justify-between">
+                                        <!-- Save to CRM button (for price classes only) -->
+                                        <div id="saveToCrmContainer" class="hidden">
+                                            <button onclick="savePriceClassToCRM()" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                                </svg>
+                                                <span>Save to CRM</span>
+                                            </button>
+                                        </div>
+                                        <div class="flex-1"></div>
+                                        <div class="flex items-center space-x-3">
+                                            <button onclick="closeSymbolModal()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all duration-200">
+                                                Cancel
+                                            </button>
+                                            <button onclick="saveSymbolChanges()" class="px-6 py-3 bg-gradient-to-r from-olive-500 to-olive-600 hover:from-olive-600 hover:to-olive-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                                                Save Changes
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1918,14 +1963,27 @@
                 'security': { emoji: '🔐', name: 'Security' },
                 'security_access': { emoji: '🔐', name: 'Security Access' },
                 'climate': { emoji: '🌡️', name: 'Climate Control' },
-                'audio': { emoji: '🔊', name: 'Audio System' }
+                'audio': { emoji: '🔊', name: 'Audio System' },
+                'price_class': { emoji: '🏷️', name: data.priceClassName || 'Price Class' }
             };
 
             const symbolInfo = symbolMap[data.type] || { emoji: '📍', name: data.type };
 
+            // Check if this is a price class symbol
+            const isPriceClass = data.type === 'price_class';
+            
+            // Show/hide price class specific elements
+            document.getElementById('priceClassCrmNotice').classList.toggle('hidden', !isPriceClass);
+            document.getElementById('saveToCrmContainer').classList.toggle('hidden', !isPriceClass);
+
             // Populate modal
-            document.getElementById('modalSymbolEmoji').textContent = symbolInfo.emoji;
-            document.getElementById('modalSymbolType').textContent = symbolInfo.name;
+            if (isPriceClass && data.priceClassIcon) {
+                // Show image for price class
+                document.getElementById('modalSymbolEmoji').innerHTML = `<img src="${data.priceClassIcon}" style="width: 48px; height: 48px; object-fit: contain;">`;
+            } else {
+                document.getElementById('modalSymbolEmoji').textContent = symbolInfo.emoji;
+            }
+            document.getElementById('modalSymbolType').textContent = isPriceClass ? `🏷️ ${data.priceClassName}` : symbolInfo.name;
             document.getElementById('modalSymbolLocation').textContent =
                 `x: ${Math.round(symbolObject.left)}, y: ${Math.round(symbolObject.top)}`;
 
@@ -1933,15 +1991,26 @@
             const container = document.getElementById('componentsListContainer');
             container.innerHTML = '';
 
-            if (!data.components || data.components.length === 0) {
-                data.components = [{
+            // For price classes, use items array; for regular symbols, use components
+            let componentsList = [];
+            if (isPriceClass && data.items && data.items.length > 0) {
+                componentsList = data.items.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity || 1,
+                    price: item.unit_price || 0,
+                    item_id: item.item_id // Keep track of original item ID
+                }));
+            } else if (data.components && data.components.length > 0) {
+                componentsList = data.components;
+            } else {
+                componentsList = [{
                     name: symbolInfo.name,
                     quantity: 1,
                     price: 100
                 }];
             }
 
-            data.components.forEach((comp, index) => {
+            componentsList.forEach((comp, index) => {
                 addComponentRowToModal(comp, index);
             });
 
@@ -1949,6 +2018,56 @@
 
             // Show modal
             document.getElementById('symbolEditModal').classList.remove('hidden');
+        }
+
+        // Save price class changes back to CRM
+        async function savePriceClassToCRM() {
+            if (!currentEditingSymbol || currentEditingSymbol.componentData.type !== 'price_class') {
+                showToast('No price class selected', 'error');
+                return;
+            }
+
+            const data = currentEditingSymbol.componentData;
+            const priceClassId = data.priceClassId;
+
+            if (!priceClassId) {
+                showToast('Price class ID not found', 'error');
+                return;
+            }
+
+            // Collect current component data from modal
+            const container = document.getElementById('componentsListContainer');
+            const rows = Array.from(container.children);
+            const updatedItems = rows.map(row => {
+                const inputs = row.querySelectorAll('input');
+                return {
+                    name: inputs[0].value,
+                    quantity: parseInt(inputs[1].value) || 1,
+                    unit_price: parseFloat(inputs[2].value) || 0
+                };
+            });
+
+            try {
+                const response = await fetch(`/api/crm/price-classes/${priceClassId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: updatedItems
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Price class updated in CRM!', 'success');
+                    // Reload price classes to get updated data
+                    await loadPriceClasses();
+                } else {
+                    showToast('Failed to update CRM: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error saving to CRM:', error);
+                showToast('Error saving to CRM', 'error');
+            }
         }
 
         function closeSymbolModal() {
@@ -2050,6 +2169,8 @@
 
             const container = document.getElementById('componentsListContainer');
             const rows = Array.from(container.children);
+            const data = currentEditingSymbol.componentData;
+            const isPriceClass = data.type === 'price_class';
 
             // Collect component data
             const components = rows.map(row => {
@@ -2057,15 +2178,25 @@
                 return {
                     name: inputs[0].value,
                     quantity: parseFloat(inputs[1].value) || 1,
-                    price: parseFloat(inputs[2].value) || 0
+                    price: parseFloat(inputs[2].value) || 0,
+                    unit_price: parseFloat(inputs[2].value) || 0 // For price class compatibility
                 };
             });
 
             // Calculate total
             const totalPrice = components.reduce((sum, comp) =>
-                sum + (comp.quantity * comp.price), 0);
+                sum + (comp.quantity * (comp.price || comp.unit_price)), 0);
 
-            // Update symbol data
+            // Update symbol data - handle both regular symbols and price classes
+            if (isPriceClass) {
+                // For price classes, update items array
+                currentEditingSymbol.componentData.items = components.map(c => ({
+                    name: c.name,
+                    quantity: c.quantity,
+                    unit_price: c.price || c.unit_price
+                }));
+                currentEditingSymbol.componentData.localChanges = true; // Mark as locally modified
+            }
             currentEditingSymbol.componentData.components = components;
             currentEditingSymbol.componentData.totalPrice = totalPrice;
 
@@ -2075,7 +2206,7 @@
             // Recalculate quote
             recalculateQuote();
 
-            showToast('Symbol updated successfully', 'success');
+            showToast(isPriceClass ? 'Price class updated (local only)' : 'Symbol updated successfully', 'success');
         }
 
         // =============================
@@ -2084,31 +2215,128 @@
 
         function recalculateQuote() {
             let grandTotal = 0;
+            let costItems = [];
 
-            // Sum up all symbol totals
+            // Sum up all symbol totals and collect cost items
             componentSymbols.forEach(symbol => {
-                if (symbol.componentData && symbol.componentData.totalPrice) {
-                    grandTotal += symbol.componentData.totalPrice;
+                if (symbol.componentData) {
+                    const data = symbol.componentData;
+                    let symbolTotal = 0;
+                    
+                    // Handle price class symbols
+                    if (data.type === 'price_class' && data.items) {
+                        data.items.forEach(item => {
+                            const itemTotal = (item.quantity || 1) * (item.unit_price || 0);
+                            symbolTotal += itemTotal;
+                            costItems.push({
+                                type: `🏷️ ${data.priceClassName}: ${item.name}`,
+                                quantity: item.quantity || 1,
+                                unitPrice: item.unit_price || 0,
+                                total: itemTotal,
+                                isPriceClass: true,
+                                priceClassName: data.priceClassName
+                            });
+                        });
+                    }
+                    // Handle regular symbols with components
+                    else if (data.components) {
+                        data.components.forEach(comp => {
+                            const compTotal = (comp.quantity || 1) * (comp.price || 0);
+                            symbolTotal += compTotal;
+                            costItems.push({
+                                type: `${data.type}: ${comp.name}`,
+                                quantity: comp.quantity || 1,
+                                unitPrice: comp.price || 0,
+                                total: compTotal,
+                                isPriceClass: false
+                            });
+                        });
+                    }
+                    // Fallback to totalPrice if available
+                    else if (data.totalPrice) {
+                        symbolTotal = data.totalPrice;
+                        costItems.push({
+                            type: data.type || 'Unknown',
+                            quantity: 1,
+                            unitPrice: data.totalPrice,
+                            total: data.totalPrice,
+                            isPriceClass: false
+                        });
+                    }
+                    
+                    grandTotal += symbolTotal;
+                    data.totalPrice = symbolTotal; // Update stored total
                 }
             });
 
             // Update live quote total in editor
-            document.getElementById('liveQuoteTotal').textContent = `$${grandTotal.toFixed(2)}`;
+            const liveTotal = document.getElementById('liveQuoteTotal');
+            if (liveTotal) liveTotal.textContent = `$${grandTotal.toFixed(2)}`;
 
-            // Update main quote breakdown if it exists
-            const costBreakdown = document.querySelector('.bg-gradient-to-r.from-olive-50.to-olive-100 .text-3xl.font-bold.text-olive-600');
-            if (costBreakdown) {
-                costBreakdown.textContent = `$${grandTotal.toFixed(2)}`;
-            }
+            // Update the cost breakdown display in results section
+            updateCostBreakdownDisplay(costItems, grandTotal);
 
             // Store updated total in currentQuoteData
             if (currentQuoteData && currentQuoteData.costs) {
                 currentQuoteData.costs.grand_total = grandTotal;
                 currentQuoteData.costs.subtotal = grandTotal * 0.8; // Approximate
                 currentQuoteData.costs.markup = grandTotal * 0.2;
+                currentQuoteData.costs.items = costItems;
             }
 
-            showToast('Quote totals updated', 'info');
+            console.log('Quote recalculated:', { grandTotal, itemCount: costItems.length });
+        }
+
+        function updateCostBreakdownDisplay(costItems, grandTotal) {
+            // Find the cost breakdown container in the results
+            const costContainer = document.querySelector('#results .bg-gradient-to-br.from-gray-50.to-white.rounded-xl.border-2.border-gray-200');
+            if (!costContainer) return;
+
+            // Group items by type for cleaner display
+            const groupedItems = {};
+            costItems.forEach(item => {
+                const key = item.isPriceClass ? item.priceClassName : item.type.split(':')[0];
+                if (!groupedItems[key]) {
+                    groupedItems[key] = { items: [], total: 0 };
+                }
+                groupedItems[key].items.push(item);
+                groupedItems[key].total += item.total;
+            });
+
+            // Build HTML for cost items
+            let itemsHtml = '';
+            Object.entries(groupedItems).forEach(([groupName, group]) => {
+                group.items.forEach(item => {
+                    const bgClass = item.isPriceClass ? 'bg-purple-50' : 'bg-white';
+                    const icon = item.isPriceClass ? '🏷️' : '📦';
+                    itemsHtml += `
+                        <div class="flex justify-between items-center p-4 border-b border-gray-200 hover:${bgClass} transition-colors">
+                            <span class="text-gray-700 font-medium">${icon} ${item.type} (${item.quantity}x)</span>
+                            <span class="font-bold text-gray-900">$${item.total.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+            });
+
+            // Calculate markup
+            const markup = grandTotal * 0.2;
+            const subtotal = grandTotal - markup;
+
+            costContainer.innerHTML = `
+                ${itemsHtml}
+                <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                    <span class="text-gray-600">Subtotal:</span>
+                    <span class="font-semibold text-gray-800">$${subtotal.toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                    <span class="text-gray-600">Markup:</span>
+                    <span class="font-semibold text-gray-800">$${markup.toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center p-4 bg-gradient-to-r from-olive-50 to-olive-100">
+                    <span class="text-xl font-bold text-olive-900">GRAND TOTAL:</span>
+                    <span class="text-3xl font-bold text-olive-600">$${grandTotal.toFixed(2)}</span>
+                </div>
+            `;
         }
 
         // =============================
