@@ -1315,6 +1315,9 @@
             setTimeout(() => {
                 initializeFloorplanEditor(data);
                 document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // Render price class buttons now that the container exists
+                renderPriceClassButtons();
             }, 100);
         }
 
