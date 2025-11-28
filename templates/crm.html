@@ -575,6 +575,28 @@
     <nav class="top-nav">
         <div class="nav-container">
             <a href="/" class="top-logo">Integratd Living</a>
+            <!-- Notification Bell -->
+            <div class="notification-bell-container" style="position: relative; margin-left: auto;">
+                <button class="notification-bell-btn" id="notificationBell" onclick="toggleNotificationPanel()" aria-label="Notifications" style="background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; position: relative;">
+                    <span style="font-size: 20px;">🔔</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none; position: absolute; top: 2px; right: 2px; background: #e74c3c; color: white; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px;">0</span>
+                </button>
+                
+                <!-- Notification Panel -->
+                <div class="notification-panel" id="notificationPanel" style="display: none; position: absolute; top: 50px; right: 0; width: 360px; max-height: 480px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; overflow: hidden;">
+                    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Notifications</h3>
+                        <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 13px;">Mark all read</button>
+                    </div>
+                    <div id="notificationList" style="max-height: 360px; overflow-y: auto; padding: 8px;">
+                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading...</div>
+                    </div>
+                    <div style="padding: 12px; border-top: 1px solid var(--border-color); text-align: center;">
+                        <button onclick="loadMoreNotifications()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 13px;">View all notifications</button>
+                    </div>
+                </div>
+            </div>
+
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -797,6 +819,79 @@
                     <button class="btn btn-primary" onclick="showSection('quotes-open'); openQuoteModal('open')">+ New Quote</button>
                     <button class="btn btn-primary" onclick="showSection('calendar'); openEventModal()">+ Schedule Event</button>
                     <button class="btn btn-primary" onclick="showSection('materials-stock'); openMaterialModal('stock')">+ Add Stock</button>
+                </div>
+            </div>
+
+            <!-- AI INSIGHTS & TASKS WIDGETS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                
+                <!-- AI Jarvis Insights Widget -->
+                <div class="card" style="border-left: 4px solid #556B2F;">
+                    <div class="card-header">
+                        <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 24px;">🤖</span> AI Insights
+                        </h2>
+                        <button class="btn btn-secondary" onclick="refreshAIInsights()" style="font-size: 12px; padding: 6px 12px;">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="aiInsightsContainer">
+                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                            <div class="spinner" style="margin: 0 auto 10px;"></div>
+                            <p>Loading AI insights...</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="quickAICommand" placeholder="Ask Jarvis anything... (e.g., 'Create a quote for John Smith')" 
+                                   style="flex: 1; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-primary);"
+                                   onkeydown="if(event.key==='Enter') executeQuickAICommand()">
+                            <button onclick="executeQuickAICommand()" class="btn btn-primary" style="padding: 10px 16px;">
+                                🚀 Go
+                            </button>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-tertiary);">
+                            Try: "Show overdue payments" • "Schedule a meeting tomorrow" • "Find quotes over $5000"
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Tasks Widget -->
+                <div class="card" style="border-left: 4px solid #3498db;">
+                    <div class="card-header">
+                        <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 24px;">📋</span> My Tasks
+                        </h2>
+                        <button class="btn btn-secondary" onclick="showSection('kanban')" style="font-size: 12px; padding: 6px 12px;">
+                            View All →
+                        </button>
+                    </div>
+                    <div id="myTasksContainer">
+                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                            <div class="spinner" style="margin: 0 auto 10px;"></div>
+                            <p>Loading tasks...</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button onclick="openQuickTaskModal()" class="btn btn-primary" style="width: 100%;">
+                            + Add Quick Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts & Reminders Widget -->
+            <div class="card" style="margin-top: 20px; border-left: 4px solid #e74c3c;">
+                <div class="card-header">
+                    <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 24px;">⚠️</span> Alerts & Reminders
+                    </h2>
+                    <span id="alertsCount" style="background: #e74c3c; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">0</span>
+                </div>
+                <div id="alertsContainer">
+                    <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                        Loading alerts...
+                    </div>
                 </div>
             </div>
         </div>
@@ -9000,7 +9095,7 @@
                     </div>
                     <div style="font-size: 11px;">
                         ${dayEvents.slice(0, 3).map(e => `
-                            <div style="background: ${e.color || '#3b82f6'}; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${e.title}">
+                            <div onclick="event.stopPropagation(); editCalendarEvent('${e.id}')" style="background: ${e.color || '#3b82f6'}; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Click to edit: ${e.title}" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
                                 ${e.title}
                             </div>
                         `).join('')}
@@ -9401,6 +9496,644 @@
     }
 
     // initDarkMode moved to top of script block (line ~4797) for proper initialization order
+
+    // ============================================================================
+    // NOTIFICATION SYSTEM
+    // ============================================================================
+    
+    let notificationsLoaded = false;
+    let notificationPollInterval = null;
+    
+    function toggleNotificationPanel() {
+        const panel = document.getElementById('notificationPanel');
+        const isVisible = panel.style.display === 'block';
+        panel.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible && !notificationsLoaded) {
+            loadNotifications();
+        }
+    }
+    
+    async function loadNotifications() {
+        try {
+            const response = await fetch('/api/notifications?unread_only=false&limit=20');
+            const data = await response.json();
+            
+            if (data.success) {
+                notificationsLoaded = true;
+                renderNotifications(data.notifications || []);
+                updateNotificationBadge(data.unread_count || 0);
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            document.getElementById('notificationList').innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    Unable to load notifications
+                </div>
+            `;
+        }
+    }
+    
+    function renderNotifications(notifications) {
+        const container = document.getElementById('notificationList');
+        
+        if (notifications.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 30px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎉</span>
+                    No notifications - you're all caught up!
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = notifications.map(n => {
+            const typeIcon = {
+                'info': 'ℹ️',
+                'warning': '⚠️',
+                'alert': '🚨',
+                'reminder': '⏰',
+                'success': '✅'
+            }[n.notification_type] || '📬';
+            
+            const priorityColor = {
+                'urgent': '#e74c3c',
+                'high': '#f39c12',
+                'normal': '#3498db',
+                'low': '#95a5a6'
+            }[n.priority] || '#3498db';
+            
+            const timeAgo = getTimeAgo(new Date(n.created_at));
+            
+            return `
+                <div class="notification-item" style="padding: 12px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.2s; ${n.is_read ? 'opacity: 0.7;' : ''}" 
+                     onclick="handleNotificationClick('${n.id}', '${n.entity_type || ''}', '${n.entity_id || ''}')"
+                     onmouseover="this.style.background='var(--hover-bg)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 20px;">${typeIcon}</span>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: ${n.is_read ? '500' : '600'}; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                ${n.title}
+                                ${!n.is_read ? '<span style="width: 8px; height: 8px; background: #3498db; border-radius: 50%; display: inline-block;"></span>' : ''}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${n.message || ''}
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 8px;">
+                                <span style="width: 6px; height: 6px; background: ${priorityColor}; border-radius: 50%; display: inline-block;"></span>
+                                ${timeAgo}
+                            </div>
+                        </div>
+                        <button onclick="event.stopPropagation(); deleteNotification('${n.id}')" 
+                                style="background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; font-size: 14px;"
+                                title="Dismiss">✖️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function updateNotificationBadge(count) {
+        const badge = document.getElementById('notificationBadge');
+        if (count > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = count > 99 ? '99+' : count;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    async function handleNotificationClick(notificationId, entityType, entityId) {
+        // Mark as read
+        await markNotificationRead(notificationId);
+        
+        // Navigate to relevant section if entity info provided
+        if (entityType && entityId) {
+            const sectionMap = {
+                'customer': 'people-customers',
+                'quote': 'quotes-open',
+                'project': 'projects',
+                'job': 'jobs-in-progress',
+                'payment': 'payments-to-us',
+                'calendar_event': 'calendar'
+            };
+            
+            const section = sectionMap[entityType];
+            if (section) {
+                showSection(section);
+                toggleNotificationPanel();
+            }
+        }
+    }
+    
+    async function markNotificationRead(notificationId) {
+        try {
+            await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+            loadNotifications();
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    }
+    
+    async function markAllNotificationsRead() {
+        try {
+            await fetch('/api/notifications/read-all', { method: 'POST' });
+            loadNotifications();
+            showToast('All notifications marked as read', 'success');
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    }
+    
+    async function deleteNotification(notificationId) {
+        try {
+            await fetch(`/api/notifications/${notificationId}`, { method: 'DELETE' });
+            loadNotifications();
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
+    }
+    
+    function loadMoreNotifications() {
+        toggleNotificationPanel();
+        // Could navigate to a full notifications page or open a modal
+        showToast('Viewing all notifications', 'info');
+    }
+    
+    function getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+        return date.toLocaleDateString();
+    }
+    
+    // Poll for new notifications every 60 seconds
+    function startNotificationPolling() {
+        loadNotifications();
+        notificationPollInterval = setInterval(() => {
+            loadNotifications();
+        }, 60000);
+    }
+    
+    // Close notification panel when clicking outside
+    document.addEventListener('click', function(e) {
+        const panel = document.getElementById('notificationPanel');
+        const bell = document.getElementById('notificationBell');
+        if (panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) {
+            panel.style.display = 'none';
+        }
+    });
+    
+    // ============================================================================
+    // AI INSIGHTS WIDGET (JARVIS)
+    // ============================================================================
+    
+    async function refreshAIInsights() {
+        const container = document.getElementById('aiInsightsContainer');
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                <div class="spinner" style="margin: 0 auto 10px;"></div>
+                <p>Analyzing your business data...</p>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('/api/ai/insights');
+            const data = await response.json();
+            
+            if (data.success) {
+                renderAIInsights(data.insights || [], data.suggestions || []);
+            } else {
+                container.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                        <span style="font-size: 24px;">🤖</span>
+                        <p style="margin-top: 8px;">AI insights temporarily unavailable</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading AI insights:', error);
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 24px;">🤖</span>
+                    <p style="margin-top: 8px;">Connect to see AI insights</p>
+                </div>
+            `;
+        }
+    }
+    
+    function renderAIInsights(insights, suggestions) {
+        const container = document.getElementById('aiInsightsContainer');
+        
+        if (insights.length === 0 && suggestions.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">✨</span>
+                    Everything looks great! No urgent items.
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        
+        // Render insights
+        insights.forEach(insight => {
+            const typeStyles = {
+                'warning': { bg: '#fef3c7', border: '#f59e0b', icon: '⚠️' },
+                'alert': { bg: '#fee2e2', border: '#ef4444', icon: '🚨' },
+                'info': { bg: '#dbeafe', border: '#3b82f6', icon: 'ℹ️' },
+                'success': { bg: '#d1fae5', border: '#10b981', icon: '✅' },
+                'suggestion': { bg: '#f3e8ff', border: '#8b5cf6', icon: '💡' }
+            };
+            const style = typeStyles[insight.type] || typeStyles.info;
+            
+            html += `
+                <div style="background: ${style.bg}; border-left: 4px solid ${style.border}; padding: 12px; border-radius: 8px; cursor: ${insight.action ? 'pointer' : 'default'};"
+                     ${insight.action ? `onclick="executeInsightAction('${insight.action}', '${insight.action_data || ''}')"` : ''}>
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <span style="font-size: 18px;">${style.icon}</span>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 13px; color: #1f2937; margin-bottom: 4px;">${insight.title}</div>
+                            <div style="font-size: 12px; color: #4b5563;">${insight.message}</div>
+                            ${insight.action ? `<div style="font-size: 11px; color: ${style.border}; margin-top: 6px; font-weight: 500;">Click to take action →</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Render proactive suggestions
+        if (suggestions.length > 0) {
+            html += `<div style="margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                <div style="font-size: 11px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    💡 Proactive Suggestions
+                </div>`;
+            
+            suggestions.forEach(s => {
+                html += `
+                    <div style="background: var(--bg-primary); padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s;"
+                         onclick="executeInsightAction('${s.action}', '${s.action_data || ''}')"
+                         onmouseover="this.style.background='var(--hover-bg)'" 
+                         onmouseout="this.style.background='var(--bg-primary)'">
+                        <div style="font-size: 13px; color: var(--text-primary);">${s.text}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+    
+    function executeInsightAction(action, data) {
+        switch (action) {
+            case 'view_overdue_payments':
+                showSection('payments-to-us');
+                break;
+            case 'view_low_stock':
+                showSection('materials-stock');
+                break;
+            case 'view_pending_quotes':
+                showSection('quotes-open');
+                break;
+            case 'view_overdue_jobs':
+                showSection('jobs-in-progress');
+                break;
+            case 'create_quote':
+                showSection('quotes-open');
+                openQuoteModal('open');
+                break;
+            case 'schedule_event':
+                showSection('calendar');
+                openEventModal();
+                break;
+            default:
+                console.log('Unknown action:', action);
+        }
+    }
+    
+    // ============================================================================
+    // QUICK AI COMMAND (Natural Language)
+    // ============================================================================
+    
+    async function executeQuickAICommand() {
+        const input = document.getElementById('quickAICommand');
+        const command = input.value.trim();
+        
+        if (!command) return;
+        
+        input.disabled = true;
+        input.placeholder = 'Processing...';
+        
+        try {
+            const response = await fetch('/api/ai/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: command })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Execute the interpreted action
+                if (data.action) {
+                    handleAICommandAction(data.action, data.params);
+                }
+                
+                if (data.message) {
+                    showToast(data.message, 'success');
+                }
+                
+                // Clear input
+                input.value = '';
+            } else {
+                showToast(data.error || 'Could not understand command', 'error');
+            }
+        } catch (error) {
+            console.error('Error executing AI command:', error);
+            showToast('Error processing command', 'error');
+        } finally {
+            input.disabled = false;
+            input.placeholder = "Ask Jarvis anything... (e.g., 'Create a quote for John Smith')";
+        }
+    }
+    
+    function handleAICommandAction(action, params) {
+        switch (action) {
+            case 'navigate':
+                showSection(params.section);
+                break;
+            case 'create_customer':
+                showSection('people-customers');
+                openPersonModal('customer');
+                if (params.name) {
+                    setTimeout(() => {
+                        const nameField = document.getElementById('personName');
+                        if (nameField) nameField.value = params.name;
+                    }, 300);
+                }
+                break;
+            case 'create_quote':
+                showSection('quotes-open');
+                openQuoteModal('open');
+                if (params.customer_name) {
+                    setTimeout(() => {
+                        const titleField = document.getElementById('quoteTitle');
+                        if (titleField) titleField.value = `Quote for ${params.customer_name}`;
+                    }, 300);
+                }
+                break;
+            case 'create_job':
+                showSection('jobs-in-progress');
+                openJobModal('in_progress');
+                break;
+            case 'schedule_event':
+                showSection('calendar');
+                openEventModal();
+                if (params.title) {
+                    setTimeout(() => {
+                        const titleField = document.getElementById('eventTitle');
+                        if (titleField) titleField.value = params.title;
+                        if (params.date) {
+                            const dateField = document.getElementById('eventStartDate');
+                            if (dateField) dateField.value = params.date;
+                        }
+                    }, 300);
+                }
+                break;
+            case 'search':
+                if (params.type === 'quote') {
+                    showSection('quotes-open');
+                    const searchField = document.getElementById('quoteSearch');
+                    if (searchField) searchField.value = params.query;
+                } else if (params.type === 'customer') {
+                    showSection('people-customers');
+                    const searchField = document.getElementById('customerSearch');
+                    if (searchField) {
+                        searchField.value = params.query;
+                        searchCustomers();
+                    }
+                }
+                break;
+            case 'show_insights':
+                refreshAIInsights();
+                break;
+            default:
+                console.log('Unknown AI action:', action, params);
+        }
+    }
+    
+    // ============================================================================
+    // MY TASKS WIDGET
+    // ============================================================================
+    
+    async function loadMyTasks() {
+        const container = document.getElementById('myTasksContainer');
+        
+        try {
+            const response = await fetch('/api/kanban/tasks?limit=5');
+            const data = await response.json();
+            
+            if (data.success) {
+                renderMyTasks(data.tasks || []);
+            } else {
+                container.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                        No tasks found
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    Unable to load tasks
+                </div>
+            `;
+        }
+    }
+    
+    function renderMyTasks(tasks) {
+        const container = document.getElementById('myTasksContainer');
+        
+        if (tasks.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎉</span>
+                    No pending tasks!
+                </div>
+            `;
+            return;
+        }
+        
+        const priorityColors = {
+            'urgent': '#e74c3c',
+            'high': '#f39c12',
+            'normal': '#3498db',
+            'low': '#95a5a6'
+        };
+        
+        const columnLabels = {
+            'todo': 'To Do',
+            'in_progress': 'In Progress',
+            'review': 'Review',
+            'done': 'Done'
+        };
+        
+        container.innerHTML = tasks.map(task => {
+            const priorityColor = priorityColors[task.priority] || priorityColors.normal;
+            const columnLabel = columnLabels[task.column] || task.column;
+            const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+            
+            return `
+                <div style="padding: 12px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.2s;"
+                     onclick="showSection('kanban')"
+                     onmouseover="this.style.background='var(--hover-bg)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <div style="width: 4px; height: 40px; background: ${priorityColor}; border-radius: 2px; flex-shrink: 0;"></div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${task.content}
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span style="background: var(--bg-primary); padding: 2px 6px; border-radius: 4px;">${columnLabel}</span>
+                                ${task.due_date ? `<span style="color: ${isOverdue ? '#e74c3c' : 'inherit'};">${isOverdue ? '⚠️' : '📅'} ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function openQuickTaskModal() {
+        const content = prompt('Enter task description:');
+        if (content && content.trim()) {
+            createQuickTask(content.trim());
+        }
+    }
+    
+    async function createQuickTask(content) {
+        try {
+            const response = await fetch('/api/kanban/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: content,
+                    column: 'todo',
+                    priority: 'normal'
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Task created!', 'success');
+                loadMyTasks();
+            } else {
+                showToast('Error creating task', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating task:', error);
+            showToast('Error creating task', 'error');
+        }
+    }
+    
+    // ============================================================================
+    // ALERTS & REMINDERS WIDGET
+    // ============================================================================
+    
+    async function loadAlerts() {
+        const container = document.getElementById('alertsContainer');
+        const countBadge = document.getElementById('alertsCount');
+        
+        try {
+            const response = await fetch('/api/ai/alerts');
+            const data = await response.json();
+            
+            if (data.success) {
+                const alerts = data.alerts || [];
+                countBadge.textContent = alerts.length;
+                countBadge.style.background = alerts.length > 0 ? '#e74c3c' : '#95a5a6';
+                renderAlerts(alerts);
+            } else {
+                container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No alerts</div>`;
+                countBadge.textContent = '0';
+            }
+        } catch (error) {
+            console.error('Error loading alerts:', error);
+            container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Unable to load alerts</div>`;
+        }
+    }
+    
+    function renderAlerts(alerts) {
+        const container = document.getElementById('alertsContainer');
+        
+        if (alerts.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">✅</span>
+                    No urgent alerts - everything is on track!
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                ${alerts.map(alert => {
+                    const categoryStyles = {
+                        'overdue_payment': { icon: '💰', color: '#e74c3c', section: 'payments-to-us' },
+                        'overdue_job': { icon: '🔧', color: '#f39c12', section: 'jobs-in-progress' },
+                        'low_stock': { icon: '📦', color: '#9b59b6', section: 'materials-stock' },
+                        'expiring_quote': { icon: '📋', color: '#3498db', section: 'quotes-open' },
+                        'upcoming_event': { icon: '📅', color: '#2ecc71', section: 'calendar' }
+                    };
+                    const style = categoryStyles[alert.category] || { icon: '⚠️', color: '#e74c3c', section: 'dashboard' };
+                    
+                    return `
+                        <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-left: 4px solid ${style.color}; padding: 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                             onclick="showSection('${style.section}')"
+                             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                             onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                <span style="font-size: 24px;">${style.icon}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${alert.title}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary);">${alert.message}</div>
+                                    ${alert.count ? `<div style="font-size: 11px; color: ${style.color}; margin-top: 6px; font-weight: 600;">${alert.count} item(s) need attention</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+    
+    // ============================================================================
+    // INITIALIZE DASHBOARD WIDGETS
+    // ============================================================================
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start notification polling
+        startNotificationPolling();
+        
+        // Load dashboard widgets
+        setTimeout(() => {
+            refreshAIInsights();
+            loadMyTasks();
+            loadAlerts();
+        }, 500);
+    });
 
 </script>
 

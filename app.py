@@ -7482,8 +7482,8 @@ def autosave_pdf_editor():
         form_id = data.get('form_id')
         canvas_data = data.get('canvas_data')
 
-        # Use quote_id, form_id, or generate a session-based ID
-        save_id = quote_id or form_id or 'standalone_' + session.get('session_id', str(uuid.uuid4())[:8])
+        # Use quote_id, form_id, or generate a unique standalone ID
+        save_id = quote_id or form_id or 'standalone_' + str(uuid.uuid4())[:8]
 
         # Save to autosave file
         autosave_file = os.path.join(PDF_EDITOR_AUTOSAVE_DIR, f'{save_id}.json')
@@ -11138,11 +11138,344 @@ def get_ai_insights():
             chat_service = AIChatService(session, org.id)
             
             result = chat_service.get_quick_insights()
-            return jsonify(result)
+            
+            # Transform insights into the format expected by the frontend
+            insights = []
+            suggestions = []
+            
+            for insight in result.get('insights', []):
+                insights.append({
+                    'type': insight.get('type', 'info'),
+                    'title': insight.get('text', ''),
+                    'message': '',
+                    'action': 'view_' + insight.get('type', 'info') if insight.get('type') in ['warning', 'urgent'] else None,
+                    'action_data': ''
+                })
+            
+            # Add proactive suggestions based on context
+            summary = result.get('summary', {})
+            if summary.get('quotes', {}).get('pending', 0) > 0:
+                suggestions.append({
+                    'text': '📋 Follow up on pending quotes to close deals faster',
+                    'action': 'view_pending_quotes',
+                    'action_data': ''
+                })
+            
+            if summary.get('calendar', {}).get('upcoming_events_7_days', 0) == 0:
+                suggestions.append({
+                    'text': '📅 Schedule some meetings this week',
+                    'action': 'schedule_event',
+                    'action_data': ''
+                })
+            
+            if summary.get('customers', {}).get('total', 0) < 5:
+                suggestions.append({
+                    'text': '👥 Add more customers to grow your business',
+                    'action': 'create_customer',
+                    'action_data': ''
+                })
+            
+            return jsonify({
+                'success': True,
+                'insights': insights,
+                'suggestions': suggestions,
+                'summary': summary
+            })
             
     except Exception as e:
         logger.error(f"Error getting AI insights: {e}")
-        return jsonify({'success': False, 'insights': [], 'error': str(e)}), 500
+        return jsonify({'success': False, 'insights': [], 'suggestions': [], 'error': str(e)}), 500
+
+
+@app.route('/api/ai/alerts', methods=['GET'])
+@auth.login_required
+def get_ai_alerts():
+    """Get AI-generated alerts and reminders for dashboard."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'alerts': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.reminder_service import ReminderService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            reminder_service = ReminderService(session, org.id)
+            
+            alerts = reminder_service.get_dashboard_alerts()
+            
+            # Format alerts for the frontend
+            formatted_alerts = []
+            for alert in alerts[:10]:  # Limit to 10 alerts
+                category = 'info'
+                if 'payment' in alert.get('title', '').lower() or 'overdue' in alert.get('title', '').lower():
+                    category = 'overdue_payment'
+                elif 'job' in alert.get('title', '').lower():
+                    category = 'overdue_job'
+                elif 'stock' in alert.get('title', '').lower():
+                    category = 'low_stock'
+                elif 'quote' in alert.get('title', '').lower() or 'expir' in alert.get('title', '').lower():
+                    category = 'expiring_quote'
+                elif 'event' in alert.get('title', '').lower() or 'meeting' in alert.get('title', '').lower():
+                    category = 'upcoming_event'
+                
+                formatted_alerts.append({
+                    'id': alert.get('id', ''),
+                    'title': alert.get('title', 'Alert'),
+                    'message': alert.get('message', ''),
+                    'category': category,
+                    'priority': alert.get('priority', 'normal'),
+                    'count': alert.get('count', 1),
+                    'entity_type': alert.get('entity_type'),
+                    'entity_id': alert.get('entity_id')
+                })
+            
+            return jsonify({
+                'success': True,
+                'alerts': formatted_alerts,
+                'total_count': len(alerts)
+            })
+            
+    except Exception as e:
+        logger.error(f"Error getting AI alerts: {e}")
+        return jsonify({'success': False, 'alerts': [], 'error': str(e)}), 500
+
+
+@app.route('/api/ai/feedback', methods=['POST'])
+@auth.login_required
+def submit_ai_feedback():
+    """Submit feedback on AI responses for learning."""
+    try:
+        data = request.get_json() or {}
+        response = data.get('response', '')
+        is_positive = data.get('is_positive', True)
+        user_message = data.get('user_message', '')
+        
+        if not CRM_USE_DATABASE:
+            return jsonify({'success': True, 'message': 'Feedback noted'})
+        
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from database.models import EventLog
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            
+            # Log the feedback as an event for AI learning
+            event = EventLog(
+                organization_id=org.id,
+                timestamp=datetime.utcnow(),
+                actor_type='user',
+                actor_id=auth.get_current_user().get('id') if auth.get_current_user() else None,
+                entity_type='ai_feedback',
+                entity_id='feedback',
+                event_type='AI_FEEDBACK_POSITIVE' if is_positive else 'AI_FEEDBACK_NEGATIVE',
+                description=f"User {'liked' if is_positive else 'disliked'} AI response",
+                extra_data={
+                    'user_message': user_message[:500] if user_message else '',
+                    'ai_response': response[:500] if response else '',
+                    'is_positive': is_positive
+                }
+            )
+            session.add(event)
+            session.commit()
+        
+        return jsonify({'success': True, 'message': 'Feedback recorded'})
+        
+    except Exception as e:
+        logger.error(f"Error submitting AI feedback: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ai/correction', methods=['POST'])
+@auth.login_required
+def submit_ai_correction():
+    """Submit a correction to an AI response for learning."""
+    try:
+        data = request.get_json() or {}
+        original_response = data.get('original_response', '')
+        corrected_response = data.get('corrected_response', '')
+        user_message = data.get('user_message', '')
+        context = data.get('context', '')
+        
+        if not corrected_response:
+            return jsonify({'success': False, 'error': 'Correction is required'}), 400
+        
+        if not CRM_USE_DATABASE:
+            return jsonify({'success': True, 'message': 'Correction noted'})
+        
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from database.models import EventLog
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            
+            # Log the correction as an event for AI learning
+            event = EventLog(
+                organization_id=org.id,
+                timestamp=datetime.utcnow(),
+                actor_type='user',
+                actor_id=auth.get_current_user().get('id') if auth.get_current_user() else None,
+                entity_type='ai_correction',
+                entity_id='correction',
+                event_type='AI_CORRECTION',
+                description=f"User corrected AI response",
+                extra_data={
+                    'user_message': user_message[:500] if user_message else '',
+                    'original_response': original_response[:1000] if original_response else '',
+                    'corrected_response': corrected_response[:1000] if corrected_response else '',
+                    'context': context
+                }
+            )
+            session.add(event)
+            session.commit()
+        
+        logger.info(f"AI correction recorded for learning")
+        return jsonify({'success': True, 'message': 'Correction saved for AI learning'})
+        
+    except Exception as e:
+        logger.error(f"Error submitting AI correction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ai/command', methods=['POST'])
+@auth.login_required
+def execute_ai_command():
+    """Execute a natural language command (Jarvis-style)."""
+    try:
+        data = request.get_json() or {}
+        command = data.get('command', '').strip().lower()
+        
+        if not command:
+            return jsonify({'success': False, 'error': 'No command provided'}), 400
+        
+        # Parse natural language commands
+        action = None
+        params = {}
+        message = None
+        
+        # Navigation commands
+        if any(word in command for word in ['show', 'go to', 'open', 'view']):
+            if 'customer' in command:
+                action = 'navigate'
+                params = {'section': 'people-customers'}
+                message = 'Opening customers...'
+            elif 'quote' in command:
+                action = 'navigate'
+                params = {'section': 'quotes-open'}
+                message = 'Opening quotes...'
+            elif 'job' in command:
+                action = 'navigate'
+                params = {'section': 'jobs-in-progress'}
+                message = 'Opening jobs...'
+            elif 'calendar' in command or 'schedule' in command or 'event' in command:
+                action = 'navigate'
+                params = {'section': 'calendar'}
+                message = 'Opening calendar...'
+            elif 'payment' in command:
+                action = 'navigate'
+                params = {'section': 'payments-to-us'}
+                message = 'Opening payments...'
+            elif 'stock' in command or 'inventory' in command:
+                action = 'navigate'
+                params = {'section': 'materials-stock'}
+                message = 'Opening stock...'
+            elif 'dashboard' in command:
+                action = 'navigate'
+                params = {'section': 'dashboard'}
+                message = 'Going to dashboard...'
+            elif 'overdue' in command:
+                if 'payment' in command:
+                    action = 'navigate'
+                    params = {'section': 'payments-to-us'}
+                    message = 'Showing overdue payments...'
+                else:
+                    action = 'navigate'
+                    params = {'section': 'jobs-in-progress'}
+                    message = 'Showing overdue items...'
+        
+        # Create commands
+        elif any(word in command for word in ['create', 'add', 'new', 'make']):
+            if 'customer' in command:
+                action = 'create_customer'
+                # Extract name if present (simple extraction)
+                name_match = None
+                for phrase in ['for ', 'named ', 'called ']:
+                    if phrase in command:
+                        name_match = command.split(phrase)[-1].strip()
+                        break
+                params = {'name': name_match} if name_match else {}
+                message = 'Opening new customer form...'
+            elif 'quote' in command:
+                action = 'create_quote'
+                # Extract customer name if present
+                customer_name = None
+                for phrase in ['for ', 'to ']:
+                    if phrase in command:
+                        customer_name = command.split(phrase)[-1].strip()
+                        break
+                params = {'customer_name': customer_name} if customer_name else {}
+                message = 'Opening new quote form...'
+            elif 'job' in command:
+                action = 'create_job'
+                message = 'Opening new job form...'
+            elif 'event' in command or 'meeting' in command or 'appointment' in command:
+                action = 'schedule_event'
+                # Extract title and date
+                title = None
+                date = None
+                if 'tomorrow' in command:
+                    from datetime import datetime, timedelta
+                    date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+                params = {'title': title, 'date': date}
+                message = 'Opening event scheduler...'
+            elif 'task' in command:
+                action = 'create_task'
+                message = 'Opening new task form...'
+        
+        # Search commands
+        elif any(word in command for word in ['find', 'search', 'look for', 'where']):
+            query = command
+            for word in ['find', 'search', 'look for', 'where', 'is', 'are']:
+                query = query.replace(word, '')
+            query = query.strip()
+            
+            if 'quote' in command:
+                action = 'search'
+                params = {'type': 'quote', 'query': query}
+                message = f'Searching quotes for "{query}"...'
+            elif 'customer' in command:
+                action = 'search'
+                params = {'type': 'customer', 'query': query}
+                message = f'Searching customers for "{query}"...'
+            else:
+                action = 'search'
+                params = {'type': 'all', 'query': query}
+                message = f'Searching for "{query}"...'
+        
+        # Insight commands
+        elif any(word in command for word in ['insight', 'summary', 'overview', 'status', 'how']):
+            action = 'show_insights'
+            message = 'Refreshing insights...'
+        
+        if action:
+            return jsonify({
+                'success': True,
+                'action': action,
+                'params': params,
+                'message': message
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'I didn\'t understand that command. Try something like "show quotes" or "create customer for John Smith"'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error executing AI command: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================================

@@ -644,5 +644,222 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load learning context on startup
     loadLearningContext();
+    
+    // Load proactive suggestions
+    loadProactiveSuggestions();
 });
+
+// ============================================================================
+// PROACTIVE AI SUGGESTIONS (Jarvis-style)
+// ============================================================================
+
+let proactiveSuggestions = [];
+
+async function loadProactiveSuggestions() {
+    try {
+        const response = await fetch('/api/ai/insights');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.suggestions) {
+                proactiveSuggestions = data.suggestions;
+                showProactiveSuggestion();
+            }
+        }
+    } catch (error) {
+        console.log('Proactive suggestions not available:', error);
+    }
+}
+
+function showProactiveSuggestion() {
+    if (proactiveSuggestions.length === 0) return;
+    
+    // Show a random suggestion after a delay
+    setTimeout(() => {
+        const panel = document.getElementById('chatbotPanel');
+        if (panel && panel.style.display === 'block') {
+            const suggestion = proactiveSuggestions[Math.floor(Math.random() * proactiveSuggestions.length)];
+            addProactiveSuggestionToChat(suggestion);
+        }
+    }, 5000); // Show after 5 seconds if chat is open
+}
+
+function addProactiveSuggestionToChat(suggestion) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    if (!messagesContainer) return;
+    
+    // Check if we already showed a suggestion recently
+    if (messagesContainer.querySelector('.proactive-suggestion')) return;
+    
+    const suggestionDiv = document.createElement('div');
+    suggestionDiv.className = 'chatbot-message assistant proactive-suggestion';
+    suggestionDiv.innerHTML = `
+        <div class="message-content" style="background: linear-gradient(135deg, rgba(107, 142, 35, 0.2), rgba(85, 107, 47, 0.2)); border: 1px solid rgba(107, 142, 35, 0.3);">
+            <div style="font-size: 11px; color: #6B8E23; margin-bottom: 6px; font-weight: 600;">💡 PROACTIVE SUGGESTION</div>
+            <div>${suggestion.text}</div>
+            <div style="margin-top: 10px; display: flex; gap: 8px;">
+                <button onclick="executeProactiveSuggestion('${suggestion.action}', '${suggestion.action_data || ''}')" 
+                        style="padding: 6px 12px; background: #6B8E23; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    ✓ Do it
+                </button>
+                <button onclick="dismissProactiveSuggestion(this)" 
+                        style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #95a5a6; border: 1px solid #95a5a6; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    Maybe later
+                </button>
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(suggestionDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function executeProactiveSuggestion(action, data) {
+    // Remove the suggestion
+    document.querySelectorAll('.proactive-suggestion').forEach(el => el.remove());
+    
+    // Execute the action
+    switch (action) {
+        case 'view_pending_quotes':
+            window.location.href = '/crm#quotes-open';
+            break;
+        case 'schedule_event':
+            window.location.href = '/crm#calendar';
+            break;
+        case 'create_customer':
+            window.location.href = '/crm#people-customers';
+            break;
+        case 'check_inventory':
+            window.location.href = '/crm#materials-stock';
+            break;
+        default:
+            addMessage('assistant', `Executing action: ${action}`);
+    }
+}
+
+function dismissProactiveSuggestion(btn) {
+    const suggestionEl = btn.closest('.proactive-suggestion');
+    if (suggestionEl) {
+        suggestionEl.style.opacity = '0';
+        suggestionEl.style.transition = 'opacity 0.3s';
+        setTimeout(() => suggestionEl.remove(), 300);
+    }
+}
+
+// ============================================================================
+// LEARNING FROM CORRECTIONS
+// ============================================================================
+
+let lastAIResponse = null;
+
+function addFeedbackButtons(responseElement, responseText) {
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.className = 'ai-feedback-buttons';
+    feedbackDiv.style.cssText = 'margin-top: 10px; display: flex; gap: 8px; align-items: center;';
+    feedbackDiv.innerHTML = `
+        <span style="font-size: 11px; color: #95a5a6;">Was this helpful?</span>
+        <button onclick="submitAIFeedback(true, this)" style="padding: 4px 8px; background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; border-radius: 4px; cursor: pointer; font-size: 12px;">👍</button>
+        <button onclick="submitAIFeedback(false, this)" style="padding: 4px 8px; background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; border-radius: 4px; cursor: pointer; font-size: 12px;">👎</button>
+        <button onclick="showCorrectionInput(this)" style="padding: 4px 8px; background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid #3498db; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ Correct</button>
+    `;
+    responseElement.appendChild(feedbackDiv);
+    lastAIResponse = responseText;
+}
+
+async function submitAIFeedback(isPositive, btn) {
+    const feedbackDiv = btn.parentElement;
+    
+    try {
+        await fetch('/api/ai/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                response: lastAIResponse,
+                is_positive: isPositive,
+                user_message: lastUserMessage
+            })
+        });
+        
+        feedbackDiv.innerHTML = `<span style="font-size: 11px; color: ${isPositive ? '#2ecc71' : '#e74c3c'};">${isPositive ? '✓ Thanks for the feedback!' : '✓ We\'ll improve!'}</span>`;
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+    }
+}
+
+function showCorrectionInput(btn) {
+    const feedbackDiv = btn.parentElement;
+    feedbackDiv.innerHTML = `
+        <div style="width: 100%;">
+            <textarea id="correctionInput" placeholder="What should the correct response be?" 
+                      style="width: 100%; padding: 8px; border: 1px solid #3498db; border-radius: 6px; background: rgba(52, 152, 219, 0.1); color: white; resize: none; height: 60px; font-size: 12px;"></textarea>
+            <div style="display: flex; gap: 8px; margin-top: 6px;">
+                <button onclick="submitCorrection()" style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">Submit Correction</button>
+                <button onclick="cancelCorrection(this)" style="padding: 6px 12px; background: transparent; color: #95a5a6; border: 1px solid #95a5a6; border-radius: 6px; cursor: pointer; font-size: 12px;">Cancel</button>
+            </div>
+        </div>
+    `;
+}
+
+async function submitCorrection() {
+    const correctionInput = document.getElementById('correctionInput');
+    const correction = correctionInput ? correctionInput.value.trim() : '';
+    
+    if (!correction) {
+        alert('Please enter a correction.');
+        return;
+    }
+    
+    try {
+        await fetch('/api/ai/correction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                original_response: lastAIResponse,
+                corrected_response: correction,
+                user_message: lastUserMessage,
+                context: window.location.pathname
+            })
+        });
+        
+        const feedbackDiv = correctionInput.closest('.ai-feedback-buttons');
+        if (feedbackDiv) {
+            feedbackDiv.innerHTML = `<span style="font-size: 11px; color: #3498db;">✓ Correction saved! AI will learn from this.</span>`;
+        }
+        
+        // Add the correction as a new learning context
+        if (learningContext) {
+            learningContext.corrections = learningContext.corrections || [];
+            learningContext.corrections.push({
+                original: lastAIResponse,
+                corrected: correction,
+                timestamp: new Date().toISOString()
+            });
+        }
+    } catch (error) {
+        console.error('Error submitting correction:', error);
+        alert('Failed to save correction. Please try again.');
+    }
+}
+
+function cancelCorrection(btn) {
+    const feedbackDiv = btn.closest('.ai-feedback-buttons');
+    if (feedbackDiv) {
+        feedbackDiv.remove();
+    }
+}
+
+// Override addMessage to include feedback buttons for AI responses
+const originalAddMessage = addMessage;
+addMessage = function(role, content, thinking = null) {
+    originalAddMessage(role, content, thinking);
+    
+    if (role === 'assistant' && !content.includes('Error:') && !content.includes('proactive-suggestion')) {
+        const messagesContainer = document.getElementById('chatbotMessages');
+        const lastMessage = messagesContainer.lastElementChild;
+        if (lastMessage) {
+            const contentDiv = lastMessage.querySelector('.message-content');
+            if (contentDiv) {
+                addFeedbackButtons(contentDiv, content);
+            }
+        }
+    }
+};
 </script>
