@@ -2767,7 +2767,109 @@
         </div>
     </div>
 
-    <!-- Floorplan Viewer Modal -->
+    <!-- Quote Detail Modal (Full Screen) -->
+    <div id="quoteDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 95vw; width: 95vw; max-height: 95vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-color), #4a5d23); color: white; padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 12px;">
+                        <svg style="width: 28px; height: 28px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="modal-title" id="quoteDetailTitle" style="color: white; margin: 0;">Quote Details</h2>
+                        <p id="quoteDetailNumber" style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 4px 0 0 0;"></p>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeModal('quoteDetailModal')" style="color: white;">×</button>
+            </div>
+            
+            <div style="padding: 24px;">
+                <!-- Quick Stats Row -->
+                <div id="quoteDetailStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <!-- Stats will be populated here -->
+                </div>
+                
+                <!-- Main Content Grid -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <!-- Left Column - Floorplan -->
+                    <div>
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                🗺️ Floorplan
+                            </h3>
+                            <div id="quoteDetailFloorplanContainer" style="background: var(--bg-primary); border-radius: 12px; padding: 20px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                                <img id="quoteDetailFloorplan" alt="Floorplan" style="max-width: 100%; max-height: 600px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            </div>
+                            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+                                <button class="btn btn-secondary" onclick="downloadFloorplanFromDetail()">📥 Download Floorplan</button>
+                                <button class="btn btn-primary" id="editInCanvasBtn" onclick="editQuoteInCanvas()">✏️ Edit in Canvas</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column - Details -->
+                    <div>
+                        <!-- Customer Info -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                👤 Customer
+                            </h3>
+                            <div id="quoteDetailCustomer" style="color: var(--text-secondary);">
+                                <!-- Customer info will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Cost Breakdown -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                💰 Cost Breakdown
+                            </h3>
+                            <div id="quoteDetailCosts" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Costs will be populated here -->
+                            </div>
+                            <div id="quoteDetailTotal" style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, var(--primary-color), #4a5d23); border-radius: 12px; text-align: center;">
+                                <span style="color: rgba(255,255,255,0.8); font-size: 14px;">Grand Total</span>
+                                <div style="color: white; font-size: 28px; font-weight: 700;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Components/Price Classes -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                🏷️ Components & Price Classes
+                            </h3>
+                            <div id="quoteDetailComponents" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Components will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Description -->
+                <div id="quoteDetailDescriptionSection" style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-top: 20px;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 12px; font-size: 18px; font-weight: 600;">📝 Description</h3>
+                    <p id="quoteDetailDescription" style="color: var(--text-secondary); white-space: pre-wrap;"></p>
+                </div>
+                
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="closeModal('quoteDetailModal')">Close</button>
+                        <button class="btn btn-primary" onclick="editQuote(currentViewingQuoteId)">✏️ Edit Quote</button>
+                        <button class="btn btn-primary" onclick="openPDFEditor(currentViewingQuoteId)">📄 PDF Editor</button>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-success" id="markSentBtn" onclick="markQuoteSent(currentViewingQuoteId)">📤 Mark as Sent</button>
+                        <button class="btn btn-success" id="markAcceptedBtn" onclick="markQuoteAccepted(currentViewingQuoteId)">✅ Mark as Accepted</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legacy Floorplan Viewer Modal (kept for backwards compatibility) -->
     <div id="floorplanViewerModal" class="modal">
         <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
@@ -3883,7 +3985,7 @@
                             ${quotesList.map(q => {
                                 const customer = customers.find(c => c.id === q.customer_id);
                                 return `
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="viewQuoteDetail('${q.id}')" title="Click to view details">
                                         <td><strong>${q.quote_number || '-'}</strong></td>
                                         <td>
                                             ${q.title}
@@ -3894,7 +3996,7 @@
                                         <td><strong>$${(q.quote_amount || 0).toLocaleString()}</strong></td>
                                         <td><span class="status-badge ${statusColors[q.status] || ''}">${q.status}</span></td>
                                         <td>${q.valid_until || '-'}</td>
-                                        <td style="white-space: nowrap;">
+                                        <td style="white-space: nowrap;" onclick="event.stopPropagation();">
                                             <button class="btn btn-secondary btn-small" onclick="editQuote('${q.id}')" title="Edit">✏️</button>
                                             <button class="btn btn-primary btn-small" onclick="openQuoteCostCentresModal('${q.id}')" title="Cost Centres">📊</button>
                                             <button class="btn btn-primary btn-small" onclick="openPDFEditor('${q.id}')" title="PDF Editor">📄</button>
@@ -4306,55 +4408,203 @@
             }
         }
 
-        function viewQuoteFloorplan(quoteId) {
+        let currentViewingQuoteId = null;
+        
+        function viewQuoteDetail(quoteId) {
             // Find the quote
             const quote = quotes.find(q => q.id === quoteId);
             if (!quote) {
                 alert('Quote not found');
                 return;
             }
-
-            if (!quote.floorplan_image) {
-                alert('This quote does not have a floorplan');
-                return;
+            
+            currentViewingQuoteId = quoteId;
+            
+            // Populate header
+            document.getElementById('quoteDetailTitle').textContent = quote.title || 'Untitled Quote';
+            document.getElementById('quoteDetailNumber').textContent = quote.quote_number ? `Quote #${quote.quote_number}` : '';
+            
+            // Populate stats
+            const customer = customers.find(c => c.id === quote.customer_id);
+            const totalAmount = quote.quote_amount || quote.total_amount || 0;
+            const statsHtml = `
+                <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 16px; border-radius: 12px; color: white; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 700;">$${totalAmount.toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Total Amount</div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${(quote.components || []).length}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Components</div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${quote.status || 'draft'}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Status</div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${quote.valid_until || 'N/A'}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Valid Until</div>
+                </div>
+            `;
+            document.getElementById('quoteDetailStats').innerHTML = statsHtml;
+            
+            // Populate floorplan - reset container first to ensure img element exists
+            const floorplanContainer = document.getElementById('quoteDetailFloorplanContainer');
+            if (floorplanContainer) {
+                // Reset the container to include the img element
+                floorplanContainer.innerHTML = '<img id="quoteDetailFloorplan" alt="Floorplan" style="max-width: 100%; max-height: 600px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">';
+                
+                const floorplanImg = document.getElementById('quoteDetailFloorplan');
+                const editBtn = document.getElementById('editInCanvasBtn');
+                
+                if (quote.floorplan_image) {
+                    floorplanImg.src = quote.floorplan_image;
+                    floorplanImg.style.display = 'block';
+                    if (editBtn) editBtn.style.display = 'inline-flex';
+                } else {
+                    floorplanContainer.innerHTML = '<div style="color: var(--text-secondary); padding: 40px;">No floorplan attached to this quote</div>';
+                    if (editBtn) editBtn.style.display = 'none';
+                }
             }
-
-            // Populate modal with quote details
-            const modal = document.getElementById('floorplanViewerModal');
-            document.getElementById('floorplanViewerTitle').textContent = quote.title || 'Quote Floorplan';
-            document.getElementById('floorplanViewerDescription').textContent = quote.description || '';
-            document.getElementById('floorplanViewerImage').src = quote.floorplan_image;
-
-            // Display components if available
-            const componentsContainer = document.getElementById('floorplanComponentsList');
+            
+            // Populate customer info
+            const customerHtml = customer ? `
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <div style="width: 48px; height: 48px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px;">
+                        ${customer.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary);">${customer.name}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">${customer.company || ''}</div>
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    ${customer.email ? `<div>📧 ${customer.email}</div>` : ''}
+                    ${customer.phone ? `<div>📱 ${customer.phone}</div>` : ''}
+                    ${customer.address ? `<div>📍 ${customer.address}</div>` : ''}
+                </div>
+            ` : '<div style="color: var(--text-secondary);">No customer linked</div>';
+            document.getElementById('quoteDetailCustomer').innerHTML = customerHtml;
+            
+            // Populate costs
+            let costsHtml = '';
+            if (quote.costs && quote.costs.items) {
+                costsHtml = quote.costs.items.map(item => `
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                        <span style="color: var(--text-primary);">${item.type} (${item.quantity}x)</span>
+                        <span style="font-weight: 600; color: var(--text-primary);">$${(item.total || 0).toFixed(2)}</span>
+                    </div>
+                `).join('');
+            } else {
+                costsHtml = '<div style="color: var(--text-secondary); padding: 20px; text-align: center;">No cost breakdown available</div>';
+            }
+            document.getElementById('quoteDetailCosts').innerHTML = costsHtml;
+            document.getElementById('quoteDetailTotal').querySelector('div:last-child').textContent = `$${totalAmount.toLocaleString()}`;
+            
+            // Populate components
+            let componentsHtml = '';
             if (quote.components && quote.components.length > 0) {
-                componentsContainer.style.display = 'block';
-                const componentsList = document.getElementById('floorplanComponents');
-                componentsList.innerHTML = quote.components.map(comp => {
-                    const totalPrice = comp.totalPrice || 0;
-                    const componentsDetails = (comp.components || []).map(c =>
-                        `${c.name} (${c.quantity}x @ $${c.price})`
+                componentsHtml = quote.components.map(comp => {
+                    const isPriceClass = comp.type === 'price_class';
+                    const icon = isPriceClass ? '🏷️' : '📦';
+                    const name = isPriceClass ? comp.priceClassName : comp.type;
+                    const items = (comp.items || comp.components || []).map(item => 
+                        `${item.name} (${item.quantity}x @ $${item.unit_price || item.price || 0})`
                     ).join(', ');
                     return `
-                        <div style="padding: 12px; background: var(--card-bg); border-radius: 8px; margin-bottom: 8px;">
+                        <div style="padding: 12px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; ${isPriceClass ? 'border-left: 3px solid #8b5cf6;' : ''}">
                             <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                                ${comp.type || 'Component'} - ${comp.room || 'Unknown Room'}
+                                ${icon} ${name} - ${comp.room || 'N/A'}
                             </div>
                             <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
-                                ${componentsDetails}
+                                ${items || 'No items'}
                             </div>
                             <div style="font-weight: 600; color: var(--primary-color);">
-                                Total: $${totalPrice.toFixed(2)}
+                                $${(comp.totalPrice || 0).toFixed(2)}
                             </div>
                         </div>
                     `;
                 }).join('');
             } else {
-                componentsContainer.style.display = 'none';
+                componentsHtml = '<div style="color: var(--text-secondary); padding: 20px; text-align: center;">No components</div>';
+            }
+            document.getElementById('quoteDetailComponents').innerHTML = componentsHtml;
+            
+            // Populate description
+            const descSection = document.getElementById('quoteDetailDescriptionSection');
+            if (quote.description) {
+                descSection.style.display = 'block';
+                document.getElementById('quoteDetailDescription').textContent = quote.description;
+            } else {
+                descSection.style.display = 'none';
+            }
+            
+            // Show/hide action buttons based on status
+            document.getElementById('markSentBtn').style.display = quote.status === 'draft' ? 'inline-flex' : 'none';
+            document.getElementById('markAcceptedBtn').style.display = quote.status === 'sent' ? 'inline-flex' : 'none';
+            
+            // Open the modal
+            openModal('quoteDetailModal');
+        }
+        
+        function downloadFloorplanFromDetail() {
+            const img = document.getElementById('quoteDetailFloorplan');
+            const title = document.getElementById('quoteDetailTitle').textContent;
+
+            if (!img.src || img.style.display === 'none') {
+                alert('No floorplan to download');
+                return;
             }
 
-            // Open the modal
-            openModal('floorplanViewerModal');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_floorplan.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        async function editQuoteInCanvas() {
+            if (!currentViewingQuoteId) return;
+            
+            try {
+                // Fetch the quote's canvas state
+                const response = await fetch(`/api/crm/quotes/${currentViewingQuoteId}/canvas-state`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store canvas state and quote data in session storage for the canvas editor
+                    sessionStorage.setItem('canvas_edit_quote_id', currentViewingQuoteId);
+                    sessionStorage.setItem('canvas_edit_data', JSON.stringify({
+                        quote: data.quote,
+                        canvas_state: data.canvas_state,
+                        floorplan_image: quotes.find(q => q.id === currentViewingQuoteId)?.floorplan_image
+                    }));
+                    
+                    // Redirect to canvas editor with edit flag
+                    window.location.href = `/canvas?edit_quote=${currentViewingQuoteId}`;
+                } else {
+                    // No canvas state, try to open with just the floorplan image
+                    const quote = quotes.find(q => q.id === currentViewingQuoteId);
+                    if (quote && quote.floorplan_image) {
+                        sessionStorage.setItem('canvas_edit_quote_id', currentViewingQuoteId);
+                        sessionStorage.setItem('canvas_edit_data', JSON.stringify({
+                            quote: quote,
+                            floorplan_image: quote.floorplan_image
+                        }));
+                        window.location.href = `/canvas?edit_quote=${currentViewingQuoteId}`;
+                    } else {
+                        alert('No floorplan data available to edit');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading quote for canvas edit:', error);
+                alert('Error loading quote data: ' + error.message);
+            }
+        }
+
+        function viewQuoteFloorplan(quoteId) {
+            // Use the new detailed view instead
+            viewQuoteDetail(quoteId);
         }
 
         function downloadFloorplanFromModal() {

@@ -646,7 +646,84 @@
         // Check for imported data on page load
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('import') === 'true') {
+            
+            // Check if editing a quote from CRM
+            if (urlParams.get('edit_quote')) {
+                const quoteId = urlParams.get('edit_quote');
+                console.log('📝 Edit quote mode detected, quoteId:', quoteId);
+                
+                const editData = sessionStorage.getItem('canvas_edit_data');
+                console.log('📦 Session storage data exists:', !!editData);
+                
+                if (editData) {
+                    try {
+                        const data = JSON.parse(editData);
+                        console.log('✅ Loading quote for editing:', data);
+                        console.log('📊 Quote data:', data.quote);
+                        console.log('🖼️ Floorplan image:', data.floorplan_image ? 'Present' : 'Missing');
+                        console.log('🎨 Canvas state:', data.canvas_state ? 'Present' : 'Missing');
+                        
+                        // Store quote ID for saving back
+                        window.currentEditingQuoteId = quoteId;
+                        window.editingQuoteData = data;
+                        
+                        // Load the floorplan image
+                        if (data.floorplan_image) {
+                            console.log('🖼️ Loading floorplan image...');
+                            loadImage(data.floorplan_image);
+                            showImportToast(`Editing quote: ${data.quote?.title || 'Untitled'}`, 'success');
+                        } else {
+                            console.warn('⚠️ No floorplan image in data');
+                        }
+                        
+                        // Load components/symbols from the quote
+                        if (data.quote && data.quote.components && data.quote.components.length > 0) {
+                            console.log(`📍 Loading ${data.quote.components.length} components...`);
+                            // Convert quote components to canvas symbols
+                            setTimeout(() => {
+                                data.quote.components.forEach(comp => {
+                                    console.log('  Component:', comp.type, 'at', comp.position);
+                                    if (comp.position) {
+                                        const symbol = {
+                                            id: comp.id || `symbol_${Date.now()}_${Math.random()}`,
+                                            type: comp.type,
+                                            x: comp.position.x / (canvas.width || 1000),
+                                            y: comp.position.y / (canvas.height || 1000),
+                                            room: comp.room || 'Imported',
+                                            components: comp.components || comp.items || [],
+                                            totalPrice: comp.totalPrice || 0,
+                                            priceClassName: comp.priceClassName,
+                                            priceClassId: comp.priceClassId
+                                        };
+                                        symbols.push(symbol);
+                                    }
+                                });
+                                render();
+                                showImportToast(`Loaded ${data.quote.components.length} components`, 'info');
+                            }, 1000);
+                        } else {
+                            console.log('ℹ️ No components to load');
+                        }
+                        
+                        // Clean up session storage after loading
+                        // Keep it for a bit longer in case of issues
+                        setTimeout(() => {
+                            sessionStorage.removeItem('canvas_edit_data');
+                            sessionStorage.removeItem('canvas_edit_quote_id');
+                        }, 2000);
+                        
+                    } catch (e) {
+                        console.error('❌ Error loading quote for editing:', e);
+                        showImportToast('Error loading quote data', 'error');
+                    }
+                } else {
+                    // No session data - try fetching directly from API
+                    console.log('⚠️ No session data, fetching from API...');
+                    fetchQuoteDataFromAPI(quoteId);
+                }
+            }
+            // Check for regular import
+            else if (urlParams.get('import') === 'true') {
                 const importData = sessionStorage.getItem('import_data');
                 if (importData) {
                     try {
@@ -661,6 +738,62 @@
                 }
             }
         })();
+        
+        // Fallback function to fetch quote data directly from API
+        async function fetchQuoteDataFromAPI(quoteId) {
+            try {
+                console.log('🔄 Fetching quote data from API for:', quoteId);
+                const response = await fetch(`/api/crm/quotes/${quoteId}/canvas-state`);
+                const data = await response.json();
+                
+                console.log('📥 API Response:', data);
+                
+                if (data.success) {
+                    window.currentEditingQuoteId = quoteId;
+                    window.editingQuoteData = data;
+                    
+                    // Get floorplan image from the quote
+                    const floorplanImage = data.quote?.floorplan_image;
+                    
+                    if (floorplanImage) {
+                        console.log('🖼️ Loading floorplan from API...');
+                        loadImage(floorplanImage);
+                        showImportToast(`Editing quote: ${data.quote?.title || 'Untitled'}`, 'success');
+                    }
+                    
+                    // Load components
+                    if (data.quote && data.quote.components && data.quote.components.length > 0) {
+                        console.log(`📍 Loading ${data.quote.components.length} components from API...`);
+                        setTimeout(() => {
+                            data.quote.components.forEach(comp => {
+                                if (comp.position) {
+                                    const symbol = {
+                                        id: comp.id || `symbol_${Date.now()}_${Math.random()}`,
+                                        type: comp.type,
+                                        x: comp.position.x / (canvas.width || 1000),
+                                        y: comp.position.y / (canvas.height || 1000),
+                                        room: comp.room || 'Imported',
+                                        components: comp.components || comp.items || [],
+                                        totalPrice: comp.totalPrice || 0,
+                                        priceClassName: comp.priceClassName,
+                                        priceClassId: comp.priceClassId
+                                    };
+                                    symbols.push(symbol);
+                                }
+                            });
+                            render();
+                            showImportToast(`Loaded ${data.quote.components.length} components`, 'info');
+                        }, 1000);
+                    }
+                } else {
+                    console.error('❌ API returned error:', data.error);
+                    showImportToast('Failed to load quote data', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error fetching quote from API:', error);
+                showImportToast('Error loading quote: ' + error.message, 'error');
+            }
+        }
 
         function showImportToast(message, type) {
             const toast = document.createElement('div');

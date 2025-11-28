@@ -204,6 +204,32 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Floor Plan Scale Input -->
+                        <div class="mt-4 p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-700 dark:to-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-1">
+                                    <label for="floorplanScale" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                                        📐 Floor Plan Scale (optional)
+                                    </label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                        Enter the scale from your floor plan (e.g., 1:100 means 1cm = 1m)
+                                    </p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">1 :</span>
+                                    <input
+                                        type="number"
+                                        id="floorplanScale"
+                                        name="floorplan_scale"
+                                        min="1"
+                                        max="500"
+                                        placeholder="100"
+                                        class="w-24 px-3 py-2 bg-white dark:bg-gray-600 border-2 border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent text-center text-gray-900 dark:text-gray-100"
+                                    >
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Automation Types -->
@@ -961,10 +987,10 @@
                                 </div>
                             </div>
 
-                            <!-- Canvas Container -->
-                            <div id="canvasContainer" class="p-6 bg-gray-100" style="flex: 1; overflow: auto; min-height: 100vh;">
-                                <div class="relative bg-white rounded-lg shadow-inner" style="min-height: 1400px; height: auto; overflow: visible;">
-                                    <canvas id="floorplanCanvas" class="w-full" style="min-height: 1400px;"></canvas>
+                            <!-- Canvas Container - Full width, high quality -->
+                            <div id="canvasContainer" class="w-full h-full relative bg-gray-100 cursor-grab active:cursor-grabbing" style="flex: 1; overflow: auto; min-height: 80vh;">
+                                <div class="relative w-full h-full" style="min-height: 800px;">
+                                    <canvas id="floorplanCanvas" class="w-full h-full"></canvas>
                                 </div>
                             </div>
 
@@ -1326,9 +1352,17 @@
         // =============================
 
         function initializeFloorplanEditor(data) {
+            // Get container dimensions first
+            const canvasContainer = document.getElementById('canvasContainer');
+            const containerWidth = canvasContainer ? canvasContainer.clientWidth : window.innerWidth - 100;
+            const containerHeight = canvasContainer ? canvasContainer.clientHeight : window.innerHeight - 300;
+            
             const canvas = new fabric.Canvas('floorplanCanvas', {
                 selection: true,
-                preserveObjectStacking: true
+                preserveObjectStacking: true,
+                enableRetinaScaling: true,  // Enable high-DPI rendering
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
             });
             editorCanvas = canvas;
 
@@ -1339,28 +1373,24 @@
 
             if (floorplanUrl) {
                 fabric.Image.fromURL(floorplanUrl, (img) => {
-                    // Get canvas container - traverse up to find the actual container
-                    const canvasElement = document.getElementById('floorplanCanvas');
-                    const canvasContainer = document.getElementById('canvasContainer');
-                    // Use the container width, falling back to parent or a reasonable default
-                    const canvasWidth = canvasContainer ? canvasContainer.clientWidth - 48 : // subtract padding
-                                        (canvasElement.parentElement ? canvasElement.parentElement.clientWidth : 1000);
+                    // Use full container width for high quality display
+                    const canvasWidth = containerWidth;
+                    
+                    // Calculate scale to fit the image within the canvas width (use 100% for full quality)
+                    const scaleToFitWidth = canvasWidth / img.width;
 
-                    // Calculate scale to fit the image within the canvas width (at 95% to leave small margin)
-                    const scaleToFitWidth = (canvasWidth * 0.95) / img.width;
-
-                    // Set canvas height based on scaled image height with small padding
+                    // Set canvas height based on scaled image height
                     const scaledImageHeight = img.height * scaleToFitWidth;
-                    const canvasHeight = scaledImageHeight + 100; // Small padding for controls
+                    const canvasHeight = Math.max(scaledImageHeight, containerHeight);
 
                     canvas.setWidth(canvasWidth);
                     canvas.setHeight(canvasHeight);
 
                     // Make the floorplan image a movable/resizable object (not background)
-                    // Position it to fill most of the canvas
+                    // Position it to fill the canvas at full quality
                     img.set({
                         left: canvasWidth / 2,
-                        top: scaledImageHeight / 2 + 50, // Centered vertically with padding
+                        top: scaledImageHeight / 2,
                         originX: 'center',
                         originY: 'center',
                         scaleX: scaleToFitWidth,
@@ -1833,6 +1863,7 @@
         // =============================
 
         let isMaximized = false;
+        let savedCanvasState = null;
 
         function toggleMaximize() {
             const editorSection = document.getElementById('interactiveEditorSection');
@@ -1840,6 +1871,7 @@
             const maximizeIcon = document.getElementById('maximizeIcon');
             const maximizeText = document.getElementById('maximizeText');
             const canvas = editorCanvas;
+            const canvasContainer = document.getElementById('canvasContainer');
 
             if (!editorSection) return;
 
@@ -1857,14 +1889,21 @@
                 editorSection.style.borderRadius = '0';
                 editorSection.style.display = 'flex';
                 editorSection.style.flexDirection = 'column';
+                editorSection.style.overflow = 'hidden';
+                editorSection.style.background = '#f3f4f6';
 
                 // Make canvas container fill available space
-                const canvasContainer = document.getElementById('canvasContainer');
                 if (canvasContainer) {
+                    canvasContainer.style.flex = '1';
+                    canvasContainer.style.overflow = 'auto';
+                    canvasContainer.style.padding = '0';
+                    canvasContainer.style.minHeight = '0';
                     const innerDiv = canvasContainer.querySelector('div');
                     if (innerDiv) {
-                        innerDiv.style.minHeight = 'calc(100vh - 250px)';
-                        innerDiv.style.maxHeight = 'calc(100vh - 250px)';
+                        innerDiv.style.minHeight = '100%';
+                        innerDiv.style.maxHeight = 'none';
+                        innerDiv.style.width = '100%';
+                        innerDiv.style.height = '100%';
                     }
                 }
 
@@ -1876,14 +1915,18 @@
                 // Update icon to minimize icon
                 maximizeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>';
 
-                // Resize canvas to fit new container
+                // Resize canvas to fill the entire available space
                 if (canvas) {
                     setTimeout(() => {
-                        const newWidth = window.innerWidth - 120; // Account for padding
+                        const toolbarHeight = 180; // Approximate height of toolbar and stats
+                        const newWidth = window.innerWidth;
+                        const newHeight = window.innerHeight - toolbarHeight;
+                        
                         canvas.setWidth(newWidth);
-                        canvas.setHeight(window.innerHeight - 250); // Account for toolbar and stats
+                        canvas.setHeight(newHeight);
+                        canvas.calcOffset();
                         canvas.renderAll();
-                    }, 100);
+                    }, 150);
                 }
 
                 showToast('Fullscreen mode activated - Press ESC to exit', 'success');
@@ -1903,14 +1946,21 @@
                 editorSection.style.borderRadius = '';
                 editorSection.style.display = '';
                 editorSection.style.flexDirection = '';
+                editorSection.style.overflow = '';
+                editorSection.style.background = '';
 
                 // Restore canvas container
-                const canvasContainer = document.getElementById('canvasContainer');
                 if (canvasContainer) {
+                    canvasContainer.style.flex = '';
+                    canvasContainer.style.overflow = '';
+                    canvasContainer.style.padding = '';
+                    canvasContainer.style.minHeight = '';
                     const innerDiv = canvasContainer.querySelector('div');
                     if (innerDiv) {
                         innerDiv.style.minHeight = '800px';
-                        innerDiv.style.maxHeight = '1200px';
+                        innerDiv.style.maxHeight = '';
+                        innerDiv.style.width = '';
+                        innerDiv.style.height = '';
                     }
                 }
 
@@ -1925,10 +1975,13 @@
                 // Resize canvas back to normal
                 if (canvas) {
                     setTimeout(() => {
-                        const containerWidth = document.getElementById('floorplanCanvas').parentElement.clientWidth;
+                        const container = document.getElementById('canvasContainer');
+                        const containerWidth = container ? container.clientWidth : 1000;
                         canvas.setWidth(containerWidth);
+                        canvas.setHeight(800);
+                        canvas.calcOffset();
                         canvas.renderAll();
-                    }, 100);
+                    }, 150);
                 }
 
                 showToast('Exited fullscreen mode', 'info');
@@ -2611,32 +2664,62 @@
             showToast('Floorplan downloaded as PNG', 'success');
         }
 
-        function downloadFloorplanPDF() {
+        async function downloadFloorplanPDF() {
             const canvas = editorCanvas;
             if (!canvas) {
                 showToast('Editor not initialized', 'error');
                 return;
             }
 
-            // For PDF, we'll download as high-res image
-            // In a real app, you'd use jsPDF library
-            showToast('Generating PDF... (using high-res image)', 'info');
+            showToast('Generating PDF...', 'info');
 
             canvas.discardActiveObject();
             canvas.renderAll();
 
+            // Get high-res image data
             const dataURL = canvas.toDataURL({
                 format: 'png',
                 quality: 1.0,
-                multiplier: 3  // Very high resolution
+                multiplier: 3  // Very high resolution for PDF
             });
 
-            const link = document.createElement('a');
-            link.download = `floorplan_${currentQuoteData.project_name}_${Date.now()}.png`;
-            link.href = dataURL;
-            link.click();
+            try {
+                // Send to backend to generate actual PDF
+                const response = await fetch('/api/generate-floorplan-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_data: dataURL,
+                        project_name: currentQuoteData?.project_name || 'Floorplan',
+                        components: componentSymbols.map(s => ({
+                            type: s.componentData?.type,
+                            room: s.componentData?.room,
+                            totalPrice: s.componentData?.totalPrice || 0
+                        }))
+                    })
+                });
 
-            showToast('Floorplan PDF download complete', 'success');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `floorplan_${currentQuoteData?.project_name || 'export'}_${Date.now()}.pdf`;
+                    link.href = url;
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                    showToast('Floorplan PDF downloaded successfully', 'success');
+                } else {
+                    throw new Error('PDF generation failed');
+                }
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                // Fallback to PNG download
+                showToast('PDF generation failed, downloading as PNG instead', 'warning');
+                const link = document.createElement('a');
+                link.download = `floorplan_${currentQuoteData?.project_name || 'export'}_${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+            }
         }
 
         // =============================
@@ -2669,7 +2752,7 @@
                     multiplier: 2  // Higher resolution
                 });
 
-                // Collect all component data with modifications
+                // Collect all component data with modifications (including price classes)
                 const components = componentSymbols.map(obj => ({
                     id: obj.componentData.id,
                     type: obj.componentData.type,
@@ -2677,7 +2760,12 @@
                     position: { x: obj.left, y: obj.top },
                     scale: { x: obj.scaleX || 1, y: obj.scaleY || 1 },
                     components: obj.componentData.components || [],
-                    totalPrice: obj.componentData.totalPrice || 0
+                    items: obj.componentData.items || [],  // For price classes
+                    priceClassName: obj.componentData.priceClassName || null,
+                    priceClassId: obj.componentData.priceClassId || null,
+                    priceClassIcon: obj.componentData.priceClassIcon || null,
+                    totalPrice: obj.componentData.totalPrice || 0,
+                    localChanges: obj.componentData.localChanges || false
                 }));
 
                 // Calculate total price from all symbols

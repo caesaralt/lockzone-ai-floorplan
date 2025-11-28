@@ -34,12 +34,26 @@ import auth
 # CRM Integration module
 import crm_integration
 
-# CRM Data Layer - robust data operations
-from crm_data_layer import CRMDataLayer, get_crm_data_layer
-
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import logging
+
+# CRM Data Layer - robust data operations
+# Try database layer first, fall back to JSON if not available
+import os as _os
+if _os.environ.get('DATABASE_URL'):
+    try:
+        from crm_db_layer import CRMDatabaseLayer, get_crm_db_layer
+        CRM_USE_DATABASE = True
+        logging.info("DATABASE_URL detected - will use PostgreSQL for CRM data")
+    except ImportError:
+        from crm_data_layer import CRMDataLayer, get_crm_data_layer
+        CRM_USE_DATABASE = False
+        logging.warning("Database modules not available, using JSON file storage")
+else:
+    from crm_data_layer import CRMDataLayer, get_crm_data_layer
+    CRM_USE_DATABASE = False
+    logging.info("DATABASE_URL not set - using JSON file storage for CRM data")
 
 # Import new infrastructure
 from app_init import create_app, get_ai_service
@@ -87,47 +101,16 @@ def inject_user_permissions():
         'has_permission': auth.has_permission
     }
 
-# Database disabled temporarily - using JSON files for stability
-USE_DATABASE = app.config.get('USE_DATABASE', False)
-db = None
-logger.info("Using JSON file storage for all data")
+# Database configuration
+USE_DATABASE = CRM_USE_DATABASE
 
-# Database Models
-if USE_DATABASE:
-    class KanbanTask(db.Model):
-        __tablename__ = 'kanban_tasks'
+if CRM_USE_DATABASE:
+    logger.info("✅ Using PostgreSQL storage for CRM/operations data (DATABASE_URL detected)")
+else:
+    logger.info("📁 Using JSON file storage for all data")
 
-        id = db.Column(db.String(36), primary_key=True)
-        column = db.Column(db.String(50), nullable=False)
-        content = db.Column(db.Text, nullable=False)
-        notes = db.Column(db.Text, default='')
-        color = db.Column(db.String(7), default='#ffffff')
-        position_x = db.Column(db.Float, default=10)
-        position_y = db.Column(db.Float, default=10)
-        assigned_to = db.Column(db.String(100))
-        pinned = db.Column(db.Boolean, default=False)
-        due_date = db.Column(db.String(20))
-        archived = db.Column(db.Boolean, default=False)
-        archived_at = db.Column(db.DateTime)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
-        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-        def to_dict(self):
-            return {
-                'id': self.id,
-                'column': self.column,
-                'content': self.content,
-                'notes': self.notes,
-                'color': self.color,
-                'position': {'x': self.position_x, 'y': self.position_y},
-                'assigned_to': self.assigned_to,
-                'pinned': self.pinned,
-                'due_date': self.due_date,
-                'archived': self.archived,
-                'archived_at': self.archived_at.isoformat() if self.archived_at else None,
-                'created_at': self.created_at.isoformat() if self.created_at else None,
-                'updated_at': self.updated_at.isoformat() if self.updated_at else None
-            }
+# Note: KanbanTask model has been moved to database/models.py
+# The operations board uses JSON files for now but will be migrated to PostgreSQL
 
 DATA_FILE = os.path.join(app.config['DATA_FOLDER'], 'automation_data.json')
 LEARNING_INDEX_FILE = os.path.join(app.config['LEARNING_FOLDER'], 'learning_index.json')
@@ -148,7 +131,12 @@ QUOTES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'quotes.json')
 STOCK_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'stock.json')
 
 # Initialize CRM Data Layer for robust data operations
-crm_data = get_crm_data_layer(app.config['CRM_DATA_FOLDER'])
+if CRM_USE_DATABASE:
+    crm_data = get_crm_db_layer()
+    logger.info("✅ CRM Database Layer initialized successfully")
+else:
+    crm_data = get_crm_data_layer(app.config['CRM_DATA_FOLDER'])
+    logger.info("📁 CRM JSON Data Layer initialized")
 
 DEFAULT_DATA = {
     "automation_types": {
@@ -1364,8 +1352,9 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
         if original_image_path.endswith('.pdf'):
             doc = fitz.open(original_image_path)
             page = doc[0]
-            mat = fitz.Matrix(2.0, 2.0)
-            pix = page.get_pixmap(matrix=mat)
+            # Use 300 DPI for high quality output (300/72 = 4.17x zoom)
+            mat = fitz.Matrix(300/72, 300/72)
+            pix = page.get_pixmap(matrix=mat, alpha=False)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             doc.close()
         else:
@@ -2894,14 +2883,78 @@ def get_quote_canvas_state(quote_id):
 
         # Load canvas state if it exists
         canvas_state = None
+        canvas_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'canvas_states')
+        
+        # Try multiple possible canvas state files
+        possible_canvas_files = []
         if quote.get('canvas_state_file'):
-            canvas_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'canvas_states')
-            canvas_path = os.path.join(canvas_dir, quote['canvas_state_file'])
-
+            possible_canvas_files.append(quote['canvas_state_file'])
+        possible_canvas_files.append(f"{quote_id}.json")
+        
+        # Also try extracting from floorplan path
+        floorplan_path_str = quote.get('floorplan_image', '')
+        if '/quotes/' in floorplan_path_str:
+            parts = floorplan_path_str.split('/')
+            for i, part in enumerate(parts):
+                if part == 'quotes' and i + 1 < len(parts):
+                    possible_canvas_files.append(f"{parts[i+1]}.json")
+                    break
+        
+        for canvas_filename in possible_canvas_files:
+            canvas_path = os.path.join(canvas_dir, canvas_filename)
             if os.path.exists(canvas_path):
-                with open(canvas_path, 'r') as f:
-                    canvas_state = json.load(f)
+                try:
+                    with open(canvas_path, 'r') as f:
+                        canvas_state = json.load(f)
+                        logger.info(f"Loaded canvas state from: {canvas_filename}")
+                        break
+                except Exception as e:
+                    logger.error(f"Error reading canvas state {canvas_filename}: {e}")
 
+        # Get floorplan image data if exists
+        floorplan_image = quote.get('floorplan_image', '')
+        floorplan_loaded = False
+        
+        # If it's a relative path, try to read the actual image data
+        if floorplan_image:
+            floorplan_dir = os.path.join(app.config['CRM_DATA_FOLDER'], 'floorplans')
+            
+            # Try multiple possible filenames
+            possible_filenames = [
+                f"{quote_id}.png",  # Standard format with quote UUID
+            ]
+            
+            # Extract filename from path if it's an API path
+            if '/floorplan' in floorplan_image:
+                # Extract the ID from paths like /api/crm/quotes/quote_20251127_131601_fb2e630d/floorplan
+                parts = floorplan_image.split('/')
+                for i, part in enumerate(parts):
+                    if part == 'quotes' and i + 1 < len(parts):
+                        possible_filenames.append(f"{parts[i+1]}.png")
+                        break
+            
+            for filename in possible_filenames:
+                floorplan_path = os.path.join(floorplan_dir, filename)
+                if os.path.exists(floorplan_path):
+                    try:
+                        with open(floorplan_path, 'rb') as f:
+                            image_data = base64.b64encode(f.read()).decode('utf-8')
+                            floorplan_image = f"data:image/png;base64,{image_data}"
+                            floorplan_loaded = True
+                            logger.info(f"Loaded floorplan from: {filename}")
+                            break
+                    except Exception as e:
+                        logger.error(f"Error reading floorplan {filename}: {e}")
+            
+            if not floorplan_loaded:
+                logger.warning(f"Could not find floorplan for quote {quote_id}. Tried: {possible_filenames}")
+        
+        # Get components - check both top-level and automation_data for backwards compatibility
+        automation_data = quote.get('automation_data', {})
+        components = quote.get('components', []) or automation_data.get('components', [])
+        costs = quote.get('costs', {}) or automation_data.get('costs', {})
+        analysis = quote.get('analysis', {}) or automation_data.get('analysis', {})
+        
         return jsonify({
             'success': True,
             'quote': {
@@ -2909,9 +2962,13 @@ def get_quote_canvas_state(quote_id):
                 'title': quote.get('title', ''),
                 'description': quote.get('description', ''),
                 'total_amount': quote.get('total_amount', 0),
-                'components': quote.get('components', []),
-                'costs': quote.get('costs', {}),
-                'analysis': quote.get('analysis', {})
+                'quote_amount': quote.get('quote_amount', quote.get('total_amount', 0)),
+                'components': components,
+                'costs': costs,
+                'analysis': analysis,
+                'floorplan_image': floorplan_image,
+                'customer_id': quote.get('customer_id', ''),
+                'status': quote.get('status', 'draft')
             },
             'canvas_state': canvas_state
         })
@@ -4291,6 +4348,139 @@ def ai_mapping_history():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
+# FLOORPLAN PDF GENERATION
+# ============================================================================
+
+@app.route('/api/generate-floorplan-pdf', methods=['POST'])
+def generate_floorplan_pdf():
+    """Generate a PDF from floorplan canvas image"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'image_data' not in data:
+            return jsonify({'success': False, 'error': 'No image data provided'}), 400
+        
+        image_data = data['image_data']
+        project_name = data.get('project_name', 'Floorplan')
+        components = data.get('components', [])
+        
+        # Remove data URL prefix if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64 image
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create PDF with the image
+        from reportlab.lib.pagesizes import A3, landscape
+        from reportlab.platypus import SimpleDocTemplate, Image as RLImage, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        import io
+        
+        # Save image temporarily
+        temp_img_path = os.path.join(app.config['OUTPUT_FOLDER'], f'temp_floorplan_{uuid.uuid4()}.png')
+        with open(temp_img_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        # Create PDF
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=landscape(A3), 
+                               leftMargin=0.5*inch, rightMargin=0.5*inch,
+                               topMargin=0.5*inch, bottomMargin=0.5*inch)
+        
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = styles['Heading1']
+        title_style.fontSize = 24
+        title_style.spaceAfter = 20
+        story.append(Paragraph(f"📐 {project_name} - Floorplan", title_style))
+        story.append(Spacer(1, 10))
+        
+        # Add the floorplan image - fit to page width
+        from PIL import Image as PILImage
+        pil_img = PILImage.open(temp_img_path)
+        img_width, img_height = pil_img.size
+        
+        # Calculate dimensions to fit on page (A3 landscape is roughly 16.5 x 11.7 inches)
+        max_width = 15 * inch
+        max_height = 9 * inch
+        
+        aspect = img_width / img_height
+        if img_width > img_height:
+            display_width = min(max_width, img_width / 72 * inch)
+            display_height = display_width / aspect
+        else:
+            display_height = min(max_height, img_height / 72 * inch)
+            display_width = display_height * aspect
+        
+        # Ensure it fits
+        if display_width > max_width:
+            display_width = max_width
+            display_height = display_width / aspect
+        if display_height > max_height:
+            display_height = max_height
+            display_width = display_height * aspect
+        
+        rl_image = RLImage(temp_img_path, width=display_width, height=display_height)
+        story.append(rl_image)
+        
+        # Add components summary if available
+        if components and len(components) > 0:
+            story.append(Spacer(1, 20))
+            story.append(Paragraph("Components Summary", styles['Heading2']))
+            
+            table_data = [['Type', 'Room', 'Price']]
+            total_price = 0
+            for comp in components:
+                comp_type = comp.get('type', 'Unknown')
+                room = comp.get('room', 'N/A')
+                price = comp.get('totalPrice', 0)
+                total_price += price
+                table_data.append([comp_type, room, f"${price:.2f}"])
+            
+            table_data.append(['', 'TOTAL', f"${total_price:.2f}"])
+            
+            table = Table(table_data, colWidths=[3*inch, 3*inch, 2*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#556B2F')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0f0f0')),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(table)
+        
+        # Build PDF
+        doc.build(story)
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_img_path)
+        except:
+            pass
+        
+        # Return PDF
+        pdf_buffer.seek(0)
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'floorplan_{project_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating floorplan PDF: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
 # EXISTING API ROUTES (preserved)
 # ============================================================================
 
@@ -4417,12 +4607,13 @@ def analyze_floorplan():
                 else:
                     print("⚠ Failed to generate marked-up image, using copy instead")
                     import shutil
-                    # Fallback: convert PDF to PNG without markings
+                    # Fallback: convert PDF to PNG without markings at HIGH RESOLUTION
                     if filepath.endswith('.pdf'):
                         doc = fitz.open(filepath)
                         page = doc[0]
-                        mat = fitz.Matrix(2.0, 2.0)
-                        pix = page.get_pixmap(matrix=mat)
+                        # Use 300 DPI for high quality (300/72 = 4.17x zoom)
+                        mat = fitz.Matrix(300/72, 300/72)
+                        pix = page.get_pixmap(matrix=mat, alpha=False)
                         pix.save(annotated_path)
                         doc.close()
                     else:
@@ -4432,12 +4623,13 @@ def analyze_floorplan():
             else:
                 print("⚠ No component coordinates in analysis, creating unmarked copy")
                 import shutil
-                # No coordinates available, just convert to PNG
+                # No coordinates available, just convert to PNG at HIGH RESOLUTION
                 if filepath.endswith('.pdf'):
                     doc = fitz.open(filepath)
                     page = doc[0]
-                    mat = fitz.Matrix(2.0, 2.0)
-                    pix = page.get_pixmap(matrix=mat)
+                    # Use 300 DPI for high quality (300/72 = 4.17x zoom)
+                    mat = fitz.Matrix(300/72, 300/72)
+                    pix = page.get_pixmap(matrix=mat, alpha=False)
                     pix.save(annotated_path)
                     doc.close()
                 else:
@@ -7933,11 +8125,12 @@ def update_room_assignment(project_id, assignment_id):
             if 'notes' in data:
                 assignment['notes'] = data['notes']
             if 'status' in data:
+                # New 'status' field takes precedence
                 assignment['status'] = data['status']
                 if data['status'] == 'installed' and not assignment.get('installed_at'):
                     assignment['installed_at'] = datetime.now().isoformat()
-            # Legacy support for 'installed' boolean
-            if 'installed' in data:
+            elif 'installed' in data:
+                # Legacy support for 'installed' boolean - only used if 'status' not provided
                 assignment['status'] = 'installed' if data['installed'] else 'pending'
                 if data['installed'] and not assignment.get('installed_at'):
                     assignment['installed_at'] = datetime.now().isoformat()
@@ -10277,7 +10470,13 @@ def handle_kanban_task(task_id):
 # CRM EXTENDED - PEOPLE, JOBS, MATERIALS, PAYMENTS
 # ============================================================================
 
-import crm_extended
+# Use database-backed version if available
+if CRM_USE_DATABASE:
+    import crm_extended_db as crm_extended
+    logger.info("✅ Using PostgreSQL for CRM Extended (people, jobs, materials)")
+else:
+    import crm_extended
+    logger.info("📁 Using JSON files for CRM Extended (people, jobs, materials)")
 
 # ====================================================================================
 # PEOPLE API ENDPOINTS
