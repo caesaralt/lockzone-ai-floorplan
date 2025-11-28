@@ -1,6 +1,7 @@
 """
 CRM Repository - Database access layer for CRM entities.
 Handles customers, projects, jobs, technicians, suppliers, quotes, communications, calendar.
+All operations are logged to the event_log table for AI learning.
 """
 
 import logging
@@ -12,23 +13,43 @@ from sqlalchemy import or_, and_
 from database.models import (
     Customer, Project, Job, Technician, Supplier,
     Quote, QuoteLineItem, Communication, CalendarEvent,
-    PriceClass, PriceClassItem
+    PriceClass, PriceClassItem, EventLog
 )
 
 logger = logging.getLogger(__name__)
 
 
 class CRMRepository:
-    """Repository for CRM database operations."""
+    """Repository for CRM database operations with event logging for AI."""
     
     # Map API field names to database column names
     FIELD_MAPPING = {
         'metadata': 'extra_data'
     }
     
-    def __init__(self, session: Session, organization_id: str):
+    def __init__(self, session: Session, organization_id: str, user_id: str = None):
         self.session = session
         self.organization_id = organization_id
+        self.user_id = user_id  # For tracking who made changes
+    
+    def _log_event(self, entity_type: str, entity_id: str, event_type: str,
+                   description: str = None, metadata: Dict = None):
+        """Log an event to the event_log table for AI learning."""
+        try:
+            event = EventLog(
+                organization_id=self.organization_id,
+                timestamp=datetime.utcnow(),
+                actor_type='user' if self.user_id else 'system',
+                actor_id=self.user_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                event_type=event_type,
+                description=description,
+                extra_data=metadata or {}
+            )
+            self.session.add(event)
+        except Exception as e:
+            logger.warning(f"Failed to log event: {e}")
     
     def _map_field(self, key: str) -> str:
         """Map API field name to database column name."""
@@ -75,6 +96,16 @@ class CRMRepository:
         )
         self.session.add(customer)
         self.session.flush()
+        
+        # Log event for AI learning
+        self._log_event(
+            entity_type='customer',
+            entity_id=customer.id,
+            event_type='CREATED',
+            description=f"Customer '{customer.name}' was created",
+            metadata={'customer_name': customer.name, 'email': customer.email}
+        )
+        
         logger.info(f"Created customer: {customer.id}")
         return customer.to_dict()
     
@@ -87,14 +118,31 @@ class CRMRepository:
         if not customer:
             return None
         
+        # Track changes for AI learning
+        changes = {}
         for key in ['name', 'company', 'email', 'phone', 'address', 
                     'city', 'state', 'postal_code', 'country', 'notes', 
                     'tags', 'metadata', 'is_active']:
             if key in data:
+                old_value = getattr(customer, self._map_field(key))
+                new_value = data[key]
+                if old_value != new_value:
+                    changes[key] = {'old': old_value, 'new': new_value}
                 setattr(customer, self._map_field(key), data[key])
         
         customer.updated_at = datetime.utcnow()
         self.session.flush()
+        
+        # Log event for AI learning
+        if changes:
+            self._log_event(
+                entity_type='customer',
+                entity_id=customer_id,
+                event_type='UPDATED',
+                description=f"Customer '{customer.name}' was updated",
+                metadata={'changes': changes}
+            )
+        
         logger.info(f"Updated customer: {customer_id}")
         return customer.to_dict()
     
@@ -106,9 +154,21 @@ class CRMRepository:
         ).first()
         if not customer:
             return False
+        
+        customer_name = customer.name
         customer.is_active = False
         customer.updated_at = datetime.utcnow()
         self.session.flush()
+        
+        # Log event for AI learning
+        self._log_event(
+            entity_type='customer',
+            entity_id=customer_id,
+            event_type='DELETED',
+            description=f"Customer '{customer_name}' was deactivated",
+            metadata={'customer_name': customer_name}
+        )
+        
         logger.info(f"Deleted (deactivated) customer: {customer_id}")
         return True
     
@@ -514,6 +574,21 @@ class CRMRepository:
         )
         self.session.add(quote)
         self.session.flush()
+        
+        # Log event for AI learning
+        self._log_event(
+            entity_type='quote',
+            entity_id=quote.id,
+            event_type='CREATED',
+            description=f"Quote '{quote.title}' was created (${quote.total_amount})",
+            metadata={
+                'title': quote.title,
+                'total_amount': quote.total_amount,
+                'customer_id': quote.customer_id,
+                'status': quote.status
+            }
+        )
+        
         logger.info(f"Created quote: {quote.id}")
         return quote.to_dict()
     
@@ -525,6 +600,9 @@ class CRMRepository:
         ).first()
         if not quote:
             return None
+        
+        # Track status changes for AI learning
+        old_status = quote.status
         
         for key in ['quote_number', 'title', 'description', 'status', 'source',
                     'supplier_name', 'subtotal', 'markup_percentage', 'markup_amount',
@@ -545,6 +623,39 @@ class CRMRepository:
         
         quote.updated_at = datetime.utcnow()
         self.session.flush()
+        
+        # Log event for AI learning - track status changes specially
+        if 'status' in data and old_status != data['status']:
+            event_type = 'STATUS_CHANGED'
+            if data['status'] == 'sent':
+                event_type = 'QUOTE_SENT'
+            elif data['status'] == 'accepted':
+                event_type = 'QUOTE_ACCEPTED'
+            elif data['status'] == 'rejected':
+                event_type = 'QUOTE_REJECTED'
+            elif data['status'] == 'expired':
+                event_type = 'QUOTE_EXPIRED'
+            
+            self._log_event(
+                entity_type='quote',
+                entity_id=quote_id,
+                event_type=event_type,
+                description=f"Quote '{quote.title}' status changed from '{old_status}' to '{quote.status}'",
+                metadata={
+                    'old_status': old_status,
+                    'new_status': quote.status,
+                    'total_amount': quote.total_amount
+                }
+            )
+        else:
+            self._log_event(
+                entity_type='quote',
+                entity_id=quote_id,
+                event_type='UPDATED',
+                description=f"Quote '{quote.title}' was updated",
+                metadata={'updated_fields': list(data.keys())}
+            )
+        
         logger.info(f"Updated quote: {quote_id}")
         return quote.to_dict()
     

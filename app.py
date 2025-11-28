@@ -2761,12 +2761,14 @@ def save_quote_from_automation():
         labor_cost = 0
         
         # Extract costs from the automation data
+        # Use explicit None checks to preserve valid zero values
         if quote_data.get('costs'):
             costs = quote_data['costs']
-            materials_cost = costs.get('materials', 0) or costs.get('total_materials', 0) or 0
-            labor_cost = costs.get('labor', 0) or costs.get('total_labor', 0) or 0
-            if not total_amount:
-                total_amount = costs.get('total', 0) or (materials_cost + labor_cost)
+            materials_cost = costs.get('materials') if costs.get('materials') is not None else costs.get('total_materials', 0)
+            labor_cost = costs.get('labor') if costs.get('labor') is not None else costs.get('total_labor', 0)
+            if total_amount is None or total_amount == 0:
+                cost_total = costs.get('total')
+                total_amount = cost_total if cost_total is not None else (materials_cost + labor_cost)
 
         # Prepare quote record in CRM-compatible format
         new_quote = {
@@ -2950,10 +2952,11 @@ def get_quote_canvas_state(quote_id):
                 logger.warning(f"Could not find floorplan for quote {quote_id}. Tried: {possible_filenames}")
         
         # Get components - check both top-level and automation_data for backwards compatibility
+        # Use explicit None checks to preserve valid empty values (empty list/dict)
         automation_data = quote.get('automation_data', {})
-        components = quote.get('components', []) or automation_data.get('components', [])
-        costs = quote.get('costs', {}) or automation_data.get('costs', {})
-        analysis = quote.get('analysis', {}) or automation_data.get('analysis', {})
+        components = quote.get('components') if quote.get('components') is not None else automation_data.get('components', [])
+        costs = quote.get('costs') if quote.get('costs') is not None else automation_data.get('costs', {})
+        analysis = quote.get('analysis') if quote.get('analysis') is not None else automation_data.get('analysis', {})
         
         return jsonify({
             'success': True,
@@ -10317,9 +10320,6 @@ def generate_annotated_floorplan():
 # KANBAN BOARD ENDPOINTS
 # ========================================
 
-# Kanban Board Data File
-KANBAN_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'kanban_tasks.json')
-
 @app.route('/kanban')
 def kanban_board():
     """Kanban operations board"""
@@ -10330,48 +10330,63 @@ def kanban_board():
     response.headers['Expires'] = '0'
     return response
 
+
+def _get_kanban_org_id():
+    """Get the organization ID for kanban operations."""
+    if CRM_USE_DATABASE:
+        try:
+            from database.seed import get_or_create_default_organization
+            from database.connection import get_db_session
+            with get_db_session() as session:
+                org = get_or_create_default_organization(session)
+                return org.id
+        except Exception as e:
+            logger.error(f"Error getting org ID for kanban: {e}")
+            return None
+    return None
+
+
 @app.route('/api/kanban/tasks', methods=['GET', 'POST'])
 def handle_kanban_tasks():
     """Get all tasks or create new task"""
     try:
-        if request.method == 'GET':
-            # Check if requesting archived tasks
-            show_archived = request.args.get('archived') == 'true'
-
-            if USE_DATABASE:
-                if show_archived:
-                    tasks = [task.to_dict() for task in KanbanTask.query.filter_by(archived=True).order_by(KanbanTask.archived_at.desc()).all()]
+        if CRM_USE_DATABASE:
+            from database.connection import get_db_session
+            from services.kanban_repository import KanbanRepository
+            
+            org_id = _get_kanban_org_id()
+            if not org_id:
+                return jsonify({'success': False, 'error': 'Organization not found'}), 500
+            
+            with get_db_session() as session:
+                repo = KanbanRepository(session, org_id)
+                
+                if request.method == 'GET':
+                    show_archived = request.args.get('archived') == 'true'
+                    tasks = repo.list_tasks(archived=show_archived)
+                    return jsonify({'success': True, 'tasks': tasks})
                 else:
-                    tasks = [task.to_dict() for task in KanbanTask.query.filter_by(archived=False).all()]
-            else:
+                    data = request.json
+                    task = repo.create_task(data)
+                    session.commit()
+                    return jsonify({'success': True, 'task': task})
+        else:
+            # Fallback to JSON file
+            KANBAN_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'kanban_tasks.json')
+            
+            if request.method == 'GET':
+                show_archived = request.args.get('archived') == 'true'
                 all_tasks = load_json_file(KANBAN_FILE, [])
                 if show_archived:
                     tasks = [t for t in all_tasks if t.get('archived', False)]
                 else:
                     tasks = [t for t in all_tasks if not t.get('archived', False)]
-            return jsonify({'success': True, 'tasks': tasks})
-        else:
-            data = request.json
-            task_id = str(uuid.uuid4())
-            position = data.get('position', {'x': 10, 'y': 10})
-
-            if USE_DATABASE:
-                task = KanbanTask(
-                    id=task_id,
-                    column=data.get('column', 'todo'),
-                    content=data.get('content', 'New Task'),
-                    notes=data.get('notes', ''),
-                    color=data.get('color', '#ffffff'),
-                    position_x=position.get('x', 10),
-                    position_y=position.get('y', 10),
-                    assigned_to=data.get('assigned_to'),
-                    pinned=data.get('pinned', False),
-                    due_date=data.get('due_date')
-                )
-                db.session.add(task)
-                db.session.commit()
-                return jsonify({'success': True, 'task': task.to_dict()})
+                return jsonify({'success': True, 'tasks': tasks})
             else:
+                data = request.json
+                task_id = str(uuid.uuid4())
+                position = data.get('position', {'x': 10, 'y': 10})
+
                 tasks = load_json_file(KANBAN_FILE, [])
                 task = {
                     'id': task_id,
@@ -10390,53 +10405,41 @@ def handle_kanban_tasks():
                 save_json_file(KANBAN_FILE, tasks)
                 return jsonify({'success': True, 'task': task})
     except Exception as e:
+        logger.error(f"Kanban tasks error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/kanban/tasks/<task_id>', methods=['PUT', 'DELETE'])
 def handle_kanban_task(task_id):
     """Update or delete a specific task"""
     try:
-        if USE_DATABASE:
-            task = KanbanTask.query.get(task_id)
-            if not task:
-                return jsonify({'success': False, 'error': 'Task not found'}), 404
-
-            if request.method == 'PUT':
-                data = request.json
-                if 'column' in data:
-                    task.column = data['column']
-                if 'content' in data:
-                    task.content = data['content']
-                if 'notes' in data:
-                    task.notes = data['notes']
-                if 'color' in data:
-                    task.color = data['color']
-                if 'position' in data:
-                    task.position_x = data['position'].get('x', task.position_x)
-                    task.position_y = data['position'].get('y', task.position_y)
-                if 'due_date' in data:
-                    task.due_date = data['due_date']
-                if 'assigned_to' in data:
-                    task.assigned_to = data['assigned_to']
-                if 'pinned' in data:
-                    task.pinned = data['pinned']
-                if 'archived' in data:
-                    task.archived = data['archived']
-                    if data['archived']:
-                        task.archived_at = datetime.utcnow()
-                    else:
-                        task.archived_at = None
-
-                task.updated_at = datetime.utcnow()
-                db.session.commit()
-                return jsonify({'success': True, 'task': task.to_dict()})
-
-            elif request.method == 'DELETE':
-                db.session.delete(task)
-                db.session.commit()
-                return jsonify({'success': True})
-
+        if CRM_USE_DATABASE:
+            from database.connection import get_db_session
+            from services.kanban_repository import KanbanRepository
+            
+            org_id = _get_kanban_org_id()
+            if not org_id:
+                return jsonify({'success': False, 'error': 'Organization not found'}), 500
+            
+            with get_db_session() as session:
+                repo = KanbanRepository(session, org_id)
+                
+                if request.method == 'PUT':
+                    data = request.json
+                    task = repo.update_task(task_id, data)
+                    if not task:
+                        return jsonify({'success': False, 'error': 'Task not found'}), 404
+                    session.commit()
+                    return jsonify({'success': True, 'task': task})
+                
+                elif request.method == 'DELETE':
+                    if not repo.delete_task(task_id):
+                        return jsonify({'success': False, 'error': 'Task not found'}), 404
+                    session.commit()
+                    return jsonify({'success': True})
         else:
+            # Fallback to JSON file
+            KANBAN_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'kanban_tasks.json')
             tasks = load_json_file(KANBAN_FILE, [])
             idx = next((i for i, t in enumerate(tasks) if t['id'] == task_id), None)
 
@@ -10464,6 +10467,7 @@ def handle_kanban_task(task_id):
                 return jsonify({'success': True})
 
     except Exception as e:
+        logger.error(f"Kanban task error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
@@ -10782,6 +10786,568 @@ def crm_calendar_event(event_id):
             return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
+# REMINDERS & ALERTS API
+# ============================================================================
+
+@app.route('/api/reminders', methods=['GET'])
+@auth.login_required
+def get_reminders():
+    """Get all reminders and alerts that need attention."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'reminders': {}, 'alerts': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.reminder_service import ReminderService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            service = ReminderService(session, org.id)
+            
+            return jsonify({
+                'success': True,
+                'reminders': service.check_all_reminders(),
+                'summary': service.get_summary()
+            })
+    except Exception as e:
+        logger.error(f"Error getting reminders: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/dashboard/alerts', methods=['GET'])
+@auth.login_required
+def get_dashboard_alerts():
+    """Get prioritized alerts for the dashboard."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'alerts': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.reminder_service import ReminderService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            service = ReminderService(session, org.id)
+            
+            return jsonify({
+                'success': True,
+                'alerts': service.get_dashboard_alerts()
+            })
+    except Exception as e:
+        logger.error(f"Error getting dashboard alerts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ai/context', methods=['GET'])
+@auth.login_required
+def get_ai_context():
+    """Get AI context for intelligent assistance."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'context': {}})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.ai_context import AIContextService
+        
+        entity_type = request.args.get('entity_type')
+        entity_id = request.args.get('entity_id')
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            service = AIContextService(session, org.id)
+            
+            context = service.build_ai_context(
+                entity_type=entity_type,
+                entity_id=entity_id
+            )
+            
+            return jsonify({
+                'success': True,
+                'context': context
+            })
+    except Exception as e:
+        logger.error(f"Error getting AI context: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/activity/recent', methods=['GET'])
+@auth.login_required
+def get_recent_activity():
+    """Get recent activity from the event log."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'events': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.event_logger import EventLogger
+        
+        hours = int(request.args.get('hours', 24))
+        limit = int(request.args.get('limit', 50))
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            logger_service = EventLogger(session, org.id)
+            
+            events = logger_service.get_recent_events(hours=hours, limit=limit)
+            summary = logger_service.get_activity_summary(days=7)
+            
+            return jsonify({
+                'success': True,
+                'events': events,
+                'summary': summary
+            })
+    except Exception as e:
+        logger.error(f"Error getting recent activity: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# NOTIFICATIONS API
+# ============================================================================
+
+@app.route('/api/notifications', methods=['GET', 'POST'])
+@auth.login_required
+def handle_notifications():
+    """Get notifications or create a new notification."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'notifications': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.notification_service import NotificationService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            
+            # Get current user ID if available
+            user_id = None
+            try:
+                current_user = auth.get_current_user()
+                if current_user:
+                    user_id = current_user.get('id')
+            except:
+                pass
+            
+            service = NotificationService(session, org.id)
+            
+            if request.method == 'GET':
+                unread_only = request.args.get('unread_only') == 'true'
+                limit = int(request.args.get('limit', 50))
+                
+                notifications = service.get_notifications(
+                    user_id=user_id,
+                    unread_only=unread_only,
+                    limit=limit
+                )
+                unread_count = service.get_unread_count(user_id=user_id)
+                
+                return jsonify({
+                    'success': True,
+                    'notifications': notifications,
+                    'unread_count': unread_count
+                })
+            
+            else:  # POST
+                data = request.json
+                notification = service.create_notification(
+                    title=data.get('title', 'Notification'),
+                    message=data.get('message', ''),
+                    notification_type=data.get('type', 'info'),
+                    priority=data.get('priority', 'normal'),
+                    user_id=data.get('user_id'),
+                    entity_type=data.get('entity_type'),
+                    entity_id=data.get('entity_id'),
+                    metadata=data.get('metadata'),
+                    send_email=data.get('send_email', False)
+                )
+                session.commit()
+                
+                if notification:
+                    return jsonify({'success': True, 'notification': notification})
+                return jsonify({'success': False, 'error': 'Failed to create notification'}), 400
+                
+    except Exception as e:
+        logger.error(f"Error handling notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/<notification_id>/read', methods=['POST'])
+@auth.login_required
+def mark_notification_read(notification_id):
+    """Mark a notification as read."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.notification_service import NotificationService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            service = NotificationService(session, org.id)
+            
+            if service.mark_as_read(notification_id):
+                session.commit()
+                return jsonify({'success': True})
+            return jsonify({'success': False, 'error': 'Notification not found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error marking notification as read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@auth.login_required
+def mark_all_notifications_read():
+    """Mark all notifications as read."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'count': 0})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.notification_service import NotificationService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            
+            user_id = None
+            try:
+                current_user = auth.get_current_user()
+                if current_user:
+                    user_id = current_user.get('id')
+            except:
+                pass
+            
+            service = NotificationService(session, org.id)
+            count = service.mark_all_as_read(user_id=user_id)
+            session.commit()
+            
+            return jsonify({'success': True, 'count': count})
+            
+    except Exception as e:
+        logger.error(f"Error marking all notifications as read: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/notifications/<notification_id>', methods=['DELETE'])
+@auth.login_required
+def delete_notification(notification_id):
+    """Delete a notification."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.notification_service import NotificationService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            service = NotificationService(session, org.id)
+            
+            if service.delete_notification(notification_id):
+                session.commit()
+                return jsonify({'success': True})
+            return jsonify({'success': False, 'error': 'Notification not found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error deleting notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# AI CHAT API (Enhanced with context)
+# ============================================================================
+
+@app.route('/api/ai/chat/contextual', methods=['POST'])
+@auth.login_required
+def ai_chat_contextual():
+    """AI chat endpoint with full business context."""
+    if not CRM_USE_DATABASE:
+        return jsonify({
+            'success': False,
+            'error': 'Database not configured',
+            'response': 'AI chat requires database to be configured.'
+        })
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.ai_chat_service import AIChatService
+        
+        data = request.json
+        message = data.get('message', '')
+        conversation_history = data.get('history', [])
+        include_context = data.get('include_context', True)
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+        
+        # Get current user
+        user_id = None
+        try:
+            current_user = auth.get_current_user()
+            if current_user:
+                user_id = current_user.get('id')
+        except:
+            pass
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            chat_service = AIChatService(session, org.id, user_id)
+            
+            result = chat_service.chat(
+                message=message,
+                conversation_history=conversation_history,
+                include_context=include_context
+            )
+            
+            session.commit()
+            return jsonify(result)
+            
+    except Exception as e:
+        logger.error(f"Error in contextual AI chat: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'response': 'An error occurred processing your request.'
+        }), 500
+
+
+@app.route('/api/ai/insights', methods=['GET'])
+@auth.login_required
+def get_ai_insights():
+    """Get AI-generated quick insights for dashboard."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'insights': []})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.ai_chat_service import AIChatService
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            chat_service = AIChatService(session, org.id)
+            
+            result = chat_service.get_quick_insights()
+            return jsonify(result)
+            
+    except Exception as e:
+        logger.error(f"Error getting AI insights: {e}")
+        return jsonify({'success': False, 'insights': [], 'error': str(e)}), 500
+
+
+# ============================================================================
+# SCHEDULER API
+# ============================================================================
+
+@app.route('/api/scheduler/status', methods=['GET'])
+@auth.login_required
+def get_scheduler_status():
+    """Get the status of background jobs."""
+    try:
+        from services.scheduler import get_scheduler
+        
+        scheduler = get_scheduler()
+        return jsonify({
+            'success': True,
+            'running': scheduler.running,
+            'jobs': scheduler.get_job_status()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting scheduler status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/scheduler/run/<job_id>', methods=['POST'])
+@auth.login_required
+def run_scheduler_job(job_id):
+    """Manually trigger a scheduled job."""
+    try:
+        from services.scheduler import get_scheduler
+        
+        scheduler = get_scheduler()
+        if scheduler.run_job_now(job_id):
+            return jsonify({'success': True, 'message': f'Job {job_id} executed'})
+        return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+    except Exception as e:
+        logger.error(f"Error running scheduler job: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# PERSONALIZED DASHBOARD API
+# ============================================================================
+
+@app.route('/api/dashboard/personalized', methods=['GET'])
+@auth.login_required
+def get_personalized_dashboard():
+    """Get personalized dashboard data based on user role and permissions."""
+    if not CRM_USE_DATABASE:
+        return jsonify({'success': True, 'data': {}})
+    
+    try:
+        from database.connection import get_db_session
+        from database.seed import get_or_create_default_organization
+        from services.ai_context import AIContextService
+        from services.reminder_service import ReminderService
+        from services.notification_service import NotificationService
+        
+        # Get current user
+        current_user = None
+        user_id = None
+        user_role = 'user'
+        user_permissions = []
+        
+        try:
+            current_user = auth.get_current_user()
+            if current_user:
+                user_id = current_user.get('id')
+                user_role = current_user.get('role', 'user')
+                user_permissions = current_user.get('permissions', [])
+        except:
+            pass
+        
+        with get_db_session() as session:
+            org = get_or_create_default_organization(session)
+            
+            # Get services
+            context_service = AIContextService(session, org.id)
+            reminder_service = ReminderService(session, org.id)
+            notification_service = NotificationService(session, org.id)
+            
+            # Build personalized dashboard data
+            dashboard_data = {
+                'user': {
+                    'id': user_id,
+                    'role': user_role,
+                    'display_name': current_user.get('display_name') if current_user else 'User'
+                },
+                'business_summary': context_service.get_business_summary(),
+                'notifications': {
+                    'unread_count': notification_service.get_unread_count(user_id),
+                    'recent': notification_service.get_notifications(user_id, limit=5)
+                },
+                'alerts': [],
+                'assigned_items': [],
+                'quick_actions': []
+            }
+            
+            # Get alerts based on role
+            all_alerts = reminder_service.get_dashboard_alerts()
+            
+            # Filter alerts based on user role/permissions
+            if user_role == 'admin':
+                # Admins see all alerts
+                dashboard_data['alerts'] = all_alerts[:10]
+            elif user_role == 'technician':
+                # Technicians see job-related alerts
+                dashboard_data['alerts'] = [
+                    a for a in all_alerts 
+                    if a.get('entity_type') in ['job', 'kanban_task', 'calendar_event']
+                ][:10]
+            else:
+                # Regular users see their assigned items
+                dashboard_data['alerts'] = [
+                    a for a in all_alerts 
+                    if a.get('priority') in ['urgent', 'high']
+                ][:5]
+            
+            # Get assigned items for the user
+            if user_id:
+                dashboard_data['assigned_items'] = _get_user_assigned_items(
+                    session, org.id, user_id
+                )
+            
+            # Build quick actions based on permissions
+            quick_actions = []
+            
+            if 'crm' in user_permissions or user_role == 'admin':
+                quick_actions.extend([
+                    {'id': 'new_customer', 'label': 'New Customer', 'icon': '👤', 'section': 'people-customers'},
+                    {'id': 'new_quote', 'label': 'New Quote', 'icon': '📝', 'section': 'quotes-open'},
+                ])
+            
+            if 'canvas' in user_permissions or user_role == 'admin':
+                quick_actions.append(
+                    {'id': 'new_project', 'label': 'New Project', 'icon': '🏗️', 'section': 'jobs-in-progress'}
+                )
+            
+            quick_actions.append(
+                {'id': 'new_task', 'label': 'New Task', 'icon': '✅', 'action': 'open_kanban'}
+            )
+            
+            dashboard_data['quick_actions'] = quick_actions
+            
+            return jsonify({
+                'success': True,
+                'data': dashboard_data
+            })
+            
+    except Exception as e:
+        logger.error(f"Error getting personalized dashboard: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _get_user_assigned_items(session, org_id: str, user_id: str) -> List[Dict]:
+    """Get items assigned to a specific user."""
+    try:
+        from database.models import KanbanTask, Job
+        
+        items = []
+        
+        # Get assigned tasks
+        tasks = session.query(KanbanTask).filter(
+            KanbanTask.organization_id == org_id,
+            KanbanTask.assigned_to == user_id,
+            KanbanTask.archived == False
+        ).order_by(KanbanTask.due_date).limit(5).all()
+        
+        for task in tasks:
+            items.append({
+                'type': 'task',
+                'id': task.id,
+                'title': task.content[:50] if task.content else 'Task',
+                'status': task.column,
+                'due_date': task.due_date.isoformat() if task.due_date else None,
+                'priority': task.priority
+            })
+        
+        # Get assigned jobs
+        jobs = session.query(Job).filter(
+            Job.organization_id == org_id,
+            Job.technician_id == user_id,
+            Job.status.in_(['pending', 'in_progress'])
+        ).order_by(Job.scheduled_date).limit(5).all()
+        
+        for job in jobs:
+            items.append({
+                'type': 'job',
+                'id': job.id,
+                'title': job.title,
+                'status': job.status,
+                'scheduled_date': job.scheduled_date.isoformat() if job.scheduled_date else None,
+                'priority': job.priority
+            })
+        
+        return items
+        
+    except Exception as e:
+        logger.error(f"Error getting user assigned items: {e}")
+        return []
+
+
+# ============================================================================
 # STATIC FILE SERVING
 # ============================================================================
 
@@ -10792,12 +11358,35 @@ def serve_output_file(filename):
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
 
+# ============================================================================
+# APPLICATION STARTUP
+# ============================================================================
+
+def start_background_services():
+    """Start background services when the app starts."""
+    if CRM_USE_DATABASE:
+        try:
+            from services.scheduler import init_scheduler
+            init_scheduler()
+            logger.info("Background scheduler started")
+        except Exception as e:
+            logger.error(f"Failed to start background scheduler: {e}")
+
+
+# Start background services when module loads (for production)
+if CRM_USE_DATABASE and os.environ.get('FLASK_ENV') != 'development':
+    start_background_services()
+
+
 if __name__ == '__main__':
-    # Create database tables if using database
-    if USE_DATABASE:
-        with app.app_context():
-            db.create_all()
-            print("✅ Database tables created successfully")
+    # Database tables are now created via Alembic migrations
+    # Run: alembic upgrade head
+    if CRM_USE_DATABASE:
+        print("✅ Using PostgreSQL database (run 'alembic upgrade head' for migrations)")
+        # Start background services for development
+        start_background_services()
+    else:
+        print("📁 Using JSON file storage")
 
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

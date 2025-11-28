@@ -808,6 +808,128 @@ class Document(Base):
 
 
 # =============================================================================
+# PAYMENTS
+# =============================================================================
+
+class Payment(Base):
+    """Payment records for tracking money in and out."""
+    __tablename__ = 'payments'
+    
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    organization_id = Column(UUID(as_uuid=False), ForeignKey('organizations.id'), nullable=False)
+    customer_id = Column(UUID(as_uuid=False), ForeignKey('customers.id'))
+    supplier_id = Column(UUID(as_uuid=False), ForeignKey('suppliers.id'))
+    project_id = Column(UUID(as_uuid=False), ForeignKey('projects.id'))
+    quote_id = Column(UUID(as_uuid=False), ForeignKey('quotes.id'))
+    job_id = Column(UUID(as_uuid=False), ForeignKey('jobs.id'))
+    direction = Column(String(50), default='to_us')  # to_us, to_suppliers
+    status = Column(String(50), default='pending')  # upcoming, pending, due, paid, credit, retention
+    amount = Column(Float, default=0)
+    due_date = Column(Date)
+    paid_date = Column(Date)
+    invoice_number = Column(String(100))
+    invoice_pdf = Column(Text)  # Path or URL to invoice
+    payment_method = Column(String(50))  # bank_transfer, card, cash, etc.
+    notes = Column(Text)
+    linked_to = Column(JSONB, default={})  # Legacy field for linking
+    person_id = Column(String(255))  # Legacy field
+    extra_data = Column(JSONB, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        Index('ix_payments_organization', 'organization_id'),
+        Index('ix_payments_direction', 'direction'),
+        Index('ix_payments_status', 'status'),
+        Index('ix_payments_due_date', 'due_date'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organization_id': self.organization_id,
+            'customer_id': self.customer_id,
+            'supplier_id': self.supplier_id,
+            'project_id': self.project_id,
+            'quote_id': self.quote_id,
+            'job_id': self.job_id,
+            'direction': self.direction,
+            'status': self.status,
+            'amount': self.amount,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'paid_date': self.paid_date.isoformat() if self.paid_date else None,
+            'invoice_number': self.invoice_number,
+            'invoice_pdf': self.invoice_pdf,
+            'payment_method': self.payment_method,
+            'notes': self.notes,
+            'linked_to': self.linked_to or {},
+            'person_id': self.person_id,
+            'metadata': self.extra_data or {},
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# =============================================================================
+# KANBAN TASKS
+# =============================================================================
+
+class KanbanTask(Base):
+    """Kanban board tasks for project/operations management."""
+    __tablename__ = 'kanban_tasks'
+    
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    organization_id = Column(UUID(as_uuid=False), ForeignKey('organizations.id'), nullable=False)
+    project_id = Column(UUID(as_uuid=False), ForeignKey('projects.id'))
+    job_id = Column(UUID(as_uuid=False), ForeignKey('jobs.id'))
+    column = Column(String(50), default='todo')  # todo, in_progress, review, done
+    content = Column(Text, nullable=False)
+    notes = Column(Text)
+    color = Column(String(20), default='#ffffff')
+    position_x = Column(Float, default=10)
+    position_y = Column(Float, default=10)
+    assigned_to = Column(String(255))  # User ID or name
+    pinned = Column(Boolean, default=False)
+    due_date = Column(Date)
+    priority = Column(String(20), default='normal')  # low, normal, high, urgent
+    archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime)
+    extra_data = Column(JSONB, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        Index('ix_kanban_tasks_organization', 'organization_id'),
+        Index('ix_kanban_tasks_column', 'column'),
+        Index('ix_kanban_tasks_archived', 'archived'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organization_id': self.organization_id,
+            'project_id': self.project_id,
+            'job_id': self.job_id,
+            'column': self.column,
+            'content': self.content,
+            'notes': self.notes,
+            'color': self.color,
+            'position': {'x': self.position_x or 10, 'y': self.position_y or 10},
+            'position_x': self.position_x,
+            'position_y': self.position_y,
+            'assigned_to': self.assigned_to,
+            'pinned': self.pinned,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'priority': self.priority,
+            'archived': self.archived,
+            'archived_at': self.archived_at.isoformat() if self.archived_at else None,
+            'metadata': self.extra_data or {},
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# =============================================================================
 # AI - EVENT LOG
 # =============================================================================
 
@@ -848,6 +970,55 @@ class EventLog(Base):
             'event_type': self.event_type,
             'description': self.description,
             'metadata': self.extra_data or {}
+        }
+
+
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
+
+class Notification(Base):
+    """User notifications for alerts, reminders, and system messages."""
+    __tablename__ = 'notifications'
+    
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    organization_id = Column(UUID(as_uuid=False), ForeignKey('organizations.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=False), ForeignKey('users.id'))  # None = broadcast to all
+    title = Column(String(255), nullable=False)
+    message = Column(Text)
+    notification_type = Column(String(50), default='info')  # info, warning, alert, reminder, success
+    priority = Column(String(20), default='normal')  # low, normal, high, urgent
+    entity_type = Column(String(50))  # Related entity type
+    entity_id = Column(UUID(as_uuid=False))  # Related entity ID
+    is_read = Column(Boolean, default=False)
+    read_at = Column(DateTime)
+    sent_email = Column(Boolean, default=False)
+    extra_data = Column(JSONB, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        Index('ix_notifications_organization', 'organization_id'),
+        Index('ix_notifications_user', 'user_id'),
+        Index('ix_notifications_is_read', 'is_read'),
+        Index('ix_notifications_created_at', 'created_at'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organization_id': self.organization_id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'message': self.message,
+            'notification_type': self.notification_type,
+            'priority': self.priority,
+            'entity_type': self.entity_type,
+            'entity_id': self.entity_id,
+            'is_read': self.is_read,
+            'read_at': self.read_at.isoformat() if self.read_at else None,
+            'sent_email': self.sent_email,
+            'metadata': self.extra_data or {},
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 
