@@ -575,28 +575,7 @@
     <nav class="top-nav">
         <div class="nav-container">
             <a href="/" class="top-logo">Integratd Living</a>
-            <!-- Notification Bell -->
-            <div class="notification-bell-container" style="position: relative; margin-left: auto;">
-                <button class="notification-bell-btn" id="notificationBell" onclick="toggleNotificationPanel()" aria-label="Notifications" style="background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; position: relative;">
-                    <span style="font-size: 20px;">🔔</span>
-                    <span class="notification-badge" id="notificationBadge" style="display: none; position: absolute; top: 2px; right: 2px; background: #e74c3c; color: white; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px;">0</span>
-                </button>
-                
-                <!-- Notification Panel -->
-                <div class="notification-panel" id="notificationPanel" style="display: none; position: absolute; top: 50px; right: 0; width: 360px; max-height: 480px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; overflow: hidden;">
-                    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Notifications</h3>
-                        <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 13px;">Mark all read</button>
-                    </div>
-                    <div id="notificationList" style="max-height: 360px; overflow-y: auto; padding: 8px;">
-                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading...</div>
-                    </div>
-                    <div style="padding: 12px; border-top: 1px solid var(--border-color); text-align: center;">
-                        <button onclick="loadMoreNotifications()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 13px;">View all notifications</button>
-                    </div>
-                </div>
-            </div>
-
+            <div style="flex: 1;"></div>
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -822,76 +801,56 @@
                 </div>
             </div>
 
-            <!-- AI INSIGHTS & TASKS WIDGETS -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <!-- MY WORK & NOTIFICATIONS - Styled like chart cards -->
+            <div class="charts-grid" style="margin-top: 20px;">
                 
-                <!-- AI Jarvis Insights Widget -->
-                <div class="card" style="border-left: 4px solid #556B2F;">
-                    <div class="card-header">
-                        <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 24px;">🤖</span> AI Insights
-                        </h2>
-                        <button class="btn btn-secondary" onclick="refreshAIInsights()" style="font-size: 12px; padding: 6px 12px;">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                    <div id="aiInsightsContainer">
-                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
-                            <div class="spinner" style="margin: 0 auto 10px;"></div>
-                            <p>Loading AI insights...</p>
-                        </div>
-                    </div>
-                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="quickAICommand" placeholder="Ask Jarvis anything... (e.g., 'Create a quote for John Smith')" 
-                                   style="flex: 1; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-primary);"
-                                   onkeydown="if(event.key==='Enter') executeQuickAICommand()">
-                            <button onclick="executeQuickAICommand()" class="btn btn-primary" style="padding: 10px 16px;">
-                                🚀 Go
-                            </button>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-tertiary);">
-                            Try: "Show overdue payments" • "Schedule a meeting tomorrow" • "Find quotes over $5000"
-                        </div>
-                    </div>
-                </div>
-
                 <!-- My Tasks Widget -->
-                <div class="card" style="border-left: 4px solid #3498db;">
-                    <div class="card-header">
-                        <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 24px;">📋</span> My Tasks
-                        </h2>
-                        <button class="btn btn-secondary" onclick="showSection('kanban')" style="font-size: 12px; padding: 6px 12px;">
-                            View All →
-                        </button>
+                <div class="chart-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 class="chart-title">📋 My Tasks</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openQuickTaskModal()" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">+ Add</button>
+                            <button onclick="showSection('kanban')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">View All</button>
+                        </div>
                     </div>
-                    <div id="myTasksContainer">
-                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    <div id="myTasksContainer" style="min-height: 200px;">
+                        <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
                             <div class="spinner" style="margin: 0 auto 10px;"></div>
                             <p>Loading tasks...</p>
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <button onclick="openQuickTaskModal()" class="btn btn-primary" style="width: 100%;">
-                            + Add Quick Task
-                        </button>
+                </div>
+
+                <!-- Notifications & Alerts Widget -->
+                <div class="chart-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 class="chart-title">🔔 Notifications <span id="alertsCount" style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 8px;">0</span></h3>
+                        <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 12px;">Mark all read</button>
+                    </div>
+                    <div id="alertsContainer" style="min-height: 200px;">
+                        <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                            Loading notifications...
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Alerts & Reminders Widget -->
-            <div class="card" style="margin-top: 20px; border-left: 4px solid #e74c3c;">
-                <div class="card-header">
-                    <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 24px;">⚠️</span> Alerts & Reminders
-                    </h2>
-                    <span id="alertsCount" style="background: #e74c3c; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">0</span>
+            <!-- AI Assistant - Compact command bar -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="chart-title">🤖 AI Assistant</h3>
+                    <button class="btn btn-secondary" onclick="refreshAIInsights()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Insights</button>
                 </div>
-                <div id="alertsContainer">
-                    <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
-                        Loading alerts...
-                    </div>
+                <div id="aiInsightsContainer" style="margin-bottom: 16px; min-height: 60px;">
+                    <!-- AI insights will load here -->
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="quickAICommand" placeholder="Ask anything... (e.g., 'Show overdue payments', 'Create a quote for John')" 
+                           style="flex: 1; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-primary); font-size: 14px;"
+                           onkeydown="if(event.key==='Enter') executeQuickAICommand()">
+                    <button onclick="executeQuickAICommand()" class="btn btn-primary" style="padding: 12px 20px;">
+                        Ask →
+                    </button>
                 </div>
             </div>
         </div>
@@ -9498,56 +9457,57 @@
     // initDarkMode moved to top of script block (line ~4797) for proper initialization order
 
     // ============================================================================
-    // NOTIFICATION SYSTEM
+    // NOTIFICATION SYSTEM (Dashboard Widget)
     // ============================================================================
     
-    let notificationsLoaded = false;
-    let notificationPollInterval = null;
-    
-    function toggleNotificationPanel() {
-        const panel = document.getElementById('notificationPanel');
-        const isVisible = panel.style.display === 'block';
-        panel.style.display = isVisible ? 'none' : 'block';
-        
-        if (!isVisible && !notificationsLoaded) {
-            loadNotifications();
-        }
-    }
-    
     async function loadNotifications() {
+        const container = document.getElementById('alertsContainer');
+        const countBadge = document.getElementById('alertsCount');
+        
         try {
-            const response = await fetch('/api/notifications?unread_only=false&limit=20');
+            const response = await fetch('/api/notifications?unread_only=false&limit=10');
             const data = await response.json();
             
             if (data.success) {
-                notificationsLoaded = true;
-                renderNotifications(data.notifications || []);
-                updateNotificationBadge(data.unread_count || 0);
+                const notifications = data.notifications || [];
+                const unreadCount = data.unread_count || notifications.filter(n => !n.is_read).length;
+                
+                // Update badge
+                if (countBadge) {
+                    countBadge.textContent = unreadCount;
+                    countBadge.style.background = unreadCount > 0 ? '#e74c3c' : '#95a5a6';
+                }
+                
+                renderNotificationsWidget(notifications);
             }
         } catch (error) {
             console.error('Error loading notifications:', error);
-            document.getElementById('notificationList').innerHTML = `
-                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
-                    Unable to load notifications
-                </div>
-            `;
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                        <span style="font-size: 24px; display: block; margin-bottom: 8px;">📭</span>
+                        Unable to load notifications
+                    </div>
+                `;
+            }
         }
     }
     
-    function renderNotifications(notifications) {
-        const container = document.getElementById('notificationList');
+    function renderNotificationsWidget(notifications) {
+        const container = document.getElementById('alertsContainer');
+        if (!container) return;
         
         if (notifications.length === 0) {
             container.innerHTML = `
-                <div style="padding: 30px; text-align: center; color: var(--text-secondary);">
+                <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
                     <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎉</span>
-                    No notifications - you're all caught up!
+                    <p style="margin: 0;">No notifications - you're all caught up!</p>
                 </div>
             `;
             return;
         }
         
-        container.innerHTML = notifications.map(n => {
+        container.innerHTML = notifications.slice(0, 6).map(n => {
             const typeIcon = {
                 'info': 'ℹ️',
                 'warning': '⚠️',
@@ -9566,41 +9526,29 @@
             const timeAgo = getTimeAgo(new Date(n.created_at));
             
             return `
-                <div class="notification-item" style="padding: 12px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.2s; ${n.is_read ? 'opacity: 0.7;' : ''}" 
+                <div style="display: flex; gap: 12px; padding: 12px; border-radius: 8px; background: var(--bg-primary); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; ${n.is_read ? 'opacity: 0.7;' : ''}" 
                      onclick="handleNotificationClick('${n.id}', '${n.entity_type || ''}', '${n.entity_id || ''}')"
-                     onmouseover="this.style.background='var(--hover-bg)'" 
-                     onmouseout="this.style.background='transparent'">
-                    <div style="display: flex; gap: 10px; align-items: flex-start;">
-                        <span style="font-size: 20px;">${typeIcon}</span>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: ${n.is_read ? '500' : '600'}; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                                ${n.title}
-                                ${!n.is_read ? '<span style="width: 8px; height: 8px; background: #3498db; border-radius: 50%; display: inline-block;"></span>' : ''}
-                            </div>
-                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${n.message || ''}
-                            </div>
-                            <div style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 8px;">
-                                <span style="width: 6px; height: 6px; background: ${priorityColor}; border-radius: 50%; display: inline-block;"></span>
-                                ${timeAgo}
-                            </div>
+                     onmouseover="this.style.transform='translateX(4px)'" 
+                     onmouseout="this.style.transform='none'">
+                    <div style="font-size: 20px; flex-shrink: 0;">${typeIcon}</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: ${n.is_read ? '500' : '600'}; font-size: 13px; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;">
+                            ${n.title}
+                            ${!n.is_read ? '<span style="width: 6px; height: 6px; background: #3498db; border-radius: 50%; display: inline-block;"></span>' : ''}
                         </div>
-                        <button onclick="event.stopPropagation(); deleteNotification('${n.id}')" 
-                                style="background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; font-size: 14px;"
-                                title="Dismiss">✖️</button>
+                        <div style="font-size: 11px; color: var(--text-tertiary);">${timeAgo}</div>
                     </div>
+                    <div style="width: 4px; background: ${priorityColor}; border-radius: 2px; flex-shrink: 0;"></div>
                 </div>
             `;
         }).join('');
-    }
-    
-    function updateNotificationBadge(count) {
-        const badge = document.getElementById('notificationBadge');
-        if (count > 0) {
-            badge.style.display = 'flex';
-            badge.textContent = count > 99 ? '99+' : count;
-        } else {
-            badge.style.display = 'none';
+        
+        if (notifications.length > 6) {
+            container.innerHTML += `
+                <div style="text-align: center; padding: 8px; font-size: 12px; color: var(--text-secondary);">
+                    +${notifications.length - 6} more notifications
+                </div>
+            `;
         }
     }
     
@@ -9622,7 +9570,6 @@
             const section = sectionMap[entityType];
             if (section) {
                 showSection(section);
-                toggleNotificationPanel();
             }
         }
     }
@@ -9646,21 +9593,6 @@
         }
     }
     
-    async function deleteNotification(notificationId) {
-        try {
-            await fetch(`/api/notifications/${notificationId}`, { method: 'DELETE' });
-            loadNotifications();
-        } catch (error) {
-            console.error('Error deleting notification:', error);
-        }
-    }
-    
-    function loadMoreNotifications() {
-        toggleNotificationPanel();
-        // Could navigate to a full notifications page or open a modal
-        showToast('Viewing all notifications', 'info');
-    }
-    
     function getTimeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
         
@@ -9670,23 +9602,6 @@
         if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
         return date.toLocaleDateString();
     }
-    
-    // Poll for new notifications every 60 seconds
-    function startNotificationPolling() {
-        loadNotifications();
-        notificationPollInterval = setInterval(() => {
-            loadNotifications();
-        }, 60000);
-    }
-    
-    // Close notification panel when clicking outside
-    document.addEventListener('click', function(e) {
-        const panel = document.getElementById('notificationPanel');
-        const bell = document.getElementById('notificationBell');
-        if (panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) {
-            panel.style.display = 'none';
-        }
-    });
     
     // ============================================================================
     // AI INSIGHTS WIDGET (JARVIS)
@@ -9965,9 +9880,9 @@
         
         if (tasks.length === 0) {
             container.innerHTML = `
-                <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
-                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎉</span>
-                    No pending tasks!
+                <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">✅</span>
+                    <p style="margin: 0;">No pending tasks!</p>
                 </div>
             `;
             return;
@@ -9987,31 +9902,46 @@
             'done': 'Done'
         };
         
-        container.innerHTML = tasks.map(task => {
+        const columnIcons = {
+            'todo': '📋',
+            'in_progress': '🔄',
+            'review': '👀',
+            'done': '✅'
+        };
+        
+        container.innerHTML = tasks.slice(0, 6).map(task => {
             const priorityColor = priorityColors[task.priority] || priorityColors.normal;
             const columnLabel = columnLabels[task.column] || task.column;
+            const columnIcon = columnIcons[task.column] || '📋';
             const isOverdue = task.due_date && new Date(task.due_date) < new Date();
             
             return `
-                <div style="padding: 12px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.2s;"
+                <div style="display: flex; gap: 12px; padding: 12px; border-radius: 8px; background: var(--bg-primary); margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
                      onclick="showSection('kanban')"
-                     onmouseover="this.style.background='var(--hover-bg)'" 
-                     onmouseout="this.style.background='transparent'">
-                    <div style="display: flex; align-items: flex-start; gap: 10px;">
-                        <div style="width: 4px; height: 40px; background: ${priorityColor}; border-radius: 2px; flex-shrink: 0;"></div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${task.content}
-                            </div>
-                            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <span style="background: var(--bg-primary); padding: 2px 6px; border-radius: 4px;">${columnLabel}</span>
-                                ${task.due_date ? `<span style="color: ${isOverdue ? '#e74c3c' : 'inherit'};">${isOverdue ? '⚠️' : '📅'} ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
-                            </div>
+                     onmouseover="this.style.transform='translateX(4px)'" 
+                     onmouseout="this.style.transform='none'">
+                    <div style="font-size: 20px; flex-shrink: 0;">${columnIcon}</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${task.content}
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 8px;">
+                            <span>${columnLabel}</span>
+                            ${task.due_date ? `<span style="color: ${isOverdue ? '#e74c3c' : 'inherit'};">${isOverdue ? '⚠️ Overdue' : '📅 ' + new Date(task.due_date).toLocaleDateString()}</span>` : ''}
                         </div>
                     </div>
+                    <div style="width: 4px; background: ${priorityColor}; border-radius: 2px; flex-shrink: 0;"></div>
                 </div>
             `;
         }).join('');
+        
+        if (tasks.length > 6) {
+            container.innerHTML += `
+                <div style="text-align: center; padding: 8px; font-size: 12px; color: var(--text-secondary);">
+                    +${tasks.length - 6} more tasks
+                </div>
+            `;
+        }
     }
     
     function openQuickTaskModal() {
@@ -10124,15 +10054,19 @@
     // ============================================================================
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Start notification polling
-        startNotificationPolling();
+        // Load dashboard widgets on page load
+        loadNotifications();
+        refreshAIInsights();
+        loadMyTasks();
+        loadAlerts();
         
-        // Load dashboard widgets
-        setTimeout(() => {
+        // Refresh every 5 minutes (300000ms)
+        setInterval(() => {
+            loadNotifications();
             refreshAIInsights();
             loadMyTasks();
             loadAlerts();
-        }, 500);
+        }, 300000);
     });
 
 </script>
