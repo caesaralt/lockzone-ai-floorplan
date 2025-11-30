@@ -29,7 +29,10 @@ from database.models import (
     CalendarEvent,
     Document,
     EventLog,
-    DocumentIndex
+    DocumentIndex,
+    Payment,
+    KanbanTask,
+    Notification
 )
 
 __all__ = [
@@ -57,6 +60,9 @@ __all__ = [
     'CalendarEvent',
     'Document',
     'EventLog',
-    'DocumentIndex'
+    'DocumentIndex',
+    'Payment',
+    'KanbanTask',
+    'Notification'
 ]
 

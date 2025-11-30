@@ -10910,7 +10910,6 @@ def get_recent_activity():
 # ============================================================================
 
 @app.route('/api/notifications', methods=['GET', 'POST'])
-@auth.login_required
 def handle_notifications():
     """Get notifications or create a new notification."""
     if not CRM_USE_DATABASE:
@@ -10977,7 +10976,6 @@ def handle_notifications():
 
 
 @app.route('/api/notifications/<notification_id>/read', methods=['POST'])
-@auth.login_required
 def mark_notification_read(notification_id):
     """Mark a notification as read."""
     if not CRM_USE_DATABASE:
@@ -11003,7 +11001,6 @@ def mark_notification_read(notification_id):
 
 
 @app.route('/api/notifications/read-all', methods=['POST'])
-@auth.login_required
 def mark_all_notifications_read():
     """Mark all notifications as read."""
     if not CRM_USE_DATABASE:
@@ -11037,7 +11034,6 @@ def mark_all_notifications_read():
 
 
 @app.route('/api/notifications/<notification_id>', methods=['DELETE'])
-@auth.login_required
 def delete_notification(notification_id):
     """Delete a notification."""
     if not CRM_USE_DATABASE:
@@ -11122,7 +11118,6 @@ def ai_chat_contextual():
 
 
 @app.route('/api/ai/insights', methods=['GET'])
-@auth.login_required
 def get_ai_insights():
     """Get AI-generated quick insights for dashboard."""
     if not CRM_USE_DATABASE:
@@ -11188,7 +11183,6 @@ def get_ai_insights():
 
 
 @app.route('/api/ai/alerts', methods=['GET'])
-@auth.login_required
 def get_ai_alerts():
     """Get AI-generated alerts and reminders for dashboard."""
     if not CRM_USE_DATABASE:

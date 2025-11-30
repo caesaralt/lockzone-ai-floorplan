@@ -25,6 +25,8 @@ services:
       - key: CORS_ORIGINS
         value: https://lockzone-ai-floorplan.onrender.com
       - key: USE_DATABASE
-        value: false
+        value: true
+      - key: DATABASE_URL
+        value: postgresql://integratd_db_user:69RoK3beP4JIFD0BVeUSZRAuBJM2eKS9@dpg-d46odavdiees73d9tc0g-a/integratd_db
       - key: RATELIMIT_ENABLED
         value: true

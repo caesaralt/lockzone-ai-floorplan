@@ -394,34 +394,94 @@
     <div id="linkProjectModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto animate-scale-in">
             <div class="bg-gradient-to-r from-orange-600 to-orange-500 p-6">
-                <h2 class="text-2xl font-bold text-white">🔗 Link to CRM Project</h2>
+                <h2 class="text-2xl font-bold text-white">🔗 Link to CRM</h2>
             </div>
             <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Select Existing Project</label>
-                    <select id="selectProject" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
-                        <option value="">-- Select a Project --</option>
-                    </select>
+                <!-- Tab Buttons -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="showLinkTab('project')" id="tabProject" class="flex-1 px-4 py-2 bg-orange-100 text-orange-700 font-semibold rounded-lg border-2 border-orange-300 transition-all">
+                        📁 Project
+                    </button>
+                    <button onclick="showLinkTab('quote')" id="tabQuote" class="flex-1 px-4 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg border-2 border-gray-200 transition-all hover:bg-blue-50">
+                        📋 Quote
+                    </button>
+                    <button onclick="showLinkTab('job')" id="tabJob" class="flex-1 px-4 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg border-2 border-gray-200 transition-all hover:bg-green-50">
+                        🔧 Job
+                    </button>
                 </div>
 
-                <div class="text-center text-gray-500 font-semibold py-2">- OR -</div>
+                <!-- Project Tab -->
+                <div id="linkProjectTab">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Select Existing Project</label>
+                        <select id="selectProject" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                            <option value="">-- Select a Project --</option>
+                        </select>
+                    </div>
 
-                <div class="space-y-3">
-                    <label class="block text-sm font-semibold text-gray-700">Create New Project</label>
-                    <input type="text" id="newProjectTitle" placeholder="Project Title" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
-                    <select id="newProjectCustomer" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
-                        <option value="">-- Select Customer --</option>
-                    </select>
-                    <textarea id="newProjectDesc" placeholder="Project Description" rows="3" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent"></textarea>
+                    <div class="text-center text-gray-500 font-semibold py-2">- OR -</div>
+
+                    <div class="space-y-3">
+                        <label class="block text-sm font-semibold text-gray-700">Create New Project</label>
+                        <input type="text" id="newProjectTitle" placeholder="Project Title" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                        <select id="newProjectCustomer" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent">
+                            <option value="">-- Select Customer --</option>
+                        </select>
+                        <textarea id="newProjectDesc" placeholder="Project Description" rows="3" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500 focus:border-transparent"></textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button onclick="linkToExistingProject()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold shadow-md">
+                            Link to Selected
+                        </button>
+                        <button onclick="createAndLinkProject()" class="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all font-bold shadow-md">
+                            Create & Link New
+                        </button>
+                    </div>
                 </div>
 
-                <div class="flex gap-3 pt-2">
-                    <button onclick="linkToExistingProject()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold shadow-md">
-                        Link to Selected
-                    </button>
-                    <button onclick="createAndLinkProject()" class="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all font-bold shadow-md">
-                        Create & Link New
-                    </button>
+                <!-- Quote Tab -->
+                <div id="linkQuoteTab" class="hidden">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Select Existing Quote</label>
+                        <select id="selectQuote" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">-- Select a Quote --</option>
+                        </select>
+                    </div>
+                    <div id="selectedQuoteInfo" class="hidden mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-sm text-blue-700"><strong>Customer:</strong> <span id="selectedQuoteCustomer">-</span></p>
+                        <p class="text-sm text-blue-700"><strong>Status:</strong> <span id="selectedQuoteStatus">-</span></p>
+                        <p class="text-sm text-blue-700"><strong>Total:</strong> <span id="selectedQuoteTotal">-</span></p>
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button onclick="linkToExistingQuote()" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-md">
+                            📋 Link to Quote
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Job Tab -->
+                <div id="linkJobTab" class="hidden">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Select Existing Job</label>
+                        <select id="selectJob" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">-- Select a Job --</option>
+                        </select>
+                    </div>
+                    <div id="selectedJobInfo" class="hidden mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p class="text-sm text-green-700"><strong>Customer:</strong> <span id="selectedJobCustomer">-</span></p>
+                        <p class="text-sm text-green-700"><strong>Status:</strong> <span id="selectedJobStatus">-</span></p>
+                        <p class="text-sm text-green-700"><strong>Scheduled:</strong> <span id="selectedJobDate">-</span></p>
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button onclick="linkToExistingJob()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold shadow-md">
+                            🔧 Link to Job
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cancel Button -->
+                <div class="flex justify-end pt-2 border-t border-gray-200 mt-4">
                     <button onclick="closeLinkProjectModal()" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all font-bold shadow-md">
                         Cancel
                     </button>
@@ -455,6 +515,106 @@
         // CRM Inventory
         let inventory = [];
         let filteredInventory = [];
+        
+        // Linked Quote/Job from CRM
+        let linkedQuoteId = null;
+        let linkedQuoteData = null;
+        
+        // Check for linked quote from URL or sessionStorage
+        (function initLinkedQuote() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const quoteIdFromUrl = urlParams.get('link_quote');
+            const editQuoteId = urlParams.get('edit_quote');
+            
+            if (quoteIdFromUrl) {
+                linkedQuoteId = quoteIdFromUrl;
+                // Try to get quote data from sessionStorage
+                const storedData = sessionStorage.getItem('canvas_link_quote_data');
+                if (storedData) {
+                    try {
+                        linkedQuoteData = JSON.parse(storedData);
+                        console.log('📋 Canvas linked to quote:', linkedQuoteData);
+                        // Show linked quote indicator
+                        showLinkedQuoteIndicator();
+                    } catch (e) {
+                        console.error('Failed to parse linked quote data:', e);
+                    }
+                }
+            } else if (editQuoteId) {
+                linkedQuoteId = editQuoteId;
+                // Get edit data from sessionStorage
+                const editData = sessionStorage.getItem('canvas_edit_data');
+                if (editData) {
+                    try {
+                        const parsed = JSON.parse(editData);
+                        linkedQuoteData = {
+                            quote_id: editQuoteId,
+                            quote_title: parsed.quote?.title,
+                            customer_name: parsed.quote?.customer_name,
+                            floorplan_image: parsed.floorplan_image
+                        };
+                        console.log('📋 Canvas editing quote:', linkedQuoteData);
+                        showLinkedQuoteIndicator();
+                        
+                        // Load floorplan image if available
+                        if (parsed.floorplan_image) {
+                            loadFloorplanFromUrl(parsed.floorplan_image);
+                        }
+                        // Load canvas state if available
+                        if (parsed.canvas_state) {
+                            loadCanvasState(parsed.canvas_state);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse edit quote data:', e);
+                    }
+                }
+            }
+        })();
+        
+        function showLinkedQuoteIndicator() {
+            // Add a visual indicator that we're linked to a quote
+            const indicator = document.createElement('div');
+            indicator.id = 'linkedQuoteIndicator';
+            indicator.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2';
+            indicator.innerHTML = `
+                <span>📋 Linked to: ${linkedQuoteData?.quote_title || 'Quote'}</span>
+                <button onclick="unlinkQuote()" class="ml-2 text-blue-200 hover:text-white">✕</button>
+            `;
+            document.body.appendChild(indicator);
+        }
+        
+        function unlinkQuote() {
+            linkedQuoteId = null;
+            linkedQuoteData = null;
+            sessionStorage.removeItem('canvas_link_quote_id');
+            sessionStorage.removeItem('canvas_link_quote_data');
+            const indicator = document.getElementById('linkedQuoteIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        function loadFloorplanFromUrl(url) {
+            if (!url) return;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                floorplanImage = img;
+                resizeCanvas();
+                draw();
+                console.log('✅ Loaded floorplan from linked quote');
+            };
+            img.onerror = function() {
+                console.error('Failed to load floorplan image');
+            };
+            img.src = url;
+        }
+        
+        function loadCanvasState(state) {
+            if (!state) return;
+            if (state.symbols) symbols = state.symbols;
+            if (state.pan) { panX = state.pan.x || 0; panY = state.pan.y || 0; }
+            if (state.scale) scale = state.scale;
+            draw();
+        }
 
         // Load inventory from CRM
         loadInventory();
@@ -1404,13 +1564,15 @@
         // SAVE/LOAD PROGRESS FUNCTIONS
         // ==========================
 
-        function saveProgress() {
+        async function saveProgress() {
             try {
+                const canvasImageData = floorplanImage ? canvas.toDataURL('image/jpeg', 0.8) : null;
+                
                 const progressData = {
                     timestamp: new Date().toISOString(),
                     sessionId: sessionData.session_id || 'default_session',
                     symbols: symbols,
-                    floorplanImageData: floorplanImage ? canvas.toDataURL('image/jpeg', 0.8) : null,
+                    floorplanImageData: canvasImageData,
                     panX: panX,
                     panY: panY,
                     scale: scale,
@@ -1419,15 +1581,43 @@
                     selectedSymbols: Array.from(selectedSymbols)
                 };
 
+                // Save to localStorage as backup
                 const storageKey = `takeoffs_progress_${sessionData.session_id || 'default_session'}`;
                 localStorage.setItem(storageKey, JSON.stringify(progressData));
-
-                const timestamp = new Date().toLocaleString();
-                alert(`✅ Progress saved successfully!\n\nSaved at: ${timestamp}\n\nYour work will be preserved even if you close the browser.`);
-                console.log('📦 Progress saved to localStorage:', storageKey);
+                
+                // If linked to a quote, save to CRM
+                if (linkedQuoteId) {
+                    const canvasState = {
+                        symbols: symbols,
+                        pan: { x: panX, y: panY },
+                        scale: scale
+                    };
+                    
+                    const response = await fetch(`/api/crm/quotes/${linkedQuoteId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            canvas_state: canvasState,
+                            floorplan_image: canvasImageData
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        const timestamp = new Date().toLocaleString();
+                        alert(`✅ Saved to Quote!\n\nSaved at: ${timestamp}\n\nFloorplan attached to: ${linkedQuoteData?.quote_title || 'Quote'}`);
+                        console.log('📦 Progress saved to quote:', linkedQuoteId);
+                    } else {
+                        throw new Error(data.error || 'Failed to save to quote');
+                    }
+                } else {
+                    const timestamp = new Date().toLocaleString();
+                    alert(`✅ Progress saved locally!\n\nSaved at: ${timestamp}\n\nTip: Link to a quote to save permanently.`);
+                    console.log('📦 Progress saved to localStorage:', storageKey);
+                }
             } catch (error) {
                 console.error('Failed to save progress:', error);
-                alert('❌ Failed to save progress. Your browser may have storage limits. Error: ' + error.message);
+                alert('❌ Failed to save progress: ' + error.message);
             }
         }
 
@@ -1910,6 +2100,191 @@
                     }
                 })
                 .catch(err => console.error('Failed to load linked project:', err));
+        }
+
+        // ==========================
+        // TAB SWITCHING & QUOTE/JOB LINKING
+        // ==========================
+        
+        let allQuotes = [];
+        let allJobs = [];
+        
+        function showLinkTab(tab) {
+            // Hide all tabs
+            document.getElementById('linkProjectTab').classList.add('hidden');
+            document.getElementById('linkQuoteTab').classList.add('hidden');
+            document.getElementById('linkJobTab').classList.add('hidden');
+            
+            // Reset tab button styles
+            document.getElementById('tabProject').className = 'flex-1 px-4 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg border-2 border-gray-200 transition-all hover:bg-orange-50';
+            document.getElementById('tabQuote').className = 'flex-1 px-4 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg border-2 border-gray-200 transition-all hover:bg-blue-50';
+            document.getElementById('tabJob').className = 'flex-1 px-4 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg border-2 border-gray-200 transition-all hover:bg-green-50';
+            
+            // Show selected tab and highlight button
+            if (tab === 'project') {
+                document.getElementById('linkProjectTab').classList.remove('hidden');
+                document.getElementById('tabProject').className = 'flex-1 px-4 py-2 bg-orange-100 text-orange-700 font-semibold rounded-lg border-2 border-orange-300 transition-all';
+            } else if (tab === 'quote') {
+                document.getElementById('linkQuoteTab').classList.remove('hidden');
+                document.getElementById('tabQuote').className = 'flex-1 px-4 py-2 bg-blue-100 text-blue-700 font-semibold rounded-lg border-2 border-blue-300 transition-all';
+                loadQuotesForLinking();
+            } else if (tab === 'job') {
+                document.getElementById('linkJobTab').classList.remove('hidden');
+                document.getElementById('tabJob').className = 'flex-1 px-4 py-2 bg-green-100 text-green-700 font-semibold rounded-lg border-2 border-green-300 transition-all';
+                loadJobsForLinking();
+            }
+        }
+        
+        async function loadQuotesForLinking() {
+            try {
+                const response = await fetch('/api/crm/quotes');
+                const data = await response.json();
+                allQuotes = data.quotes || [];
+                
+                const select = document.getElementById('selectQuote');
+                select.innerHTML = '<option value="">-- Select a Quote --</option>';
+                allQuotes.forEach(quote => {
+                    const customerName = quote.customer_name || 'No Customer';
+                    const status = quote.status || 'draft';
+                    const total = quote.total_amount ? `$${quote.total_amount.toFixed(2)}` : 'N/A';
+                    select.innerHTML += `<option value="${quote.id}">${quote.title || 'Untitled'} - ${customerName} (${status}) - ${total}</option>`;
+                });
+                
+                // Add change listener to show quote info
+                select.onchange = function() {
+                    const quoteId = this.value;
+                    if (quoteId) {
+                        const quote = allQuotes.find(q => q.id === quoteId);
+                        if (quote) {
+                            document.getElementById('selectedQuoteInfo').classList.remove('hidden');
+                            document.getElementById('selectedQuoteCustomer').textContent = quote.customer_name || 'N/A';
+                            document.getElementById('selectedQuoteStatus').textContent = quote.status || 'draft';
+                            document.getElementById('selectedQuoteTotal').textContent = quote.total_amount ? `$${quote.total_amount.toFixed(2)}` : 'N/A';
+                        }
+                    } else {
+                        document.getElementById('selectedQuoteInfo').classList.add('hidden');
+                    }
+                };
+            } catch (error) {
+                console.error('Failed to load quotes:', error);
+            }
+        }
+        
+        async function loadJobsForLinking() {
+            try {
+                const response = await fetch('/api/crm/jobs');
+                const data = await response.json();
+                allJobs = data.jobs || [];
+                
+                const select = document.getElementById('selectJob');
+                select.innerHTML = '<option value="">-- Select a Job --</option>';
+                allJobs.forEach(job => {
+                    const customerName = job.customer_name || 'No Customer';
+                    const status = job.status || 'pending';
+                    const date = job.scheduled_date || 'Not scheduled';
+                    select.innerHTML += `<option value="${job.id}">${job.title || 'Untitled'} - ${customerName} (${status})</option>`;
+                });
+                
+                // Add change listener to show job info
+                select.onchange = function() {
+                    const jobId = this.value;
+                    if (jobId) {
+                        const job = allJobs.find(j => j.id === jobId);
+                        if (job) {
+                            document.getElementById('selectedJobInfo').classList.remove('hidden');
+                            document.getElementById('selectedJobCustomer').textContent = job.customer_name || 'N/A';
+                            document.getElementById('selectedJobStatus').textContent = job.status || 'pending';
+                            document.getElementById('selectedJobDate').textContent = job.scheduled_date || 'Not scheduled';
+                        }
+                    } else {
+                        document.getElementById('selectedJobInfo').classList.add('hidden');
+                    }
+                };
+            } catch (error) {
+                console.error('Failed to load jobs:', error);
+            }
+        }
+        
+        async function linkToExistingQuote() {
+            const quoteId = document.getElementById('selectQuote').value;
+            if (!quoteId) {
+                alert('Please select a quote first');
+                return;
+            }
+            
+            try {
+                // Get current canvas state
+                const canvasState = {
+                    floorplan_image: floorplanImage ? floorplanImage.src : null,
+                    symbols: symbols,
+                    pan: { x: panX, y: panY },
+                    scale: scale
+                };
+                
+                // Update the quote with floorplan data
+                const response = await fetch(`/api/crm/quotes/${quoteId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        canvas_state: canvasState,
+                        floorplan_image: floorplanImage ? floorplanImage.src : null,
+                        takeoffs_session_id: sessionData.session_id || '{{ session_data.session_id }}'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const quote = allQuotes.find(q => q.id === quoteId);
+                    sessionData.quote_id = quoteId;
+                    alert('✅ Linked floorplan to quote: ' + (quote?.title || 'Quote'));
+                    closeLinkProjectModal();
+                } else {
+                    alert('Failed to link: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error linking to quote: ' + error.message);
+            }
+        }
+        
+        async function linkToExistingJob() {
+            const jobId = document.getElementById('selectJob').value;
+            if (!jobId) {
+                alert('Please select a job first');
+                return;
+            }
+            
+            try {
+                // Get current canvas state
+                const canvasState = {
+                    floorplan_image: floorplanImage ? floorplanImage.src : null,
+                    symbols: symbols,
+                    pan: { x: panX, y: panY },
+                    scale: scale
+                };
+                
+                // Update the job with floorplan data
+                const response = await fetch(`/api/crm/jobs/${jobId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        canvas_state: canvasState,
+                        floorplan_image: floorplanImage ? floorplanImage.src : null,
+                        takeoffs_session_id: sessionData.session_id || '{{ session_data.session_id }}'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const job = allJobs.find(j => j.id === jobId);
+                    sessionData.job_id = jobId;
+                    alert('✅ Linked floorplan to job: ' + (job?.title || 'Job'));
+                    closeLinkProjectModal();
+                } else {
+                    alert('Failed to link: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error linking to job: ' + error.message);
+            }
         }
     </script>
 

@@ -733,6 +733,20 @@
             <h1 class="page-title">Dashboard</h1>
             <p class="page-subtitle">Overview of your business</p>
 
+            <!-- Quick Actions -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h2 class="card-title">⚡ Quick Actions</h2>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="showSection('people-customers'); openPersonModal('customer')">+ New Customer</button>
+                    <button class="btn btn-primary" onclick="showSection('jobs-in-progress'); openJobModal('in_progress')">+ New Job</button>
+                    <button class="btn btn-primary" onclick="showSection('quotes-open'); openQuoteModal('open')">+ New Quote</button>
+                    <button class="btn btn-primary" onclick="showSection('schedules-calendar'); openScheduleEventModal()">+ Schedule Event</button>
+                    <button class="btn btn-primary" onclick="showSection('materials-stock'); openMaterialModal('stock')">+ Add Stock</button>
+                </div>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card" onclick="showSection('people-customers')" style="cursor: pointer;" title="View all customers">
                     <div class="stat-value" id="statCustomers">0</div>
@@ -785,19 +799,6 @@
                 <div class="chart-card">
                     <h3 class="chart-title">Customer Growth</h3>
                     <canvas id="customerGrowthChart"></canvas>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Quick Actions</h2>
-                </div>
-                <div class="flex gap-2">
-                    <button class="btn btn-primary" onclick="showSection('people-customers'); openPersonModal('customer')">+ New Customer</button>
-                    <button class="btn btn-primary" onclick="showSection('jobs-in-progress'); openJobModal('in_progress')">+ New Job</button>
-                    <button class="btn btn-primary" onclick="showSection('quotes-open'); openQuoteModal('open')">+ New Quote</button>
-                    <button class="btn btn-primary" onclick="showSection('calendar'); openEventModal()">+ Schedule Event</button>
-                    <button class="btn btn-primary" onclick="showSection('materials-stock'); openMaterialModal('stock')">+ Add Stock</button>
                 </div>
             </div>
 
@@ -2856,9 +2857,14 @@
                             <div id="quoteDetailFloorplanContainer" style="background: var(--bg-primary); border-radius: 12px; padding: 20px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
                                 <img id="quoteDetailFloorplan" alt="Floorplan" style="max-width: 100%; max-height: 600px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                             </div>
-                            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
-                                <button class="btn btn-secondary" onclick="downloadFloorplanFromDetail()">📥 Download Floorplan</button>
+                            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" onclick="downloadFloorplanFromDetail()">📥 Download</button>
                                 <button class="btn btn-primary" id="editInCanvasBtn" onclick="editQuoteInCanvas()">✏️ Edit in Canvas</button>
+                                <button class="btn btn-secondary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #556B2F, #6B8E23); color: white;">🎨 Open in Canvas Editor</button>
+                            </div>
+                            <div id="noFloorplanActions" style="display: none; margin-top: 16px; text-align: center; padding: 20px; background: var(--bg-primary); border-radius: 12px; border: 2px dashed var(--border-color);">
+                                <p style="color: var(--text-secondary); margin-bottom: 12px;">No floorplan attached to this quote</p>
+                                <button class="btn btn-primary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #556B2F, #6B8E23);">🎨 Create Floorplan in Canvas Editor</button>
                             </div>
                         </div>
                     </div>
@@ -2923,6 +2929,94 @@
         </div>
     </div>
     
+    <!-- Customer Detail Modal -->
+    <div id="customerDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; width: 95vw; max-height: 95vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="font-size: 48px;">👤</div>
+                    <div>
+                        <h2 class="modal-title" id="customerDetailName" style="color: white; margin: 0;">Customer Name</h2>
+                        <p id="customerDetailCompany" style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 4px 0 0 0;"></p>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeModal('customerDetailModal')" style="color: white;">×</button>
+            </div>
+            
+            <div style="padding: 24px;">
+                <!-- Customer Stats -->
+                <div id="customerDetailStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <!-- Stats will be populated here -->
+                </div>
+                
+                <!-- Main Content Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+                    <!-- Left Column - Contact Info -->
+                    <div>
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                📇 Contact Information
+                            </h3>
+                            <div id="customerDetailContact" style="color: var(--text-secondary);">
+                                <!-- Contact info will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                📝 Notes
+                            </h3>
+                            <div id="customerDetailNotes" style="color: var(--text-secondary);">
+                                No notes
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column - Projects/Quotes/Jobs -->
+                    <div>
+                        <!-- Tabs -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <button onclick="showCustomerTab('quotes')" id="customerTabQuotes" class="btn btn-primary" style="flex: 1;">📋 Quotes</button>
+                            <button onclick="showCustomerTab('jobs')" id="customerTabJobs" class="btn btn-secondary" style="flex: 1;">🔧 Jobs</button>
+                            <button onclick="showCustomerTab('projects')" id="customerTabProjects" class="btn btn-secondary" style="flex: 1;">📁 Projects</button>
+                        </div>
+                        
+                        <!-- Quotes Tab -->
+                        <div id="customerQuotesTab" style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
+                            <div id="customerQuotesList">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Jobs Tab -->
+                        <div id="customerJobsTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
+                            <div id="customerJobsList">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Projects Tab -->
+                        <div id="customerProjectsTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
+                            <div id="customerProjectsList">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeModal('customerDetailModal')">Close</button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" onclick="editCustomer(currentViewingCustomerId)">✏️ Edit Customer</button>
+                        <button class="btn btn-primary" onclick="createQuoteForCustomer(currentViewingCustomerId)">📋 New Quote</button>
+                        <button class="btn btn-primary" onclick="createJobForCustomer(currentViewingCustomerId)">🔧 New Job</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Legacy Floorplan Viewer Modal (kept for backwards compatibility) -->
     <div id="floorplanViewerModal" class="modal">
         <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
@@ -3522,7 +3616,7 @@
                         </thead>
                         <tbody>
                             ${customers.map(c => `
-                                <tr>
+                                <tr style="cursor: pointer;" onclick="viewCustomerDetail('${c.id}')" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
                                     <td><strong>${c.name}</strong></td>
                                     <td>${c.company || '-'}</td>
                                     <td>${c.email || '-'}</td>
@@ -3530,8 +3624,8 @@
                                     <td>${c.total_projects || 0}</td>
                                     <td>$${(c.total_revenue || 0).toLocaleString()}</td>
                                     <td>
-                                        <button class="btn btn-secondary btn-small" onclick="editCustomer('${c.id}')">Edit</button>
-                                        <button class="btn btn-danger btn-small" onclick="deleteCustomer('${c.id}')">Delete</button>
+                                        <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editCustomer('${c.id}')">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteCustomer('${c.id}')">Delete</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -4463,8 +4557,300 @@
         }
 
         let currentViewingQuoteId = null;
+        let currentViewingCustomerId = null;
         
-        function viewQuoteDetail(quoteId) {
+        // ============================================================================
+        // CUSTOMER DETAIL VIEW
+        // ============================================================================
+        
+        async function viewCustomerDetail(customerId) {
+            // Look for customer in multiple sources
+            let customer = customers.find(c => c.id === customerId);
+            
+            // Also check window.allPeople (from People section)
+            if (!customer && window.allPeople) {
+                customer = window.allPeople.find(p => p.id === customerId && p.type === 'customer');
+            }
+            
+            // If still not found, try to fetch from API
+            if (!customer) {
+                try {
+                    const res = await fetch(`/api/crm/people/${customerId}`);
+                    const data = await res.json();
+                    if (data.success && data.person) {
+                        customer = data.person;
+                    }
+                } catch (e) {
+                    console.error('Error fetching customer:', e);
+                }
+            }
+            
+            // Try main customers API
+            if (!customer) {
+                try {
+                    const res = await fetch(`/api/crm/customers/${customerId}`);
+                    const data = await res.json();
+                    if (data.success && data.customer) {
+                        customer = data.customer;
+                    }
+                } catch (e) {
+                    console.error('Error fetching customer:', e);
+                }
+            }
+            
+            if (!customer) {
+                alert('Customer not found');
+                return;
+            }
+            
+            currentViewingCustomerId = customerId;
+            
+            // Populate header
+            document.getElementById('customerDetailName').textContent = customer.name;
+            document.getElementById('customerDetailCompany').textContent = customer.company || '';
+            
+            // Populate contact info
+            document.getElementById('customerDetailContact').innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${customer.email ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📧</span> <a href="mailto:${customer.email}" style="color: #3498db;">${customer.email}</a></div>` : ''}
+                    ${customer.phone ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📱</span> <a href="tel:${customer.phone}" style="color: #3498db;">${customer.phone}</a></div>` : ''}
+                    ${customer.address ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📍</span> ${customer.address}</div>` : ''}
+                </div>
+            `;
+            
+            // Populate notes
+            document.getElementById('customerDetailNotes').textContent = customer.notes || 'No notes';
+            
+            // Load customer's quotes, jobs, and projects
+            await loadCustomerRelatedData(customerId);
+            
+            // Calculate and show stats
+            updateCustomerStats(customerId);
+            
+            // Show quotes tab by default
+            showCustomerTab('quotes');
+            
+            // Open the modal
+            openModal('customerDetailModal');
+        }
+        
+        async function loadCustomerRelatedData(customerId) {
+            // Get quotes for this customer
+            const customerQuotes = quotes.filter(q => q.customer_id === customerId);
+            renderCustomerQuotes(customerQuotes);
+            
+            // Get jobs for this customer
+            try {
+                const jobsRes = await fetch('/api/crm/jobs');
+                const jobsData = await jobsRes.json();
+                const customerJobs = (jobsData.jobs || []).filter(j => j.customer_id === customerId);
+                renderCustomerJobs(customerJobs);
+            } catch (e) {
+                console.error('Error loading jobs:', e);
+            }
+            
+            // Get projects for this customer
+            try {
+                const projectsRes = await fetch('/api/crm/projects');
+                const projectsData = await projectsRes.json();
+                const customerProjects = (projectsData.projects || []).filter(p => p.customer_id === customerId);
+                renderCustomerProjects(customerProjects);
+            } catch (e) {
+                console.error('Error loading projects:', e);
+            }
+        }
+        
+        function updateCustomerStats(customerId) {
+            const customerQuotes = quotes.filter(q => q.customer_id === customerId);
+            const totalQuoteValue = customerQuotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+            const acceptedQuotes = customerQuotes.filter(q => q.status === 'accepted');
+            const acceptedValue = acceptedQuotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+            
+            document.getElementById('customerDetailStats').innerHTML = `
+                <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">${customerQuotes.length}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Total Quotes</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #27ae60, #1e8449); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">${acceptedQuotes.length}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Accepted</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">$${totalQuoteValue.toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Quote Value</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #f39c12, #d68910); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">$${acceptedValue.toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Won Revenue</div>
+                </div>
+            `;
+        }
+        
+        function renderCustomerQuotes(customerQuotes) {
+            const container = document.getElementById('customerQuotesList');
+            
+            if (customerQuotes.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📋</div>
+                        <p>No quotes yet</p>
+                        <button class="btn btn-primary" onclick="createQuoteForCustomer(currentViewingCustomerId)" style="margin-top: 12px;">+ Create Quote</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = customerQuotes.map(q => {
+                const statusColors = {
+                    'draft': '#95a5a6',
+                    'sent': '#3498db',
+                    'accepted': '#27ae60',
+                    'rejected': '#e74c3c',
+                    'expired': '#f39c12'
+                };
+                const statusColor = statusColors[q.status] || '#95a5a6';
+                
+                return `
+                    <div onclick="viewQuoteDetail('${q.id}')" style="background: var(--bg-primary); padding: 16px; border-radius: 12px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                        <div>
+                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${q.title || 'Untitled Quote'}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${q.quote_number || ''} • ${q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-weight: 600; font-size: 16px;">$${(q.total_amount || 0).toLocaleString()}</div>
+                            <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${q.status || 'draft'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderCustomerJobs(customerJobs) {
+            const container = document.getElementById('customerJobsList');
+            
+            if (customerJobs.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🔧</div>
+                        <p>No jobs yet</p>
+                        <button class="btn btn-primary" onclick="createJobForCustomer(currentViewingCustomerId)" style="margin-top: 12px;">+ Create Job</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = customerJobs.map(j => {
+                const statusColors = {
+                    'pending': '#f39c12',
+                    'scheduled': '#3498db',
+                    'in_progress': '#9b59b6',
+                    'completed': '#27ae60',
+                    'cancelled': '#e74c3c'
+                };
+                const statusColor = statusColors[j.status] || '#95a5a6';
+                
+                return `
+                    <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${j.title || 'Untitled Job'}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${j.scheduled_date ? '📅 ' + new Date(j.scheduled_date).toLocaleDateString() : 'Not scheduled'}</div>
+                        </div>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${j.status || 'pending'}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderCustomerProjects(customerProjects) {
+            const container = document.getElementById('customerProjectsList');
+            
+            if (customerProjects.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
+                        <p>No projects yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = customerProjects.map(p => {
+                const statusColors = {
+                    'pending': '#f39c12',
+                    'active': '#3498db',
+                    'completed': '#27ae60',
+                    'on_hold': '#95a5a6'
+                };
+                const statusColor = statusColors[p.status] || '#95a5a6';
+                
+                return `
+                    <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${p.title || 'Untitled Project'}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${p.description || ''}</div>
+                        </div>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${p.status || 'pending'}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function showCustomerTab(tab) {
+            // Hide all tabs
+            document.getElementById('customerQuotesTab').style.display = 'none';
+            document.getElementById('customerJobsTab').style.display = 'none';
+            document.getElementById('customerProjectsTab').style.display = 'none';
+            
+            // Reset button styles
+            document.getElementById('customerTabQuotes').className = 'btn btn-secondary';
+            document.getElementById('customerTabJobs').className = 'btn btn-secondary';
+            document.getElementById('customerTabProjects').className = 'btn btn-secondary';
+            
+            // Show selected tab
+            if (tab === 'quotes') {
+                document.getElementById('customerQuotesTab').style.display = 'block';
+                document.getElementById('customerTabQuotes').className = 'btn btn-primary';
+            } else if (tab === 'jobs') {
+                document.getElementById('customerJobsTab').style.display = 'block';
+                document.getElementById('customerTabJobs').className = 'btn btn-primary';
+            } else if (tab === 'projects') {
+                document.getElementById('customerProjectsTab').style.display = 'block';
+                document.getElementById('customerTabProjects').className = 'btn btn-primary';
+            }
+        }
+        
+        function createQuoteForCustomer(customerId) {
+            closeModal('customerDetailModal');
+            showSection('quotes-open');
+            setTimeout(() => {
+                openModal('quoteModal');
+                const customerSelect = document.getElementById('quoteCustomer');
+                if (customerSelect) {
+                    customerSelect.value = customerId;
+                }
+            }, 300);
+        }
+        
+        function createJobForCustomer(customerId) {
+            closeModal('customerDetailModal');
+            showSection('jobs-in-progress');
+            // If there's a job modal, open it with customer pre-selected
+            setTimeout(() => {
+                if (typeof openJobModal === 'function') {
+                    openJobModal('pending');
+                    const customerSelect = document.getElementById('jobCustomer');
+                    if (customerSelect) {
+                        customerSelect.value = customerId;
+                    }
+                }
+            }, 300);
+        }
+        
+        // ============================================================================
+        // QUOTE DETAIL VIEW
+        // ============================================================================
+        
+        async function viewQuoteDetail(quoteId) {
             // Find the quote
             const quote = quotes.find(q => q.id === quoteId);
             if (!quote) {
@@ -4478,8 +4864,39 @@
             document.getElementById('quoteDetailTitle').textContent = quote.title || 'Untitled Quote';
             document.getElementById('quoteDetailNumber').textContent = quote.quote_number ? `Quote #${quote.quote_number}` : '';
             
-            // Populate stats
-            const customer = customers.find(c => c.id === quote.customer_id);
+            // Populate stats - find customer from multiple sources
+            let customer = customers.find(c => c.id === quote.customer_id);
+            
+            // Also check window.allPeople (from People section)
+            if (!customer && quote.customer_id && window.allPeople) {
+                customer = window.allPeople.find(p => p.id === quote.customer_id && p.type === 'customer');
+            }
+            
+            // If still not found, try to fetch from API
+            if (!customer && quote.customer_id) {
+                try {
+                    const res = await fetch(`/api/crm/people/${quote.customer_id}`);
+                    const data = await res.json();
+                    if (data.success && data.person) {
+                        customer = data.person;
+                    }
+                } catch (e) {
+                    console.error('Error fetching customer:', e);
+                }
+            }
+            
+            // Try main customers API
+            if (!customer && quote.customer_id) {
+                try {
+                    const res = await fetch(`/api/crm/customers/${quote.customer_id}`);
+                    const data = await res.json();
+                    if (data.success && data.customer) {
+                        customer = data.customer;
+                    }
+                } catch (e) {
+                    console.error('Error fetching customer:', e);
+                }
+            }
             const totalAmount = quote.quote_amount || quote.total_amount || 0;
             const statsHtml = `
                 <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 16px; border-radius: 12px; color: white; text-align: center;">
@@ -4655,6 +5072,27 @@
                 alert('Error loading quote data: ' + error.message);
             }
         }
+        
+        function openInCanvasEditor() {
+            // Open the canvas editor with the current quote linked
+            if (currentViewingQuoteId) {
+                const quote = quotes.find(q => q.id === currentViewingQuoteId);
+                if (quote) {
+                    sessionStorage.setItem('canvas_link_quote_id', currentViewingQuoteId);
+                    sessionStorage.setItem('canvas_link_quote_data', JSON.stringify({
+                        quote_id: quote.id,
+                        quote_title: quote.title,
+                        customer_id: quote.customer_id,
+                        customer_name: quote.customer_name,
+                        floorplan_image: quote.floorplan_image
+                    }));
+                }
+                window.location.href = `/canvas?link_quote=${currentViewingQuoteId}`;
+            } else {
+                // Just open canvas editor without a linked quote
+                window.location.href = '/canvas';
+            }
+        }
 
         function viewQuoteFloorplan(quoteId) {
             // Use the new detailed view instead
@@ -4823,6 +5261,15 @@
             };
             document.querySelector('#paymentModal h2').textContent = `Add ${labels[direction]}`;
             openModal('paymentModal');
+        }
+
+        function openScheduleEventModal(date = null) {
+            // This is called from Quick Actions - opens the calendar section first
+            showSection('schedules-calendar');
+            // Small delay to ensure section is visible, then open modal
+            setTimeout(() => {
+                openEventModal(date);
+            }, 100);
         }
 
         function openEventModal(date = null) {
@@ -8313,6 +8760,8 @@
             return;
         }
 
+        const isCustomer = type === 'customer';
+        
         container.innerHTML = `
             <div class="table-container">
                 <table>
@@ -8328,16 +8777,17 @@
                     </thead>
                     <tbody>
                         ${peopleList.map(p => `
-                            <tr>
+                            <tr style="${isCustomer ? 'cursor: pointer;' : ''}" 
+                                ${isCustomer ? `onclick="viewCustomerDetail('${p.id}')" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''"` : ''}>
                                 <td><strong>${p.name}</strong></td>
                                 <td>${p.company || '-'}</td>
                                 <td>${p.email || '-'}</td>
                                 <td>${p.phone || '-'}</td>
                                 <td>${p.address || '-'}</td>
                                 <td>
-                                    <button class="btn btn-secondary btn-small" onclick="addPersonToCalendar('${p.id}', '${p.name}', '${type}')" title="Schedule Meeting">📅</button>
-                                    <button class="btn btn-secondary btn-small" onclick="editPerson('${p.id}', '${type}')">Edit</button>
-                                    <button class="btn btn-danger btn-small" onclick="deletePerson('${p.id}', '${type}')">Delete</button>
+                                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); addPersonToCalendar('${p.id}', '${p.name}', '${type}')" title="Schedule Meeting">📅</button>
+                                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editPerson('${p.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deletePerson('${p.id}', '${type}')">Delete</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -9917,7 +10367,7 @@
             
             return `
                 <div style="display: flex; gap: 12px; padding: 12px; border-radius: 8px; background: var(--bg-primary); margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
-                     onclick="showSection('kanban')"
+                     onclick="goToKanbanTask('${task.id}')"
                      onmouseover="this.style.transform='translateX(4px)'" 
                      onmouseout="this.style.transform='none'">
                     <div style="font-size: 20px; flex-shrink: 0;">${columnIcon}</div>
@@ -9945,10 +10395,13 @@
     }
     
     function openQuickTaskModal() {
-        const content = prompt('Enter task description:');
-        if (content && content.trim()) {
-            createQuickTask(content.trim());
-        }
+        // Navigate to kanban board to create task
+        window.location.href = '/kanban';
+    }
+    
+    function goToKanbanTask(taskId) {
+        // Navigate to kanban board with the specific task highlighted
+        window.location.href = `/kanban?task=${taskId}`;
     }
     
     async function createQuickTask(content) {

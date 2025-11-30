@@ -1000,7 +1000,8 @@
     <!-- HEADER -->
     <div class="header">
         <div class="header-left">
-            <a href="/" class="home-btn">🏠 Home</a>
+            <a href="/" class="home-btn" title="Home" style="padding: 12px 16px;">🏠</a>
+            <a href="/crm" class="home-btn" title="CRM Dashboard" style="padding: 12px 16px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); box-shadow: 0 2px 8px rgba(52,152,219,0.3);">📊</a>
             <h1 class="header-title">📋 Operations Board</h1>
         </div>
         <div class="header-right">
@@ -1244,6 +1245,39 @@
             setupColorPicker();
             setupColumnColorPicker();
             setupKeyboardShortcuts();
+            
+            // Check for task parameter in URL (from CRM dashboard click)
+            checkUrlTaskHighlight();
+        }
+        
+        // Highlight task if specified in URL parameter
+        function checkUrlTaskHighlight() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('task');
+            if (taskId) {
+                // Find and highlight the task
+                setTimeout(() => {
+                    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                    if (taskElement) {
+                        // Scroll to task
+                        taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Add highlight animation
+                        taskElement.style.transition = 'all 0.3s ease';
+                        taskElement.style.boxShadow = '0 0 0 4px #3498db, 0 4px 20px rgba(52, 152, 219, 0.4)';
+                        taskElement.style.transform = 'scale(1.02)';
+                        
+                        // Remove highlight after 3 seconds
+                        setTimeout(() => {
+                            taskElement.style.boxShadow = '';
+                            taskElement.style.transform = '';
+                        }, 3000);
+                        
+                        // Select the task
+                        selectTask(taskId);
+                    }
+                }, 300);
+            }
         }
 
         // Setup drag listeners ONCE using event delegation
@@ -2543,8 +2577,13 @@
             const task = tasks.find(t => t.id === currentTaskId);
 
             if (task && dateValue) {
+                const oldDueDate = task.due_date;
                 task.due_date = dateValue;
                 await updateTask(currentTaskId, task);
+                
+                // Create or update calendar event for this task deadline
+                await syncTaskToCalendar(task, dateValue, oldDueDate);
+                
                 renderBoard();
                 closeDateModal();
             }
@@ -2556,10 +2595,79 @@
             const task = tasks.find(t => t.id === currentTaskId);
 
             if (task) {
+                const oldDueDate = task.due_date;
                 task.due_date = null;
                 await updateTask(currentTaskId, task);
+                
+                // Remove calendar event if it exists
+                if (oldDueDate) {
+                    await removeTaskFromCalendar(task.id);
+                }
+                
                 renderBoard();
                 closeDateModal();
+            }
+        }
+        
+        // Sync task deadline to CRM calendar
+        async function syncTaskToCalendar(task, dueDate, oldDueDate) {
+            try {
+                // Check if there's an existing calendar event for this task
+                const existingEventId = task.calendar_event_id;
+                
+                const eventData = {
+                    title: `📋 Task: ${task.content}`,
+                    type: 'task_deadline',
+                    start_date: dueDate,
+                    end_date: dueDate,
+                    all_day: true,
+                    description: `Kanban Task Deadline\n\nTask: ${task.content}\nColumn: ${task.column}\n${task.notes ? 'Notes: ' + task.notes : ''}`,
+                    color: task.color || '#3b82f6',
+                    linked_task_id: task.id
+                };
+                
+                if (existingEventId) {
+                    // Update existing event
+                    await fetch(`/api/crm/calendar/${existingEventId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
+                    console.log('📅 Updated calendar event for task deadline');
+                } else {
+                    // Create new event
+                    const response = await fetch('/api/crm/calendar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
+                    const data = await response.json();
+                    if (data.success && data.event) {
+                        // Store the calendar event ID on the task
+                        task.calendar_event_id = data.event.id;
+                        await updateTask(task.id, task, true);
+                        console.log('📅 Created calendar event for task deadline');
+                    }
+                }
+            } catch (error) {
+                console.error('Error syncing task to calendar:', error);
+            }
+        }
+        
+        // Remove task deadline from calendar
+        async function removeTaskFromCalendar(taskId) {
+            try {
+                const task = tasks.find(t => t.id === taskId);
+                if (task && task.calendar_event_id) {
+                    await fetch(`/api/crm/calendar/${task.calendar_event_id}`, {
+                        method: 'DELETE'
+                    });
+                    task.calendar_event_id = null;
+                    await updateTask(taskId, task, true);
+                    console.log('📅 Removed calendar event for task');
+                }
+            } catch (error) {
+                console.error('Error removing task from calendar:', error);
             }
         }
 

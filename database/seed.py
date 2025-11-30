@@ -95,6 +95,43 @@ def get_default_organization_id():
         return None
 
 
+def get_or_create_default_organization(session):
+    """
+    Get or create the default organization.
+    Used by scheduler jobs and other services that need an organization context.
+    
+    Args:
+        session: SQLAlchemy session
+        
+    Returns:
+        Organization instance
+    """
+    # Try to find existing organization
+    org = session.query(Organization).filter_by(slug=DEFAULT_ORG_SLUG).first()
+    if org:
+        return org
+    
+    # Try any organization
+    org = session.query(Organization).first()
+    if org:
+        return org
+    
+    # Create default organization if none exists
+    org = Organization(
+        name=DEFAULT_ORG_NAME,
+        slug=DEFAULT_ORG_SLUG,
+        settings={
+            'timezone': 'Australia/Sydney',
+            'currency': 'AUD',
+            'default_markup': 20
+        }
+    )
+    session.add(org)
+    session.flush()
+    logger.info(f"Created default organization: {org.name}")
+    return org
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     seed_database()
