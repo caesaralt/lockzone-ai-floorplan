@@ -77,7 +77,7 @@
 }
 
 .chatbot-toggle {
-    background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
+    background: linear-gradient(135deg, #6AB64B 0%, #5a9e3f 100%);
     color: white;
     border: none;
     padding: 14px 24px;
@@ -108,17 +108,17 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 2px solid #6B8E23;
+    border: 2px solid #6AB64B;
 }
 
 .chatbot-header {
-    background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
+    background: linear-gradient(135deg, #6AB64B 0%, #5a9e3f 100%);
     color: white;
     padding: 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid #556B2F;
+    border-bottom: 2px solid #5a9e3f;
 }
 
 .chatbot-title {
@@ -208,7 +208,7 @@
     margin-top: 4px;
     padding: 8px;
     background: rgba(107, 142, 35, 0.1);
-    border-left: 3px solid #6B8E23;
+    border-left: 3px solid #6AB64B;
     border-radius: 4px;
 }
 
@@ -259,11 +259,11 @@
 
 .chatbot-input:focus {
     outline: none;
-    border-color: #6B8E23;
+    border-color: #6AB64B;
 }
 
 .chatbot-send-btn {
-    background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
+    background: linear-gradient(135deg, #6AB64B 0%, #5a9e3f 100%);
     border: none;
     color: white;
     width: 48px;
@@ -286,7 +286,7 @@
 
 .chatbot-attachment-btn {
     background: rgba(107, 142, 35, 0.2);
-    border: 2px solid #6B8E23;
+    border: 2px solid #6AB64B;
     color: white;
     width: 48px;
     height: 48px;
@@ -318,7 +318,7 @@
     max-width: 100%;
     max-height: 200px;
     border-radius: 8px;
-    border: 2px solid #6B8E23;
+    border: 2px solid #6AB64B;
 }
 
 .image-remove-btn {
@@ -578,7 +578,7 @@ async function sendMessage() {
             helpText = '\n\n💡 **Tip:** The AI is taking too long. Try a simpler question.';
         }
         
-        const retryButton = `<button onclick="retryLastMessage()" style="margin-top: 8px; padding: 6px 12px; background: #6B8E23; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Retry</button>`;
+        const retryButton = `<button onclick="retryLastMessage()" style="margin-top: 8px; padding: 6px 12px; background: #6AB64B; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Retry</button>`;
         
         addMessage('assistant', `❌ **Failed to get response:** ${errorMessage}${helpText}\n\n${retryButton}`);
     } finally {
@@ -694,11 +694,11 @@ function addProactiveSuggestionToChat(suggestion) {
     suggestionDiv.className = 'chatbot-message assistant proactive-suggestion';
     suggestionDiv.innerHTML = `
         <div class="message-content" style="background: linear-gradient(135deg, rgba(107, 142, 35, 0.2), rgba(85, 107, 47, 0.2)); border: 1px solid rgba(107, 142, 35, 0.3);">
-            <div style="font-size: 11px; color: #6B8E23; margin-bottom: 6px; font-weight: 600;">💡 PROACTIVE SUGGESTION</div>
+            <div style="font-size: 11px; color: #6AB64B; margin-bottom: 6px; font-weight: 600;">💡 PROACTIVE SUGGESTION</div>
             <div>${suggestion.text}</div>
             <div style="margin-top: 10px; display: flex; gap: 8px;">
                 <button onclick="executeProactiveSuggestion('${suggestion.action}', '${suggestion.action_data || ''}')" 
-                        style="padding: 6px 12px; background: #6B8E23; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        style="padding: 6px 12px; background: #6AB64B; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
                     ✓ Do it
                 </button>
                 <button onclick="dismissProactiveSuggestion(this)" 

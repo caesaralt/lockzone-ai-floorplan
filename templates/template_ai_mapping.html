@@ -34,7 +34,7 @@
         .logo {
             font-size: 20px;
             font-weight: 700;
-            color: #556B2F;
+            color: #5a9e3f;
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -63,7 +63,7 @@
         }
 
         .nav-item.active {
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
         }
 
@@ -106,12 +106,12 @@
         }
 
         .upload-area:hover {
-            border-color: #556B2F;
+            border-color: #5a9e3f;
             background: rgba(85, 107, 47, 0.02);
         }
 
         .upload-area.dragover {
-            border-color: #556B2F;
+            border-color: #5a9e3f;
             background: rgba(85, 107, 47, 0.05);
         }
 
@@ -136,7 +136,7 @@
         }
 
         .btn {
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
             border: none;
             padding: 14px 32px;
@@ -185,7 +185,7 @@
             font-size: 20px;
             font-weight: 700;
             margin-bottom: 16px;
-            color: #556B2F;
+            color: #5a9e3f;
         }
 
         .preview-image {
@@ -208,7 +208,7 @@
 
         .component-label {
             font-weight: 600;
-            color: #556B2F;
+            color: #5a9e3f;
             margin-bottom: 4px;
         }
 
@@ -222,12 +222,12 @@
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 8px;
-            border-left: 4px solid #556B2F;
+            border-left: 4px solid #5a9e3f;
         }
 
         .circuit-badge {
             display: inline-block;
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
             padding: 4px 12px;
             border-radius: 12px;
@@ -248,7 +248,7 @@
 
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #556B2F;
+            border-top: 4px solid #5a9e3f;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -543,7 +543,7 @@
                 <h3>🤖 AI Assistant</h3>
                 <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
                     <button id="agentModeToggle" onclick="toggleAgentMode()" style="background: #999; color: white; border: none; padding: 5px 12px; border-radius: 5px; font-size: 0.85em; cursor: pointer;">🔒 Learning: OFF</button>
-                    <button onclick="document.getElementById('aiChatFileInput').click()" style="background: #556B2F; color: white; border: none; padding: 5px 12px; border-radius: 5px; font-size: 0.85em; cursor: pointer;">📎 Upload</button>
+                    <button onclick="document.getElementById('aiChatFileInput').click()" style="background: #5a9e3f; color: white; border: none; padding: 5px 12px; border-radius: 5px; font-size: 0.85em; cursor: pointer;">📎 Upload</button>
                     <input type="file" id="aiChatFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,text/*" style="display: none;" onchange="uploadAIChatFiles()">
                 </div>
                 <div id="agentModeStatus" style="font-size: 0.75em; color: #999; margin-top: 5px;">🔒 Read-only mode</div>
@@ -564,7 +564,7 @@
     <style>
         .ai-chat-bubble {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
-            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
             font-size: 28px; cursor: pointer;
             box-shadow: 0 4px 12px rgba(85, 107, 47, 0.4);
@@ -580,7 +580,7 @@
         .ai-chat-panel.active { display: flex; }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
             color: white; padding: 20px; border-radius: 16px 16px 0 0;
             display: flex; justify-content: space-between; align-items: flex-start;
         }
@@ -594,7 +594,7 @@
             margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .user-message {
-            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
             color: white; padding: 12px; border-radius: 8px;
             margin-bottom: 10px; text-align: right;
         }
@@ -608,7 +608,7 @@
         }
         .ai-chat-input button {
             padding: 10px 20px;
-            background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+            background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
             color: white; border: none; border-radius: 8px;
             cursor: pointer; font-weight: 600;
         }
@@ -629,9 +629,9 @@
             const status = document.getElementById('agentModeStatus');
             if (agentMode) {
                 btn.textContent = '🔓 Learning: ON';
-                btn.style.background = '#6B8E23';
+                btn.style.background = '#6AB64B';
                 status.textContent = '🔓 Can modify app & learn';
-                status.style.color = '#6B8E23';
+                status.style.color = '#6AB64B';
             } else {
                 btn.textContent = '🔒 Learning: OFF';
                 btn.style.background = '#999';

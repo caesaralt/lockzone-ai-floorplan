@@ -97,7 +97,7 @@
         .top-logo {
             font-size: 20px;
             font-weight: 700;
-            color: #556B2F;
+            color: #5a9e3f;
             text-decoration: none;
         }
 
@@ -123,7 +123,7 @@
         }
 
         .top-nav-item.active {
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
         }
 
@@ -172,7 +172,7 @@
 
         .nav-item:hover { background: var(--hover-bg); }
         .nav-item.active {
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
             font-weight: 600;
         }
@@ -275,7 +275,7 @@
         .stat-value {
             font-size: 36px;
             font-weight: 700;
-            color: #556B2F;
+            color: #5a9e3f;
             margin-bottom: 8px;
         }
 
@@ -320,12 +320,12 @@
         }
 
         .btn-primary {
-            background: #556B2F;
+            background: #5a9e3f;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #6B8E23;
+            background: #6AB64B;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
         }
@@ -386,7 +386,7 @@
 
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #556B2F;
+            border-color: #5a9e3f;
             box-shadow: 0 0 0 4px rgba(85, 107, 47, 0.1);
         }
 
@@ -466,6 +466,11 @@
         }
 
         .modal.active { display: flex; }
+        
+        /* Higher z-index for edit modals that appear on top of detail modals */
+        #quoteModal.active, #jobModal.active, #customerModal.active, #personModal.active {
+            z-index: 1100;
+        }
 
         .modal-content {
             background: var(--bg-secondary);
@@ -524,7 +529,7 @@
             width: 40px;
             height: 40px;
             border: 4px solid var(--border-light);
-            border-top-color: #556B2F;
+            border-top-color: #5a9e3f;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -736,7 +741,7 @@
             <!-- Quick Actions -->
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-header">
-                    <h2 class="card-title">⚡ Quick Actions</h2>
+                    <h2 class="card-title">Quick Actions</h2>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn btn-primary" onclick="showSection('people-customers'); openPersonModal('customer')">+ New Customer</button>
@@ -826,7 +831,7 @@
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h3 class="chart-title">🔔 Notifications <span id="alertsCount" style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 8px;">0</span></h3>
-                        <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #556B2F; cursor: pointer; font-size: 12px;">Mark all read</button>
+                        <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #5a9e3f; cursor: pointer; font-size: 12px;">Mark all read</button>
                     </div>
                     <div id="alertsContainer" style="min-height: 200px;">
                         <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
@@ -1768,7 +1773,7 @@
                 <div id="projectCostSummary" style="margin-bottom: 20px; padding: 16px; background: var(--hover-bg); border-radius: 10px;">
                     <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">
-                            <div style="font-size: 24px; font-weight: 700; color: #556B2F;">$0.00</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #5a9e3f;">$0.00</div>
                             <div style="font-size: 12px; color: var(--text-secondary);">Total Cost</div>
                         </div>
                         <div style="width: 200px; height: 200px; position: relative;">
@@ -1865,6 +1870,13 @@
                         <label>Supplier Name</label>
                         <input type="text" id="quoteSupplierName" placeholder="Enter supplier name">
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>People of Interest</label>
+                    <select id="quotePeopleOfInterest" multiple style="height: 80px;">
+                        <!-- Populated dynamically with contacts, contractors, employees -->
+                    </select>
+                    <small style="color: var(--text-secondary); font-size: 11px;">Hold Ctrl/Cmd to select multiple contacts</small>
                 </div>
                 <div class="form-group">
                     <label>Title *</label>
@@ -2058,7 +2070,7 @@
                 <div id="quoteCostSummary" style="margin-bottom: 20px; padding: 16px; background: var(--hover-bg); border-radius: 10px;">
                     <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">
-                            <div style="font-size: 24px; font-weight: 700; color: #556B2F;" id="quoteCostTotal">$0.00</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #5a9e3f;" id="quoteCostTotal">$0.00</div>
                             <div style="font-size: 12px; color: var(--text-secondary);">Total from Cost Centres</div>
                             <div id="quoteCostBreakdown" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
                         </div>
@@ -2090,7 +2102,7 @@
                         <div id="quoteCostCentresCustomer" style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;"></div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 24px; font-weight: 700; color: #556B2F;" id="quoteTotalAmount">$0.00</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #5a9e3f;" id="quoteTotalAmount">$0.00</div>
                         <div style="font-size: 12px; color: var(--text-secondary);">Quote Total</div>
                     </div>
                 </div>
@@ -2138,7 +2150,7 @@
                         <div style="font-size: 12px; color: #666;">Equipment</div>
                     </div>
                     <div style="text-align: center; padding: 16px; border-left: 2px solid #ddd;">
-                        <div style="font-size: 28px; font-weight: 700; color: #556B2F;" id="ccGrandTotal">$0</div>
+                        <div style="font-size: 28px; font-weight: 700; color: #5a9e3f;" id="ccGrandTotal">$0</div>
                         <div style="font-size: 12px; color: #666;">Grand Total</div>
                     </div>
                 </div>
@@ -2658,10 +2670,23 @@
                         <input type="text" id="jobName" required>
                     </div>
                     <div class="form-group">
+                        <label>Job Number</label>
+                        <input type="text" id="jobNumber" placeholder="Auto-generated if empty">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Customer</label>
                         <select id="jobCustomer">
                             <option value="">Select Customer</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>People of Interest</label>
+                        <select id="jobPeopleOfInterest" multiple style="height: 80px;">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <small style="color: var(--text-secondary); font-size: 11px;">Hold Ctrl/Cmd to select multiple</small>
                     </div>
                 </div>
                 <div class="form-group">
@@ -2680,9 +2705,30 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Value ($)</label>
+                        <label>Materials Cost ($)</label>
+                        <input type="number" id="jobMaterialsCost" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Labor Cost ($)</label>
+                        <input type="number" id="jobLaborCost" step="0.01" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Value ($)</label>
                         <input type="number" id="jobValue" step="0.01" min="0">
                     </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="jobPriority">
+                            <option value="low">Low</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Recurring Schedule</label>
                         <select id="jobRecurring">
@@ -2695,6 +2741,17 @@
                             <option value="yearly">Yearly</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Assigned To</label>
+                        <select id="jobAssignedTo">
+                            <option value="">Unassigned</option>
+                            <!-- Populated with employees -->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="jobNotes" rows="2" placeholder="Internal notes..."></textarea>
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('jobModal')">Cancel</button>
@@ -2860,11 +2917,11 @@
                             <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                                 <button class="btn btn-secondary" onclick="downloadFloorplanFromDetail()">📥 Download</button>
                                 <button class="btn btn-primary" id="editInCanvasBtn" onclick="editQuoteInCanvas()">✏️ Edit in Canvas</button>
-                                <button class="btn btn-secondary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #556B2F, #6B8E23); color: white;">🎨 Open in Canvas Editor</button>
+                                <button class="btn btn-secondary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #5a9e3f, #6AB64B); color: white;">🎨 Open in Canvas Editor</button>
                             </div>
                             <div id="noFloorplanActions" style="display: none; margin-top: 16px; text-align: center; padding: 20px; background: var(--bg-primary); border-radius: 12px; border: 2px dashed var(--border-color);">
                                 <p style="color: var(--text-secondary); margin-bottom: 12px;">No floorplan attached to this quote</p>
-                                <button class="btn btn-primary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #556B2F, #6B8E23);">🎨 Create Floorplan in Canvas Editor</button>
+                                <button class="btn btn-primary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #5a9e3f, #6AB64B);">🎨 Create Floorplan in Canvas Editor</button>
                             </div>
                         </div>
                     </div>
@@ -2923,6 +2980,124 @@
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-success" id="markSentBtn" onclick="markQuoteSent(currentViewingQuoteId)">📤 Mark as Sent</button>
                         <button class="btn btn-success" id="markAcceptedBtn" onclick="markQuoteAccepted(currentViewingQuoteId)">✅ Mark as Accepted</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job Detail Modal (Full Screen) -->
+    <div id="jobDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 95vw; width: 95vw; max-height: 95vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="font-size: 48px;">🔧</div>
+                    <div>
+                        <h2 class="modal-title" id="jobDetailTitle" style="color: white; margin: 0;">Job Title</h2>
+                        <p id="jobDetailNumber" style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 4px 0 0 0;"></p>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeModal('jobDetailModal')" style="color: white;">×</button>
+            </div>
+            
+            <div style="padding: 24px;">
+                <!-- Job Stats Row -->
+                <div id="jobDetailStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <!-- Main Content Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <!-- Left Column -->
+                    <div>
+                        <!-- Job Description -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">📝 Description</h3>
+                            <p id="jobDetailDescription" style="color: var(--text-secondary); margin: 0; line-height: 1.6;">No description</p>
+                        </div>
+                        
+                        <!-- Customer Info -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">👤 Customer</h3>
+                            <div id="jobDetailCustomer">No customer linked</div>
+                        </div>
+                        
+                        <!-- People of Interest -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">👥 People of Interest</h3>
+                            <div id="jobDetailPeople">No people linked</div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">📋 Notes</h3>
+                            <p id="jobDetailNotes" style="color: var(--text-secondary); margin: 0; line-height: 1.6;">No notes</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div>
+                        <!-- Cost Breakdown -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">💰 Cost Breakdown</h3>
+                            <div id="jobDetailCosts">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; font-size: 18px; color: var(--text-primary);">Total Value</span>
+                                <span id="jobDetailTotal" style="font-size: 24px; font-weight: 700; color: #6AB64B;">$0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Chart -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📊 Progress</h3>
+                            <div id="jobDetailProgress">
+                                <div style="background: var(--bg-tertiary); border-radius: 10px; height: 20px; overflow: hidden;">
+                                    <div id="jobProgressBar" style="background: linear-gradient(90deg, #6AB64B, #5a9e3f); height: 100%; width: 0%; transition: width 0.5s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                                    <span>Status: <strong id="jobProgressStatus">Pending</strong></span>
+                                    <span id="jobProgressPercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Timeline -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📅 Timeline</h3>
+                            <div id="jobDetailTimeline">
+                                <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                                    <div style="flex: 1; padding: 12px; background: var(--bg-primary); border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Start Date</div>
+                                        <div id="jobDetailStartDate" style="font-weight: 600; color: var(--text-primary);">-</div>
+                                    </div>
+                                    <div style="flex: 1; padding: 12px; background: var(--bg-primary); border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Due Date</div>
+                                        <div id="jobDetailDueDate" style="font-weight: 600; color: var(--text-primary);">-</div>
+                                    </div>
+                                </div>
+                                <div id="jobDaysRemaining" style="text-align: center; padding: 8px; background: var(--bg-primary); border-radius: 8px; font-size: 13px; color: var(--text-secondary);"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Assigned Stock/Materials -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📦 Assigned Stock</h3>
+                            <div id="jobDetailStock">No stock assigned</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="closeModal('jobDetailModal')">Close</button>
+                        <button class="btn btn-primary" onclick="editJob(currentViewingJobId, currentViewingJobStatus)">✏️ Edit Job</button>
+                        <button class="btn btn-primary" onclick="addJobToCalendar(currentViewingJobId, '', '', '')">📅 Add to Calendar</button>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-success" id="markJobCompleteBtn" onclick="markJobComplete(currentViewingJobId)">✅ Mark Complete</button>
                     </div>
                 </div>
             </div>
@@ -3424,7 +3599,7 @@
                     labels: ['Completed Revenue', 'Pending Revenue'],
                     datasets: [{
                         data: [stats.revenue.total - stats.revenue.pending, stats.revenue.pending],
-                        backgroundColor: ['#556B2F', '#6B8E23'],
+                        backgroundColor: ['#5a9e3f', '#6AB64B'],
                         borderWidth: 0
                     }]
                 },
@@ -3451,7 +3626,7 @@
                     datasets: [{
                         label: 'Jobs',
                         data: [stats.projects.active || 0, stats.projects.on_hold || 0, stats.projects.completed || 0],
-                        backgroundColor: ['#556B2F', '#f39c12', '#27ae60'],
+                        backgroundColor: ['#5a9e3f', '#f39c12', '#27ae60'],
                         borderWidth: 0
                     }]
                 },
@@ -3490,7 +3665,7 @@
                     datasets: [{
                         label: 'Revenue',
                         data: monthlyData,
-                        borderColor: '#556B2F',
+                        borderColor: '#5a9e3f',
                         backgroundColor: 'rgba(85, 107, 47, 0.1)',
                         fill: true,
                         tension: 0.4
@@ -3533,7 +3708,7 @@
                     datasets: [{
                         label: 'Customers',
                         data: customerData,
-                        borderColor: '#6B8E23',
+                        borderColor: '#6AB64B',
                         backgroundColor: 'rgba(107, 142, 35, 0.1)',
                         fill: true,
                         tension: 0.4
@@ -4662,9 +4837,9 @@
         
         function updateCustomerStats(customerId) {
             const customerQuotes = quotes.filter(q => q.customer_id === customerId);
-            const totalQuoteValue = customerQuotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+            const totalQuoteValue = customerQuotes.reduce((sum, q) => sum + (q.quote_amount || q.total_amount || 0), 0);
             const acceptedQuotes = customerQuotes.filter(q => q.status === 'accepted');
-            const acceptedValue = acceptedQuotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+            const acceptedValue = acceptedQuotes.reduce((sum, q) => sum + (q.quote_amount || q.total_amount || 0), 0);
             
             document.getElementById('customerDetailStats').innerHTML = `
                 <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px; text-align: center;">
@@ -4717,7 +4892,7 @@
                             <div style="font-size: 12px; color: var(--text-secondary);">${q.quote_number || ''} • ${q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="font-weight: 600; font-size: 16px;">$${(q.total_amount || 0).toLocaleString()}</div>
+                            <div style="font-weight: 600; font-size: 16px;">$${(q.quote_amount || q.total_amount || 0).toLocaleString()}</div>
                             <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${q.status || 'draft'}</span>
                         </div>
                     </div>
@@ -4837,11 +5012,7 @@
             // If there's a job modal, open it with customer pre-selected
             setTimeout(() => {
                 if (typeof openJobModal === 'function') {
-                    openJobModal('pending');
-                    const customerSelect = document.getElementById('jobCustomer');
-                    if (customerSelect) {
-                        customerSelect.value = customerId;
-                    }
+                    openJobModal('pending', customerId);
                 }
             }, 300);
         }
@@ -5140,6 +5311,9 @@
                 customerSelect.innerHTML = '<option value="">Select Customer...</option>' +
                     customers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
             }
+            
+            // Populate People of Interest
+            populatePeopleOfInterest('quotePeopleOfInterest');
 
             // Update modal title based on status
             const statusLabels = {
@@ -5174,23 +5348,51 @@
             openModal('personModal');
         }
 
-        function openJobModal(status) {
+        function openJobModal(status, preSelectedCustomerId = null) {
             document.getElementById('jobId').value = '';
             document.getElementById('jobStatus').value = status;
             document.getElementById('jobName').value = '';
+            document.getElementById('jobNumber').value = '';
             document.getElementById('jobCustomer').value = '';
             document.getElementById('jobDescription').value = '';
             document.getElementById('jobStartDate').value = '';
             document.getElementById('jobDueDate').value = '';
+            document.getElementById('jobMaterialsCost').value = '0';
+            document.getElementById('jobLaborCost').value = '0';
             document.getElementById('jobValue').value = '';
+            document.getElementById('jobPriority').value = 'normal';
             document.getElementById('jobRecurring').value = '';
+            document.getElementById('jobAssignedTo').value = '';
+            document.getElementById('jobNotes').value = '';
 
-            // Populate customer dropdown
+            // Populate customer dropdown - combine customers from multiple sources
             const customerSelect = document.getElementById('jobCustomer');
             if (customerSelect) {
+                let allCustomers = [...customers];
+                
+                // Add from window.allPeople (People section customers)
+                if (window.allPeople) {
+                    window.allPeople.filter(p => p.type === 'customer').forEach(c => {
+                        if (!allCustomers.find(existing => existing.id === c.id)) {
+                            allCustomers.push(c);
+                        }
+                    });
+                }
+                
                 customerSelect.innerHTML = '<option value="">Select Customer...</option>' +
-                    customers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+                    allCustomers.map(c => `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`).join('');
+                
+                // Pre-select customer if provided
+                if (preSelectedCustomerId) {
+                    customerSelect.value = preSelectedCustomerId;
+                }
             }
+            
+            // Populate People of Interest (contacts, contractors, employees)
+            populatePeopleOfInterest('jobPeopleOfInterest');
+            
+            // Populate Assigned To (employees only)
+            populateEmployeesDropdown('jobAssignedTo');
 
             const labels = {
                 'in_progress': 'In Progress Job',
@@ -5208,6 +5410,73 @@
             }
 
             openModal('jobModal');
+        }
+        
+        function populatePeopleOfInterest(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            
+            let options = '';
+            
+            // Add contacts
+            if (window.allPeople) {
+                const contacts = window.allPeople.filter(p => p.type === 'contact');
+                if (contacts.length > 0) {
+                    options += '<optgroup label="📇 Contacts">';
+                    contacts.forEach(c => {
+                        options += `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`;
+                    });
+                    options += '</optgroup>';
+                }
+                
+                // Add contractors
+                const contractors = window.allPeople.filter(p => p.type === 'contractor');
+                if (contractors.length > 0) {
+                    options += '<optgroup label="🔧 Contractors">';
+                    contractors.forEach(c => {
+                        options += `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`;
+                    });
+                    options += '</optgroup>';
+                }
+                
+                // Add employees
+                const employees = window.allPeople.filter(p => p.type === 'employee');
+                if (employees.length > 0) {
+                    options += '<optgroup label="👔 Employees">';
+                    employees.forEach(c => {
+                        options += `<option value="${c.id}">${c.name}</option>`;
+                    });
+                    options += '</optgroup>';
+                }
+                
+                // Add suppliers
+                const suppliers = window.allPeople.filter(p => p.type === 'supplier');
+                if (suppliers.length > 0) {
+                    options += '<optgroup label="🏭 Suppliers">';
+                    suppliers.forEach(c => {
+                        options += `<option value="${c.id}">${c.name}${c.company ? ' (' + c.company + ')' : ''}</option>`;
+                    });
+                    options += '</optgroup>';
+                }
+            }
+            
+            select.innerHTML = options || '<option value="">No people available</option>';
+        }
+        
+        function populateEmployeesDropdown(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            
+            let options = '<option value="">Unassigned</option>';
+            
+            if (window.allPeople) {
+                const employees = window.allPeople.filter(p => p.type === 'employee');
+                employees.forEach(e => {
+                    options += `<option value="${e.id}">${e.name}</option>`;
+                });
+            }
+            
+            select.innerHTML = options;
         }
 
         function openMaterialModal(type) {
@@ -6052,7 +6321,7 @@
                     summary.innerHTML = `
                         <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                             <div style="flex: 1; min-width: 200px;">
-                                <div style="font-size: 24px; font-weight: 700; color: #556B2F;">$${data.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #5a9e3f;">$${data.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                                 <div style="font-size: 12px; color: #666;">Total Cost</div>
                                 ${data.cost_centres.length > 0 ? `
                                     <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
@@ -7945,7 +8214,7 @@
                     cursor: pointer;
                 ">🔒 Learning: OFF</button>
                 <button onclick="document.getElementById('aiChatFileInput').click()" style="
-                    background: #556B2F;
+                    background: #5a9e3f;
                     color: white;
                     border: none;
                     padding: 5px 12px;
@@ -7999,7 +8268,7 @@
     }
 
     .ai-chat-header {
-        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
         color: white;
         padding: 20px;
         border-radius: 16px 16px 0 0;
@@ -8029,7 +8298,7 @@
     }
 
     .user-message {
-        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
         color: white;
         padding: 12px;
         border-radius: 8px;
@@ -8054,7 +8323,7 @@
 
     .ai-chat-input button {
         padding: 10px 20px;
-        background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
+        background: linear-gradient(135deg, #5a9e3f 0%, #6AB64B 100%);
         color: white;
         border: none;
         border-radius: 8px;
@@ -8166,9 +8435,9 @@
         const status = document.getElementById('agentModeStatus');
         if (agentMode) {
             btn.textContent = '🔓 Learning: ON';
-            btn.style.background = '#6B8E23';
+            btn.style.background = '#6AB64B';
             status.textContent = '🔓 Can modify app & learn';
-            status.style.color = '#6B8E23';
+            status.style.color = '#6AB64B';
         } else {
             btn.textContent = '🔒 Learning: OFF';
             btn.style.background = '#999';
@@ -8957,26 +9226,31 @@
                             <th>Start Date</th>
                             <th>Due Date</th>
                             <th>Value</th>
+                            <th>Priority</th>
                             ${status === 'recurring' ? '<th>Schedule</th>' : ''}
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${jobsList.map(j => `
-                            <tr>
+                        ${jobsList.map(j => {
+                            const priorityColors = { 'urgent': '#e74c3c', 'high': '#f39c12', 'normal': '#3498db', 'low': '#95a5a6' };
+                            const priorityColor = priorityColors[j.priority] || priorityColors.normal;
+                            return `
+                            <tr style="cursor: pointer;" onclick="viewJobDetail('${j.id}')" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
                                 <td><strong>${j.name}</strong></td>
-                                <td>${j.customer_id || '-'}</td>
+                                <td>${j.customer_name || j.customer_id || '-'}</td>
                                 <td>${j.start_date || '-'}</td>
                                 <td>${j.due_date || '-'}</td>
                                 <td>$${(j.value || 0).toLocaleString()}</td>
+                                <td><span style="background: ${priorityColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${j.priority || 'normal'}</span></td>
                                 ${status === 'recurring' ? `<td>${j.recurring_schedule || '-'}</td>` : ''}
-                                <td>
+                                <td onclick="event.stopPropagation();">
                                     <button class="btn btn-secondary btn-small" onclick="addJobToCalendar('${j.id}', '${j.name}', '${j.start_date}', '${j.due_date}')" title="Add to Calendar">📅</button>
                                     <button class="btn btn-secondary btn-small" onclick="editJob('${j.id}', '${status}')">Edit</button>
                                     <button class="btn btn-danger btn-small" onclick="deleteJob('${j.id}', '${status}')">Delete</button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `;}).join('')}
                     </tbody>
                 </table>
             </div>
@@ -8998,6 +9272,187 @@
 
     // openJobModal moved to first script block
 
+    let currentViewingJobId = null;
+    let currentViewingJobStatus = null;
+    
+    async function viewJobDetail(jobId) {
+        try {
+            const res = await fetch(`/api/crm/jobs/${jobId}`);
+            const data = await res.json();
+            
+            if (!data.success || !data.job) {
+                alert('Job not found');
+                return;
+            }
+            
+            const job = data.job;
+            currentViewingJobId = jobId;
+            currentViewingJobStatus = job.status;
+            
+            // Populate header
+            document.getElementById('jobDetailTitle').textContent = job.name || 'Untitled Job';
+            document.getElementById('jobDetailNumber').textContent = job.job_number ? `Job #${job.job_number}` : '';
+            
+            // Calculate progress percentage based on status
+            const statusProgress = { 'pending': 10, 'upcoming': 25, 'in_progress': 60, 'finished': 100 };
+            const progress = statusProgress[job.status] || 0;
+            
+            // Populate stats
+            const priorityColors = { 'urgent': '#e74c3c', 'high': '#f39c12', 'normal': '#3498db', 'low': '#95a5a6' };
+            const priorityColor = priorityColors[job.priority] || priorityColors.normal;
+            
+            document.getElementById('jobDetailStats').innerHTML = `
+                <div style="background: linear-gradient(135deg, #6AB64B, #5a9e3f); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">$${(job.value || 0).toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Total Value</div>
+                </div>
+                <div style="background: linear-gradient(135deg, ${priorityColor}, ${priorityColor}dd); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; text-transform: capitalize;">${job.priority || 'Normal'}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Priority</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; text-transform: capitalize;">${job.status || 'Pending'}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Status</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">${progress}%</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Progress</div>
+                </div>
+            `;
+            
+            // Populate description
+            document.getElementById('jobDetailDescription').textContent = job.description || 'No description provided';
+            
+            // Populate customer
+            let customerHtml = '<div style="color: var(--text-secondary);">No customer linked</div>';
+            if (job.customer_id) {
+                let customer = customers.find(c => c.id === job.customer_id);
+                if (!customer && window.allPeople) {
+                    customer = window.allPeople.find(p => p.id === job.customer_id);
+                }
+                if (customer) {
+                    customerHtml = `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 48px; height: 48px; background: #3498db; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px;">
+                                ${customer.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: var(--text-primary);">${customer.name}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">${customer.company || ''}</div>
+                                ${customer.email ? `<div style="font-size: 12px; color: var(--text-secondary);">📧 ${customer.email}</div>` : ''}
+                                ${customer.phone ? `<div style="font-size: 12px; color: var(--text-secondary);">📱 ${customer.phone}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('jobDetailCustomer').innerHTML = customerHtml;
+            
+            // Populate people of interest
+            let peopleHtml = '<div style="color: var(--text-secondary);">No people linked</div>';
+            if (job.people_of_interest && job.people_of_interest.length > 0 && window.allPeople) {
+                const linkedPeople = job.people_of_interest.map(id => window.allPeople.find(p => p.id === id)).filter(Boolean);
+                if (linkedPeople.length > 0) {
+                    peopleHtml = linkedPeople.map(p => `
+                        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                            <div style="width: 36px; height: 36px; background: #9b59b6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
+                                ${p.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">${p.name}</div>
+                                <div style="font-size: 11px; color: var(--text-secondary);">${p.type} ${p.company ? '• ' + p.company : ''}</div>
+                            </div>
+                            ${p.phone ? `<a href="tel:${p.phone}" style="color: #3498db; font-size: 18px;">📱</a>` : ''}
+                            ${p.email ? `<a href="mailto:${p.email}" style="color: #3498db; font-size: 18px;">📧</a>` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+            document.getElementById('jobDetailPeople').innerHTML = peopleHtml;
+            
+            // Populate notes
+            document.getElementById('jobDetailNotes').textContent = job.notes || 'No notes';
+            
+            // Populate costs
+            const materialsCost = job.materials_cost || 0;
+            const laborCost = job.labor_cost || 0;
+            const totalValue = job.value || (materialsCost + laborCost);
+            
+            document.getElementById('jobDetailCosts').innerHTML = `
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">Materials Cost</span>
+                    <span style="font-weight: 600; color: var(--text-primary);">$${materialsCost.toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">Labor Cost</span>
+                    <span style="font-weight: 600; color: var(--text-primary);">$${laborCost.toLocaleString()}</span>
+                </div>
+            `;
+            document.getElementById('jobDetailTotal').textContent = `$${totalValue.toLocaleString()}`;
+            
+            // Populate progress bar
+            document.getElementById('jobProgressBar').style.width = `${progress}%`;
+            document.getElementById('jobProgressStatus').textContent = (job.status || 'pending').replace('_', ' ');
+            document.getElementById('jobProgressPercent').textContent = `${progress}%`;
+            
+            // Populate timeline
+            document.getElementById('jobDetailStartDate').textContent = job.start_date ? new Date(job.start_date).toLocaleDateString() : '-';
+            document.getElementById('jobDetailDueDate').textContent = job.due_date ? new Date(job.due_date).toLocaleDateString() : '-';
+            
+            // Calculate days remaining
+            if (job.due_date) {
+                const dueDate = new Date(job.due_date);
+                const today = new Date();
+                const diffTime = dueDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                    document.getElementById('jobDaysRemaining').innerHTML = `<span style="color: #e74c3c; font-weight: 600;">⚠️ Overdue by ${Math.abs(diffDays)} days</span>`;
+                } else if (diffDays === 0) {
+                    document.getElementById('jobDaysRemaining').innerHTML = `<span style="color: #f39c12; font-weight: 600;">⏰ Due today!</span>`;
+                } else {
+                    document.getElementById('jobDaysRemaining').innerHTML = `<span style="color: #27ae60;">${diffDays} days remaining</span>`;
+                }
+            } else {
+                document.getElementById('jobDaysRemaining').textContent = 'No due date set';
+            }
+            
+            // Populate stock (placeholder for now)
+            document.getElementById('jobDetailStock').innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No stock assigned to this job</div>';
+            
+            // Show/hide complete button based on status
+            document.getElementById('markJobCompleteBtn').style.display = job.status !== 'finished' ? 'inline-flex' : 'none';
+            
+            // Open modal
+            openModal('jobDetailModal');
+            
+        } catch (error) {
+            console.error('Error loading job details:', error);
+            alert('Error loading job details: ' + error.message);
+        }
+    }
+    
+    async function markJobComplete(jobId) {
+        if (!confirm('Mark this job as complete?')) return;
+        try {
+            const res = await fetch(`/api/crm/jobs/${jobId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'finished' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('✅ Job marked as complete!');
+                closeModal('jobDetailModal');
+                loadJobs('in_progress');
+                loadJobs('finished');
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
 
     function editJob(id, status) {
         fetch(`/api/crm/jobs/${id}`)

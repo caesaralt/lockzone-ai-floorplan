@@ -15,16 +15,16 @@
                 extend: {
                     colors: {
                         olive: {
-                            50: '#f6f7f4',
-                            100: '#e8ebe1',
-                            200: '#d1d7c3',
-                            300: '#b5bfa0',
-                            400: '#9aa67e',
-                            500: '#6B8E23',
-                            600: '#556B2F',
-                            700: '#455826',
-                            800: '#3a4821',
-                            900: '#323d1e',
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#7ec95f',
+                            500: '#6AB64B',
+                            600: '#5a9e3f',
+                            700: '#4a8534',
+                            800: '#3d6c2b',
+                            900: '#305524',
                         }
                     },
                     fontFamily: {
@@ -60,6 +60,141 @@
     </script>
 
     <style>
+        /* Dark mode CSS variables */
+        :root {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #f3f4f6;
+            --bg-tertiary: #e5e7eb;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --text-tertiary: #6b7280;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+            --header-bg: #f9fafb;
+            --canvas-bg: #ffffff;
+            --toolbar-bg: #e5e7eb;
+            --button-bg: #374151;
+            --button-hover: #1f2937;
+            --input-bg: #ffffff;
+            --input-border: #d1d5db;
+            --panel-bg: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --border-color: #374151;
+            --card-bg: #1f2937;
+            --header-bg: #1f2937;
+            --canvas-bg: #374151;
+            --toolbar-bg: #374151;
+            --button-bg: #4b5563;
+            --button-hover: #6b7280;
+            --input-bg: #374151;
+            --input-border: #4b5563;
+            --panel-bg: #1f2937;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Apply dark mode styles */
+        body {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        [data-theme="dark"] .bg-gray-50 { background-color: var(--bg-primary) !important; }
+        [data-theme="dark"] .bg-gray-100 { background-color: var(--bg-secondary) !important; }
+        [data-theme="dark"] .bg-gray-200 { background-color: var(--bg-tertiary) !important; }
+        [data-theme="dark"] .bg-gray-700 { background-color: var(--button-bg) !important; }
+        [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
+        
+        [data-theme="dark"] .text-gray-700 { color: var(--text-secondary) !important; }
+        [data-theme="dark"] .text-gray-800 { color: var(--text-primary) !important; }
+        [data-theme="dark"] .text-gray-600 { color: var(--text-secondary) !important; }
+        [data-theme="dark"] .text-gray-500 { color: var(--text-tertiary) !important; }
+        
+        [data-theme="dark"] .border-gray-200 { border-color: var(--border-color) !important; }
+        [data-theme="dark"] .border-gray-300 { border-color: var(--border-color) !important; }
+        
+        [data-theme="dark"] header { background-color: var(--header-bg) !important; border-color: var(--border-color) !important; }
+        [data-theme="dark"] #canvas { background-color: var(--canvas-bg) !important; }
+        
+        [data-theme="dark"] .hover\:bg-gray-100:hover { background-color: var(--bg-tertiary) !important; }
+        [data-theme="dark"] .hover\:bg-gray-300:hover { background-color: var(--button-bg) !important; }
+        
+        [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        [data-theme="dark"] .shadow-md { box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -1px var(--shadow-color) !important; }
+        [data-theme="dark"] .shadow-lg { box-shadow: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -2px var(--shadow-color) !important; }
+        
+        /* Canvas main area dark mode */
+        [data-theme="dark"] #canvasMain { background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important; }
+        
+        /* Upload zone styling */
+        .upload-zone-card {
+            background: #ffffff;
+            border-color: #6AB64B;
+        }
+        .upload-zone-card:hover {
+            border-color: #5a9e3f;
+        }
+        .upload-icon { color: #6AB64B; }
+        .upload-title { color: #1f2937; }
+        .upload-text { color: #4b5563; }
+        .upload-highlight { color: #6AB64B; }
+        
+        [data-theme="dark"] .upload-zone-card {
+            background: var(--card-bg);
+            border-color: #6AB64B;
+        }
+        [data-theme="dark"] .upload-zone-card:hover {
+            border-color: #7ec95f;
+        }
+        [data-theme="dark"] .upload-icon { color: #6AB64B; }
+        [data-theme="dark"] .upload-title { color: var(--text-primary); }
+        [data-theme="dark"] .upload-text { color: var(--text-secondary); }
+        [data-theme="dark"] .upload-highlight { color: #6AB64B; }
+        
+        /* Theme toggle button */
+        .theme-toggle {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow-color);
+            z-index: 9999;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .theme-toggle svg {
+            width: 22px;
+            height: 22px;
+            color: var(--text-primary);
+        }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -73,18 +208,36 @@
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: var(--bg-secondary);
         }
         ::-webkit-scrollbar-thumb {
-            background: #6B8E23;
+            background: #6AB64B;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #556B2F;
+            background: #5a9e3f;
         }
     </style>
 </head>
 <body class="h-full overflow-hidden bg-gray-50">
+
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <svg id="sunIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="moonIcon" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
 
     <!-- Top Toolbar -->
     <header class="bg-gray-50 shadow-md border-b-2 border-gray-200">
@@ -210,19 +363,19 @@
         </aside>
 
         <!-- CENTER: Canvas Area -->
-        <main class="flex-1 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+        <main id="canvasMain" class="flex-1 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
             <!-- Upload Zone -->
             <div id="uploadZone" class="absolute inset-0 flex items-center justify-center z-10">
-                <div class="bg-white rounded-2xl shadow-2xl p-12 border-4 border-dashed border-olive-300 hover:border-olive-500 transition-all cursor-pointer text-center max-w-lg mx-4 hover:scale-105 transform duration-300">
+                <div class="upload-zone-card rounded-2xl shadow-2xl p-12 border-4 border-dashed transition-all cursor-pointer text-center max-w-lg mx-4 hover:scale-105 transform duration-300">
                     <div class="mb-4">
-                        <svg class="w-20 h-20 mx-auto text-olive-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-20 h-20 mx-auto upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">📄 Upload Floor Plan</h2>
-                    <p class="text-gray-600 text-lg leading-relaxed">
+                    <h2 class="text-2xl font-bold upload-title mb-2">📄 Upload Floor Plan</h2>
+                    <p class="upload-text text-lg leading-relaxed">
                         Drag & drop a PDF or image here<br>
-                        or click <span class="text-olive-600 font-semibold">"Upload PDF"</span> button above
+                        or click <span class="upload-highlight font-semibold">"Upload PDF"</span> button above
                     </p>
                 </div>
             </div>
@@ -491,6 +644,50 @@
     </div>
 
     <script>
+        // ========================
+        // DARK MODE TOGGLE
+        // ========================
+        (function initDarkMode() {
+            const themeToggle = document.getElementById('themeToggle');
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+            const htmlElement = document.documentElement;
+            
+            // Check for saved theme preference or system preference
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const currentTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            
+            // Set initial theme
+            if (currentTheme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'dark');
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+            
+            // Toggle theme on button click
+            themeToggle.addEventListener('click', function() {
+                const theme = htmlElement.getAttribute('data-theme');
+                
+                if (theme === 'dark') {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                } else {
+                    htmlElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                }
+                
+                // Redraw canvas to update colors if needed
+                if (typeof draw === 'function') {
+                    draw();
+                }
+            });
+        })();
+        
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const automationData = {{ automation_data | tojson }};
