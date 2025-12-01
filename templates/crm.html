@@ -623,8 +623,20 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="top-logo">Integratd Living</a>
+            <a href="#" onclick="showSection('dashboard'); return false;" class="top-logo">Integratd Living</a>
             <div style="flex: 1;"></div>
+            
+            <!-- Global Search -->
+            <div class="global-search-container" style="position: relative; margin-right: 16px;">
+                <input type="text" id="globalSearchInput" placeholder="Search everything..." 
+                    style="padding: 8px 16px 8px 36px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); width: 250px; font-size: 14px; transition: all 0.3s;"
+                    onfocus="this.style.width='350px'; showSearchResults()" 
+                    onblur="setTimeout(() => { this.style.width='250px'; hideSearchResults() }, 200)"
+                    oninput="performGlobalSearch(this.value)">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">🔍</span>
+                <div id="globalSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; margin-top: 8px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1000;"></div>
+            </div>
+            
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -650,9 +662,9 @@
     <!-- SIDEBAR -->
     <div class="sidebar">
         <div class="nav-section">
-            <div class="nav-item active" data-section="dashboard" style="padding: 12px 24px; font-weight: 600;">
-                Dashboard
-            </div>
+            <a href="/apps" class="nav-item" style="padding: 12px 24px; font-weight: 600; text-decoration: none; color: inherit;">
+                🏠 APPS
+            </a>
         </div>
 
         <!-- PEOPLE -->
@@ -787,12 +799,13 @@
                 <div class="card-header">
                     <h2 class="card-title">Quick Actions</h2>
                 </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                     <button class="btn btn-primary" onclick="showSection('people-customers'); openPersonModal('customer')">+ New Customer</button>
                     <button class="btn btn-primary" onclick="showSection('jobs-in-progress'); openJobModal('in_progress')">+ New Job</button>
                     <button class="btn btn-primary" onclick="showSection('quotes-open'); openQuoteModal('open')">+ New Quote</button>
                     <button class="btn btn-primary" onclick="showSection('schedules-calendar'); openScheduleEventModal()">+ Schedule Event</button>
                     <button class="btn btn-primary" onclick="showSection('materials-stock'); openMaterialModal('stock')">+ Add Stock</button>
+                    <a href="/quotes" class="btn btn-primary" style="text-decoration: none; text-align: center;">Quote Automation</a>
                 </div>
             </div>
 
@@ -8608,6 +8621,228 @@
 
 <script>
     console.log('CRM Script Block 2: Loaded (AI Chat & Dark Mode)');
+
+    // ============================================================================
+    // GLOBAL SEARCH FUNCTIONALITY
+    // ============================================================================
+    
+    let searchTimeout = null;
+    
+    // CRM Sections for navigation
+    const crmSections = [
+        { id: 'dashboard', icon: '📊', title: 'Dashboard', subtitle: 'Overview of your business', keywords: ['dashboard', 'home', 'overview', 'main'] },
+        { id: 'people-employees', icon: '👔', title: 'Employees', subtitle: 'Manage your team members', keywords: ['employees', 'staff', 'team', 'workers', 'people'] },
+        { id: 'people-customers', icon: '👥', title: 'Customers', subtitle: 'View and manage customers', keywords: ['customers', 'clients', 'people'] },
+        { id: 'people-suppliers', icon: '🏭', title: 'Suppliers', subtitle: 'Manage supplier contacts', keywords: ['suppliers', 'vendors', 'people'] },
+        { id: 'people-contractors', icon: '🔧', title: 'Contractors', subtitle: 'Manage contractors', keywords: ['contractors', 'subcontractors', 'people'] },
+        { id: 'people-contacts', icon: '📇', title: 'Contacts', subtitle: 'General contacts list', keywords: ['contacts', 'people', 'address book'] },
+        { id: 'quotes-open', icon: '📋', title: 'Open Quotes', subtitle: 'Quotes in progress', keywords: ['quotes', 'open', 'draft'] },
+        { id: 'quotes-sent', icon: '📤', title: 'Sent Quotes', subtitle: 'Quotes sent to customers', keywords: ['quotes', 'sent', 'pending'] },
+        { id: 'quotes-expired', icon: '⏰', title: 'Expired Quotes', subtitle: 'Past due quotes', keywords: ['quotes', 'expired', 'overdue'] },
+        { id: 'quotes-supplier', icon: '📥', title: 'Supplier Quotes', subtitle: 'Quotes from suppliers', keywords: ['quotes', 'supplier', 'vendor'] },
+        { id: 'jobs-in-progress', icon: '⚙️', title: 'Jobs In Progress', subtitle: 'Active jobs', keywords: ['jobs', 'in progress', 'active', 'current'] },
+        { id: 'jobs-upcoming', icon: '📅', title: 'Upcoming Jobs', subtitle: 'Scheduled jobs', keywords: ['jobs', 'upcoming', 'scheduled', 'future'] },
+        { id: 'jobs-pending', icon: '⏸️', title: 'Pending Jobs', subtitle: 'Jobs awaiting action', keywords: ['jobs', 'pending', 'waiting'] },
+        { id: 'jobs-finished', icon: '✅', title: 'Finished Jobs', subtitle: 'Completed jobs', keywords: ['jobs', 'finished', 'completed', 'done'] },
+        { id: 'schedules-calendar', icon: '📆', title: 'Calendar', subtitle: 'Schedule and events', keywords: ['calendar', 'schedule', 'events', 'appointments'] },
+        { id: 'materials-stock', icon: '📦', title: 'Stock', subtitle: 'Inventory management', keywords: ['stock', 'inventory', 'materials', 'items'] },
+        { id: 'materials-orders', icon: '🛒', title: 'Orders', subtitle: 'Purchase orders', keywords: ['orders', 'purchase', 'buy'] },
+        { id: 'payments-to-suppliers', icon: '💸', title: 'Payments to Suppliers', subtitle: 'Outgoing payments', keywords: ['payments', 'suppliers', 'outgoing', 'bills'] },
+        { id: 'payments-to-us', icon: '💰', title: 'Payments to Us', subtitle: 'Incoming payments', keywords: ['payments', 'income', 'incoming', 'revenue'] },
+        { id: 'integrations', icon: '🔗', title: 'Integrations', subtitle: 'Third-party connections', keywords: ['integrations', 'connect', 'api'] },
+    ];
+    
+    // Main menu modules
+    const mainMenuModules = [
+        { href: '/crm', icon: '📊', title: 'CRM Dashboard', subtitle: 'Manage customers, projects, scheduling, inventory', keywords: ['crm', 'dashboard', 'customers', 'projects'] },
+        { href: '/quotes', icon: '💰', title: 'Quote Automation', subtitle: 'Upload floor plans and generate quotes with AI', keywords: ['quotes', 'automation', 'ai', 'floor plans', 'pricing'] },
+        { href: '/canvas', icon: '🎨', title: 'Canvas Editor', subtitle: 'Professional floor plan editor', keywords: ['canvas', 'editor', 'floor plan', 'drawing', 'design'] },
+        { href: '/mapping', icon: '⚡', title: 'Electrical Mapping', subtitle: 'Circuit mapping and analysis', keywords: ['electrical', 'mapping', 'circuits', 'wiring'] },
+        { href: '/board-builder', icon: '🔌', title: 'Board Builder', subtitle: 'Design electrical distribution boards', keywords: ['board', 'builder', 'electrical', 'distribution'] },
+        { href: '/electrical-cad', icon: '📟', title: 'Electrical CAD', subtitle: 'Professional CAD drawings', keywords: ['cad', 'electrical', 'drawings', 'design'] },
+        { href: '/learning', icon: '🧠', title: 'AI Learning', subtitle: 'Train AI recognition', keywords: ['learning', 'ai', 'training', 'recognition'] },
+        { href: '/kanban', icon: '📋', title: 'Operations Board', subtitle: 'Kanban task management', keywords: ['kanban', 'operations', 'tasks', 'board', 'workflow'] },
+        { href: '/admin', icon: '👤', title: 'Admin Panel', subtitle: 'User management and settings', keywords: ['admin', 'users', 'settings', 'permissions'] },
+        { href: '/simpro', icon: '🔗', title: 'Simpro Integration', subtitle: 'Connect with Simpro', keywords: ['simpro', 'integration', 'sync'] },
+        { href: '/ai-mapping', icon: '🤖', title: 'AI Mapping', subtitle: 'Advanced AI floor plan analysis', keywords: ['ai', 'mapping', 'analysis', 'floor plan'] },
+    ];
+    
+    function showSearchResults() {
+        document.getElementById('globalSearchResults').style.display = 'block';
+    }
+    
+    function hideSearchResults() {
+        document.getElementById('globalSearchResults').style.display = 'none';
+    }
+    
+    async function performGlobalSearch(query) {
+        const resultsContainer = document.getElementById('globalSearchResults');
+        
+        if (!query || query.length < 2) {
+            resultsContainer.innerHTML = '<div style="padding: 16px; color: var(--text-secondary); text-align: center;">Type at least 2 characters to search...</div>';
+            return;
+        }
+        
+        // Debounce
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            resultsContainer.innerHTML = '<div style="padding: 16px; text-align: center;"><div class="spinner"></div> Searching...</div>';
+            
+            const searchLower = query.toLowerCase();
+            const results = [];
+            
+            // Search CRM Sections first (navigation)
+            crmSections.forEach(section => {
+                const matches = section.title.toLowerCase().includes(searchLower) ||
+                    section.subtitle.toLowerCase().includes(searchLower) ||
+                    section.keywords.some(k => k.includes(searchLower));
+                if (matches) {
+                    results.push({ 
+                        type: 'section', 
+                        icon: section.icon, 
+                        title: section.title, 
+                        subtitle: section.subtitle, 
+                        action: `showSection('${section.id}')`,
+                        priority: 1
+                    });
+                }
+            });
+            
+            // Search Main Menu Modules
+            mainMenuModules.forEach(mod => {
+                const matches = mod.title.toLowerCase().includes(searchLower) ||
+                    mod.subtitle.toLowerCase().includes(searchLower) ||
+                    mod.keywords.some(k => k.includes(searchLower));
+                if (matches) {
+                    results.push({ 
+                        type: 'module', 
+                        icon: mod.icon, 
+                        title: mod.title, 
+                        subtitle: mod.subtitle, 
+                        action: `window.location.href='${mod.href}'`,
+                        priority: 2
+                    });
+                }
+            });
+            
+            try {
+                // Search Customers
+                const customersRes = await fetch('/api/crm/people?type=customer');
+                const customersData = await customersRes.json();
+                if (customersData.success) {
+                    customersData.people.forEach(c => {
+                        if ((c.name || '').toLowerCase().includes(searchLower) || 
+                            (c.email || '').toLowerCase().includes(searchLower) ||
+                            (c.phone || '').toLowerCase().includes(searchLower) ||
+                            (c.company || '').toLowerCase().includes(searchLower)) {
+                            results.push({ type: 'customer', icon: '👤', title: c.name, subtitle: c.email || c.phone || '', id: c.id, action: `viewCustomerDetail('${c.id}')`, priority: 3 });
+                        }
+                    });
+                }
+                
+                // Search Quotes
+                const quotesRes = await fetch('/api/crm/quotes');
+                const quotesData = await quotesRes.json();
+                if (quotesData.success) {
+                    quotesData.quotes.forEach(q => {
+                        if ((q.name || q.title || '').toLowerCase().includes(searchLower) ||
+                            (q.quote_number || '').toLowerCase().includes(searchLower) ||
+                            (q.description || '').toLowerCase().includes(searchLower)) {
+                            results.push({ type: 'quote', icon: '💰', title: q.name || q.title || `Quote #${q.quote_number}`, subtitle: `$${(q.quote_amount || q.total_amount || 0).toLocaleString()} - ${q.status}`, id: q.id, action: `viewQuoteDetail('${q.id}')`, priority: 3 });
+                        }
+                    });
+                }
+                
+                // Search Jobs
+                const jobsRes = await fetch('/api/crm/jobs');
+                const jobsData = await jobsRes.json();
+                if (jobsData.success) {
+                    jobsData.jobs.forEach(j => {
+                        if ((j.name || '').toLowerCase().includes(searchLower) ||
+                            (j.job_number || '').toLowerCase().includes(searchLower) ||
+                            (j.description || '').toLowerCase().includes(searchLower)) {
+                            results.push({ type: 'job', icon: '🔧', title: j.name, subtitle: `${j.status} - $${(j.value || 0).toLocaleString()}`, id: j.id, action: `viewJobDetail('${j.id}')`, priority: 3 });
+                        }
+                    });
+                }
+                
+                // Search Stock
+                const stockRes = await fetch('/api/crm/materials?type=stock');
+                const stockData = await stockRes.json();
+                if (stockData.success) {
+                    stockData.materials.forEach(s => {
+                        if ((s.name || '').toLowerCase().includes(searchLower) ||
+                            (s.category || '').toLowerCase().includes(searchLower)) {
+                            results.push({ type: 'stock', icon: '📦', title: s.name, subtitle: `${s.quantity || 0} in stock - $${(s.unit_price || 0).toFixed(2)}`, id: s.id, action: `viewStockDetail('${s.id}')`, priority: 3 });
+                        }
+                    });
+                }
+                
+                // Search People (employees, contractors, suppliers)
+                for (const ptype of ['employee', 'contractor', 'supplier', 'contact']) {
+                    const pRes = await fetch(`/api/crm/people?type=${ptype}`);
+                    const pData = await pRes.json();
+                    if (pData.success) {
+                        const icons = { employee: '👔', contractor: '🔧', supplier: '🏭', contact: '📇' };
+                        pData.people.forEach(p => {
+                            if ((p.name || '').toLowerCase().includes(searchLower) ||
+                                (p.email || '').toLowerCase().includes(searchLower) ||
+                                (p.company || '').toLowerCase().includes(searchLower)) {
+                                results.push({ type: ptype, icon: icons[ptype], title: p.name, subtitle: p.company || p.email || '', id: p.id, action: `viewPersonDetail('${p.id}', '${ptype}')`, priority: 3 });
+                            }
+                        });
+                    }
+                }
+                
+                // Sort by priority (sections/modules first, then data)
+                results.sort((a, b) => (a.priority || 99) - (b.priority || 99));
+                
+                // Render results
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No results found for "' + query + '"</div>';
+                } else {
+                    let html = '';
+                    let lastType = '';
+                    
+                    results.slice(0, 25).forEach(r => {
+                        // Add section headers
+                        if (r.type === 'section' && lastType !== 'section') {
+                            html += '<div style="padding: 8px 16px; background: var(--bg-primary); font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">CRM Sections</div>';
+                        } else if (r.type === 'module' && lastType !== 'module') {
+                            html += '<div style="padding: 8px 16px; background: var(--bg-primary); font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">App Modules</div>';
+                        } else if (r.priority === 3 && lastType !== 'data') {
+                            html += '<div style="padding: 8px 16px; background: var(--bg-primary); font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Data</div>';
+                            lastType = 'data';
+                        }
+                        
+                        if (r.type === 'section') lastType = 'section';
+                        else if (r.type === 'module') lastType = 'module';
+                        
+                        html += `
+                            <div onclick="${r.action}; hideSearchResults(); document.getElementById('globalSearchInput').value = '';" 
+                                 style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: 0.2s;"
+                                 onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
+                                <span style="font-size: 20px;">${r.icon}</span>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.title}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.subtitle}</div>
+                                </div>
+                                <span style="font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; background: var(--bg-primary); padding: 2px 6px; border-radius: 4px;">${r.type}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    if (results.length > 25) {
+                        html += '<div style="padding: 12px; text-align: center; color: var(--text-secondary); font-size: 12px;">Showing first 25 of ' + results.length + ' results</div>';
+                    }
+                    
+                    resultsContainer.innerHTML = html;
+                }
+            } catch (e) {
+                resultsContainer.innerHTML = '<div style="padding: 16px; color: #e74c3c; text-align: center;">Error searching: ' + e.message + '</div>';
+            }
+        }, 300);
+    }
 
     // ============================================================================
     // DARK MODE TOGGLE - Define this first so DOMContentLoaded can find it

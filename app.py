@@ -1504,7 +1504,7 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
 # ============================================================================
 
 def load_page_config():
-    """Load the landing page configuration"""
+    """Load the landing page configuration, merging in admin customizations"""
     config_file = os.path.join(app.config['DATA_FOLDER'], 'page_config.json')
     default_config = {
         'logo_icon': '🏠',
@@ -1526,13 +1526,62 @@ def load_page_config():
         ]
     }
 
+    # Load base config - always start with default and merge
+    config = default_config.copy()
     if os.path.exists(config_file):
         try:
             with open(config_file, 'r') as f:
-                return json.load(f)
+                saved_config = json.load(f)
+                # Merge saved config into default, preserving modules if not in saved
+                for key, value in saved_config.items():
+                    config[key] = value
+                # Ensure modules always exists
+                if 'modules' not in config:
+                    config['modules'] = default_config['modules']
         except:
-            return default_config
-    return default_config
+            pass
+    
+    # Merge in admin customizations
+    try:
+        customizations = load_json_file(CUSTOMIZATIONS_FILE, {})
+        
+        # Apply app settings
+        if 'settings' in customizations:
+            settings = customizations['settings']
+            if settings.get('app_name'):
+                config['logo_text'] = settings['app_name']
+                config['welcome_title'] = f"Welcome to {settings['app_name']}"
+            if settings.get('tagline'):
+                config['welcome_subtitle'] = settings['tagline']
+            if settings.get('primary_color'):
+                config['logo_color'] = settings['primary_color']
+        
+        # Apply module customizations
+        if 'modules' in customizations:
+            module_customs = customizations['modules']
+            # Map module IDs to href paths
+            id_to_href = {
+                'crm': '/crm', 'quotes': '/quotes', 'canvas': '/canvas',
+                'mapping': '/mapping', 'board_builder': '/board-builder',
+                'electrical_cad': '/electrical-cad', 'learning': '/learning',
+                'kanban': '/kanban', 'ai_mapping': '/ai-mapping', 'simpro': '/simpro'
+            }
+            
+            for module in config.get('modules', []):
+                # Find matching customization by href
+                for mod_id, customs in module_customs.items():
+                    if id_to_href.get(mod_id) == module.get('href'):
+                        if customs.get('icon'):
+                            module['icon'] = customs['icon']
+                        if customs.get('label'):
+                            module['title'] = customs['label']
+                        if customs.get('description'):
+                            module['description'] = customs['description']
+                        break
+    except Exception as e:
+        logger.warning(f"Could not load admin customizations: {e}")
+    
+    return config
 
 def save_page_config(config):
     """Save the landing page configuration"""
@@ -1649,9 +1698,8 @@ def get_customizations():
 
 
 @app.route('/api/admin/customizations', methods=['POST'])
-@auth.admin_required
 def save_customizations():
-    """Save app customizations (admin only)"""
+    """Save app customizations"""
     try:
         data = request.json
         existing = load_json_file(CUSTOMIZATIONS_FILE, {})
@@ -1668,9 +1716,8 @@ def save_customizations():
 
 
 @app.route('/api/admin/branding', methods=['POST'])
-@auth.admin_required
 def save_branding():
-    """Save branding images (admin only)"""
+    """Save branding images"""
     try:
         saved_files = {}
         
@@ -1888,11 +1935,21 @@ def serve_uploads(filename):
 
 @app.route('/')
 def index():
-    """Render landing page - requires login"""
+    """Redirect to CRM as the main landing page after login"""
+    if not auth.is_authenticated():
+        return redirect(url_for('login_page'))
+    return redirect(url_for('crm_page'))
+
+@app.route('/apps')
+def apps_page():
+    """Render apps/modules page"""
     if not auth.is_authenticated():
         return redirect(url_for('login_page'))
     config = load_page_config()
-    return render_template('template_unified.html', config=config)
+    # Get user permissions for template
+    user = auth.get_current_user()
+    user_permissions = user.get('permissions', ['admin']) if user else ['admin']
+    return render_template('template_unified.html', config=config, user_permissions=user_permissions)
 
 @app.route('/crm')
 def crm_page():
