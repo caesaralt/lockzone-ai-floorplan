@@ -128,6 +128,17 @@
             margin-bottom: 8px;
         }
 
+        .logo-img {
+            height: 40px;
+            width: auto;
+            margin-bottom: 16px;
+            transition: filter 0.3s;
+        }
+
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1);
+        }
+
         .logo-subtitle {
             font-size: 16px;
             color: var(--text-secondary);
@@ -419,7 +430,7 @@
     <div class="login-container">
         <!-- Logo Section -->
         <div class="logo-section">
-            <h1 class="logo-title">Integratd Living</h1>
+            <img src="/static/images/logo.png" alt="Integratd Living" class="logo-img">
             <p class="logo-subtitle">Automation Platform</p>
         </div>
 

@@ -41,6 +41,16 @@
             gap: 8px;
         }
 
+        .logo-img {
+            height: 28px;
+            width: auto;
+            transition: filter 0.3s;
+        }
+
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1);
+        }
+
         .nav-menu {
             display: flex;
             gap: 24px;
@@ -293,7 +303,7 @@
 
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="logo">Integratd Living</a>
+            <a href="/" class="logo"><img src="/static/images/logo.png" alt="Integratd Living" class="logo-img"></a>
             <ul class="nav-menu">
                 <li><a href="/crm" class="nav-item">CRM Dashboard</a></li>
                 <li><a href="/quotes" class="nav-item">Quote Automation</a></li>

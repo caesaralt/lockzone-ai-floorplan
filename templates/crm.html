@@ -99,6 +99,19 @@
             font-weight: 700;
             color: #5a9e3f;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-img {
+            height: 28px;
+            width: auto;
+            color: var(--text-primary);
+            transition: filter 0.3s;
+        }
+
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1);
         }
 
         .top-nav-menu {
@@ -623,7 +636,9 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="#" onclick="showSection('dashboard'); return false;" class="top-logo">Integratd Living</a>
+            <a href="#" onclick="showSection('dashboard'); return false;" class="top-logo">
+                <img src="/static/images/logo.png" alt="Integratd Living" class="logo-img">
+            </a>
             <div style="flex: 1;"></div>
             
             <!-- Global Search -->
@@ -791,7 +806,7 @@
         
         <!-- DASHBOARD -->
         <div id="dashboard" class="section active">
-            <h1 class="page-title">Dashboard</h1>
+            <h1 class="page-title" id="dashboardGreeting">Hi there</h1>
             <p class="page-subtitle">Overview of your business</p>
 
             <!-- Quick Actions -->
@@ -3530,6 +3545,7 @@
             console.log('CRM: DOM Content Loaded - Initializing...');
             setupNavigation();
             loadAllData();
+            loadUserGreeting();
 
             // Check for imported data from Quote Automation
             checkForImportedData();
@@ -3683,6 +3699,25 @@
             const section = document.getElementById(sectionId);
             if (section) {
                 section.classList.add('active');
+            }
+        }
+
+        // LOAD USER GREETING
+        async function loadUserGreeting() {
+            try {
+                const res = await fetch('/api/auth/current-user');
+                const data = await res.json();
+                if (data.success && data.user) {
+                    const firstName = (data.user.display_name || data.user.name || 'there').split(' ')[0];
+                    const greetingEl = document.getElementById('dashboardGreeting');
+                    if (greetingEl) {
+                        greetingEl.textContent = `Hi, ${firstName}`;
+                    }
+                    // Store user info globally
+                    window.currentUser = data.user;
+                }
+            } catch (e) {
+                console.log('Could not load user greeting:', e);
             }
         }
 

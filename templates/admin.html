@@ -97,6 +97,18 @@
             font-size: 20px;
             font-weight: 700;
             color: #5a9e3f;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-img {
+            height: 28px;
+            width: auto;
+            transition: filter 0.3s;
+        }
+
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1);
             text-decoration: none;
         }
 
@@ -546,7 +558,9 @@
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="/" class="top-logo">Integratd Living</a>
+            <a href="/" class="top-logo">
+                <img src="/static/images/logo.png" alt="Integratd Living" class="logo-img">
+            </a>
             <div style="flex: 1;"></div>
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle dark mode">
                 <svg id="sunIcon" class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

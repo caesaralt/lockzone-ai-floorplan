@@ -103,6 +103,17 @@
             color: var(--text-primary);
         }
 
+        .logo-img {
+            height: 28px;
+            width: auto;
+            color: var(--text-primary);
+            transition: filter 0.3s;
+        }
+
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1);
+        }
+
         .header-controls {
             display: flex;
             align-items: center;
@@ -255,7 +266,9 @@
     <!-- TOP HEADER -->
     <div class="top-header">
         <div class="logo-section">
-            <h1 class="logo-text">{{ config.logo_text if config else 'Integratd Living' }}</h1>
+            <a href="/crm" style="text-decoration: none;">
+                <img src="/static/images/logo.png" alt="Integratd Living" class="logo-img">
+            </a>
         </div>
         <div class="header-controls">
             <div class="search-box">
@@ -287,7 +300,7 @@
     <!-- WELCOME CONTENT -->
     <div class="welcome-container">
         <div class="welcome-header">
-            <h1 class="welcome-title">{{ config.welcome_title if config else 'Integratd Living' }}</h1>
+            <h1 class="welcome-title" id="welcomeGreeting">{{ config.welcome_title if config else 'Welcome' }}</h1>
             <p class="welcome-subtitle">{{ config.welcome_subtitle if config else 'Your complete business automation platform' }}</p>
         </div>
 
@@ -474,6 +487,24 @@
     {% include 'chatbot_component.html' %}
 
     <script>
+        // Load user greeting
+        async function loadUserGreeting() {
+            try {
+                const res = await fetch('/api/auth/current-user');
+                const data = await res.json();
+                if (data.success && data.user) {
+                    const firstName = (data.user.display_name || data.user.name || '').split(' ')[0];
+                    const greetingEl = document.getElementById('welcomeGreeting');
+                    if (greetingEl && firstName) {
+                        greetingEl.textContent = `Welcome, ${firstName}`;
+                    }
+                }
+            } catch (e) {
+                console.log('Could not load user greeting:', e);
+            }
+        }
+        loadUserGreeting();
+
         // Dark mode toggle functionality
         const themeToggle = document.getElementById('themeToggle');
         const sunIcon = document.getElementById('sunIcon');

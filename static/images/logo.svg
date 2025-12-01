@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 50" class="logo-svg">
+  <style>
+    .logo-bold { font-family: 'Impact', 'Arial Black', 'Helvetica Neue', Arial, sans-serif; font-weight: 900; font-size: 42px; letter-spacing: 1px; }
+    .logo-light { font-family: 'Impact', 'Arial Black', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; font-size: 42px; letter-spacing: 1px; opacity: 0.85; }
+  </style>
+  <text x="0" y="38" fill="currentColor">
+    <tspan class="logo-bold">INTEGRATD</tspan><tspan class="logo-light">LIVING</tspan>
+  </text>
+  <!-- House/document icon -->
+  <path d="M400 5 L430 5 L430 40 L415 48 L400 40 Z" fill="currentColor"/>
+</svg>
