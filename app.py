@@ -2904,6 +2904,51 @@ def assign_item_to_job(job_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+def generate_quote_number(existing_quotes, is_supplier=False):
+    """
+    Generate a quote number in format: 1 letter + 3 numbers (e.g., A001, B123)
+    For supplier quotes, uses S prefix (S001, S002, etc.)
+    """
+    import re
+    
+    if is_supplier:
+        # For supplier quotes, use S prefix with sequential numbers
+        supplier_quotes = [q for q in existing_quotes if q.get('quote_number', '').startswith('S')]
+        max_num = 0
+        for q in supplier_quotes:
+            match = re.match(r'S(\d+)', q.get('quote_number', ''))
+            if match:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+        return f"S{str(max_num + 1).zfill(3)}"
+    
+    # For regular quotes, use letter + 3 digits format
+    # Extract all existing quote numbers that match the pattern
+    pattern = re.compile(r'^([A-Z])(\d{3})$')
+    letter_counts = {}
+    
+    for q in existing_quotes:
+        qn = q.get('quote_number', '')
+        match = pattern.match(qn)
+        if match:
+            letter = match.group(1)
+            num = int(match.group(2))
+            if letter not in letter_counts or num > letter_counts[letter]:
+                letter_counts[letter] = num
+    
+    # Find the next available number
+    # Start with 'A' and increment
+    for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+        if letter == 'S':  # Skip S, reserved for supplier
+            continue
+        current_max = letter_counts.get(letter, 0)
+        if current_max < 999:
+            return f"{letter}{str(current_max + 1).zfill(3)}"
+    
+    # Fallback if all letters exhausted (unlikely)
+    return f"Q{datetime.now().strftime('%H%M%S')}"
+
 @app.route('/api/crm/quotes/save-from-automation', methods=['POST'])
 def save_quote_from_automation():
     """Save a quote from Quote Automation to CRM with floorplan"""
@@ -2915,10 +2960,12 @@ def save_quote_from_automation():
 
         # Generate unique UUID for the quote (consistent with CRM format)
         quote_id = str(uuid.uuid4())
-        quote_number = f"Q-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         # Load existing quotes
         quotes = load_json_file(QUOTES_FILE, [])
+        
+        # Generate quote number in format: 1 letter + 3 numbers (e.g., A001, B123)
+        quote_number = generate_quote_number(quotes)
 
         # Calculate costs from components
         # Use None to track if total_amount was explicitly provided
@@ -6463,10 +6510,10 @@ def handle_quotes():
 
             quotes = load_json_file(QUOTES_FILE, [])
             
-            # Generate quote number with prefix based on type
+            # Generate quote number in format: 1 letter + 3 numbers (e.g., A001, B123)
+            # For supplier quotes, use S prefix
             source = data.get('source', 'manual')
-            quote_prefix = 'SQ-' if source == 'supplier' else 'Q-'
-            quote_number = data.get('quote_number') or f"{quote_prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            quote_number = data.get('quote_number') or generate_quote_number(quotes, is_supplier=(source == 'supplier'))
             
             quote = {
                 'id': str(uuid.uuid4()),

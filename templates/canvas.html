@@ -730,58 +730,41 @@
                         const data = JSON.parse(importData);
                         console.log('Imported data to Canvas:', data);
                         
-                        // Load the floorplan image if present
-                        if (data.floorplan_image) {
-                            console.log('🖼️ Loading imported floorplan image...');
-                            fabric.Image.fromURL(data.floorplan_image, function(img) {
-                                if (!img) {
-                                    console.error('Failed to load floorplan image');
-                                    return;
-                                }
-                                
-                                // Scale image to fit canvas
-                                const maxWidth = canvas.width * 0.9;
-                                const maxHeight = canvas.height * 0.9;
-                                const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
-                                
-                                img.set({
-                                    left: canvas.width / 2,
-                                    top: canvas.height / 2,
-                                    originX: 'center',
-                                    originY: 'center',
-                                    scaleX: scale,
-                                    scaleY: scale,
-                                    selectable: true,
-                                    evented: true,
-                                    hasControls: true,
-                                    hasBorders: true,
-                                    isFloorplan: true
-                                });
-                                
-                                // Clear canvas and add image
-                                canvas.clear();
-                                canvas.add(img);
-                                canvas.renderAll();
-                                
-                                console.log('✅ Floorplan image loaded successfully');
-                                showImportToast(`Floorplan imported: ${data.project_name}`, 'success');
-                            }, { crossOrigin: 'anonymous' });
-                        }
-                        
-                        // Load canvas state if present (for components)
-                        if (data.canvas_state) {
-                            console.log('🎨 Loading canvas state with components...');
-                            setTimeout(() => {
-                                canvas.loadFromJSON(data.canvas_state, function() {
-                                    canvas.renderAll();
-                                    console.log('✅ Canvas state loaded');
-                                });
-                            }, 500);
-                        }
-                        
                         // Store project info
                         if (data.project_name) {
                             window.currentProjectName = data.project_name;
+                        }
+                        
+                        // Load the floorplan image if present
+                        if (data.floorplan_image) {
+                            console.log('🖼️ Loading imported floorplan image...');
+                            loadImage(data.floorplan_image);
+                            showImportToast(`Floorplan imported: ${data.project_name}`, 'success');
+                        } else {
+                            showImportToast(`Data imported: ${data.project_name}`, 'success');
+                        }
+                        
+                        // Load components/symbols if present
+                        if (data.components && Array.isArray(data.components) && data.components.length > 0) {
+                            console.log(`📍 Loading ${data.components.length} components...`);
+                            setTimeout(() => {
+                                data.components.forEach(comp => {
+                                    const symbol = {
+                                        id: comp.id || `symbol_${Date.now()}_${Math.random()}`,
+                                        type: comp.type || 'component',
+                                        x: comp.position ? comp.position.x / (canvas.width || 1000) : 0.5,
+                                        y: comp.position ? comp.position.y / (canvas.height || 1000) : 0.5,
+                                        room: comp.room || 'Imported',
+                                        components: comp.components || [],
+                                        totalPrice: comp.totalPrice || 0,
+                                        priceClassName: comp.priceClassName,
+                                        priceClassId: comp.priceClassId
+                                    };
+                                    symbols.push(symbol);
+                                });
+                                render();
+                                showImportToast(`Loaded ${data.components.length} components`, 'info');
+                            }, 500);
                         }
                         
                         sessionStorage.removeItem('import_data');

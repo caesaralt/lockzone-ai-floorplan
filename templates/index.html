@@ -1608,22 +1608,15 @@
                 });
             }
 
-            // Create group with background circle and emoji/icon
-            const circle = new fabric.Circle({
-                radius: 20,
-                fill: symbolInfo.color,
-                stroke: symbolInfo.borderColor,
-                strokeWidth: 3,
-                shadow: 'rgba(0,0,0,0.3) 0px 4px 8px'
-            });
-
+            // Create text-only symbol (no circle background)
             const text = new fabric.Text(symbolInfo.emoji, {
-                fontSize: 24,
+                fontSize: 32,
                 originX: 'center',
-                originY: 'center'
+                originY: 'center',
+                shadow: 'rgba(0,0,0,0.3) 2px 2px 4px'
             });
 
-            const group = new fabric.Group([circle, text], {
+            const group = new fabric.Group([text], {
                 left: x,
                 top: y,
                 originX: 'center',
