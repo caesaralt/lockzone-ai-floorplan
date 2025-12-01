@@ -247,6 +247,7 @@ def log_daily_summary_job():
         from database.seed import get_or_create_default_organization
         from services.ai_context import AIContextService
         from database.models import EventLog
+        import uuid
         
         if not is_db_configured():
             return
@@ -258,13 +259,17 @@ def log_daily_summary_job():
             # Get business summary
             summary = context_service.get_business_summary()
             
+            # Use a deterministic UUID for daily summary based on organization
+            # This allows tracking daily summaries consistently
+            daily_summary_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"daily_summary_{org.id}"))
+            
             # Log as an event for AI to reference
             event = EventLog(
                 organization_id=org.id,
                 timestamp=datetime.utcnow(),
                 actor_type='system',
                 entity_type='system',
-                entity_id='daily_summary',
+                entity_id=daily_summary_uuid,
                 event_type='DAILY_SUMMARY',
                 description='Daily business summary generated',
                 extra_data=summary

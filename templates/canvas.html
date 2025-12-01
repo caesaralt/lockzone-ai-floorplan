@@ -729,11 +729,66 @@
                     try {
                         const data = JSON.parse(importData);
                         console.log('Imported data to Canvas:', data);
-                        showImportToast(`Data imported: ${data.project_name}`, 'success');
+                        
+                        // Load the floorplan image if present
+                        if (data.floorplan_image) {
+                            console.log('🖼️ Loading imported floorplan image...');
+                            fabric.Image.fromURL(data.floorplan_image, function(img) {
+                                if (!img) {
+                                    console.error('Failed to load floorplan image');
+                                    return;
+                                }
+                                
+                                // Scale image to fit canvas
+                                const maxWidth = canvas.width * 0.9;
+                                const maxHeight = canvas.height * 0.9;
+                                const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+                                
+                                img.set({
+                                    left: canvas.width / 2,
+                                    top: canvas.height / 2,
+                                    originX: 'center',
+                                    originY: 'center',
+                                    scaleX: scale,
+                                    scaleY: scale,
+                                    selectable: true,
+                                    evented: true,
+                                    hasControls: true,
+                                    hasBorders: true,
+                                    isFloorplan: true
+                                });
+                                
+                                // Clear canvas and add image
+                                canvas.clear();
+                                canvas.add(img);
+                                canvas.renderAll();
+                                
+                                console.log('✅ Floorplan image loaded successfully');
+                                showImportToast(`Floorplan imported: ${data.project_name}`, 'success');
+                            }, { crossOrigin: 'anonymous' });
+                        }
+                        
+                        // Load canvas state if present (for components)
+                        if (data.canvas_state) {
+                            console.log('🎨 Loading canvas state with components...');
+                            setTimeout(() => {
+                                canvas.loadFromJSON(data.canvas_state, function() {
+                                    canvas.renderAll();
+                                    console.log('✅ Canvas state loaded');
+                                });
+                            }, 500);
+                        }
+                        
+                        // Store project info
+                        if (data.project_name) {
+                            window.currentProjectName = data.project_name;
+                        }
+                        
                         sessionStorage.removeItem('import_data');
                         sessionStorage.removeItem('import_source');
                     } catch (e) {
                         console.error('Import error:', e);
+                        showImportToast('Error importing data', 'error');
                     }
                 }
             }

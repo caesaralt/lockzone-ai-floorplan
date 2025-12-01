@@ -900,6 +900,23 @@
                     try {
                         const data = JSON.parse(importData);
                         console.log('Imported data to Board Builder:', data);
+                        
+                        // Store project data for reference
+                        window.importedProjectData = data;
+                        
+                        // If there's a floorplan image, store it for reference display
+                        if (data.floorplan_image) {
+                            window.importedFloorplanImage = data.floorplan_image;
+                            console.log('Floorplan image stored for reference');
+                        }
+                        
+                        // If there are components, try to import them as board elements
+                        if (data.components && Array.isArray(data.components)) {
+                            console.log(`Found ${data.components.length} components to potentially import`);
+                            // Components from quote automation can inform board design
+                            window.importedComponents = data.components;
+                        }
+                        
                         showImportToast(`Data imported: ${data.project_name}`, 'success');
                         sessionStorage.removeItem('import_data');
                         sessionStorage.removeItem('import_source');
