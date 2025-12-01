@@ -1628,6 +1628,111 @@ def admin_page():
     return render_template('admin.html')
 
 
+# ============================================================================
+# ADMIN CUSTOMIZATION API
+# ============================================================================
+
+CUSTOMIZATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customizations.json')
+BRANDING_DIR = os.path.join(app.config['UPLOAD_FOLDER'], 'branding')
+os.makedirs(BRANDING_DIR, exist_ok=True)
+
+
+@app.route('/api/admin/customizations', methods=['GET'])
+def get_customizations():
+    """Get app customizations"""
+    try:
+        customizations = load_json_file(CUSTOMIZATIONS_FILE, {})
+        return jsonify({'success': True, 'customizations': customizations})
+    except Exception as e:
+        logger.error(f"Error getting customizations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/customizations', methods=['POST'])
+@auth.admin_required
+def save_customizations():
+    """Save app customizations (admin only)"""
+    try:
+        data = request.json
+        existing = load_json_file(CUSTOMIZATIONS_FILE, {})
+        
+        # Merge with existing customizations
+        if 'modules' in data:
+            existing['modules'] = data['modules']
+        
+        save_json_file(CUSTOMIZATIONS_FILE, existing)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error saving customizations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/branding', methods=['POST'])
+@auth.admin_required
+def save_branding():
+    """Save branding images (admin only)"""
+    try:
+        saved_files = {}
+        
+        for key in ['app_logo', 'login_logo', 'favicon']:
+            if key in request.files:
+                file = request.files[key]
+                if file.filename:
+                    # Save file
+                    ext = file.filename.rsplit('.', 1)[-1].lower()
+                    filename = f"{key}.{ext}"
+                    filepath = os.path.join(BRANDING_DIR, filename)
+                    file.save(filepath)
+                    saved_files[key] = f"/static/branding/{filename}"
+        
+        # Update customizations with branding paths
+        if saved_files:
+            customizations = load_json_file(CUSTOMIZATIONS_FILE, {})
+            if 'branding' not in customizations:
+                customizations['branding'] = {}
+            customizations['branding'].update(saved_files)
+            save_json_file(CUSTOMIZATIONS_FILE, customizations)
+        
+        return jsonify({'success': True, 'files': saved_files})
+    except Exception as e:
+        logger.error(f"Error saving branding: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/settings', methods=['GET'])
+def get_app_settings():
+    """Get app settings"""
+    try:
+        customizations = load_json_file(CUSTOMIZATIONS_FILE, {})
+        settings = customizations.get('settings', {
+            'app_name': 'Integratd Living',
+            'tagline': 'Your complete business automation platform',
+            'primary_color': '#6AB64B'
+        })
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        logger.error(f"Error getting settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/settings', methods=['POST'])
+def save_app_settings():
+    """Save app settings"""
+    try:
+        data = request.json
+        customizations = load_json_file(CUSTOMIZATIONS_FILE, {})
+        customizations['settings'] = {
+            'app_name': data.get('app_name', 'Integratd Living'),
+            'tagline': data.get('tagline', 'Your complete business automation platform'),
+            'primary_color': data.get('primary_color', '#6AB64B')
+        }
+        save_json_file(CUSTOMIZATIONS_FILE, customizations)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error saving settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/auth/users', methods=['GET'])
 @auth.admin_required
 def get_users():
@@ -2756,19 +2861,28 @@ def save_quote_from_automation():
         quotes = load_json_file(QUOTES_FILE, [])
 
         # Calculate costs from components
-        total_amount = quote_data.get('total_amount', 0)
+        # Use None to track if total_amount was explicitly provided
+        total_amount = quote_data.get('total_amount')
         materials_cost = 0
         labor_cost = 0
         
         # Extract costs from the automation data
-        # Use explicit None checks to preserve valid zero values
         if quote_data.get('costs'):
             costs = quote_data['costs']
             materials_cost = costs.get('materials') if costs.get('materials') is not None else costs.get('total_materials', 0)
             labor_cost = costs.get('labor') if costs.get('labor') is not None else costs.get('total_labor', 0)
-            if total_amount is None or total_amount == 0:
+            
+            # Only override total_amount if it wasn't explicitly provided
+            if total_amount is None:
                 cost_total = costs.get('total')
-                total_amount = cost_total if cost_total is not None else (materials_cost + labor_cost)
+                if cost_total is not None:
+                    total_amount = cost_total
+                elif materials_cost or labor_cost:
+                    total_amount = materials_cost + labor_cost
+        
+        # Default to 0 if still None
+        if total_amount is None:
+            total_amount = 0
 
         # Prepare quote record in CRM-compatible format
         new_quote = {
@@ -7512,7 +7626,7 @@ def handle_pdf_forms():
     try:
         if request.method == 'GET':
             forms = load_json_file(PDF_FORMS_FILE, [])
-            return jsonify(forms)
+            return jsonify({'success': True, 'forms': forms})
 
         elif request.method == 'POST':
             data = request.json
@@ -7548,7 +7662,7 @@ def handle_pdf_form(form_id):
             return jsonify({'success': False, 'error': 'Form not found'}), 404
 
         if request.method == 'GET':
-            return jsonify(forms[idx])
+            return jsonify({'success': True, 'form': forms[idx]})
 
         elif request.method == 'PUT':
             data = request.json

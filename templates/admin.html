@@ -306,12 +306,13 @@
         }
 
         .btn-secondary {
-            background: #e5e5ea;
-            color: #1d1d1f;
+            background: var(--hover-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
 
         .btn-secondary:hover {
-            background: #d1d1d6;
+            background: var(--border-color);
         }
 
         .btn-danger {
@@ -338,22 +339,28 @@
             margin-bottom: 8px;
             font-size: 14px;
             font-weight: 600;
-            color: #1d1d1f;
+            color: var(--text-primary);
         }
 
         .form-input, .form-select {
             width: 100%;
             padding: 12px;
-            border: 1px solid #d2d2d7;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 15px;
             transition: all 0.2s;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
 
         .form-input:focus, .form-select:focus {
             outline: none;
             border-color: #5a9e3f;
             box-shadow: 0 0 0 3px rgba(85, 107, 47, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
         }
 
         /* MODAL */
@@ -375,19 +382,21 @@
         }
 
         .modal-content {
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 16px;
             padding: 32px;
             max-width: 600px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
+            color: var(--text-primary);
         }
 
         .modal-header {
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 24px;
+            color: var(--text-primary);
         }
 
         .modal-footer {
@@ -575,6 +584,9 @@
             <div class="nav-item" data-section="activity">
                 <span>📊</span> Activity Log
             </div>
+            <div class="nav-item" data-section="customization">
+                <span>🎨</span> Customization
+            </div>
         </div>
     </div>
 
@@ -652,7 +664,98 @@
 
             <div class="card">
                 <div id="activityLog">
-                    <p style="color: #999; text-align: center; padding: 40px;">Activity logging coming soon...</p>
+                    <p style="color: var(--text-tertiary); text-align: center; padding: 40px;">Activity logging coming soon...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMIZATION SECTION -->
+        <div class="section" id="customization">
+            <h1 class="page-title">App Customization</h1>
+            <p class="page-subtitle">Customize icons, labels, and branding across the application</p>
+
+            <div class="card">
+                <h2 class="card-title">🏠 Module Icons & Labels</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">Customize how modules appear in the navigation and home page</p>
+                
+                <div id="moduleCustomization" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                    <!-- Module customization items will be loaded here -->
+                </div>
+                
+                <div style="margin-top: 24px; display: flex; gap: 12px;">
+                    <button class="btn btn-primary" onclick="saveModuleCustomizations()">💾 Save Changes</button>
+                    <button class="btn btn-secondary" onclick="resetModuleCustomizations()">🔄 Reset to Defaults</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">🎨 Branding</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">Upload custom logos and images</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">
+                    <!-- App Logo -->
+                    <div style="background: var(--hover-bg); border-radius: 12px; padding: 20px; text-align: center;">
+                        <div id="appLogoPreview" style="width: 80px; height: 80px; margin: 0 auto 16px; background: var(--bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; border: 2px dashed var(--border-color);">
+                            📊
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-primary);">App Logo</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Displayed in navigation</p>
+                        <input type="file" id="appLogoUpload" accept="image/*" style="display: none;" onchange="previewLogo('appLogo', this)">
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('appLogoUpload').click()">📤 Upload</button>
+                    </div>
+                    
+                    <!-- Login Logo -->
+                    <div style="background: var(--hover-bg); border-radius: 12px; padding: 20px; text-align: center;">
+                        <div id="loginLogoPreview" style="width: 80px; height: 80px; margin: 0 auto 16px; background: var(--bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; border: 2px dashed var(--border-color);">
+                            🔐
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-primary);">Login Page Logo</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Shown on login screen</p>
+                        <input type="file" id="loginLogoUpload" accept="image/*" style="display: none;" onchange="previewLogo('loginLogo', this)">
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('loginLogoUpload').click()">📤 Upload</button>
+                    </div>
+                    
+                    <!-- Favicon -->
+                    <div style="background: var(--hover-bg); border-radius: 12px; padding: 20px; text-align: center;">
+                        <div id="faviconPreview" style="width: 80px; height: 80px; margin: 0 auto 16px; background: var(--bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; border: 2px dashed var(--border-color);">
+                            🌐
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-primary);">Favicon</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Browser tab icon</p>
+                        <input type="file" id="faviconUpload" accept="image/*" style="display: none;" onchange="previewLogo('favicon', this)">
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('faviconUpload').click()">📤 Upload</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 24px;">
+                    <button class="btn btn-primary" onclick="saveBrandingSettings()">💾 Save Branding</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">📝 App Settings</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">General application settings</p>
+                
+                <div class="form-group">
+                    <label class="form-label">Application Name</label>
+                    <input type="text" class="form-input" id="appName" value="Integratd Living" placeholder="Your Company Name">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Tagline</label>
+                    <input type="text" class="form-input" id="appTagline" value="Your complete business automation platform" placeholder="Your tagline">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Primary Color</label>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="color" id="primaryColor" value="#6AB64B" style="width: 60px; height: 40px; border: none; border-radius: 8px; cursor: pointer;">
+                        <input type="text" class="form-input" id="primaryColorHex" value="#6AB64B" style="width: 120px;" onchange="document.getElementById('primaryColor').value = this.value">
+                    </div>
+                </div>
+                
+                <div style="margin-top: 24px;">
+                    <button class="btn btn-primary" onclick="saveAppSettings()">💾 Save Settings</button>
                 </div>
             </div>
         </div>
@@ -670,7 +773,7 @@
                 <div class="form-group">
                     <label class="form-label" for="userName">Name *</label>
                     <input type="text" class="form-input" id="userName" name="name" required placeholder="e.g., John, Sarah">
-                    <small style="color: #666; font-size: 12px;">This is what the user enters to login</small>
+                    <small style="color: var(--text-secondary); font-size: 12px;">This is what the user enters to login</small>
                 </div>
 
                 <div class="form-group">
@@ -681,7 +784,7 @@
                 <div class="form-group">
                     <label class="form-label" for="userCode">Access Code *</label>
                     <input type="text" class="form-input" id="userCode" name="code" pattern="[0-9]{4,6}" maxlength="6" placeholder="4-6 digit code">
-                    <small style="color: #666; font-size: 12px;">Simple numeric code (e.g., 1234, 5678)</small>
+                    <small style="color: var(--text-secondary); font-size: 12px;">Simple numeric code (e.g., 1234, 5678)</small>
                 </div>
 
                 <div class="form-group">
@@ -697,7 +800,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Permissions</label>
-                    <small style="color: #666; font-size: 12px; display: block; margin-bottom: 8px;">
+                    <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 8px;">
                         Select role above to auto-fill permissions, or customize individually
                     </small>
                     <div class="checkbox-group" id="permissionsCheckboxes">
@@ -1124,6 +1227,222 @@
                 moonIcon.style.display = 'block';
             }
         });
+
+        // ============================================================================
+        // APP CUSTOMIZATION
+        // ============================================================================
+
+        // Default module configuration
+        const defaultModules = [
+            { id: 'crm', icon: '📊', label: 'CRM Dashboard', description: 'Manage customers, projects, scheduling, inventory, and more' },
+            { id: 'quotes', icon: '💰', label: 'Quote Automation', description: 'Upload floor plans and let AI generate accurate quotes' },
+            { id: 'canvas', icon: '🎨', label: 'Canvas Editor', description: 'Professional floor plan editor with zoom, pan, and symbol management' },
+            { id: 'mapping', icon: '🗺️', label: 'Electrical Mapping', description: 'AI-powered electrical circuit mapping and analysis' },
+            { id: 'board_builder', icon: '📋', label: 'Board Builder', description: 'Design and configure electrical distribution boards' },
+            { id: 'electrical_cad', icon: '⚡', label: 'Electrical CAD', description: 'Professional electrical CAD drawing tools' },
+            { id: 'learning', icon: '🧠', label: 'AI Learning', description: 'Train and improve AI recognition capabilities' },
+            { id: 'kanban', icon: '📋', label: 'Operations Board', description: 'Kanban task management system for team workflow' },
+            { id: 'ai_mapping', icon: '🤖', label: 'AI Mapping', description: 'Advanced AI-powered floor plan analysis' },
+            { id: 'simpro', icon: '🔗', label: 'Simpro Integration', description: 'Connect with Simpro for job management' }
+        ];
+
+        // Load customizations from server or use defaults
+        let moduleCustomizations = {};
+
+        async function loadModuleCustomizations() {
+            try {
+                const res = await fetch('/api/admin/customizations');
+                const data = await res.json();
+                if (data.success && data.customizations) {
+                    moduleCustomizations = data.customizations.modules || {};
+                }
+            } catch (e) {
+                console.log('Using default module settings');
+            }
+            renderModuleCustomization();
+        }
+
+        function renderModuleCustomization() {
+            const container = document.getElementById('moduleCustomization');
+            if (!container) return;
+
+            container.innerHTML = defaultModules.map(mod => {
+                const custom = moduleCustomizations[mod.id] || {};
+                const icon = custom.icon || mod.icon;
+                const label = custom.label || mod.label;
+                const description = custom.description || mod.description;
+                const iconSize = custom.iconSize || 48;
+
+                return `
+                    <div style="background: var(--hover-bg); border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; gap: 16px; align-items: flex-start;">
+                            <div style="width: 60px; height: 60px; background: var(--bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: ${iconSize}px; flex-shrink: 0;" id="iconPreview_${mod.id}">
+                                ${custom.customIcon ? `<img src="${custom.customIcon}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">` : icon}
+                            </div>
+                            <div style="flex: 1;">
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label" style="font-size: 12px;">Icon (emoji or upload)</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" class="form-input" id="icon_${mod.id}" value="${icon}" style="width: 60px; text-align: center; font-size: 20px;" maxlength="4" onchange="updateIconPreview('${mod.id}')">
+                                        <input type="file" id="iconFile_${mod.id}" accept="image/*" style="display: none;" onchange="uploadModuleIcon('${mod.id}', this)">
+                                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('iconFile_${mod.id}').click()">📤</button>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label" style="font-size: 12px;">Label</label>
+                                    <input type="text" class="form-input" id="label_${mod.id}" value="${label}">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label" style="font-size: 12px;">Description</label>
+                                    <input type="text" class="form-input" id="desc_${mod.id}" value="${description}">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" style="font-size: 12px;">Icon Size: <span id="sizeLabel_${mod.id}">${iconSize}px</span></label>
+                                    <input type="range" id="size_${mod.id}" min="24" max="72" value="${iconSize}" style="width: 100%;" onchange="updateIconSize('${mod.id}', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateIconPreview(moduleId) {
+            const icon = document.getElementById(`icon_${moduleId}`).value;
+            const preview = document.getElementById(`iconPreview_${moduleId}`);
+            if (preview && icon) {
+                preview.innerHTML = icon;
+            }
+        }
+
+        function updateIconSize(moduleId, size) {
+            const preview = document.getElementById(`iconPreview_${moduleId}`);
+            const label = document.getElementById(`sizeLabel_${moduleId}`);
+            if (preview) preview.style.fontSize = `${size}px`;
+            if (label) label.textContent = `${size}px`;
+        }
+
+        function uploadModuleIcon(moduleId, input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById(`iconPreview_${moduleId}`);
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">`;
+                    // Store the custom icon data
+                    if (!moduleCustomizations[moduleId]) moduleCustomizations[moduleId] = {};
+                    moduleCustomizations[moduleId].customIcon = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function saveModuleCustomizations() {
+            const customizations = {};
+            
+            defaultModules.forEach(mod => {
+                const icon = document.getElementById(`icon_${mod.id}`)?.value;
+                const label = document.getElementById(`label_${mod.id}`)?.value;
+                const description = document.getElementById(`desc_${mod.id}`)?.value;
+                const iconSize = document.getElementById(`size_${mod.id}`)?.value;
+                const customIcon = moduleCustomizations[mod.id]?.customIcon;
+
+                customizations[mod.id] = {
+                    icon: icon || mod.icon,
+                    label: label || mod.label,
+                    description: description || mod.description,
+                    iconSize: parseInt(iconSize) || 48,
+                    customIcon: customIcon || null
+                };
+            });
+
+            try {
+                const res = await fetch('/api/admin/customizations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modules: customizations })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Module customizations saved!');
+                    moduleCustomizations = customizations;
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save'));
+                }
+            } catch (e) {
+                alert('Error saving customizations: ' + e.message);
+            }
+        }
+
+        function resetModuleCustomizations() {
+            if (!confirm('Reset all module customizations to defaults?')) return;
+            moduleCustomizations = {};
+            renderModuleCustomization();
+        }
+
+        // Branding functions
+        function previewLogo(type, input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById(`${type}Preview`);
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function saveBrandingSettings() {
+            const appLogo = document.getElementById('appLogoUpload').files[0];
+            const loginLogo = document.getElementById('loginLogoUpload').files[0];
+            const favicon = document.getElementById('faviconUpload').files[0];
+
+            const formData = new FormData();
+            if (appLogo) formData.append('app_logo', appLogo);
+            if (loginLogo) formData.append('login_logo', loginLogo);
+            if (favicon) formData.append('favicon', favicon);
+
+            try {
+                const res = await fetch('/api/admin/branding', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Branding settings saved!');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save'));
+                }
+            } catch (e) {
+                alert('Error saving branding: ' + e.message);
+            }
+        }
+
+        async function saveAppSettings() {
+            const settings = {
+                app_name: document.getElementById('appName').value,
+                tagline: document.getElementById('appTagline').value,
+                primary_color: document.getElementById('primaryColor').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ App settings saved!');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save'));
+                }
+            } catch (e) {
+                alert('Error saving settings: ' + e.message);
+            }
+        }
+
+        // Load customizations when page loads
+        loadModuleCustomizations();
     </script>
 </body>
 </html>

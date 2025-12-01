@@ -127,7 +127,7 @@
             color: white;
         }
 
-        /* SIDEBAR */
+        /* SIDEBAR - Hidden by default, shows on hover */
         .sidebar {
             position: fixed;
             left: 0;
@@ -138,7 +138,50 @@
             border-right: 1px solid var(--border-color);
             padding: 24px 0;
             overflow-y: auto;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+            transform: translateX(-240px);
+            z-index: 100;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar:hover,
+        .sidebar.expanded {
+            transform: translateX(0);
+        }
+        
+        /* Hover trigger area on left edge */
+        .sidebar-trigger {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            width: 10px;
+            z-index: 99;
+            background: transparent;
+        }
+        
+        .sidebar-trigger:hover + .sidebar,
+        .sidebar-trigger:hover ~ .sidebar {
+            transform: translateX(0);
+        }
+        
+        /* Visual indicator on left edge */
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 60px;
+            background: linear-gradient(135deg, #6AB64B, #5a9e3f);
+            border-radius: 0 8px 8px 0;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        
+        .sidebar:hover::before {
+            opacity: 0;
         }
 
         .nav-section {
@@ -226,10 +269,11 @@
 
         /* MAIN CONTENT */
         .main-content {
-            margin-left: 250px;
+            margin-left: 20px;
             margin-top: 0;
             padding: 40px;
             min-height: calc(100vh - 60px);
+            transition: margin-left 0.3s ease;
         }
 
         .section {
@@ -600,14 +644,14 @@
         </div>
     </nav>
 
+    <!-- SIDEBAR TRIGGER (hover area) -->
+    <div class="sidebar-trigger"></div>
+    
     <!-- SIDEBAR -->
     <div class="sidebar">
         <div class="nav-section">
-            <div class="nav-section-title collapsed">Main</div>
-            <div class="nav-section-items collapsed">
-                <div class="nav-item active" data-section="dashboard">
-                    <span>📊</span> Dashboard
-                </div>
+            <div class="nav-item active" data-section="dashboard" style="padding: 12px 24px; font-weight: 600;">
+                Dashboard
             </div>
         </div>
 
@@ -752,6 +796,23 @@
                 </div>
             </div>
 
+            <!-- My Tasks Widget - Moved under Quick Actions -->
+            <div class="chart-card" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 class="chart-title">📋 My Tasks</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="openQuickTaskModal()" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">+ Add</button>
+                        <button onclick="showSection('kanban')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">View All</button>
+                    </div>
+                </div>
+                <div id="myTasksContainer" style="min-height: 150px; max-height: 300px; overflow-y: auto;">
+                    <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                        <div class="spinner" style="margin: 0 auto 10px;"></div>
+                        <p>Loading tasks...</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card" onclick="showSection('people-customers')" style="cursor: pointer;" title="View all customers">
                     <div class="stat-value" id="statCustomers">0</div>
@@ -807,26 +868,8 @@
                 </div>
             </div>
 
-            <!-- MY WORK & NOTIFICATIONS - Styled like chart cards -->
+            <!-- NOTIFICATIONS - Styled like chart cards -->
             <div class="charts-grid" style="margin-top: 20px;">
-                
-                <!-- My Tasks Widget -->
-                <div class="chart-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 class="chart-title">📋 My Tasks</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="openQuickTaskModal()" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">+ Add</button>
-                            <button onclick="showSection('kanban')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">View All</button>
-                        </div>
-                    </div>
-                    <div id="myTasksContainer" style="min-height: 200px;">
-                        <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
-                            <div class="spinner" style="margin: 0 auto 10px;"></div>
-                            <p>Loading tasks...</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Notifications & Alerts Widget -->
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -2824,6 +2867,214 @@
         </div>
     </div>
 
+    <!-- Stock Assignment Modal -->
+    <div id="assignStockModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📦 Assign Stock to Job</h2>
+                <button class="close-btn" onclick="closeModal('assignStockModal')">×</button>
+            </div>
+            <div style="padding: 20px;">
+                <input type="hidden" id="assignStockJobId">
+                
+                <!-- Select Existing Stock -->
+                <div class="form-group">
+                    <label>Select Stock Item</label>
+                    <select id="assignStockSelect" onchange="updateAssignStockInfo()">
+                        <option value="">-- Select stock item --</option>
+                    </select>
+                </div>
+                
+                <!-- Stock Info -->
+                <div id="assignStockInfo" style="display: none; background: var(--bg-secondary); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Available:</span>
+                        <span id="assignStockAvailable" style="font-weight: 600;">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Unit Price:</span>
+                        <span id="assignStockPrice" style="font-weight: 600;">$0</span>
+                    </div>
+                </div>
+                
+                <!-- Quantity -->
+                <div class="form-group">
+                    <label>Quantity to Assign</label>
+                    <input type="number" id="assignStockQuantity" min="1" value="1">
+                </div>
+                
+                <!-- Notes -->
+                <div class="form-group">
+                    <label>Notes (optional)</label>
+                    <input type="text" id="assignStockNotes" placeholder="e.g., For living room installation">
+                </div>
+                
+                <div style="border-top: 1px solid var(--border-color); margin: 20px 0; padding-top: 16px;">
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">Don't see what you need?</p>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('assignStockModal'); showSection('materials-stock'); openMaterialModal('stock')">+ Create New Stock Item</button>
+                </div>
+                
+                <div class="flex gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('assignStockModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="assignStockToJob()">Assign Stock</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Detail Modal -->
+    <div id="stockDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 class="modal-title">📦 Stock Item Details</h2>
+                <button class="close-btn" onclick="closeModal('stockDetailModal')">×</button>
+            </div>
+            <div style="padding: 20px;">
+                <!-- Stock Image -->
+                <div id="stockDetailImage" style="text-align: center; margin-bottom: 20px;"></div>
+                
+                <!-- Stats Row -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div id="stockDetailQuantity" style="font-size: 24px; font-weight: 700;">0</div>
+                        <div style="font-size: 12px; opacity: 0.9;">In Stock</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #27ae60, #229954); color: white; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div id="stockDetailPrice" style="font-size: 24px; font-weight: 700;">$0</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Unit Price</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div id="stockDetailTotalValue" style="font-size: 24px; font-weight: 700;">$0</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Total Value</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #e67e22, #d35400); color: white; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div id="stockDetailCategory" style="font-size: 16px; font-weight: 600;">-</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Category</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Left Column -->
+                    <div>
+                        <!-- Basic Info -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📋 Details</h3>
+                            <div style="space-y: 12px;">
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                    <span style="color: var(--text-secondary);">Name</span>
+                                    <span id="stockDetailName" style="font-weight: 600; color: var(--text-primary);">-</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                    <span style="color: var(--text-secondary);">Location</span>
+                                    <span id="stockDetailLocation" style="font-weight: 600; color: var(--text-primary);">-</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                    <span style="color: var(--text-secondary);">Supplier</span>
+                                    <span id="stockDetailSupplier" style="font-weight: 600; color: var(--text-primary);">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Level Indicator -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📊 Stock Level</h3>
+                            <div id="stockLevelBar" style="height: 24px; background: var(--bg-primary); border-radius: 12px; overflow: hidden;">
+                                <div id="stockLevelFill" style="height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.3s;"></div>
+                            </div>
+                            <div id="stockLevelStatus" style="margin-top: 8px; text-align: center; font-size: 13px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div>
+                        <!-- Jobs Using This Stock -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">🔧 Assigned to Jobs</h3>
+                            <div id="stockDetailJobs">
+                                <div style="color: var(--text-secondary); text-align: center; padding: 20px;">Not assigned to any jobs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeModal('stockDetailModal')">Close</button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" onclick="editMaterial(currentViewingStockId, 'stock'); closeModal('stockDetailModal')">✏️ Edit</button>
+                        <button class="btn btn-danger" onclick="deleteMaterial(currentViewingStockId, 'stock'); closeModal('stockDetailModal')">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Person Detail Modal -->
+    <div id="personDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="personDetailTitle">👤 Person Details</h2>
+                <button class="close-btn" onclick="closeModal('personDetailModal')">×</button>
+            </div>
+            <div style="padding: 20px;">
+                <!-- Contact Card -->
+                <div style="background: linear-gradient(135deg, #6AB64B, #5a9e3f); color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
+                    <div id="personDetailIcon" style="font-size: 48px; margin-bottom: 8px;">👤</div>
+                    <h2 id="personDetailName" style="margin: 0 0 4px 0; font-size: 24px;">-</h2>
+                    <div id="personDetailCompany" style="opacity: 0.9; font-size: 14px;">-</div>
+                    <div id="personDetailType" style="margin-top: 12px; display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px;">-</div>
+                </div>
+                
+                <!-- Contact Info -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                    <a id="personDetailPhoneLink" href="#" style="display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); padding: 16px; border-radius: 12px; text-decoration: none; color: var(--text-primary); transition: 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                        <span style="font-size: 24px;">📞</span>
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Phone</div>
+                            <div id="personDetailPhone" style="font-weight: 600;">-</div>
+                        </div>
+                    </a>
+                    <a id="personDetailEmailLink" href="#" style="display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); padding: 16px; border-radius: 12px; text-decoration: none; color: var(--text-primary); transition: 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                        <span style="font-size: 24px;">✉️</span>
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Email</div>
+                            <div id="personDetailEmail" style="font-weight: 600;">-</div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Address -->
+                <div id="personDetailAddressSection" style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">📍 Address</h3>
+                    <div id="personDetailAddress" style="color: var(--text-secondary);">-</div>
+                </div>
+                
+                <!-- Notes -->
+                <div id="personDetailNotesSection" style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text-primary);">📝 Notes</h3>
+                    <div id="personDetailNotes" style="color: var(--text-secondary);">-</div>
+                </div>
+                
+                <!-- Related Items -->
+                <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">🔗 Related Items</h3>
+                    <div id="personDetailRelated">
+                        <div style="color: var(--text-secondary); text-align: center; padding: 20px;">No related items</div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeModal('personDetailModal')">Close</button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" onclick="editPerson(currentViewingPersonId, currentViewingPersonType); closeModal('personDetailModal')">✏️ Edit</button>
+                        <button class="btn btn-danger" onclick="deletePerson(currentViewingPersonId, currentViewingPersonType); closeModal('personDetailModal')">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment Modal -->
     <div id="paymentModal" class="modal">
         <div class="modal-content">
@@ -3081,9 +3332,26 @@
                             </div>
                         </div>
                         
+                        <!-- Floorplan -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">🗺️ Floorplan</h3>
+                            <div id="jobDetailFloorplan">
+                                <div style="color: var(--text-secondary); text-align: center; padding: 20px;">No floorplan attached</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button class="btn btn-primary btn-small" onclick="openJobInCanvasEditor(currentViewingJobId)">🎨 Open in Canvas</button>
+                            </div>
+                        </div>
+                        
                         <!-- Assigned Stock/Materials -->
                         <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
-                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">📦 Assigned Stock</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);">📦 Assigned Stock</h3>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-primary btn-small" onclick="openAssignStockModal(currentViewingJobId)">+ Add Stock</button>
+                                    <button class="btn btn-secondary btn-small" onclick="showSection('materials-stock'); closeModal('jobDetailModal')">View All Stock</button>
+                                </div>
+                            </div>
                             <div id="jobDetailStock">No stock assigned</div>
                         </div>
                     </div>
@@ -3094,6 +3362,7 @@
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-secondary" onclick="closeModal('jobDetailModal')">Close</button>
                         <button class="btn btn-primary" onclick="editJob(currentViewingJobId, currentViewingJobStatus)">✏️ Edit Job</button>
+                        <button class="btn btn-primary" onclick="openJobInCanvasEditor(currentViewingJobId)">🎨 Canvas Editor</button>
                         <button class="btn btn-primary" onclick="addJobToCalendar(currentViewingJobId, '', '', '')">📅 Add to Calendar</button>
                     </div>
                     <div style="display: flex; gap: 12px;">
@@ -9046,8 +9315,10 @@
                     </thead>
                     <tbody>
                         ${peopleList.map(p => `
-                            <tr style="${isCustomer ? 'cursor: pointer;' : ''}" 
-                                ${isCustomer ? `onclick="viewCustomerDetail('${p.id}')" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''"` : ''}>
+                            <tr style="cursor: pointer;" 
+                                onclick="${isCustomer ? `viewCustomerDetail('${p.id}')` : `viewPersonDetail('${p.id}', '${type}')`}" 
+                                onmouseover="this.style.background='var(--hover-bg)'" 
+                                onmouseout="this.style.background=''">
                                 <td><strong>${p.name}</strong></td>
                                 <td>${p.company || '-'}</td>
                                 <td>${p.email || '-'}</td>
@@ -9417,8 +9688,18 @@
                 document.getElementById('jobDaysRemaining').textContent = 'No due date set';
             }
             
-            // Populate stock (placeholder for now)
-            document.getElementById('jobDetailStock').innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No stock assigned to this job</div>';
+            // Load assigned stock
+            loadJobAssignedStock(job);
+            
+            // Load floorplan if exists
+            const floorplanContainer = document.getElementById('jobDetailFloorplan');
+            if (job.floorplan_image) {
+                floorplanContainer.innerHTML = `
+                    <img src="${job.floorplan_image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 12px;" alt="Job Floorplan">
+                `;
+            } else {
+                floorplanContainer.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No floorplan attached</div>';
+            }
             
             // Show/hide complete button based on status
             document.getElementById('markJobCompleteBtn').style.display = job.status !== 'finished' ? 'inline-flex' : 'none';
@@ -9453,6 +9734,438 @@
             alert('Error: ' + e.message);
         }
     }
+    
+    // Open job in canvas editor
+    function openJobInCanvasEditor(jobId) {
+        sessionStorage.setItem('canvas_link_job_id', jobId);
+        const job = window.allJobs?.find(j => j.id === jobId);
+        if (job) {
+            sessionStorage.setItem('canvas_link_job_data', JSON.stringify({
+                job_id: jobId,
+                job_name: job.name,
+                customer_id: job.customer_id,
+                floorplan_image: job.floorplan_image
+            }));
+        }
+        window.location.href = `/canvas?link_job=${jobId}`;
+    }
+    
+    // Stock Assignment Functions
+    async function openAssignStockModal(jobId) {
+        document.getElementById('assignStockJobId').value = jobId;
+        document.getElementById('assignStockQuantity').value = 1;
+        document.getElementById('assignStockNotes').value = '';
+        document.getElementById('assignStockInfo').style.display = 'none';
+        
+        // Load available stock items
+        try {
+            const res = await fetch('/api/crm/stock');
+            const data = await res.json();
+            const stockItems = data.stock || data.materials || [];
+            
+            const select = document.getElementById('assignStockSelect');
+            select.innerHTML = '<option value="">-- Select stock item --</option>';
+            
+            stockItems.forEach(item => {
+                const available = item.quantity || 0;
+                if (available > 0) {
+                    select.innerHTML += `<option value="${item.id}" data-quantity="${available}" data-price="${item.unit_price || 0}">${item.name} (${available} available)</option>`;
+                }
+            });
+            
+            openModal('assignStockModal');
+        } catch (e) {
+            alert('Error loading stock: ' + e.message);
+        }
+    }
+    
+    function updateAssignStockInfo() {
+        const select = document.getElementById('assignStockSelect');
+        const option = select.selectedOptions[0];
+        const infoDiv = document.getElementById('assignStockInfo');
+        
+        if (option && option.value) {
+            const quantity = option.dataset.quantity || 0;
+            const price = option.dataset.price || 0;
+            document.getElementById('assignStockAvailable').textContent = quantity;
+            document.getElementById('assignStockPrice').textContent = `$${parseFloat(price).toFixed(2)}`;
+            document.getElementById('assignStockQuantity').max = quantity;
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
+    }
+    
+    async function assignStockToJob() {
+        const jobId = document.getElementById('assignStockJobId').value;
+        const stockId = document.getElementById('assignStockSelect').value;
+        const quantity = parseInt(document.getElementById('assignStockQuantity').value) || 1;
+        const notes = document.getElementById('assignStockNotes').value;
+        
+        if (!stockId) {
+            alert('Please select a stock item');
+            return;
+        }
+        
+        try {
+            // Get current job data
+            const jobRes = await fetch(`/api/crm/jobs/${jobId}`);
+            const jobData = await jobRes.json();
+            
+            if (!jobData.success) {
+                throw new Error('Job not found');
+            }
+            
+            const job = jobData.job;
+            const assignedStock = job.assigned_stock || [];
+            
+            // Add stock assignment
+            assignedStock.push({
+                stock_id: stockId,
+                quantity: quantity,
+                notes: notes,
+                assigned_at: new Date().toISOString()
+            });
+            
+            // Update job
+            const updateRes = await fetch(`/api/crm/jobs/${jobId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_stock: assignedStock })
+            });
+            
+            const updateData = await updateRes.json();
+            if (updateData.success) {
+                closeModal('assignStockModal');
+                alert('✅ Stock assigned to job!');
+                // Refresh job detail view
+                viewJobDetail(jobId);
+            } else {
+                throw new Error(updateData.error || 'Failed to assign stock');
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    // Load and display assigned stock in job detail
+    async function loadJobAssignedStock(job) {
+        const container = document.getElementById('jobDetailStock');
+        const assignedStock = job.assigned_stock || [];
+        
+        if (assignedStock.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No stock assigned to this job</div>';
+            return;
+        }
+        
+        // Fetch stock details
+        try {
+            const res = await fetch('/api/crm/stock');
+            const data = await res.json();
+            const allStock = data.stock || data.materials || [];
+            
+            let html = '';
+            let totalValue = 0;
+            
+            assignedStock.forEach(assigned => {
+                const stockItem = allStock.find(s => s.id === assigned.stock_id);
+                if (stockItem) {
+                    const itemValue = (stockItem.unit_price || 0) * assigned.quantity;
+                    totalValue += itemValue;
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 600; color: var(--text-primary);">${stockItem.name}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Qty: ${assigned.quantity} × $${(stockItem.unit_price || 0).toFixed(2)}</div>
+                                ${assigned.notes ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">${assigned.notes}</div>` : ''}
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 600; color: #6AB64B;">$${itemValue.toFixed(2)}</div>
+                                <button class="btn btn-danger btn-small" onclick="removeStockFromJob('${job.id}', '${assigned.stock_id}')" style="margin-top: 4px; font-size: 10px; padding: 2px 8px;">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; color: var(--text-primary);">Total Stock Value</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #6AB64B;">$${totalValue.toFixed(2)}</span>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Error loading stock details</div>';
+        }
+    }
+    
+    async function removeStockFromJob(jobId, stockId) {
+        if (!confirm('Remove this stock from the job?')) return;
+        
+        try {
+            const jobRes = await fetch(`/api/crm/jobs/${jobId}`);
+            const jobData = await jobRes.json();
+            
+            if (!jobData.success) throw new Error('Job not found');
+            
+            const job = jobData.job;
+            const assignedStock = (job.assigned_stock || []).filter(s => s.stock_id !== stockId);
+            
+            const updateRes = await fetch(`/api/crm/jobs/${jobId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_stock: assignedStock })
+            });
+            
+            const updateData = await updateRes.json();
+            if (updateData.success) {
+                viewJobDetail(jobId);
+            } else {
+                throw new Error(updateData.error);
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    // Stock Detail View
+    let currentViewingStockId = null;
+    
+    async function viewStockDetail(stockId) {
+        currentViewingStockId = stockId;
+        
+        try {
+            const res = await fetch(`/api/crm/materials/${stockId}`);
+            const data = await res.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Stock not found');
+            }
+            
+            const stock = data.material;
+            const quantity = stock.quantity || 0;
+            const price = stock.unit_price || 0;
+            const totalValue = quantity * price;
+            
+            // Populate basic info
+            document.getElementById('stockDetailName').textContent = stock.name || '-';
+            document.getElementById('stockDetailQuantity').textContent = quantity;
+            document.getElementById('stockDetailPrice').textContent = `$${price.toFixed(2)}`;
+            document.getElementById('stockDetailTotalValue').textContent = `$${totalValue.toFixed(2)}`;
+            document.getElementById('stockDetailCategory').textContent = stock.category || '-';
+            document.getElementById('stockDetailLocation').textContent = stock.location || '-';
+            
+            // Get supplier name
+            if (stock.supplier_id) {
+                try {
+                    const supplierRes = await fetch(`/api/crm/people/${stock.supplier_id}`);
+                    const supplierData = await supplierRes.json();
+                    document.getElementById('stockDetailSupplier').textContent = supplierData.success ? supplierData.person.name : '-';
+                } catch (e) {
+                    document.getElementById('stockDetailSupplier').textContent = '-';
+                }
+            } else {
+                document.getElementById('stockDetailSupplier').textContent = '-';
+            }
+            
+            // Stock image
+            const imageContainer = document.getElementById('stockDetailImage');
+            if (stock.image) {
+                imageContainer.innerHTML = `<img src="${stock.image}" style="max-width: 200px; max-height: 150px; border-radius: 12px; object-fit: cover;" alt="${stock.name}">`;
+            } else {
+                imageContainer.innerHTML = '<div style="font-size: 48px;">📦</div>';
+            }
+            
+            // Stock level indicator
+            const maxStock = 100; // Assume max stock is 100 for visualization
+            const levelPercent = Math.min((quantity / maxStock) * 100, 100);
+            document.getElementById('stockLevelFill').style.width = `${levelPercent}%`;
+            
+            let levelColor = '#27ae60';
+            let levelText = 'Good stock level';
+            if (quantity <= 5) {
+                levelColor = '#e74c3c';
+                levelText = '⚠️ Low stock - reorder recommended';
+            } else if (quantity <= 20) {
+                levelColor = '#f39c12';
+                levelText = '📊 Medium stock level';
+            }
+            document.getElementById('stockLevelFill').style.background = `linear-gradient(90deg, ${levelColor}, ${levelColor}dd)`;
+            document.getElementById('stockLevelStatus').innerHTML = `<span style="color: ${levelColor};">${levelText}</span>`;
+            
+            // Find jobs using this stock
+            await loadStockJobs(stockId);
+            
+            openModal('stockDetailModal');
+        } catch (e) {
+            alert('Error loading stock details: ' + e.message);
+        }
+    }
+    
+    async function loadStockJobs(stockId) {
+        const container = document.getElementById('stockDetailJobs');
+        
+        try {
+            // Fetch all jobs and check which ones have this stock assigned
+            const res = await fetch('/api/crm/jobs');
+            const data = await res.json();
+            const allJobs = data.jobs || [];
+            
+            const jobsWithStock = allJobs.filter(job => {
+                const assignedStock = job.assigned_stock || [];
+                return assignedStock.some(s => s.stock_id === stockId);
+            });
+            
+            if (jobsWithStock.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Not assigned to any jobs</div>';
+                return;
+            }
+            
+            let html = '';
+            jobsWithStock.forEach(job => {
+                const assignment = job.assigned_stock.find(s => s.stock_id === stockId);
+                html += `
+                    <div onclick="closeModal('stockDetailModal'); viewJobDetail('${job.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${job.name}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Qty: ${assignment.quantity}</div>
+                        </div>
+                        <span class="status-badge status-${job.status}">${job.status}</span>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Error loading jobs</div>';
+        }
+    }
+    
+    // Person Detail View
+    let currentViewingPersonId = null;
+    let currentViewingPersonType = null;
+    
+    async function viewPersonDetail(personId, personType) {
+        currentViewingPersonId = personId;
+        currentViewingPersonType = personType;
+        
+        try {
+            const res = await fetch(`/api/crm/people/${personId}`);
+            const data = await res.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Person not found');
+            }
+            
+            const person = data.person;
+            
+            // Set icon based on type
+            const icons = {
+                'employee': '👔',
+                'supplier': '🏭',
+                'contractor': '🔧',
+                'contact': '📇',
+                'customer': '👤'
+            };
+            const typeLabels = {
+                'employee': 'Employee',
+                'supplier': 'Supplier',
+                'contractor': 'Contractor',
+                'contact': 'Contact',
+                'customer': 'Customer'
+            };
+            
+            document.getElementById('personDetailIcon').textContent = icons[person.type] || '👤';
+            document.getElementById('personDetailName').textContent = person.name || '-';
+            document.getElementById('personDetailCompany').textContent = person.company || '-';
+            document.getElementById('personDetailType').textContent = typeLabels[person.type] || person.type || '-';
+            document.getElementById('personDetailTitle').textContent = `${icons[person.type] || '👤'} ${typeLabels[person.type] || 'Person'} Details`;
+            
+            // Contact info
+            const phone = person.phone || '-';
+            const email = person.email || '-';
+            document.getElementById('personDetailPhone').textContent = phone;
+            document.getElementById('personDetailEmail').textContent = email;
+            document.getElementById('personDetailPhoneLink').href = phone !== '-' ? `tel:${phone}` : '#';
+            document.getElementById('personDetailEmailLink').href = email !== '-' ? `mailto:${email}` : '#';
+            
+            // Address
+            const address = person.address || '';
+            document.getElementById('personDetailAddress').textContent = address || 'No address provided';
+            document.getElementById('personDetailAddressSection').style.display = address ? 'block' : 'none';
+            
+            // Notes
+            const notes = person.notes || '';
+            document.getElementById('personDetailNotes').textContent = notes || 'No notes';
+            document.getElementById('personDetailNotesSection').style.display = notes ? 'block' : 'none';
+            
+            // Load related items
+            await loadPersonRelatedItems(personId, person.type);
+            
+            openModal('personDetailModal');
+        } catch (e) {
+            alert('Error loading person details: ' + e.message);
+        }
+    }
+    
+    async function loadPersonRelatedItems(personId, personType) {
+        const container = document.getElementById('personDetailRelated');
+        let html = '';
+        
+        try {
+            // Check for related quotes
+            const quotesRes = await fetch('/api/crm/quotes');
+            const quotesData = await quotesRes.json();
+            const relatedQuotes = (quotesData.quotes || []).filter(q => 
+                q.customer_id === personId || 
+                (q.people_of_interest || []).includes(personId)
+            );
+            
+            // Check for related jobs
+            const jobsRes = await fetch('/api/crm/jobs');
+            const jobsData = await jobsRes.json();
+            const relatedJobs = (jobsData.jobs || []).filter(j => 
+                j.customer_id === personId || 
+                (j.people_of_interest || []).includes(personId) ||
+                j.assigned_to === personId
+            );
+            
+            if (relatedQuotes.length === 0 && relatedJobs.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No related items</div>';
+                return;
+            }
+            
+            if (relatedQuotes.length > 0) {
+                html += '<div style="margin-bottom: 12px;"><strong style="color: var(--text-primary);">💰 Quotes</strong></div>';
+                relatedQuotes.slice(0, 5).forEach(q => {
+                    html += `
+                        <div onclick="closeModal('personDetailModal'); viewQuoteDetail('${q.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                            <span style="color: var(--text-primary);">${q.name || 'Unnamed Quote'}</span>
+                            <span class="status-badge status-${q.status}">${q.status}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (relatedJobs.length > 0) {
+                html += '<div style="margin: 12px 0;"><strong style="color: var(--text-primary);">🔧 Jobs</strong></div>';
+                relatedJobs.slice(0, 5).forEach(j => {
+                    html += `
+                        <div onclick="closeModal('personDetailModal'); viewJobDetail('${j.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                            <span style="color: var(--text-primary);">${j.name || 'Unnamed Job'}</span>
+                            <span class="status-badge status-${j.status}">${j.status}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Error loading related items</div>';
+        }
+    }
 
     function editJob(id, status) {
         fetch(`/api/crm/jobs/${id}`)
@@ -9463,12 +10176,34 @@
                     document.getElementById('jobId').value = j.id;
                     document.getElementById('jobStatus').value = j.status;
                     document.getElementById('jobName').value = j.name;
+                    document.getElementById('jobNumber').value = j.job_number || '';
                     document.getElementById('jobCustomer').value = j.customer_id || '';
                     document.getElementById('jobDescription').value = j.description || '';
                     document.getElementById('jobStartDate').value = j.start_date || '';
                     document.getElementById('jobDueDate').value = j.due_date || '';
+                    document.getElementById('jobMaterialsCost').value = j.materials_cost || 0;
+                    document.getElementById('jobLaborCost').value = j.labor_cost || 0;
                     document.getElementById('jobValue').value = j.value || '';
+                    document.getElementById('jobPriority').value = j.priority || 'normal';
                     document.getElementById('jobRecurring').value = j.recurring_schedule || '';
+                    document.getElementById('jobNotes').value = j.notes || '';
+                    
+                    // Populate dropdowns first
+                    populatePeopleOfInterest('jobPeopleOfInterest');
+                    populateEmployeesDropdown('jobAssignedTo');
+                    
+                    // Then set values after a short delay to ensure dropdowns are populated
+                    setTimeout(() => {
+                        document.getElementById('jobAssignedTo').value = j.assigned_to || '';
+                        
+                        // Set people of interest (multi-select)
+                        if (j.people_of_interest && j.people_of_interest.length > 0) {
+                            const select = document.getElementById('jobPeopleOfInterest');
+                            Array.from(select.options).forEach(opt => {
+                                opt.selected = j.people_of_interest.includes(opt.value);
+                            });
+                        }
+                    }, 100);
 
                     const labels = {
                         'in_progress': 'In Progress Job',
@@ -9492,16 +10227,27 @@
         e.preventDefault();
         const id = document.getElementById('jobId').value;
         const status = document.getElementById('jobStatus').value;
+        
+        // Get selected people of interest
+        const peopleSelect = document.getElementById('jobPeopleOfInterest');
+        const peopleOfInterest = Array.from(peopleSelect.selectedOptions).map(opt => opt.value);
 
         const data = {
             status: status,
             name: document.getElementById('jobName').value,
-            customer_id: document.getElementById('jobCustomer').value,
+            job_number: document.getElementById('jobNumber').value || null,
+            customer_id: document.getElementById('jobCustomer').value || null,
             description: document.getElementById('jobDescription').value,
-            start_date: document.getElementById('jobStartDate').value,
-            due_date: document.getElementById('jobDueDate').value,
+            start_date: document.getElementById('jobStartDate').value || null,
+            due_date: document.getElementById('jobDueDate').value || null,
+            materials_cost: parseFloat(document.getElementById('jobMaterialsCost').value) || 0,
+            labor_cost: parseFloat(document.getElementById('jobLaborCost').value) || 0,
             value: parseFloat(document.getElementById('jobValue').value) || 0,
-            recurring_schedule: document.getElementById('jobRecurring').value
+            priority: document.getElementById('jobPriority').value || 'normal',
+            recurring_schedule: document.getElementById('jobRecurring').value || null,
+            assigned_to: document.getElementById('jobAssignedTo').value || null,
+            notes: document.getElementById('jobNotes').value || '',
+            people_of_interest: peopleOfInterest
         };
 
         try {
@@ -9600,7 +10346,7 @@
                     </thead>
                     <tbody>
                         ${materialsList.map(m => `
-                            <tr>
+                            <tr onclick="viewStockDetail('${m.id}')" style="cursor: pointer;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
                                 <td><strong>${m.name}</strong></td>
                                 <td>${m.category || '-'}</td>
                                 <td>${m.location || '-'}</td>
@@ -9608,8 +10354,8 @@
                                 <td>$${(m.unit_price || 0).toFixed(2)}</td>
                                 <td>$${((m.quantity || 0) * (m.unit_price || 0)).toFixed(2)}</td>
                                 <td>
-                                    <button class="btn btn-secondary btn-small" onclick="editMaterial('${m.id}', '${type}')">Edit</button>
-                                    <button class="btn btn-danger btn-small" onclick="deleteMaterial('${m.id}', '${type}')">Delete</button>
+                                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editMaterial('${m.id}', '${type}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteMaterial('${m.id}', '${type}')">Delete</button>
                                 </td>
                             </tr>
                         `).join('')}
