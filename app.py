@@ -1503,6 +1503,9 @@ def generate_marked_up_image(original_image_path, mapping_data, output_path):
 # ADMIN PAGE EDITOR
 # ============================================================================
 
+# Define customizations file path before it's used in load_page_config()
+CUSTOMIZATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customizations.json')
+
 def load_page_config():
     """Load the landing page configuration, merging in admin customizations"""
     config_file = os.path.join(app.config['DATA_FOLDER'], 'page_config.json')
@@ -1681,7 +1684,7 @@ def admin_page():
 # ADMIN CUSTOMIZATION API
 # ============================================================================
 
-CUSTOMIZATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'customizations.json')
+# CUSTOMIZATIONS_FILE is defined earlier (before load_page_config)
 BRANDING_DIR = os.path.join(app.config['UPLOAD_FOLDER'], 'branding')
 os.makedirs(BRANDING_DIR, exist_ok=True)
 
@@ -6636,6 +6639,246 @@ def handle_quote_markup(quote_id, markup_id):
 
             return jsonify({'success': True})
 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# QUOTE DOCUMENTS MANAGEMENT
+# ============================================================================
+
+@app.route('/api/crm/quotes/documents', methods=['POST'])
+def upload_quote_documents():
+    """Upload documents to a quote"""
+    try:
+        quote_id = request.form.get('quote_id')
+        if not quote_id:
+            return jsonify({'success': False, 'error': 'Quote ID required'}), 400
+        
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+        
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+        
+        quote = quotes[idx]
+        if 'documents' not in quote:
+            quote['documents'] = []
+        
+        files = request.files.getlist('documents')
+        uploaded = []
+        
+        # Create documents folder if it doesn't exist
+        docs_folder = os.path.join(app.config['CRM_DATA_FOLDER'], 'documents', 'quotes', quote_id)
+        os.makedirs(docs_folder, exist_ok=True)
+        
+        for file in files:
+            if file and file.filename:
+                # Secure the filename
+                filename = secure_filename(file.filename)
+                doc_id = str(uuid.uuid4())
+                filepath = os.path.join(docs_folder, f"{doc_id}_{filename}")
+                file.save(filepath)
+                
+                doc = {
+                    'id': doc_id,
+                    'filename': filename,
+                    'filepath': filepath,
+                    'url': f'/api/crm/quotes/{quote_id}/documents/{doc_id}/download',
+                    'size': os.path.getsize(filepath),
+                    'uploaded_at': datetime.now().isoformat()
+                }
+                quote['documents'].append(doc)
+                uploaded.append(doc)
+        
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+        
+        return jsonify({'success': True, 'documents': uploaded})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/documents', methods=['GET'])
+def get_quote_documents(quote_id):
+    """Get all documents for a quote"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote = next((q for q in quotes if q['id'] == quote_id), None)
+        
+        if not quote:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+        
+        return jsonify({'success': True, 'documents': quote.get('documents', [])})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/documents/<doc_id>/download', methods=['GET'])
+def download_quote_document(quote_id, doc_id):
+    """Download a quote document"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        quote = next((q for q in quotes if q['id'] == quote_id), None)
+        
+        if not quote:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+        
+        doc = next((d for d in quote.get('documents', []) if d['id'] == doc_id), None)
+        if not doc:
+            return jsonify({'success': False, 'error': 'Document not found'}), 404
+        
+        if os.path.exists(doc['filepath']):
+            return send_file(doc['filepath'], as_attachment=True, download_name=doc['filename'])
+        else:
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/quotes/<quote_id>/documents/<doc_id>', methods=['DELETE'])
+def delete_quote_document(quote_id, doc_id):
+    """Delete a quote document"""
+    try:
+        quotes = load_json_file(QUOTES_FILE, [])
+        idx = next((i for i, q in enumerate(quotes) if q['id'] == quote_id), None)
+        
+        if idx is None:
+            return jsonify({'success': False, 'error': 'Quote not found'}), 404
+        
+        quote = quotes[idx]
+        doc_idx = next((i for i, d in enumerate(quote.get('documents', [])) if d['id'] == doc_id), None)
+        
+        if doc_idx is None:
+            return jsonify({'success': False, 'error': 'Document not found'}), 404
+        
+        doc = quote['documents'][doc_idx]
+        
+        # Delete the file
+        if os.path.exists(doc['filepath']):
+            os.remove(doc['filepath'])
+        
+        quote['documents'].pop(doc_idx)
+        quote['updated_at'] = datetime.now().isoformat()
+        quotes[idx] = quote
+        save_json_file(QUOTES_FILE, quotes)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# JOB DOCUMENTS MANAGEMENT
+# ============================================================================
+
+@app.route('/api/crm/jobs/documents', methods=['POST'])
+def upload_job_documents():
+    """Upload documents to a job"""
+    try:
+        job_id = request.form.get('job_id')
+        if not job_id:
+            return jsonify({'success': False, 'error': 'Job ID required'}), 400
+        
+        jobs = crm_extended.get_all_jobs()
+        job = next((j for j in jobs if j['id'] == job_id), None)
+        
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        if 'documents' not in job:
+            job['documents'] = []
+        
+        files = request.files.getlist('documents')
+        uploaded = []
+        
+        # Create documents folder if it doesn't exist
+        docs_folder = os.path.join(app.config['CRM_DATA_FOLDER'], 'documents', 'jobs', job_id)
+        os.makedirs(docs_folder, exist_ok=True)
+        
+        for file in files:
+            if file and file.filename:
+                # Secure the filename
+                filename = secure_filename(file.filename)
+                doc_id = str(uuid.uuid4())
+                filepath = os.path.join(docs_folder, f"{doc_id}_{filename}")
+                file.save(filepath)
+                
+                doc = {
+                    'id': doc_id,
+                    'filename': filename,
+                    'filepath': filepath,
+                    'url': f'/api/crm/jobs/{job_id}/documents/{doc_id}/download',
+                    'size': os.path.getsize(filepath),
+                    'uploaded_at': datetime.now().isoformat()
+                }
+                job['documents'].append(doc)
+                uploaded.append(doc)
+        
+        job['updated_at'] = datetime.now().isoformat()
+        crm_extended.save_job(job)
+        
+        return jsonify({'success': True, 'documents': uploaded})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/jobs/<job_id>/documents', methods=['GET'])
+def get_job_documents(job_id):
+    """Get all documents for a job"""
+    try:
+        jobs = crm_extended.get_all_jobs()
+        job = next((j for j in jobs if j['id'] == job_id), None)
+        
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        return jsonify({'success': True, 'documents': job.get('documents', [])})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/jobs/<job_id>/documents/<doc_id>/download', methods=['GET'])
+def download_job_document(job_id, doc_id):
+    """Download a job document"""
+    try:
+        jobs = crm_extended.get_all_jobs()
+        job = next((j for j in jobs if j['id'] == job_id), None)
+        
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        doc = next((d for d in job.get('documents', []) if d['id'] == doc_id), None)
+        if not doc:
+            return jsonify({'success': False, 'error': 'Document not found'}), 404
+        
+        if os.path.exists(doc['filepath']):
+            return send_file(doc['filepath'], as_attachment=True, download_name=doc['filename'])
+        else:
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/crm/jobs/<job_id>/documents/<doc_id>', methods=['DELETE'])
+def delete_job_document(job_id, doc_id):
+    """Delete a job document"""
+    try:
+        jobs = crm_extended.get_all_jobs()
+        job = next((j for j in jobs if j['id'] == job_id), None)
+        
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        doc_idx = next((i for i, d in enumerate(job.get('documents', [])) if d['id'] == doc_id), None)
+        
+        if doc_idx is None:
+            return jsonify({'success': False, 'error': 'Document not found'}), 404
+        
+        doc = job['documents'][doc_idx]
+        
+        # Delete the file
+        if os.path.exists(doc['filepath']):
+            os.remove(doc['filepath'])
+        
+        job['documents'].pop(doc_idx)
+        job['updated_at'] = datetime.now().isoformat()
+        crm_extended.save_job(job)
+        
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -526,6 +526,11 @@
         
         /* Higher z-index for edit modals that appear on top of detail modals */
         #quoteModal.active, #jobModal.active, #customerModal.active, #personModal.active {
+            z-index: 1200;
+        }
+        
+        /* Detail modals that can open from within other modals */
+        #quoteDetailModal.active, #jobDetailModal.active {
             z-index: 1100;
         }
 
@@ -807,7 +812,6 @@
         <!-- DASHBOARD -->
         <div id="dashboard" class="section active">
             <h1 class="page-title" id="dashboardGreeting">Hi there</h1>
-            <p class="page-subtitle">Overview of your business</p>
 
             <!-- Quick Actions -->
             <div class="card" style="margin-bottom: 20px;">
@@ -3182,6 +3186,38 @@
                     <!-- Stats will be populated here -->
                 </div>
                 
+                <!-- Timeline/Dates Section -->
+                <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600;">📅 Timeline</h3>
+                    <div id="quoteDetailTimeline" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <!-- Timeline will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Quote Stage Progress -->
+                <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600;">📊 Quote Progress</h3>
+                    <div id="quoteStageProgress" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                        <!-- Progress steps will be populated here -->
+                    </div>
+                    <div id="quoteCostChart" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Cost vs Revenue chart -->
+                        <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px;">
+                            <h4 style="color: var(--text-primary); margin-bottom: 12px; font-size: 14px; font-weight: 600;">Cost vs Revenue</h4>
+                            <div id="costRevenueChart" style="height: 150px; display: flex; align-items: flex-end; gap: 20px; justify-content: center;">
+                                <!-- Chart bars will be populated here -->
+                            </div>
+                        </div>
+                        <!-- Time Progress -->
+                        <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px;">
+                            <h4 style="color: var(--text-primary); margin-bottom: 12px; font-size: 14px; font-weight: 600;">Time Elapsed</h4>
+                            <div id="timeProgressChart" style="height: 150px; display: flex; flex-direction: column; justify-content: center;">
+                                <!-- Time progress will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Main Content Grid -->
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
                     <!-- Left Column - Floorplan -->
@@ -3203,6 +3239,24 @@
                                 <button class="btn btn-primary" onclick="openInCanvasEditor()" style="background: linear-gradient(135deg, #5a9e3f, #6AB64B);">🎨 Create Floorplan in Canvas Editor</button>
                             </div>
                         </div>
+                        
+                        <!-- Documents Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>📎 Documents</span>
+                                <button onclick="openQuoteDocumentUpload()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">+ Add Document</button>
+                            </h3>
+                            <div id="quoteDocumentUploadArea" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--bg-primary); border-radius: 12px; border: 2px dashed var(--border-color);">
+                                <input type="file" id="quoteDocumentInput" multiple style="display: none;" onchange="uploadQuoteDocuments(this.files)">
+                                <div style="text-align: center;">
+                                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Drag & drop files or click to browse</p>
+                                    <button onclick="document.getElementById('quoteDocumentInput').click()" class="btn btn-primary" style="padding: 8px 16px;">Choose Files</button>
+                                </div>
+                            </div>
+                            <div id="quoteDetailDocuments" style="max-height: 200px; overflow-y: auto;">
+                                <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Right Column - Details -->
@@ -3214,6 +3268,26 @@
                             </h3>
                             <div id="quoteDetailCustomer" style="color: var(--text-secondary);">
                                 <!-- Customer info will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- People of Interest -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>👥 People of Interest</span>
+                                <button onclick="toggleQuotePeopleInput()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">+ Add</button>
+                            </h3>
+                            <div id="quotePeopleInputArea" style="display: none; margin-bottom: 12px;">
+                                <select id="quotePeopleSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); margin-bottom: 8px;">
+                                    <option value="">Select person...</option>
+                                </select>
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button onclick="toggleQuotePeopleInput()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Cancel</button>
+                                    <button onclick="addQuotePerson()" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Add Person</button>
+                                </div>
+                            </div>
+                            <div id="quoteDetailPeople" style="color: var(--text-secondary);">
+                                <p style="text-align: center; padding: 10px;">No people assigned</p>
                             </div>
                         </div>
                         
@@ -3372,7 +3446,7 @@
                         </div>
                         
                         <!-- Assigned Stock/Materials -->
-                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);">📦 Assigned Stock</h3>
                                 <div style="display: flex; gap: 8px;">
@@ -3381,6 +3455,24 @@
                                 </div>
                             </div>
                             <div id="jobDetailStock">No stock assigned</div>
+                        </div>
+                        
+                        <!-- Documents Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                                <span>📎 Documents</span>
+                                <button onclick="openJobDocumentUpload()" class="btn btn-secondary btn-small">+ Add Document</button>
+                            </h3>
+                            <div id="jobDocumentUploadArea" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--bg-primary); border-radius: 12px; border: 2px dashed var(--border-color);">
+                                <input type="file" id="jobDocumentInput" multiple style="display: none;" onchange="uploadJobDocuments(this.files)">
+                                <div style="text-align: center;">
+                                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Drag & drop files or click to browse</p>
+                                    <button onclick="document.getElementById('jobDocumentInput').click()" class="btn btn-primary" style="padding: 8px 16px;">Choose Files</button>
+                                </div>
+                            </div>
+                            <div id="jobDetailDocuments" style="max-height: 200px; overflow-y: auto;">
+                                <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3435,9 +3527,17 @@
                         </div>
                         
                         <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
-                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                                📝 Notes
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>📝 Notes</span>
+                                <button onclick="toggleCustomerNoteInput()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">+ Add</button>
                             </h3>
+                            <div id="customerNoteInputArea" style="display: none; margin-bottom: 12px;">
+                                <textarea id="newCustomerNote" placeholder="Add a note..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); resize: vertical; min-height: 80px; margin-bottom: 8px;"></textarea>
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button onclick="toggleCustomerNoteInput()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Cancel</button>
+                                    <button onclick="saveCustomerNote()" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Save Note</button>
+                                </div>
+                            </div>
                             <div id="customerDetailNotes" style="color: var(--text-secondary);">
                                 No notes
                             </div>
@@ -4172,17 +4272,45 @@
         }
 
         function editCustomer(id) {
-            const c = customers.find(x => x.id === id);
-            if (c) {
-                document.getElementById('customerId').value = c.id;
-                document.getElementById('customerName').value = c.name;
-                document.getElementById('customerCompany').value = c.company || '';
-                document.getElementById('customerEmail').value = c.email || '';
-                document.getElementById('customerPhone').value = c.phone || '';
-                document.getElementById('customerAddress').value = c.address || '';
-                document.getElementById('customerNotes').value = c.notes || '';
-                openModal('customerModal');
+            // Look in multiple sources for the customer
+            let c = customers.find(x => x.id === id);
+            
+            // Also check window.allPeople (from People section)
+            if (!c && window.allPeople) {
+                c = window.allPeople.find(p => p.id === id && p.type === 'customer');
             }
+            
+            // If still not found, try fetching from API
+            if (!c) {
+                fetch(`/api/crm/people/${id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.person) {
+                            populateCustomerEditForm(data.person);
+                            openModal('customerModal');
+                        } else {
+                            alert('Customer not found');
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Error fetching customer:', e);
+                        alert('Error loading customer');
+                    });
+                return;
+            }
+            
+            populateCustomerEditForm(c);
+            openModal('customerModal');
+        }
+        
+        function populateCustomerEditForm(c) {
+            document.getElementById('customerId').value = c.id;
+            document.getElementById('customerName').value = c.name || '';
+            document.getElementById('customerCompany').value = c.company || '';
+            document.getElementById('customerEmail').value = c.email || '';
+            document.getElementById('customerPhone').value = c.phone || '';
+            document.getElementById('customerAddress').value = c.address || '';
+            document.getElementById('customerNotes').value = c.notes || '';
         }
 
         async function deleteCustomer(id) {
@@ -5501,6 +5629,13 @@
             document.getElementById('markSentBtn').style.display = quote.status === 'draft' ? 'inline-flex' : 'none';
             document.getElementById('markAcceptedBtn').style.display = quote.status === 'sent' ? 'inline-flex' : 'none';
             
+            // Populate timeline and graphs
+            populateQuoteTimeline(quote);
+            populateQuoteStageProgress(quote);
+            populateQuoteCostChart(quote);
+            populateQuotePeople(quote);
+            loadQuoteDocuments(quoteId);
+            
             // Open the modal
             openModal('quoteDetailModal');
         }
@@ -5580,6 +5715,548 @@
                 // Just open canvas editor without a linked quote
                 window.location.href = '/canvas';
             }
+        }
+        
+        // ============================================================================
+        // CUSTOMER NOTES FUNCTIONS
+        // ============================================================================
+        
+        function toggleCustomerNoteInput() {
+            const inputArea = document.getElementById('customerNoteInputArea');
+            inputArea.style.display = inputArea.style.display === 'none' ? 'block' : 'none';
+            if (inputArea.style.display === 'block') {
+                document.getElementById('newCustomerNote').focus();
+            }
+        }
+        
+        async function saveCustomerNote() {
+            const noteText = document.getElementById('newCustomerNote').value.trim();
+            if (!noteText) {
+                alert('Please enter a note');
+                return;
+            }
+            
+            if (!currentViewingCustomerId) {
+                alert('No customer selected');
+                return;
+            }
+            
+            try {
+                // Fetch current customer data
+                const res = await fetch(`/api/crm/people/${currentViewingCustomerId}`);
+                const data = await res.json();
+                
+                if (data.success && data.person) {
+                    const customer = data.person;
+                    const existingNotes = customer.notes || '';
+                    const timestamp = new Date().toLocaleString();
+                    const newNotes = existingNotes ? `${existingNotes}\n\n[${timestamp}]\n${noteText}` : `[${timestamp}]\n${noteText}`;
+                    
+                    // Update customer with new note
+                    const updateRes = await fetch('/api/crm/people', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...customer,
+                            notes: newNotes
+                        })
+                    });
+                    
+                    const updateData = await updateRes.json();
+                    if (updateData.success) {
+                        // Update display
+                        document.getElementById('customerDetailNotes').innerHTML = formatNotes(newNotes);
+                        document.getElementById('newCustomerNote').value = '';
+                        toggleCustomerNoteInput();
+                        
+                        // Refresh customers list
+                        loadCustomers();
+                    } else {
+                        alert('Error saving note');
+                    }
+                }
+            } catch (e) {
+                console.error('Error saving note:', e);
+                alert('Error saving note');
+            }
+        }
+        
+        function formatNotes(notes) {
+            if (!notes) return '<p style="color: var(--text-secondary);">No notes</p>';
+            
+            // Split by timestamp pattern and format each note
+            const noteBlocks = notes.split(/\n\n(?=\[)/);
+            return noteBlocks.map(block => {
+                const lines = block.split('\n');
+                const timestamp = lines[0] || '';
+                const content = lines.slice(1).join('\n') || block;
+                
+                return `
+                    <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                        ${timestamp.startsWith('[') ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px;">${timestamp}</div>` : ''}
+                        <div style="color: var(--text-primary); font-size: 14px; white-space: pre-wrap;">${timestamp.startsWith('[') ? content : block}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // ============================================================================
+        // QUOTE TIMELINE & GRAPHS FUNCTIONS
+        // ============================================================================
+        
+        function populateQuoteTimeline(quote) {
+            const timelineEl = document.getElementById('quoteDetailTimeline');
+            if (!timelineEl) return;
+            
+            const createdDate = quote.created_at ? new Date(quote.created_at) : null;
+            const sentDate = quote.sent_at ? new Date(quote.sent_at) : null;
+            const acceptedDate = quote.accepted_at ? new Date(quote.accepted_at) : null;
+            const validUntil = quote.valid_until ? new Date(quote.valid_until) : null;
+            
+            timelineEl.innerHTML = `
+                <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">📅 Created</div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${createdDate ? createdDate.toLocaleDateString() : 'N/A'}</div>
+                    <div style="font-size: 11px; color: var(--text-tertiary);">${createdDate ? createdDate.toLocaleTimeString() : ''}</div>
+                </div>
+                <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">📤 Sent</div>
+                    <div style="font-weight: 600; color: ${sentDate ? '#3498db' : 'var(--text-tertiary)'};">${sentDate ? sentDate.toLocaleDateString() : 'Not sent'}</div>
+                    <div style="font-size: 11px; color: var(--text-tertiary);">${sentDate ? sentDate.toLocaleTimeString() : ''}</div>
+                </div>
+                <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">✅ Accepted</div>
+                    <div style="font-weight: 600; color: ${acceptedDate ? '#27ae60' : 'var(--text-tertiary)'};">${acceptedDate ? acceptedDate.toLocaleDateString() : 'Pending'}</div>
+                    <div style="font-size: 11px; color: var(--text-tertiary);">${acceptedDate ? acceptedDate.toLocaleTimeString() : ''}</div>
+                </div>
+                <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">⏰ Valid Until</div>
+                    <div style="font-weight: 600; color: ${validUntil && validUntil < new Date() ? '#e74c3c' : 'var(--text-primary)'};">${validUntil ? validUntil.toLocaleDateString() : 'N/A'}</div>
+                    <div style="font-size: 11px; color: var(--text-tertiary);">${validUntil && validUntil < new Date() ? 'Expired' : ''}</div>
+                </div>
+            `;
+        }
+        
+        function populateQuoteStageProgress(quote) {
+            const progressEl = document.getElementById('quoteStageProgress');
+            if (!progressEl) return;
+            
+            const stages = ['draft', 'sent', 'accepted', 'completed'];
+            const currentStageIndex = stages.indexOf(quote.status) || 0;
+            
+            progressEl.innerHTML = stages.map((stage, index) => {
+                const isActive = index <= currentStageIndex;
+                const isCurrent = index === currentStageIndex;
+                return `
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${isActive ? '#6AB64B' : 'var(--bg-primary)'}; border: 2px solid ${isActive ? '#6AB64B' : 'var(--border-color)'}; display: flex; align-items: center; justify-content: center; color: ${isActive ? 'white' : 'var(--text-secondary)'}; font-weight: 600; font-size: 14px;">
+                            ${isActive ? '✓' : index + 1}
+                        </div>
+                        <div style="font-size: 11px; margin-top: 4px; color: ${isCurrent ? '#6AB64B' : 'var(--text-secondary)'}; font-weight: ${isCurrent ? '600' : '400'}; text-transform: capitalize;">${stage}</div>
+                    </div>
+                    ${index < stages.length - 1 ? `<div style="flex: 1; height: 2px; background: ${index < currentStageIndex ? '#6AB64B' : 'var(--border-color)'}; margin-top: 16px;"></div>` : ''}
+                `;
+            }).join('');
+        }
+        
+        function populateQuoteCostChart(quote) {
+            const chartEl = document.getElementById('costRevenueChart');
+            const timeChartEl = document.getElementById('timeProgressChart');
+            if (!chartEl || !timeChartEl) return;
+            
+            const totalAmount = quote.quote_amount || quote.total_amount || 0;
+            const materialsCost = quote.costs?.materials || quote.materials_cost || 0;
+            const laborCost = quote.costs?.labor || quote.labor_cost || 0;
+            const totalCost = materialsCost + laborCost;
+            const profit = totalAmount - totalCost;
+            
+            const maxValue = Math.max(totalAmount, totalCost, 1);
+            const costHeight = Math.min((totalCost / maxValue) * 120, 120);
+            const revenueHeight = Math.min((totalAmount / maxValue) * 120, 120);
+            
+            chartEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 60px; height: ${costHeight}px; background: linear-gradient(180deg, #e74c3c, #c0392b); border-radius: 4px 4px 0 0;"></div>
+                    <div style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);">Cost</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #e74c3c;">$${totalCost.toLocaleString()}</div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 60px; height: ${revenueHeight}px; background: linear-gradient(180deg, #27ae60, #1e8449); border-radius: 4px 4px 0 0;"></div>
+                    <div style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);">Revenue</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #27ae60;">$${totalAmount.toLocaleString()}</div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+                    <div style="padding: 8px 16px; background: ${profit >= 0 ? 'rgba(39, 174, 96, 0.1)' : 'rgba(231, 76, 60, 0.1)'}; border-radius: 8px;">
+                        <div style="font-size: 12px; color: var(--text-secondary);">Profit</div>
+                        <div style="font-size: 18px; font-weight: 700; color: ${profit >= 0 ? '#27ae60' : '#e74c3c'};">$${profit.toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Time progress
+            const createdDate = quote.created_at ? new Date(quote.created_at) : new Date();
+            const validUntil = quote.valid_until ? new Date(quote.valid_until) : null;
+            const now = new Date();
+            
+            if (validUntil) {
+                const totalDays = Math.ceil((validUntil - createdDate) / (1000 * 60 * 60 * 24));
+                const elapsedDays = Math.ceil((now - createdDate) / (1000 * 60 * 60 * 24));
+                const remainingDays = Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24));
+                const progressPercent = Math.min((elapsedDays / totalDays) * 100, 100);
+                
+                timeChartEl.innerHTML = `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                            <span>Created</span>
+                            <span>Valid Until</span>
+                        </div>
+                        <div style="background: var(--bg-secondary); border-radius: 10px; height: 16px; overflow: hidden;">
+                            <div style="background: ${remainingDays < 0 ? '#e74c3c' : remainingDays < 7 ? '#f39c12' : '#3498db'}; height: 100%; width: ${progressPercent}%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: ${remainingDays < 0 ? 'rgba(231, 76, 60, 0.1)' : 'var(--bg-secondary)'}; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: ${remainingDays < 0 ? '#e74c3c' : remainingDays < 7 ? '#f39c12' : 'var(--text-primary)'};">${Math.abs(remainingDays)}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">${remainingDays < 0 ? 'Days Overdue' : 'Days Remaining'}</div>
+                    </div>
+                `;
+            } else {
+                const daysSinceCreation = Math.ceil((now - createdDate) / (1000 * 60 * 60 * 24));
+                timeChartEl.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 32px; font-weight: 700; color: var(--text-primary);">${daysSinceCreation}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Days Since Created</div>
+                        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 8px;">No expiry date set</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // ============================================================================
+        // QUOTE PEOPLE OF INTEREST FUNCTIONS
+        // ============================================================================
+        
+        function toggleQuotePeopleInput() {
+            const inputArea = document.getElementById('quotePeopleInputArea');
+            inputArea.style.display = inputArea.style.display === 'none' ? 'block' : 'none';
+            
+            if (inputArea.style.display === 'block') {
+                // Populate the select with available people
+                const select = document.getElementById('quotePeopleSelect');
+                let options = '<option value="">Select person...</option>';
+                
+                if (window.allPeople) {
+                    const grouped = {};
+                    window.allPeople.forEach(p => {
+                        const type = p.type || 'other';
+                        if (!grouped[type]) grouped[type] = [];
+                        grouped[type].push(p);
+                    });
+                    
+                    Object.keys(grouped).forEach(type => {
+                        options += `<optgroup label="${type.charAt(0).toUpperCase() + type.slice(1)}s">`;
+                        grouped[type].forEach(p => {
+                            options += `<option value="${p.id}">${p.name}${p.company ? ' (' + p.company + ')' : ''}</option>`;
+                        });
+                        options += '</optgroup>';
+                    });
+                }
+                
+                select.innerHTML = options;
+            }
+        }
+        
+        async function addQuotePerson() {
+            const personId = document.getElementById('quotePeopleSelect').value;
+            if (!personId) {
+                alert('Please select a person');
+                return;
+            }
+            
+            if (!currentViewingQuoteId) return;
+            
+            try {
+                const quote = quotes.find(q => q.id === currentViewingQuoteId);
+                if (!quote) return;
+                
+                const peopleOfInterest = quote.people_of_interest || [];
+                if (!peopleOfInterest.includes(personId)) {
+                    peopleOfInterest.push(personId);
+                    
+                    const res = await fetch('/api/crm/quotes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...quote,
+                            people_of_interest: peopleOfInterest
+                        })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        quote.people_of_interest = peopleOfInterest;
+                        populateQuotePeople(quote);
+                        toggleQuotePeopleInput();
+                    }
+                }
+            } catch (e) {
+                console.error('Error adding person:', e);
+            }
+        }
+        
+        function populateQuotePeople(quote) {
+            const peopleEl = document.getElementById('quoteDetailPeople');
+            if (!peopleEl) return;
+            
+            const peopleIds = quote.people_of_interest || [];
+            if (peopleIds.length === 0) {
+                peopleEl.innerHTML = '<p style="text-align: center; padding: 10px;">No people assigned</p>';
+                return;
+            }
+            
+            const peopleHtml = peopleIds.map(personId => {
+                let person = null;
+                if (window.allPeople) {
+                    person = window.allPeople.find(p => p.id === personId);
+                }
+                
+                if (!person) return '';
+                
+                return `
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                        <div style="width: 36px; height: 36px; background: #8b5cf6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
+                            ${person.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">${person.name}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${person.type || ''} ${person.company ? '• ' + person.company : ''}</div>
+                        </div>
+                        <button onclick="removeQuotePerson('${personId}')" style="background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px;">✕</button>
+                    </div>
+                `;
+            }).join('');
+            
+            peopleEl.innerHTML = peopleHtml || '<p style="text-align: center; padding: 10px;">No people assigned</p>';
+        }
+        
+        async function removeQuotePerson(personId) {
+            if (!currentViewingQuoteId) return;
+            
+            try {
+                const quote = quotes.find(q => q.id === currentViewingQuoteId);
+                if (!quote) return;
+                
+                const peopleOfInterest = (quote.people_of_interest || []).filter(id => id !== personId);
+                
+                const res = await fetch('/api/crm/quotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...quote,
+                        people_of_interest: peopleOfInterest
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    quote.people_of_interest = peopleOfInterest;
+                    populateQuotePeople(quote);
+                }
+            } catch (e) {
+                console.error('Error removing person:', e);
+            }
+        }
+        
+        // ============================================================================
+        // DOCUMENT UPLOAD FUNCTIONS
+        // ============================================================================
+        
+        function openQuoteDocumentUpload() {
+            const uploadArea = document.getElementById('quoteDocumentUploadArea');
+            uploadArea.style.display = uploadArea.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function openJobDocumentUpload() {
+            const uploadArea = document.getElementById('jobDocumentUploadArea');
+            uploadArea.style.display = uploadArea.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function uploadQuoteDocuments(files) {
+            if (!files || files.length === 0) return;
+            if (!currentViewingQuoteId) return;
+            
+            const formData = new FormData();
+            formData.append('quote_id', currentViewingQuoteId);
+            
+            for (let i = 0; i < files.length; i++) {
+                formData.append('documents', files[i]);
+            }
+            
+            try {
+                const res = await fetch('/api/crm/quotes/documents', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadQuoteDocuments(currentViewingQuoteId);
+                    document.getElementById('quoteDocumentUploadArea').style.display = 'none';
+                } else {
+                    alert('Error uploading documents: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error uploading documents:', e);
+                alert('Error uploading documents');
+            }
+        }
+        
+        async function uploadJobDocuments(files) {
+            if (!files || files.length === 0) return;
+            if (!currentViewingJobId) return;
+            
+            const formData = new FormData();
+            formData.append('job_id', currentViewingJobId);
+            
+            for (let i = 0; i < files.length; i++) {
+                formData.append('documents', files[i]);
+            }
+            
+            try {
+                const res = await fetch('/api/crm/jobs/documents', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadJobDocuments(currentViewingJobId);
+                    document.getElementById('jobDocumentUploadArea').style.display = 'none';
+                } else {
+                    alert('Error uploading documents: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error uploading documents:', e);
+                alert('Error uploading documents');
+            }
+        }
+        
+        async function loadQuoteDocuments(quoteId) {
+            const docsEl = document.getElementById('quoteDetailDocuments');
+            if (!docsEl) return;
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/documents`);
+                const data = await res.json();
+                
+                if (data.success && data.documents && data.documents.length > 0) {
+                    docsEl.innerHTML = data.documents.map(doc => `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                            <div style="font-size: 24px;">${getFileIcon(doc.filename)}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; color: var(--text-primary); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.filename}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">${formatFileSize(doc.size)} • ${new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                            </div>
+                            <a href="${doc.url}" download class="btn btn-secondary btn-small">📥</a>
+                            <button onclick="deleteQuoteDocument('${quoteId}', '${doc.id}')" class="btn btn-secondary btn-small" style="color: #e74c3c;">🗑️</button>
+                        </div>
+                    `).join('');
+                } else {
+                    docsEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>';
+                }
+            } catch (e) {
+                console.error('Error loading documents:', e);
+                docsEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>';
+            }
+        }
+        
+        async function loadJobDocuments(jobId) {
+            const docsEl = document.getElementById('jobDetailDocuments');
+            if (!docsEl) return;
+            
+            try {
+                const res = await fetch(`/api/crm/jobs/${jobId}/documents`);
+                const data = await res.json();
+                
+                if (data.success && data.documents && data.documents.length > 0) {
+                    docsEl.innerHTML = data.documents.map(doc => `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                            <div style="font-size: 24px;">${getFileIcon(doc.filename)}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; color: var(--text-primary); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.filename}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">${formatFileSize(doc.size)} • ${new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                            </div>
+                            <a href="${doc.url}" download class="btn btn-secondary btn-small">📥</a>
+                            <button onclick="deleteJobDocument('${jobId}', '${doc.id}')" class="btn btn-secondary btn-small" style="color: #e74c3c;">🗑️</button>
+                        </div>
+                    `).join('');
+                } else {
+                    docsEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>';
+                }
+            } catch (e) {
+                console.error('Error loading documents:', e);
+                docsEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No documents attached</p>';
+            }
+        }
+        
+        async function deleteQuoteDocument(quoteId, docId) {
+            if (!confirm('Delete this document?')) return;
+            
+            try {
+                const res = await fetch(`/api/crm/quotes/${quoteId}/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadQuoteDocuments(quoteId);
+                }
+            } catch (e) {
+                console.error('Error deleting document:', e);
+            }
+        }
+        
+        async function deleteJobDocument(jobId, docId) {
+            if (!confirm('Delete this document?')) return;
+            
+            try {
+                const res = await fetch(`/api/crm/jobs/${jobId}/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadJobDocuments(jobId);
+                }
+            } catch (e) {
+                console.error('Error deleting document:', e);
+            }
+        }
+        
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'pdf': '📄',
+                'doc': '📝',
+                'docx': '📝',
+                'xls': '📊',
+                'xlsx': '📊',
+                'png': '🖼️',
+                'jpg': '🖼️',
+                'jpeg': '🖼️',
+                'gif': '🖼️',
+                'zip': '📦',
+                'rar': '📦',
+                'txt': '📃'
+            };
+            return icons[ext] || '📎';
+        }
+        
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
         function viewQuoteFloorplan(quoteId) {
@@ -9973,6 +10650,9 @@
             
             // Show/hide complete button based on status
             document.getElementById('markJobCompleteBtn').style.display = job.status !== 'finished' ? 'inline-flex' : 'none';
+            
+            // Load documents
+            loadJobDocuments(jobId);
             
             // Open modal
             openModal('jobDetailModal');
