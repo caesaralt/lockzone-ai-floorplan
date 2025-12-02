@@ -30,7 +30,7 @@ def admin_required_wrapper(f):
         auth = get_auth()
         if not auth.is_authenticated():
             return jsonify({'success': False, 'error': 'Authentication required'}), 401
-        if not auth.is_admin():
+        if not auth.has_permission('admin'):
             return jsonify({'success': False, 'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated
