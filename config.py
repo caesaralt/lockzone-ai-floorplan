@@ -125,3 +125,116 @@ def get_config():
     """Get configuration based on FLASK_ENV environment variable"""
     env = os.environ.get('FLASK_ENV', 'development')
     return config_by_name.get(env, DevelopmentConfig)
+
+
+# ==============================================================================
+# STORAGE POLICY HELPERS - Single Source of Truth
+# ==============================================================================
+# These helpers determine how CRM/auth/kanban data should be persisted.
+# Session/config JSON files (CAD sessions, PDF autosave, automation_data.json, etc.)
+# are NOT affected by these rules and remain allowed in all environments.
+# ==============================================================================
+
+def get_app_env() -> str:
+    """
+    Get the current application environment.
+    
+    Checks APP_ENV first, then falls back to FLASK_ENV.
+    Returns: 'production', 'development', 'staging', or 'testing'
+    """
+    return os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development')).lower()
+
+
+def is_production() -> bool:
+    """
+    Check if the app is running in production mode.
+    
+    Returns True if APP_ENV or FLASK_ENV is 'production'.
+    """
+    return get_app_env() == 'production'
+
+
+def has_database() -> bool:
+    """
+    Check if a valid DATABASE_URL is configured.
+    
+    Returns True if DATABASE_URL environment variable is set and non-empty.
+    """
+    db_url = os.environ.get('DATABASE_URL', '').strip()
+    return bool(db_url)
+
+
+def allow_json_persistence() -> bool:
+    """
+    Determine if JSON file persistence is allowed for CRM/auth/kanban data.
+    
+    Policy:
+    - In PRODUCTION: JSON persistence is NEVER allowed. Database is mandatory.
+    - In DEVELOPMENT/STAGING/TESTING: JSON is allowed ONLY if DATABASE_URL is not set.
+    
+    This does NOT affect session/config JSON files (CAD sessions, PDF autosave,
+    automation_data.json, simpro_config, google_config, etc.) which are always allowed.
+    
+    Returns:
+        True if JSON persistence is allowed for CRM/auth/kanban data.
+        False if database must be used (or app should fail).
+    """
+    if is_production():
+        # Production NEVER allows JSON persistence for CRM/auth/kanban
+        return False
+    
+    # In dev/staging/testing: allow JSON only if no database is configured
+    return not has_database()
+
+
+def get_storage_mode() -> str:
+    """
+    Get a human-readable description of the current storage mode.
+    
+    Returns one of:
+    - 'database' - Using PostgreSQL database
+    - 'json_fallback' - Using JSON files (dev only, no DB configured)
+    - 'error' - Invalid configuration (production without DB)
+    """
+    if has_database():
+        return 'database'
+    elif allow_json_persistence():
+        return 'json_fallback'
+    else:
+        return 'error'
+
+
+def validate_storage_config():
+    """
+    Validate storage configuration at startup.
+    
+    Raises:
+        RuntimeError: If production mode is detected without DATABASE_URL.
+    
+    Call this during app initialization to fail fast if misconfigured.
+    """
+    if is_production() and not has_database():
+        raise RuntimeError(
+            "DATABASE_URL is required in production; JSON persistence is disabled. "
+            "Set DATABASE_URL environment variable or change APP_ENV/FLASK_ENV to 'development'."
+        )
+
+
+class StoragePolicyError(Exception):
+    """Raised when attempting to use JSON persistence in production."""
+    pass
+
+
+def require_database_or_json_allowed():
+    """
+    Guard function for routes that persist CRM/auth/kanban data.
+    
+    Call this before attempting JSON file operations to ensure it's allowed.
+    
+    Raises:
+        StoragePolicyError: If JSON persistence is not allowed (production mode).
+    """
+    if not allow_json_persistence() and not has_database():
+        raise StoragePolicyError(
+            "JSON persistence is disabled in production. DATABASE_URL must be configured."
+        )

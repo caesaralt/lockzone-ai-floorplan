@@ -1,100 +1,192 @@
-# 🏠 Lock Zone AI Floor Plan Analyzer v2.0
+# Integratd Living - AI-Powered Business Automation Platform
 
-## ✅ EVERYTHING IS 100% READY!
+A comprehensive business management and design tool for **home automation installation companies**. Combines AI-powered floor plan analysis, electrical CAD design, CRM, quote generation, and project management in one platform.
 
-<<<<<<< HEAD
-All your files are in the `outputs/` folder, ready to deploy.
+**Live App**: https://lockzone-ai-floorplan.onrender.com
 
 ---
 
-## 🚀 QUICK START (60 SECONDS TO DEPLOY)
+## Quick Start (Local Development)
 
-### Copy-Paste These 3 Commands:
+### Prerequisites
+- Python 3.11+
+- PostgreSQL (optional for local dev - app falls back to JSON files)
+
+### 1. Clone and Setup
 
 ```bash
-chmod +x build.sh deploy.sh config_updater.py
-git add .
-git commit -m "v2.0: 75-90% accuracy + tier pricing + bug fixes"
-git push origin main
+git clone https://github.com/caesaralt/lockzone-ai-floorplan.git
+cd lockzone-ai-floorplan
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-**Done!** Render will automatically deploy in 3-5 minutes.
+### 2. Environment Variables
 
-📖 **Full Instructions**: See `DEPLOY_NOW.md`
-
----
-
-## 🎯 WHAT WAS FIXED
-
-| Problem | Solution |
-|---------|----------|
-| ❌ "JSON Error" | ✅ Bulletproof error handling |
-| ❌ 40-60% Accuracy | ✅ **75-90% accuracy** (5 methods!) |
-| ❌ Crashes on big PDFs | ✅ Handles 100MB smoothly |
-| ❌ No tier pricing | ✅ Basic/Premium/Deluxe tiers |
-
----
-
-## ✨ NEW FEATURES
-
-- **💰 Tier Pricing**: Basic/Premium/Deluxe
-- **🧠 5 AI Detection Methods**: 75-90% accuracy
-- **📊 Confidence Scores**: Shows accuracy
-- **🎨 Modern UI**: Beautiful interface
-- **⚙️ Easy Config**: Update prices anytime
-
----
-
-## 📁 FILES READY IN OUTPUTS/
-
-- `app.py` - Advanced AI engine
-- `templates/index.html` - Modern UI
-- `deploy.sh` - ONE-CLICK deployment
-- `config_updater.py` - Price updater
-- All config files
-
----
-
-## 🚀 DEPLOY NOW!
+Create a `.env` file:
 
 ```bash
-chmod +x build.sh deploy.sh config_updater.py
-git add .
-git commit -m "v2.0: Advanced AI + tier pricing"  
-git push origin main
+# Required for AI features
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional - enables web search in AI
+TAVILY_API_KEY=tvly-...
+
+# Required for Flask security
+SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+
+# Database (see Storage Policy below)
+# For local dev: optional (JSON fallback if not set)
+# For production: REQUIRED (app won't start without it)
+DATABASE_URL=postgresql://user:password@localhost:5432/lockzone_dev
+
+# Environment (optional, defaults to 'development')
+APP_ENV=development  # or 'production'
 ```
 
-Wait 5 minutes → LIVE! 🎉
+### 3. Run the App
+
+```bash
+python app.py
+# Open http://localhost:5000
+```
+
+### Storage Policy
+
+| Environment | DATABASE_URL | CRM/Auth/Kanban Storage |
+|-------------|--------------|-------------------------|
+| **Production** | **Required** | Database only (JSON disabled) |
+| **Development** | Optional | Database if set, JSON fallback if not |
+
+- In **production** (`APP_ENV=production`), the app **fails to start** without `DATABASE_URL`
+- Session/config JSON files (CAD sessions, PDF autosave, etc.) are always allowed
 
 ---
 
-**Read DEPLOY_NOW.md for complete instructions!**
-=======
-## Live App
-https://lockzone-ai-floorplan.onrender.com
+## Architecture Overview
 
-## API Endpoints
+This app uses a **modular Flask blueprint architecture**:
 
-### `POST /api/analyze`
-Upload a floor plan PDF, select automation systems and tier, and receive summary metrics along with download links for an annotated floor plan and quote PDF.
+```
+app.py                    # Thin entrypoint - NO routes, only app config
+app/
+├── __init__.py           # App factory, blueprint registration
+├── api/                  # All HTTP route handlers (22 blueprint files)
+│   ├── crm.py            # Core CRM (customers, projects, quotes, stock)
+│   ├── crm_extended.py   # Extended CRM (people, jobs, materials, payments)
+│   ├── crm_resources.py  # CRM resources (technicians, suppliers, inventory)
+│   ├── crm_v2.py         # CRM v2 API (pagination, search)
+│   ├── crm_google.py     # Google Calendar/Gmail integration
+│   ├── crm_integration.py# CRM health checks and sync
+│   ├── quote_automation.py # AI quote generation
+│   ├── electrical_cad.py # CAD designer routes
+│   ├── ai_mapping.py     # AI floor plan mapping
+│   ├── board_builder.py  # Loxone board builder
+│   ├── simpro.py         # Simpro CRM integration
+│   ├── kanban.py         # Kanban task board
+│   ├── dashboard.py      # Dashboard and notifications
+│   ├── ai_chat.py        # AI chat assistant
+│   └── ... (more blueprints)
+├── utils/                # Shared utilities
+└── services/             # New services (placeholder for future extraction)
 
-### `GET /api/data`
-Returns the current automation catalog, tiers, and pricing data that power the analyzer.
+services/                 # Business logic services (repository pattern)
+├── crm_repository.py     # CRM database operations
+├── inventory_repository.py
+├── scheduler.py          # Background jobs
+└── ...
 
-### `POST /api/data`
-Submit a JSON object to extend or override automation types, tiers, and pricing. Incoming payloads are merged with safe defaults, so customisations persist without blocking future updates.
+database/                 # Database layer
+├── models.py             # SQLAlchemy models
+├── connection.py         # DB connection management
+└── seed.py               # Default data seeding
+```
 
-## Analysis Enhancements
-- Sequential PDF page rendering with pdf2image/PyMuPDF fallbacks for large documents.
-- Advanced contour, OCR, and line-segmentation pipelines to detect rooms, text, labels, and structural lines before placing automation points.
+### Data Storage
 
-## Updating the automation data
+- **Production**: PostgreSQL database (configured via `DATABASE_URL`)
+- **Local Development**: Falls back to JSON files in `crm_data/` if no database configured
+- **Static Config**: `data/automation_data.json` for pricing configuration
 
-Automation symbols, pricing, and tier multipliers live in `data/automation_data.json`. To teach the app new categories or pricing:
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation on where to modify each feature.
 
-1. Fetch the existing configuration with `GET /api/data`.
-2. Merge your updates locally (add symbols, change prices, introduce tiers, etc.).
-3. POST the revised JSON back to `/api/data`.
+---
 
-The server deep-merges your payload with the built-in defaults, so repository updates won't overwrite your training data. If you want those settings to persist in source control, commit the updated `data/automation_data.json` file.
->>>>>>> 0b16d33a167d8415c0a81ab4c02a2135a12d60de
+## Key Features
+
+| Feature | Description | Route Prefix |
+|---------|-------------|--------------|
+| **CRM Dashboard** | Customers, projects, quotes, inventory | `/crm`, `/api/crm/*` |
+| **Quote Automation** | AI analyzes floor plans, generates quotes | `/quotes`, `/api/analyze` |
+| **Electrical CAD** | Draw electrical plans with NEC compliance | `/electrical-cad`, `/api/cad/*` |
+| **AI Mapping** | Detect electrical components in plans | `/mapping`, `/api/ai-mapping/*` |
+| **Board Builder** | Design automation equipment boards | `/board-builder`, `/api/board-builder/*` |
+| **Kanban Board** | Project task management | `/kanban`, `/api/kanban/*` |
+| **Canvas Editor** | Interactive floor plan editing | `/canvas`, `/api/canvas/*` |
+
+---
+
+## API Documentation
+
+### Core Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/crm/customers` | GET, POST | Customer CRUD |
+| `/api/crm/projects` | GET, POST | Project management |
+| `/api/crm/quotes` | GET, POST | Quote management |
+| `/api/crm/stats` | GET | Dashboard statistics |
+| `/api/analyze` | POST | AI floor plan analysis |
+| `/api/generate_quote` | POST | Generate quote PDF |
+| `/api/health` | GET | Health check |
+
+See individual blueprint files in `app/api/` for complete route documentation.
+
+---
+
+## Deployment (Render)
+
+The app is configured for Render deployment via `render.yaml`:
+
+1. Push to GitHub main branch
+2. Render auto-deploys
+3. Environment variables set in Render dashboard
+
+Required env vars on Render:
+- `DATABASE_URL` (from Render PostgreSQL)
+- `ANTHROPIC_API_KEY`
+- `SECRET_KEY`
+
+---
+
+## Development Guide
+
+For detailed information on:
+- Where to modify specific features
+- How the data layer works
+- House rules for development
+
+See **[ARCHITECTURE.md](ARCHITECTURE.md)**
+
+---
+
+## Testing
+
+```bash
+# Run tests
+pytest
+
+# Test specific module
+pytest tests/test_validators.py
+```
+
+---
+
+## License
+
+Proprietary - All rights reserved.

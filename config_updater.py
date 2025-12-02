@@ -1,7 +1,20 @@
 #!/usr/bin/env python3
 """
-Configuration Updater for Lock Zone AI Floor Plan Analyzer
-This script helps you easily update prices, descriptions, and settings
+Configuration Updater for Integratd Living Platform
+
+UTILITY SCRIPT - Not part of the main application.
+Run manually to update automation pricing configuration.
+
+Usage:
+    python config_updater.py
+
+This interactive CLI tool helps you update:
+- Automation prices (per tier)
+- Labor rates
+- Markup percentages
+- Company information
+
+Changes are saved to data/automation_data.json
 """
 
 import json

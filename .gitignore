@@ -1,3 +1,7 @@
+# ==============================================================================
+# .gitignore - Integratd Living Platform
+# ==============================================================================
+
 # Python
 __pycache__/
 *.py[cod]
@@ -25,7 +29,7 @@ MANIFEST
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # IDE
 .vscode/
@@ -33,25 +37,58 @@ ENV/
 *.swp
 *.swo
 *~
+.cursor/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# ==============================================================================
+# Environment & Secrets
+# ==============================================================================
 .env
 .env.local
+.env.production
+*.key
+*.pem
+*.p12
+credentials.json
+token.json
 
-# Uploads and outputs (generated files)
+# ==============================================================================
+# Runtime Data (NOT tracked - use database in production)
+# ==============================================================================
+
+# CRM data (JSON files for local dev only)
+crm_data/
+
+# Session data
+session_data/
+cad_sessions/
+flask_session/
+
+# Learning data
+learning_data/
+mapping_learning/
+
+# Simpro config (may contain OAuth tokens)
+simpro_config/
+
+# ==============================================================================
+# Generated Files
+# ==============================================================================
+
+# Uploads and outputs
 uploads/*.pdf
 uploads/*.png
 uploads/*.jpg
+uploads/*.jpeg
 outputs/*.pdf
 outputs/*.png
 ai_mapping/*.pdf
 ai_mapping/*.png
 
-# Keep directory structure
+# Keep directory structure with .gitkeep files
 !uploads/.gitkeep
 !outputs/.gitkeep
 !ai_mapping/.gitkeep
@@ -59,33 +96,23 @@ ai_mapping/*.png
 # Logs
 *.log
 logs/
-flask_session/
 
+# ==============================================================================
 # Testing
+# ==============================================================================
 .pytest_cache/
 htmlcov/
 .coverage
 .coverage.*
 coverage.xml
 *.cover
+.tox/
+.nox/
 
-# Sensitive data
-*.key
-*.pem
-*.p12
-credentials.json
-token.json
-
-# Session data (contains user data)
-session_data/
-cad_sessions/
-
-# Learning data (may contain customer info)
-learning_data/
-mapping_learning/
-
-# CRM data (contains customer info)
-crm_data/
-
-# Simpro config (may contain OAuth tokens)
-simpro_config/
+# ==============================================================================
+# Files to KEEP (not ignored)
+# ==============================================================================
+# data/automation_data.json - Static pricing config (KEEP)
+# alembic/ - Database migrations (KEEP)
+# templates/ - HTML templates (KEEP)
+# static/ - JS/CSS assets (KEEP)

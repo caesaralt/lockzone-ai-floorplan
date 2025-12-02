@@ -2,6 +2,10 @@
 User Authentication and Authorization Module
 Handles user login, session management, and role-based permissions
 Uses NAME + CODE authentication (admin creates users)
+
+STORAGE POLICY:
+- Production: DATABASE_URL is REQUIRED. JSON persistence is disabled.
+- Development: Database preferred, JSON fallback allowed if no DATABASE_URL.
 """
 import os
 import json
@@ -25,6 +29,35 @@ logger = logging.getLogger(__name__)
 
 # User data file
 USERS_FILE = 'crm_data/users.json'
+
+
+# ============================================================================
+# STORAGE POLICY HELPERS
+# ============================================================================
+
+def use_database():
+    """Check if database should be used for auth data."""
+    from config import has_database
+    return has_database()
+
+
+def use_json_fallback():
+    """Check if JSON fallback is allowed for auth data."""
+    from config import allow_json_persistence
+    return allow_json_persistence()
+
+
+def _check_json_allowed():
+    """
+    Check if JSON persistence is allowed.
+    Raises StoragePolicyError if called in production without database.
+    """
+    from config import is_production, StoragePolicyError
+    
+    if is_production() and not use_database():
+        raise StoragePolicyError(
+            "JSON persistence is disabled in production. DATABASE_URL must be configured."
+        )
 
 # Available permissions
 PERMISSIONS = {
@@ -76,7 +109,13 @@ ROLES = {
 
 
 def init_users_file():
-    """Initialize users file with default admin account"""
+    """
+    Initialize users file with default admin account.
+    Only used in development when JSON fallback is allowed.
+    """
+    # Check storage policy
+    _check_json_allowed()
+    
     os.makedirs('crm_data', exist_ok=True)
 
     if not os.path.exists(USERS_FILE):
@@ -106,7 +145,13 @@ def init_users_file():
 
 
 def load_users():
-    """Load users from JSON file"""
+    """
+    Load users from JSON file.
+    Only used in development when JSON fallback is allowed.
+    """
+    # Check storage policy
+    _check_json_allowed()
+    
     init_users_file()
 
     try:
@@ -119,7 +164,13 @@ def load_users():
 
 
 def save_users(users):
-    """Save users to JSON file"""
+    """
+    Save users to JSON file.
+    Only used in development when JSON fallback is allowed.
+    """
+    # Check storage policy
+    _check_json_allowed()
+    
     try:
         with open(USERS_FILE, 'w') as f:
             json.dump({'users': users}, f, indent=2)

@@ -1,6 +1,12 @@
 #!/bin/bash
-# ONE-CLICK DEPLOYMENT SCRIPT
-# This script will automatically push all changes to GitHub
+# ==============================================================================
+# UTILITY SCRIPT - Manual Deployment Helper
+# ==============================================================================
+# This script is NOT required for deployment. Render auto-deploys from GitHub.
+# Use this only for manual git operations if needed.
+#
+# Normal deployment: Just push to main branch, Render handles the rest.
+# ==============================================================================
 
 echo "🚀 Lock Zone AI Floor Plan Analyzer - Automated Deployment"
 echo "=========================================================="
