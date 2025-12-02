@@ -3,7 +3,7 @@ services:
     name: lockzone-ai-floorplan
     runtime: python
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "gunicorn app:app --workers 2 --timeout 300 --worker-class sync --access-logfile - --error-logfile -"
+    startCommand: "gunicorn wsgi:app --workers 2 --timeout 300 --worker-class sync --access-logfile - --error-logfile -"
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
