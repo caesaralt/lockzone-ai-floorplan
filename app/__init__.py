@@ -122,4 +122,25 @@ def register_blueprints(app, app_functions=None):
     app.register_blueprint(crm_v2_bp)
 
 
-__all__ = ['register_blueprints', 'validate_storage_policy', 'pages_bp', 'auth_bp', 'admin_bp', 'misc_bp', 'learning_bp', 'simpro_bp', 'kanban_bp', 'pdf_editor_bp', 'ai_mapping_bp', 'board_builder_bp', 'canvas_bp', 'electrical_cad_bp', 'quote_automation_bp', 'crm_bp', 'dashboard_bp', 'ai_chat_bp', 'scheduler_bp', 'crm_extended_bp', 'crm_resources_bp', 'crm_google_bp', 'crm_integration_bp', 'crm_v2_bp']
+__all__ = ['register_blueprints', 'validate_storage_policy', 'app', 'pages_bp', 'auth_bp', 'admin_bp', 'misc_bp', 'learning_bp', 'simpro_bp', 'kanban_bp', 'pdf_editor_bp', 'ai_mapping_bp', 'board_builder_bp', 'canvas_bp', 'electrical_cad_bp', 'quote_automation_bp', 'crm_bp', 'dashboard_bp', 'ai_chat_bp', 'scheduler_bp', 'crm_extended_bp', 'crm_resources_bp', 'crm_google_bp', 'crm_integration_bp', 'crm_v2_bp']
+
+
+# ==============================================================================
+# WSGI APP EXPORT FOR GUNICORN
+# ==============================================================================
+# This allows gunicorn to run with: gunicorn app:app
+# The Flask app is created in application.py.
+# We use __getattr__ for lazy loading to avoid circular import issues.
+# ==============================================================================
+
+_flask_app = None
+
+def __getattr__(name):
+    """Lazy load the Flask app to avoid circular imports."""
+    global _flask_app
+    if name == 'app':
+        if _flask_app is None:
+            from application import app as flask_app
+            _flask_app = flask_app
+        return _flask_app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
