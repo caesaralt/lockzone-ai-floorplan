@@ -235,15 +235,23 @@ def create_person(data: Dict) -> Tuple[Optional[Dict], Optional[str]]:
                     'notes': data.get('notes', ''),
                     'metadata': {
                         'person_type': data.get('type', 'contact'),
+                        'title': data.get('title', ''),
+                        'linked_to': data.get('linked_to'),
                         'linked_jobs': data.get('linked_jobs', []),
-                        'linked_quotes': data.get('linked_quotes', [])
+                        'linked_quotes': data.get('linked_quotes', []),
+                        'floorplans': data.get('floorplans', []),
+                        'documents': data.get('documents', [])
                     }
                 }
                 
                 person = repo.create_customer(customer_data)
                 person['type'] = data.get('type', 'contact')
+                person['title'] = data.get('title', '')
+                person['linked_to'] = data.get('linked_to')
                 person['linked_jobs'] = []
                 person['linked_quotes'] = []
+                person['floorplans'] = data.get('floorplans', [])
+                person['documents'] = data.get('documents', [])
                 session.commit()
                 
                 return person, None
@@ -256,14 +264,18 @@ def create_person(data: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         person = {
             'id': str(uuid.uuid4()),
             'name': data.get('name', ''),
+            'title': data.get('title', ''),
             'company': data.get('company', ''),
             'email': data.get('email', ''),
             'phone': data.get('phone', ''),
             'address': data.get('address', ''),
             'notes': data.get('notes', ''),
             'type': data.get('type', 'contact'),
+            'linked_to': data.get('linked_to'),
             'linked_jobs': [],
             'linked_quotes': [],
+            'floorplans': data.get('floorplans', []),
+            'documents': data.get('documents', []),
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
@@ -320,7 +332,7 @@ def update_person(person_id: str, data: Dict) -> Tuple[Optional[Dict], Optional[
         if idx is None:
             return None, "Person not found"
         person = people[idx]
-        for key in ['name', 'company', 'email', 'phone', 'address', 'notes', 'type']:
+        for key in ['name', 'title', 'company', 'email', 'phone', 'address', 'notes', 'type', 'linked_to', 'floorplans', 'documents']:
             if key in data:
                 person[key] = data[key]
         person['updated_at'] = datetime.now().isoformat()

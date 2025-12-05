@@ -40,6 +40,14 @@
             padding: 0;
             box-sizing: border-box;
         }
+        
+        /* White placeholder text for customer modal header inputs */
+        #customerDetailTitleInput::placeholder,
+        #customerDetailNameInput::placeholder,
+        #customerDetailCompanyInput::placeholder,
+        #customerLinkSearchInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -3506,40 +3514,158 @@
         </div>
     </div>
     
-    <!-- Customer Detail Modal -->
+    <!-- Customer Detail Modal (Enhanced with inline editing, floorplans, documents, quote creation) -->
     <div id="customerDetailModal" class="modal">
         <div class="modal-content" style="max-width: 1200px; width: 95vw; max-height: 95vh; overflow-y: auto;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px 24px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px 24px; border-radius: 16px 16px 0 0;">
+                <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
                     <div style="font-size: 48px;">👤</div>
-                    <div>
-                        <h2 class="modal-title" id="customerDetailName" style="color: white; margin: 0;">Customer Name</h2>
-                        <p id="customerDetailCompany" style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 4px 0 0 0;"></p>
+                    <div style="flex: 1;">
+                        <!-- Display mode for new customers (syncs with contact info below) -->
+                        <div id="customerNameEditMode" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span id="customerDetailTitlePreview" style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: none;"></span>
+                            </div>
+                            <h2 id="customerDetailNamePreview" style="margin: 0; font-size: 24px; font-weight: 700; color: white;">New Customer</h2>
+                            <p id="customerDetailCompanyPreview" style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9; color: rgba(255,255,255,0.8);"></p>
+                            <!-- Link display for new customers -->
+                            <div id="linkedCustomerDisplay" style="display: none; margin-top: 10px; padding: 10px 14px; background: rgba(39, 174, 96, 0.3); border-radius: 8px; border: 1px solid rgba(39, 174, 96, 0.5);">
+                                <span style="font-size: 13px; color: white;">🔗 Linked to: <strong id="linkedCustomerName"></strong></span>
+                            </div>
+                            <!-- Hidden inputs for form data -->
+                            <input type="hidden" id="customerDetailTitleInput" value="">
+                            <input type="hidden" id="customerDetailNameInput" value="">
+                            <input type="hidden" id="customerDetailCompanyInput" value="">
+                            <input type="hidden" id="linkedCustomerId" value="">
+                            <input type="hidden" id="customerLinkSearchInput" value="">
+                            <div id="customerLinkResults" style="display: none;"></div>
+                            <button id="clearLinkBtn" onclick="clearCustomerLink()" style="display: none;"></button>
+                        </div>
+                        <!-- Display mode for existing customers -->
+                        <div id="customerNameDisplayMode">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span id="customerDetailTitle" style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;"></span>
+                            </div>
+                            <h2 class="modal-title" id="customerDetailName" style="color: white; margin: 0;">Customer Name</h2>
+                            <p id="customerDetailCompany" style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 4px 0 0 0;"></p>
+                        </div>
+                    </div>
+                    <!-- Contact info on the right side of header -->
+                    <div id="headerContactInfo" style="text-align: right; min-width: 200px;">
+                        <div id="headerEmailDisplay" style="display: none; font-size: 13px; color: rgba(255,255,255,0.9); margin-bottom: 4px;">
+                            <span style="opacity: 0.7;">📧</span> <span id="headerEmail"></span>
+                        </div>
+                        <div id="headerPhoneDisplay" style="display: none; font-size: 13px; color: rgba(255,255,255,0.9);">
+                            <span style="opacity: 0.7;">📞</span> <span id="headerPhone"></span>
+                        </div>
                     </div>
                 </div>
-                <button class="close-btn" onclick="closeModal('customerDetailModal')" style="color: white;">×</button>
+                <button class="close-btn" onclick="closeCustomerDetailModal()" style="color: white;">×</button>
             </div>
             
+            <input type="hidden" id="customerDetailId" value="">
+            <input type="hidden" id="customerDetailIsNew" value="false">
+            
             <div style="padding: 24px;">
-                <!-- Customer Stats -->
+                <!-- Customer Stats (hidden for new customers) -->
                 <div id="customerDetailStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
                     <!-- Stats will be populated here -->
                 </div>
                 
+                <!-- Financial Overview Charts (for existing customers with quotes) -->
+                <div id="customerFinancialCharts" style="display: none; margin-bottom: 24px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <!-- Quote Status Chart -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h4 style="color: var(--text-primary); margin: 0 0 16px 0; font-size: 14px; font-weight: 600;">Quote Status</h4>
+                            <div id="customerQuoteStatusChart" style="height: 120px; display: flex; align-items: center; justify-content: center;">
+                                <!-- Chart rendered here -->
+                            </div>
+                        </div>
+                        <!-- Revenue Timeline -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h4 style="color: var(--text-primary); margin: 0 0 16px 0; font-size: 14px; font-weight: 600;">Revenue Overview</h4>
+                            <div id="customerRevenueChart" style="height: 120px; display: flex; align-items: center; justify-content: center;">
+                                <!-- Chart rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Main Content Grid -->
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
-                    <!-- Left Column - Contact Info -->
+                    <!-- Left Column - Contact Info & Files -->
                     <div>
+                        <!-- Contact Information (Inline Editable) -->
                         <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                             <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                                 📇 Contact Information
                             </h3>
-                            <div id="customerDetailContact" style="color: var(--text-secondary);">
-                                <!-- Contact info will be populated here -->
+                            <div id="customerDetailContactEditable">
+                                <!-- Name field (shown for new customers) -->
+                                <div class="form-group" style="margin-bottom: 12px;" id="customerNameFieldGroup">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Name *</label>
+                                    <input type="text" id="customerDetailNameEdit" placeholder="Customer name"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                           oninput="syncHeaderFromContact(); validateCustomerName()" onchange="markCustomerUnsaved()">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Role/Title</label>
+                                    <input type="text" id="customerDetailTitleEdit" placeholder="e.g., Project Manager, Owner..."
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                           oninput="syncHeaderFromContact()" onchange="markCustomerUnsaved()">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Company</label>
+                                    <input type="text" id="customerDetailCompanyEdit" placeholder="Company name"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                           oninput="syncHeaderFromContact()" onchange="markCustomerUnsaved()">
+                                </div>
+                                <!-- Link to Parent Customer -->
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">🔗 Linked Customer</label>
+                                    <div style="position: relative;">
+                                        <input type="text" id="customerLinkSearchEdit" placeholder="Search to link..."
+                                               style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                               oninput="searchCustomersToLinkEdit(this.value)" onfocus="showCustomerLinkResultsEdit()">
+                                        <div id="customerLinkResultsEdit" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 100; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                                        </div>
+                                    </div>
+                                    <div id="linkedCustomerDisplayEdit" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--bg-primary); border-radius: 8px; border: 1px solid #27ae60;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 12px;">Linked to: <strong id="linkedCustomerNameEdit"></strong></span>
+                                            <button onclick="clearCustomerLinkEdit()" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;">✕ Remove</button>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="linkedCustomerIdEdit" value="">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Email</label>
+                                    <input type="email" id="customerDetailEmail" placeholder="email@example.com"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                           oninput="syncHeaderFromContact()" onchange="markCustomerUnsaved()">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Phone</label>
+                                    <input type="tel" id="customerDetailPhone" placeholder="Phone number"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                           oninput="syncHeaderFromContact()" onchange="markCustomerUnsaved()">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Address</label>
+                                    <textarea id="customerDetailAddress" placeholder="Street address" rows="2"
+                                              style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); resize: vertical;"
+                                              onchange="markCustomerUnsaved()"></textarea>
+                                </div>
+                                <!-- Save Contact Button (shows when changes made) -->
+                                <div id="contactSaveIndicator" style="display: none; margin-top: 12px;">
+                                    <button onclick="saveCustomerContactInfo()" class="btn btn-primary" style="width: 100%;">💾 Save Changes</button>
+                                </div>
                             </div>
                         </div>
                         
-                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                        <!-- Notes Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                             <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
                                 <span>📝 Notes</span>
                                 <button onclick="toggleCustomerNoteInput()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">+ Add</button>
@@ -3555,15 +3681,172 @@
                                 No notes
                             </div>
                         </div>
+                        
+                        <!-- Floorplans Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>🗺️ Floorplans</span>
+                                <label for="customerFloorplanUpload" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px; cursor: pointer;">+ Upload</label>
+                                <input type="file" id="customerFloorplanUpload" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;" onchange="uploadCustomerFloorplan(event)">
+                            </h3>
+                            <div id="customerFloorplansList" style="color: var(--text-secondary);">
+                                <div style="text-align: center; padding: 20px; border: 2px dashed var(--border-color); border-radius: 12px;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">📄</div>
+                                    <div style="font-size: 14px;">No floorplans uploaded</div>
+                                    <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Drag & drop or click Upload</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Documents Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>📁 Documents</span>
+                                <label for="customerDocumentUpload" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px; cursor: pointer;">+ Upload</label>
+                                <input type="file" id="customerDocumentUpload" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg" multiple style="display: none;" onchange="uploadCustomerDocument(event)">
+                            </h3>
+                            <div id="customerDocumentsList" style="color: var(--text-secondary);">
+                                <div style="text-align: center; padding: 20px; border: 2px dashed var(--border-color); border-radius: 12px;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">📎</div>
+                                    <div style="font-size: 14px;">No documents uploaded</div>
+                                    <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Upload contracts, invoices, etc.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tasks Section -->
+                        <div style="background: var(--bg-secondary); border-radius: 16px; padding: 20px; margin-top: 16px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                <span>📋 Tasks</span>
+                                <button onclick="openCustomerTaskModal()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">+ Assign Task</button>
+                            </h3>
+                            <div id="customerTasksList" style="color: var(--text-secondary); max-height: 250px; overflow-y: auto;">
+                                <div style="text-align: center; padding: 20px;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                                    <div style="font-size: 14px;">No tasks assigned</div>
+                                    <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Assign tasks to team members</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Right Column - Projects/Quotes/Jobs -->
                     <div>
-                        <!-- Tabs -->
-                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                            <button onclick="showCustomerTab('quotes')" id="customerTabQuotes" class="btn btn-primary" style="flex: 1;">📋 Quotes</button>
-                            <button onclick="showCustomerTab('jobs')" id="customerTabJobs" class="btn btn-secondary" style="flex: 1;">🔧 Jobs</button>
-                            <button onclick="showCustomerTab('projects')" id="customerTabProjects" class="btn btn-secondary" style="flex: 1;">📁 Projects</button>
+                        <!-- Tabs (New Quote tab hidden - content always visible in newquote section) -->
+                        <div id="customerTabsContainer" style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <button onclick="showCustomerTab('newquote')" id="customerTabNewQuote" class="btn btn-success" style="display: none;">+ New Quote</button>
+                            <button onclick="showCustomerTab('quotes')" id="customerTabQuotes" class="btn btn-secondary" style="flex: 1; min-width: 80px; display: none;">📋 Quotes</button>
+                            <button onclick="showCustomerTab('jobs')" id="customerTabJobs" class="btn btn-secondary" style="flex: 1; min-width: 80px; display: none;">🔧 Jobs</button>
+                            <button onclick="showCustomerTab('floorplans')" id="customerTabFloorplans" class="btn btn-secondary" style="flex: 1; min-width: 80px; display: none;">🗺️ Gallery</button>
+                            <button onclick="showCustomerTab('linked')" id="customerTabLinked" class="btn btn-secondary" style="flex: 1; min-width: 80px; display: none;">🔗 Linked</button>
+                        </div>
+                        
+                        <!-- New Quote Tab (Inline Quote Creation) -->
+                        <div id="customerNewQuoteTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px;">
+                            <h4 style="color: var(--text-primary); margin: 0 0 16px 0; font-weight: 600;">Create New Quote</h4>
+                            
+                            <!-- Quote Basic Info -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Quote Title *</label>
+                                    <input type="text" id="inlineQuoteTitle" placeholder="e.g., Kitchen Automation"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Quote Number</label>
+                                    <input type="text" id="inlineQuoteNumber" placeholder="Auto-generated"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                                </div>
+                            </div>
+                            
+                            <!-- Floorplan Selection -->
+                            <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Select Floorplan for Quote</label>
+                                <div id="inlineQuoteFloorplanSelect" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 20px; width: 100%;">
+                                        Upload floorplans in the left panel to select one for this quote
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cost Breakdown -->
+                            <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                <h5 style="color: var(--text-primary); margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">💰 Cost Breakdown</h5>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                                    <div class="form-group">
+                                        <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Materials ($)</label>
+                                        <input type="number" id="inlineQuoteMaterials" placeholder="0" min="0" step="0.01"
+                                               style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);"
+                                               oninput="calculateInlineQuoteTotal()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Labor ($)</label>
+                                        <input type="number" id="inlineQuoteLabor" placeholder="0" min="0" step="0.01"
+                                               style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);"
+                                               oninput="calculateInlineQuoteTotal()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Markup (%)</label>
+                                        <input type="number" id="inlineQuoteMarkup" placeholder="20" value="20" min="0" max="100"
+                                               style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);"
+                                               oninput="calculateInlineQuoteTotal()">
+                                    </div>
+                                </div>
+                                
+                                <!-- Quote Total Display -->
+                                <div id="inlineQuoteTotalDisplay" style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, #27ae60, #2ecc71); border-radius: 12px; text-align: center;">
+                                    <div style="font-size: 12px; color: rgba(255,255,255,0.8); margin-bottom: 4px;">Total Quote Amount</div>
+                                    <div style="font-size: 32px; font-weight: 700; color: white;">$<span id="inlineQuoteTotalValue">0</span></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Timeline -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Valid Until</label>
+                                    <input type="date" id="inlineQuoteValidUntil"
+                                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Status</label>
+                                    <select id="inlineQuoteStatus"
+                                            style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                                        <option value="draft">Draft</option>
+                                        <option value="sent">Sent</option>
+                                        <option value="accepted">Accepted</option>
+                                        <option value="rejected">Rejected</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Notes -->
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Notes</label>
+                                <textarea id="inlineQuoteNotes" placeholder="Additional notes about this quote..." rows="3"
+                                          style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); resize: vertical;"></textarea>
+                            </div>
+                            
+                            <!-- Visual Preview (shows after entering costs) -->
+                            <div id="inlineQuotePreviewCharts" style="display: none; margin-bottom: 16px;">
+                                <h5 style="color: var(--text-primary); margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">📊 Cost Visualization</h5>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                    <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px;">
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Cost Breakdown</div>
+                                        <div id="inlineQuoteCostBreakdownChart"></div>
+                                    </div>
+                                    <div style="background: var(--bg-primary); border-radius: 12px; padding: 16px;">
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Profit Margin</div>
+                                        <div id="inlineQuoteProfitChart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                                <button onclick="clearInlineQuoteForm()" class="btn btn-secondary">Clear</button>
+                                <button onclick="openQuoteAutomationWithFloorplan()" class="btn btn-primary" id="inlineQuoteAIBtn" style="display: none;">🤖 AI Quote</button>
+                                <button onclick="saveInlineQuote()" class="btn btn-success">💾 Save Quote</button>
+                            </div>
                         </div>
                         
                         <!-- Quotes Tab -->
@@ -3580,10 +3863,25 @@
                             </div>
                         </div>
                         
-                        <!-- Projects Tab -->
-                        <div id="customerProjectsTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
-                            <div id="customerProjectsList">
-                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading...</div>
+                        <!-- Linked Customer Data Tab -->
+                        <div id="customerLinkedTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
+                            <div id="linkedCustomerDataContent">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                                    <div style="font-size: 48px; margin-bottom: 12px;">🔗</div>
+                                    <div>No linked customer</div>
+                                    <div style="font-size: 13px; margin-top: 8px;">Link to an existing customer to see their quotes and jobs here</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Floorplans Tab (larger view) -->
+                        <div id="customerFloorplansTab" style="display: none; background: var(--bg-secondary); border-radius: 16px; padding: 20px; min-height: 300px;">
+                            <div id="customerFloorplansGallery">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                                    <div style="font-size: 48px; margin-bottom: 12px;">🗺️</div>
+                                    <div>No floorplans uploaded yet</div>
+                                    <label for="customerFloorplanUpload" class="btn btn-primary" style="margin-top: 16px; cursor: pointer;">Upload Floorplan</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3591,12 +3889,65 @@
                 
                 <!-- Actions -->
                 <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px;">
-                    <button class="btn btn-secondary" onclick="closeModal('customerDetailModal')">Close</button>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-primary" onclick="editCustomer(currentViewingCustomerId)">✏️ Edit Customer</button>
-                        <button class="btn btn-primary" onclick="createQuoteForCustomer(currentViewingCustomerId)">📋 New Quote</button>
-                        <button class="btn btn-primary" onclick="createJobForCustomer(currentViewingCustomerId)">🔧 New Job</button>
+                    <button class="btn btn-secondary" onclick="closeCustomerDetailModal()">Close</button>
+                    <div id="customerDetailActions" style="display: flex; gap: 12px;">
+                        <!-- For new customers -->
+                        <div id="newCustomerActions" style="display: none;">
+                            <button class="btn btn-success" onclick="saveNewCustomer()" id="saveNewCustomerBtn" disabled>💾 Create Customer</button>
+                        </div>
+                        <!-- For existing customers -->
+                        <div id="existingCustomerActions">
+                            <button class="btn btn-primary" onclick="createQuoteForCustomer(currentViewingCustomerId)">📋 New Quote</button>
+                            <button class="btn btn-primary" onclick="createJobForCustomer(currentViewingCustomerId)">🔧 New Job</button>
+                            <button class="btn btn-danger" onclick="deleteCustomerFromDetail()" style="margin-left: 12px;">🗑️ Delete</button>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Task Assignment Modal -->
+    <div id="customerTaskModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Assign Task</h2>
+                <button class="close-btn" onclick="closeModal('customerTaskModal')">×</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; color: var(--text-primary);">Task Title *</label>
+                    <input type="text" id="customerTaskTitle" placeholder="Enter task title"
+                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; color: var(--text-primary);">Description</label>
+                    <textarea id="customerTaskDescription" rows="3" placeholder="Task description..."
+                              style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); resize: vertical;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; color: var(--text-primary);">Assign To *</label>
+                    <select id="customerTaskAssignee" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                        <option value="">Select team member...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; color: var(--text-primary);">Due Date *</label>
+                    <input type="date" id="customerTaskDueDate"
+                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; color: var(--text-primary);">Priority</label>
+                    <select id="customerTaskPriority" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="closeModal('customerTaskModal')">Cancel</button>
+                    <button class="btn btn-success" onclick="saveCustomerTask()">Create Task</button>
                 </div>
             </div>
         </div>
@@ -5062,6 +5413,11 @@
                 return;
             }
             
+            const materialsCost = parseFloat(document.getElementById('quoteMaterialsCost').value) || 0;
+            const laborCost = parseFloat(document.getElementById('quoteLaborCost').value) || 0;
+            const markupPct = parseFloat(document.getElementById('quoteMarkupPct').value) || 20;
+            const quoteAmount = parseFloat(document.getElementById('quoteAmount').value) || 0;
+            
             const data = {
                 quote_number: document.getElementById('quoteNumber').value,
                 customer_id: document.getElementById('quoteCustomer').value,
@@ -5069,10 +5425,13 @@
                 description: document.getElementById('quoteDesc').value,
                 status: document.getElementById('quoteStatus').value,
                 valid_until: document.getElementById('quoteValidUntil').value,
-                materials_cost: parseFloat(document.getElementById('quoteMaterialsCost').value) || 0,
-                labor_cost: parseFloat(document.getElementById('quoteLaborCost').value) || 0,
-                markup_percentage: parseFloat(document.getElementById('quoteMarkupPct').value) || 20,
-                quote_amount: parseFloat(document.getElementById('quoteAmount').value) || 0,
+                total_amount: quoteAmount,
+                costs: {
+                    materials: materialsCost,
+                    labor: laborCost,
+                    markup_percentage: markupPct,
+                    total: quoteAmount
+                },
                 notes: document.getElementById('quoteNotes').value,
                 source: quoteType === 'supplier' ? 'supplier' : (document.getElementById('quoteSource').value || 'manual'),
                 supplier_name: quoteType === 'supplier' ? document.getElementById('quoteSupplierName').value : null
@@ -5284,30 +5643,115 @@
             }
             
             currentViewingCustomerId = customerId;
+            document.getElementById('customerDetailId').value = customerId;
+            document.getElementById('customerDetailIsNew').value = 'false';
+            
+            // Set to display mode (not edit mode)
+            document.getElementById('customerNameEditMode').style.display = 'none';
+            document.getElementById('customerNameDisplayMode').style.display = 'block';
             
             // Populate header
             document.getElementById('customerDetailName').textContent = customer.name;
             document.getElementById('customerDetailCompany').textContent = customer.company || '';
             
-            // Populate contact info
-            document.getElementById('customerDetailContact').innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    ${customer.email ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📧</span> <a href="mailto:${customer.email}" style="color: #3498db;">${customer.email}</a></div>` : ''}
-                    ${customer.phone ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📱</span> <a href="tel:${customer.phone}" style="color: #3498db;">${customer.phone}</a></div>` : ''}
-                    ${customer.address ? `<div style="display: flex; align-items: center; gap: 8px;"><span>📍</span> ${customer.address}</div>` : ''}
-                </div>
-            `;
+            // Show title badge if customer has a title
+            const titleBadge = document.getElementById('customerDetailTitle');
+            if (customer.title) {
+                titleBadge.textContent = customer.title;
+                titleBadge.style.display = 'inline-block';
+            } else {
+                titleBadge.style.display = 'none';
+            }
+            
+            // Hide name field for existing customers (they already have a name shown in header)
+            const nameFieldGroup = document.getElementById('customerNameFieldGroup');
+            if (nameFieldGroup) nameFieldGroup.style.display = 'none';
+            
+            // Populate editable contact info fields (including title, company)
+            const nameEdit = document.getElementById('customerDetailNameEdit');
+            if (nameEdit) nameEdit.value = customer.name || '';
+            document.getElementById('customerDetailTitleEdit').value = customer.title || '';
+            const companyEdit = document.getElementById('customerDetailCompanyEdit');
+            if (companyEdit) companyEdit.value = customer.company || '';
+            document.getElementById('customerDetailEmail').value = customer.email || '';
+            document.getElementById('customerDetailPhone').value = customer.phone || '';
+            document.getElementById('customerDetailAddress').value = customer.address || '';
+            
+            // Update header contact info (phone/email on right side)
+            updateHeaderContactInfo(customer.email || '', customer.phone || '');
+            
+            // Handle linked customer
+            linkedParentCustomerId = customer.linked_to || null;
+            document.getElementById('linkedCustomerIdEdit').value = customer.linked_to || '';
+            document.getElementById('customerLinkSearchEdit').value = '';
+            
+            if (customer.linked_to) {
+                // Fetch linked customer name
+                try {
+                    const linkedRes = await fetch(`/api/crm/people/${customer.linked_to}`);
+                    const linkedData = await linkedRes.json();
+                    if (linkedData.success && linkedData.person) {
+                        document.getElementById('linkedCustomerNameEdit').textContent = linkedData.person.name + (linkedData.person.company ? ` (${linkedData.person.company})` : '');
+                        document.getElementById('linkedCustomerDisplayEdit').style.display = 'block';
+                        document.getElementById('customerTabLinked').style.display = 'inline-block';
+                    }
+                } catch (e) {
+                    console.error('Error fetching linked customer:', e);
+                }
+            } else {
+                document.getElementById('linkedCustomerDisplayEdit').style.display = 'none';
+                document.getElementById('customerTabLinked').style.display = 'none';
+            }
+            
+            // Hide save indicator initially
+            document.getElementById('contactSaveIndicator').style.display = 'none';
+            customerHasUnsavedChanges = false;
             
             // Populate notes
-            document.getElementById('customerDetailNotes').textContent = customer.notes || 'No notes';
+            const notes = customer.notes || '';
+            if (notes) {
+                // Split notes by newlines and format them
+                const noteLines = notes.split('\n').filter(n => n.trim());
+                document.getElementById('customerDetailNotes').innerHTML = noteLines.map(note => `
+                    <div style="padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; font-size: 13px;">
+                        ${note}
+                    </div>
+                `).join('') || 'No notes';
+            } else {
+                document.getElementById('customerDetailNotes').textContent = 'No notes';
+            }
+            
+            // Load floorplans and documents from customer data
+            customerFloorplans = customer.floorplans || [];
+            customerDocuments = customer.documents || [];
+            renderCustomerFloorplans();
+            renderCustomerDocuments();
+            
+            // Show stats
+            document.getElementById('customerDetailStats').style.display = 'grid';
+            
+            // Show existing customer actions, hide new customer actions
+            document.getElementById('newCustomerActions').style.display = 'none';
+            document.getElementById('existingCustomerActions').style.display = 'flex';
+            
+            // Show all tabs for existing customers
+            document.getElementById('customerTabQuotes').style.display = 'inline-block';
+            document.getElementById('customerTabJobs').style.display = 'inline-block';
+            document.getElementById('customerTabFloorplans').style.display = 'inline-block';
             
             // Load customer's quotes, jobs, and projects
             await loadCustomerRelatedData(customerId);
             
+            // Load customer tasks
+            await loadCustomerTasks(customerId);
+            
             // Calculate and show stats
             updateCustomerStats(customerId);
             
-            // Show quotes tab by default
+            // Render financial charts
+            renderCustomerFinancialCharts(customerId);
+            
+            // Show quotes tab by default (not new quote tab for existing customers)
             showCustomerTab('quotes');
             
             // Open the modal
@@ -5316,10 +5760,29 @@
         
         async function loadCustomerRelatedData(customerId) {
             // Get quotes for this customer
-            const customerQuotes = quotes.filter(q => q.customer_id === customerId);
-            renderCustomerQuotes(customerQuotes);
+            await loadCustomerQuotes(customerId);
             
             // Get jobs for this customer
+            await loadCustomerJobs(customerId);
+        }
+        
+        async function loadCustomerQuotes(customerId) {
+            try {
+                // Refresh quotes first
+                const quotesRes = await fetch('/api/crm/quotes');
+                const quotesData = await quotesRes.json();
+                if (quotesData.success) {
+                    quotes = quotesData.quotes || [];
+                }
+                const customerQuotes = quotes.filter(q => q.customer_id === customerId);
+                renderCustomerQuotes(customerQuotes);
+            } catch (e) {
+                console.error('Error loading quotes:', e);
+                renderCustomerQuotes([]);
+            }
+        }
+        
+        async function loadCustomerJobs(customerId) {
             try {
                 const jobsRes = await fetch('/api/crm/jobs');
                 const jobsData = await jobsRes.json();
@@ -5327,18 +5790,10 @@
                 renderCustomerJobs(customerJobs);
             } catch (e) {
                 console.error('Error loading jobs:', e);
-            }
-            
-            // Get projects for this customer
-            try {
-                const projectsRes = await fetch('/api/crm/projects');
-                const projectsData = await projectsRes.json();
-                const customerProjects = (projectsData.projects || []).filter(p => p.customer_id === customerId);
-                renderCustomerProjects(customerProjects);
-            } catch (e) {
-                console.error('Error loading projects:', e);
+                renderCustomerJobs([]);
             }
         }
+        
         
         function updateCustomerStats(customerId) {
             const customerQuotes = quotes.filter(q => q.customer_id === customerId);
@@ -5441,65 +5896,980 @@
             }).join('');
         }
         
-        function renderCustomerProjects(customerProjects) {
-            const container = document.getElementById('customerProjectsList');
-            
-            if (customerProjects.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
-                        <p>No projects yet</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = customerProjects.map(p => {
-                const statusColors = {
-                    'pending': '#f39c12',
-                    'active': '#3498db',
-                    'completed': '#27ae60',
-                    'on_hold': '#95a5a6'
-                };
-                const statusColor = statusColors[p.status] || '#95a5a6';
-                
-                return `
-                    <div style="background: var(--bg-primary); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${p.title || 'Untitled Project'}</div>
-                            <div style="font-size: 12px; color: var(--text-secondary);">${p.description || ''}</div>
-                        </div>
-                        <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${p.status || 'pending'}</span>
-                    </div>
-                `;
-            }).join('');
-        }
         
         function showCustomerTab(tab) {
             // Hide all tabs
+            document.getElementById('customerNewQuoteTab').style.display = 'none';
             document.getElementById('customerQuotesTab').style.display = 'none';
             document.getElementById('customerJobsTab').style.display = 'none';
-            document.getElementById('customerProjectsTab').style.display = 'none';
+            document.getElementById('customerLinkedTab').style.display = 'none';
+            document.getElementById('customerFloorplansTab').style.display = 'none';
             
             // Reset button styles
+            document.getElementById('customerTabNewQuote').className = 'btn btn-success';
             document.getElementById('customerTabQuotes').className = 'btn btn-secondary';
             document.getElementById('customerTabJobs').className = 'btn btn-secondary';
-            document.getElementById('customerTabProjects').className = 'btn btn-secondary';
+            document.getElementById('customerTabLinked').className = 'btn btn-secondary';
+            document.getElementById('customerTabFloorplans').className = 'btn btn-secondary';
             
             // Show selected tab
-            if (tab === 'quotes') {
+            if (tab === 'newquote') {
+                document.getElementById('customerNewQuoteTab').style.display = 'block';
+                document.getElementById('customerTabNewQuote').className = 'btn btn-success';
+                updateInlineQuoteFloorplanSelect();
+            } else if (tab === 'quotes') {
                 document.getElementById('customerQuotesTab').style.display = 'block';
                 document.getElementById('customerTabQuotes').className = 'btn btn-primary';
             } else if (tab === 'jobs') {
                 document.getElementById('customerJobsTab').style.display = 'block';
                 document.getElementById('customerTabJobs').className = 'btn btn-primary';
-            } else if (tab === 'projects') {
-                document.getElementById('customerProjectsTab').style.display = 'block';
-                document.getElementById('customerTabProjects').className = 'btn btn-primary';
+            } else if (tab === 'linked') {
+                document.getElementById('customerLinkedTab').style.display = 'block';
+                document.getElementById('customerTabLinked').className = 'btn btn-primary';
+                loadLinkedCustomerData();
+            } else if (tab === 'floorplans') {
+                document.getElementById('customerFloorplansTab').style.display = 'block';
+                document.getElementById('customerTabFloorplans').className = 'btn btn-primary';
+            }
+        }
+        
+        // ============================================================================
+        // INLINE QUOTE CREATION FUNCTIONS
+        // ============================================================================
+        
+        let selectedInlineFloorplan = null;
+        
+        function updateInlineQuoteFloorplanSelect() {
+            const container = document.getElementById('inlineQuoteFloorplanSelect');
+            
+            if (!customerFloorplans || customerFloorplans.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 20px; width: 100%;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
+                        Upload floorplans above to select one for this quote
+                    </div>`;
+                const aiBtn = document.getElementById('inlineQuoteAIBtn');
+                if (aiBtn) aiBtn.style.display = 'none';
+                return;
+            }
+            
+            // Show larger previews for floorplans
+            container.innerHTML = customerFloorplans.map(fp => {
+                // Determine if we can show a preview
+                const isImage = fp.type && (fp.type.includes('image') || fp.type.startsWith('image/'));
+                const isPDF = fp.type && fp.type.includes('pdf');
+                
+                // For images, show the actual image; for PDFs, use canvas to render first page
+                let previewContent;
+                if (isImage && fp.data) {
+                    previewContent = `<img src="${fp.data}" style="width: 100%; height: 150px; object-fit: contain; border-radius: 8px; background: #f0f0f0;">`;
+                } else if (isPDF && fp.data) {
+                    // Show PDF using object/iframe for preview
+                    previewContent = `
+                        <div style="width: 100%; height: 150px; background: #f5f5f5; border-radius: 8px; position: relative; overflow: hidden;">
+                            <iframe src="${fp.data}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" 
+                                    style="width: 100%; height: 100%; border: none; border-radius: 8px; pointer-events: none;"></iframe>
+                        </div>`;
+                } else {
+                    previewContent = `
+                        <div style="width: 100%; height: 150px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 48px;">📄</span>
+                        </div>`;
+                }
+                
+                return `
+                    <div onclick="selectInlineQuoteFloorplan('${fp.id}')" 
+                         id="inlineFp_${fp.id}"
+                         style="width: 180px; cursor: pointer; border: 3px solid transparent; border-radius: 12px; padding: 8px; transition: all 0.2s; background: var(--bg-secondary);"
+                         onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">
+                        ${previewContent}
+                        <div style="font-size: 12px; text-align: center; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); font-weight: 500;" title="${fp.name}">${fp.name}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function selectInlineQuoteFloorplan(floorplanId) {
+            // Reset all selections
+            customerFloorplans.forEach(fp => {
+                const el = document.getElementById(`inlineFp_${fp.id}`);
+                if (el) el.style.borderColor = 'transparent';
+            });
+            
+            // Set new selection
+            selectedInlineFloorplan = customerFloorplans.find(fp => fp.id === floorplanId);
+            const selectedEl = document.getElementById(`inlineFp_${floorplanId}`);
+            if (selectedEl) {
+                selectedEl.style.borderColor = '#27ae60';
+            }
+            
+            // Show AI quote button if image floorplan selected
+            if (selectedInlineFloorplan && selectedInlineFloorplan.type.includes('image')) {
+                document.getElementById('inlineQuoteAIBtn').style.display = 'inline-flex';
+            } else {
+                document.getElementById('inlineQuoteAIBtn').style.display = 'none';
+            }
+        }
+        
+        function calculateInlineQuoteTotal() {
+            const materials = parseFloat(document.getElementById('inlineQuoteMaterials').value) || 0;
+            const labor = parseFloat(document.getElementById('inlineQuoteLabor').value) || 0;
+            const markupPct = parseFloat(document.getElementById('inlineQuoteMarkup').value) || 0;
+            
+            const subtotal = materials + labor;
+            const markup = subtotal * (markupPct / 100);
+            const total = subtotal + markup;
+            
+            document.getElementById('inlineQuoteTotalValue').textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            // Show/hide preview charts
+            const chartsContainer = document.getElementById('inlineQuotePreviewCharts');
+            if (subtotal > 0) {
+                chartsContainer.style.display = 'block';
+                renderInlineQuoteCharts(materials, labor, markup, total);
+            } else {
+                chartsContainer.style.display = 'none';
+            }
+        }
+        
+        function renderInlineQuoteCharts(materials, labor, markup, total) {
+            // Cost Breakdown Chart (horizontal bars)
+            const breakdownContainer = document.getElementById('inlineQuoteCostBreakdownChart');
+            const maxVal = Math.max(materials, labor, markup) || 1;
+            
+            breakdownContainer.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+                            <span style="color: var(--text-secondary);">Materials</span>
+                            <span style="font-weight: 600;">$${materials.toLocaleString()}</span>
+                        </div>
+                        <div style="height: 12px; background: var(--bg-secondary); border-radius: 6px; overflow: hidden;">
+                            <div style="height: 100%; width: ${(materials/maxVal)*100}%; background: linear-gradient(90deg, #3498db, #2980b9); border-radius: 6px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+                            <span style="color: var(--text-secondary);">Labor</span>
+                            <span style="font-weight: 600;">$${labor.toLocaleString()}</span>
+                        </div>
+                        <div style="height: 12px; background: var(--bg-secondary); border-radius: 6px; overflow: hidden;">
+                            <div style="height: 100%; width: ${(labor/maxVal)*100}%; background: linear-gradient(90deg, #9b59b6, #8e44ad); border-radius: 6px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+                            <span style="color: var(--text-secondary);">Markup</span>
+                            <span style="font-weight: 600;">$${markup.toLocaleString()}</span>
+                        </div>
+                        <div style="height: 12px; background: var(--bg-secondary); border-radius: 6px; overflow: hidden;">
+                            <div style="height: 100%; width: ${(markup/maxVal)*100}%; background: linear-gradient(90deg, #27ae60, #2ecc71); border-radius: 6px;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Profit Margin Chart (donut)
+            const profitContainer = document.getElementById('inlineQuoteProfitChart');
+            const costPct = total > 0 ? ((materials + labor) / total * 100) : 0;
+            const profitPct = total > 0 ? (markup / total * 100) : 0;
+            
+            profitContainer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="position: relative; width: 80px; height: 80px;">
+                        <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--bg-secondary)" stroke-width="3"/>
+                            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#27ae60" stroke-width="3" 
+                                    stroke-dasharray="${profitPct} ${100 - profitPct}" stroke-linecap="round"/>
+                        </svg>
+                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--text-primary);">
+                            ${profitPct.toFixed(0)}%
+                        </div>
+                    </div>
+                    <div style="font-size: 12px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <div style="width: 10px; height: 10px; background: #27ae60; border-radius: 50%;"></div>
+                            <span style="color: var(--text-secondary);">Profit: $${markup.toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 10px; height: 10px; background: var(--bg-secondary); border-radius: 50%;"></div>
+                            <span style="color: var(--text-secondary);">Cost: $${(materials + labor).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function clearInlineQuoteForm() {
+            document.getElementById('inlineQuoteTitle').value = '';
+            document.getElementById('inlineQuoteNumber').value = '';
+            document.getElementById('inlineQuoteMaterials').value = '';
+            document.getElementById('inlineQuoteLabor').value = '';
+            document.getElementById('inlineQuoteMarkup').value = '20';
+            document.getElementById('inlineQuoteValidUntil').value = '';
+            document.getElementById('inlineQuoteStatus').value = 'draft';
+            document.getElementById('inlineQuoteNotes').value = '';
+            document.getElementById('inlineQuoteTotalValue').textContent = '0';
+            document.getElementById('inlineQuotePreviewCharts').style.display = 'none';
+            selectedInlineFloorplan = null;
+            updateInlineQuoteFloorplanSelect();
+        }
+        
+        async function saveInlineQuote() {
+            const title = document.getElementById('inlineQuoteTitle').value.trim();
+            if (!title) {
+                showToast('Please enter a quote title', 'error');
+                return;
+            }
+            
+            const customerId = currentViewingCustomerId;
+            const isNew = document.getElementById('customerDetailIsNew').value === 'true';
+            
+            if (!customerId && isNew) {
+                showToast('Please save the customer first before creating a quote', 'error');
+                return;
+            }
+            
+            const materials = parseFloat(document.getElementById('inlineQuoteMaterials').value) || 0;
+            const labor = parseFloat(document.getElementById('inlineQuoteLabor').value) || 0;
+            const markupPct = parseFloat(document.getElementById('inlineQuoteMarkup').value) || 0;
+            const subtotal = materials + labor;
+            const markup = subtotal * (markupPct / 100);
+            const total = subtotal + markup;
+            
+            const data = {
+                title: title,
+                quote_number: document.getElementById('inlineQuoteNumber').value || null,
+                customer_id: customerId,
+                status: document.getElementById('inlineQuoteStatus').value,
+                valid_until: document.getElementById('inlineQuoteValidUntil').value || null,
+                total_amount: total,
+                costs: {
+                    materials: materials,
+                    labor: labor,
+                    markup_percentage: markupPct,
+                    markup: markup,
+                    total: total
+                },
+                notes: document.getElementById('inlineQuoteNotes').value,
+                source: 'manual'
+            };
+            
+            // Add floorplan if selected
+            if (selectedInlineFloorplan) {
+                data.floorplan_image = selectedInlineFloorplan.data;
+                data.floorplan_name = selectedInlineFloorplan.name;
+            }
+            
+            try {
+                const res = await fetch('/api/crm/quotes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showToast('Quote created successfully!', 'success');
+                    clearInlineQuoteForm();
+                    // Refresh quotes list
+                    await loadCustomerQuotes(customerId);
+                    await loadQuotes();
+                    updateCustomerStats(customerId);
+                    renderCustomerFinancialCharts(customerId);
+                    // Switch to quotes tab
+                    showCustomerTab('quotes');
+                } else {
+                    showToast('Error: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        }
+        
+        function openQuoteAutomationWithFloorplan() {
+            if (!selectedInlineFloorplan) {
+                showToast('Please select a floorplan first', 'error');
+                return;
+            }
+            
+            // Store for the quote automation tool
+            sessionStorage.setItem('quoteCustomerId', currentViewingCustomerId);
+            sessionStorage.setItem('quoteFloorplanData', selectedInlineFloorplan.data);
+            sessionStorage.setItem('quoteFloorplanName', selectedInlineFloorplan.name);
+            
+            closeModal('customerDetailModal');
+            window.location.href = '/quotes?customer=' + currentViewingCustomerId + '&hasFloorplan=true';
+        }
+        
+        // ============================================================================
+        // CUSTOMER FINANCIAL CHARTS
+        // ============================================================================
+        
+        function renderCustomerFinancialCharts(customerId) {
+            const customerQuotes = quotes.filter(q => q.customer_id === customerId);
+            
+            if (customerQuotes.length === 0) {
+                document.getElementById('customerFinancialCharts').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('customerFinancialCharts').style.display = 'block';
+            
+            // Quote Status Chart
+            const statusCounts = {
+                draft: customerQuotes.filter(q => q.status === 'draft').length,
+                sent: customerQuotes.filter(q => q.status === 'sent').length,
+                accepted: customerQuotes.filter(q => q.status === 'accepted').length,
+                rejected: customerQuotes.filter(q => q.status === 'rejected').length,
+                expired: customerQuotes.filter(q => q.status === 'expired').length
+            };
+            
+            const statusChart = document.getElementById('customerQuoteStatusChart');
+            const total = customerQuotes.length;
+            const statusColors = {
+                draft: '#95a5a6',
+                sent: '#3498db',
+                accepted: '#27ae60',
+                rejected: '#e74c3c',
+                expired: '#f39c12'
+            };
+            
+            let statusBars = '';
+            Object.entries(statusCounts).forEach(([status, count]) => {
+                if (count > 0) {
+                    statusBars += `
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <div style="width: 60px; font-size: 11px; color: var(--text-secondary); text-transform: capitalize;">${status}</div>
+                            <div style="flex: 1; height: 16px; background: var(--bg-primary); border-radius: 8px; overflow: hidden;">
+                                <div style="height: 100%; width: ${(count/total)*100}%; background: ${statusColors[status]}; border-radius: 8px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;">
+                                    <span style="font-size: 10px; color: white; font-weight: 600;">${count}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            statusChart.innerHTML = `<div style="width: 100%;">${statusBars}</div>`;
+            
+            // Revenue Chart
+            const revenueChart = document.getElementById('customerRevenueChart');
+            const totalValue = customerQuotes.reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+            const acceptedValue = customerQuotes.filter(q => q.status === 'accepted').reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+            const pendingValue = totalValue - acceptedValue;
+            
+            revenueChart.innerHTML = `
+                <div style="display: flex; gap: 16px; width: 100%;">
+                    <div style="flex: 1; text-align: center; padding: 12px; background: var(--bg-primary); border-radius: 12px;">
+                        <div style="font-size: 20px; font-weight: 700; color: #27ae60;">$${acceptedValue.toLocaleString()}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Won</div>
+                    </div>
+                    <div style="flex: 1; text-align: center; padding: 12px; background: var(--bg-primary); border-radius: 12px;">
+                        <div style="font-size: 20px; font-weight: 700; color: #f39c12;">$${pendingValue.toLocaleString()}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Pending</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ============================================================================
+        // CUSTOMER LINKING FUNCTIONS
+        // ============================================================================
+        
+        let linkedParentCustomerId = null;
+        let customerSearchTimeout = null;
+        
+        function searchCustomersToLink(query) {
+            clearTimeout(customerSearchTimeout);
+            const resultsDiv = document.getElementById('customerLinkResults');
+            
+            if (!query || query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            customerSearchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/crm/people');
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        const allCustomers = (data.people || []).filter(p => p.type === 'customer');
+                        const filtered = allCustomers.filter(c => 
+                            c.name.toLowerCase().includes(query.toLowerCase()) ||
+                            (c.company && c.company.toLowerCase().includes(query.toLowerCase()))
+                        ).slice(0, 10);
+                        
+                        if (filtered.length > 0) {
+                            resultsDiv.innerHTML = filtered.map(c => `
+                                <div onclick="selectCustomerToLink('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${(c.company || '').replace(/'/g, "\\'")}')" 
+                                     style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: background 0.2s;"
+                                     onmouseover="this.style.background='var(--bg-secondary)'" 
+                                     onmouseout="this.style.background='transparent'">
+                                    <div style="font-weight: 500; color: var(--text-primary);">${c.name}</div>
+                                    ${c.company ? `<div style="font-size: 12px; color: var(--text-secondary);">${c.company}</div>` : ''}
+                                    ${c.title ? `<div style="font-size: 11px; color: var(--text-tertiary);">${c.title}</div>` : ''}
+                                </div>
+                            `).join('');
+                            resultsDiv.style.display = 'block';
+                        } else {
+                            resultsDiv.innerHTML = '<div style="padding: 12px; color: var(--text-secondary); text-align: center;">No customers found</div>';
+                            resultsDiv.style.display = 'block';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error searching customers:', e);
+                }
+            }, 300);
+        }
+        
+        function showCustomerLinkResults() {
+            const query = document.getElementById('customerLinkSearchInput').value;
+            if (query && query.length >= 2) {
+                searchCustomersToLink(query);
+            }
+        }
+        
+        async function selectCustomerToLink(customerId, customerName, customerCompany) {
+            linkedParentCustomerId = customerId;
+            document.getElementById('linkedCustomerId').value = customerId;
+            document.getElementById('customerLinkSearchInput').value = '';
+            document.getElementById('customerLinkResults').style.display = 'none';
+            
+            // Show linked customer display
+            document.getElementById('linkedCustomerName').textContent = customerName + (customerCompany ? ` (${customerCompany})` : '');
+            document.getElementById('linkedCustomerDisplay').style.display = 'block';
+            document.getElementById('clearLinkBtn').style.display = 'inline-block';
+            
+            // Show all tabs when customer is linked
+            document.getElementById('customerTabQuotes').style.display = 'inline-block';
+            document.getElementById('customerTabJobs').style.display = 'inline-block';
+            document.getElementById('customerTabFloorplans').style.display = 'inline-block';
+            document.getElementById('customerTabLinked').style.display = 'inline-block';
+            
+            // Load the linked customer's quotes and jobs into the main tabs
+            await loadLinkedCustomerQuotesAndJobs(customerId);
+        }
+        
+        async function loadLinkedCustomerQuotesAndJobs(customerId) {
+            // Show loading state
+            document.getElementById('customerQuotesList').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading linked customer data...</div>';
+            document.getElementById('customerJobsList').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading...</div>';
+            
+            try {
+                // Fetch quotes for linked customer
+                const quotesRes = await fetch('/api/crm/quotes');
+                const quotesData = await quotesRes.json();
+                const linkedQuotes = (quotesData.quotes || []).filter(q => q.customer_id === customerId);
+                
+                // Fetch jobs for linked customer
+                const jobsRes = await fetch('/api/crm/jobs');
+                const jobsData = await jobsRes.json();
+                const linkedJobs = (jobsData.jobs || []).filter(j => j.customer_id === customerId);
+                
+                // Render quotes
+                renderCustomerQuotes(linkedQuotes);
+                
+                // Render jobs
+                renderCustomerJobs(linkedJobs);
+                
+                // Update stats to show linked customer's data
+                const totalQuoteValue = linkedQuotes.reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+                const acceptedQuotes = linkedQuotes.filter(q => q.status === 'accepted');
+                const wonValue = acceptedQuotes.reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+                
+                // Show stats
+                document.getElementById('customerDetailStats').style.display = 'grid';
+                document.getElementById('customerDetailStats').innerHTML = `
+                    <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 28px; font-weight: 700;">${linkedQuotes.length}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Linked Quotes</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #27ae60, #1e8449); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 28px; font-weight: 700;">${acceptedQuotes.length}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Accepted</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 28px; font-weight: 700;">$${totalQuoteValue.toLocaleString()}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Total Value</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f39c12, #d68910); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 28px; font-weight: 700;">${linkedJobs.length}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Linked Jobs</div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Error loading linked customer data:', e);
+                document.getElementById('customerQuotesList').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary);">Error loading quotes</div>';
+                document.getElementById('customerJobsList').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary);">Error loading jobs</div>';
+            }
+        }
+        
+        function clearCustomerLink() {
+            linkedParentCustomerId = null;
+            document.getElementById('linkedCustomerId').value = '';
+            document.getElementById('linkedCustomerDisplay').style.display = 'none';
+            document.getElementById('clearLinkBtn').style.display = 'none';
+            
+            // Hide all tabs except New Quote when link is cleared (for new customers)
+            const isNewCustomer = document.getElementById('customerDetailIsNew').value === 'true';
+            if (isNewCustomer) {
+                document.getElementById('customerTabQuotes').style.display = 'none';
+                document.getElementById('customerTabJobs').style.display = 'none';
+                document.getElementById('customerTabFloorplans').style.display = 'none';
+                document.getElementById('customerTabLinked').style.display = 'none';
+                showCustomerTab('newquote');
+            } else {
+                document.getElementById('customerTabLinked').style.display = 'none';
+            }
+            
+            // Reset to "save customer first" messages
+            document.getElementById('customerQuotesList').innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                    <div>Save the customer first to view quotes</div>
+                </div>`;
+            document.getElementById('customerJobsList').innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔧</div>
+                    <div>Save the customer first to view jobs</div>
+                </div>`;
+            document.getElementById('customerDetailStats').style.display = 'none';
+        }
+        
+        // =====================================================
+        // CUSTOMER TASK MANAGEMENT
+        // =====================================================
+        
+        let customerTasksCache = [];
+        
+        async function openCustomerTaskModal() {
+            // Populate assignee dropdown with users
+            const assigneeSelect = document.getElementById('customerTaskAssignee');
+            assigneeSelect.innerHTML = '<option value="">Select team member...</option>';
+            
+            try {
+                const res = await fetch('/api/auth/users');
+                if (res.ok) {
+                    const users = await res.json();
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.username;
+                        option.textContent = user.display_name || user.username;
+                        assigneeSelect.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading users:', e);
+            }
+            
+            // Also try to load people from CRM as potential assignees
+            try {
+                const res = await fetch('/api/crm/people');
+                const data = await res.json();
+                const employees = (data.people || []).filter(p => p.type === 'employee');
+                employees.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp.name;
+                    option.textContent = emp.name + (emp.company ? ` (${emp.company})` : '');
+                    assigneeSelect.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Error loading employees:', e);
+            }
+            
+            // Set default due date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('customerTaskDueDate').value = tomorrow.toISOString().split('T')[0];
+            
+            // Clear form
+            document.getElementById('customerTaskTitle').value = '';
+            document.getElementById('customerTaskDescription').value = '';
+            document.getElementById('customerTaskPriority').value = 'medium';
+            
+            openModal('customerTaskModal');
+        }
+        
+        async function saveCustomerTask() {
+            const title = document.getElementById('customerTaskTitle').value.trim();
+            const description = document.getElementById('customerTaskDescription').value.trim();
+            const assignee = document.getElementById('customerTaskAssignee').value;
+            const dueDate = document.getElementById('customerTaskDueDate').value;
+            const priority = document.getElementById('customerTaskPriority').value;
+            
+            if (!title) {
+                alert('Please enter a task title');
+                return;
+            }
+            if (!assignee) {
+                alert('Please select an assignee');
+                return;
+            }
+            if (!dueDate) {
+                alert('Please select a due date');
+                return;
+            }
+            
+            // Get customer info for the task
+            const customerName = document.getElementById('customerDetailNameInput').value || 
+                                 document.getElementById('customerDetailName').textContent;
+            const customerId = currentViewingCustomerId || document.getElementById('customerDetailId').value;
+            
+            const taskData = {
+                title: title,
+                description: description + (customerName ? `\n\nRelated to customer: ${customerName}` : ''),
+                assignee: assignee,
+                due_date: dueDate,
+                priority: priority,
+                status: 'todo',
+                customer_id: customerId,
+                customer_name: customerName
+            };
+            
+            try {
+                const res = await fetch('/api/kanban/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+                
+                if (res.ok) {
+                    const newTask = await res.json();
+                    closeModal('customerTaskModal');
+                    
+                    // Add the new task directly to the cache and re-render
+                    const taskToAdd = newTask.task || newTask;
+                    taskToAdd.customer_id = customerId;
+                    taskToAdd.customer_name = customerName;
+                    customerTasksCache.push(taskToAdd);
+                    renderCustomerTasks(customerTasksCache);
+                    
+                    alert('Task created successfully!');
+                } else {
+                    const error = await res.json();
+                    alert('Error creating task: ' + (error.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Error creating task:', e);
+                alert('Error creating task. Please try again.');
+            }
+        }
+        
+        async function loadCustomerTasks(customerId, customerName) {
+            const tasksListEl = document.getElementById('customerTasksList');
+            if (!tasksListEl) return;
+            
+            // Get customer name if not provided
+            if (!customerName) {
+                customerName = document.getElementById('customerDetailNameInput')?.value || 
+                              document.getElementById('customerDetailName')?.textContent || '';
+            }
+            
+            try {
+                const res = await fetch('/api/kanban/tasks');
+                if (res.ok) {
+                    const tasks = await res.json();
+                    // Filter tasks related to this customer by ID, name in description, or customer_name field
+                    const customerTasks = tasks.filter(t => 
+                        t.customer_id === customerId || 
+                        t.customer_name === customerName ||
+                        (t.description && customerName && t.description.toLowerCase().includes(customerName.toLowerCase())) ||
+                        (t.description && customerId && t.description.includes(customerId))
+                    );
+                    customerTasksCache = customerTasks;
+                    renderCustomerTasks(customerTasks);
+                }
+            } catch (e) {
+                console.error('Error loading tasks:', e);
+            }
+        }
+        
+        function renderCustomerTasks(tasks) {
+            const tasksListEl = document.getElementById('customerTasksList');
+            if (!tasksListEl) return;
+            
+            if (!tasks || tasks.length === 0) {
+                tasksListEl.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                        <div style="font-size: 14px;">No tasks assigned</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Assign tasks to team members</div>
+                    </div>`;
+                return;
+            }
+            
+            const priorityColors = {
+                low: '#3498db',
+                medium: '#f39c12',
+                high: '#e67e22',
+                urgent: '#e74c3c'
+            };
+            
+            const statusIcons = {
+                'todo': '📋',
+                'working': '🔊',
+                'stuck': '😵‍💫',
+                'review': '🔭',
+                'finished': '✅'
+            };
+            
+            tasksListEl.innerHTML = tasks.map(task => {
+                const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'finished';
+                const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date';
+                
+                return `
+                    <div style="background: var(--bg-primary); padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${priorityColors[task.priority] || '#3498db'};">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                    ${statusIcons[task.status] || '📋'} ${task.title || 'Untitled Task'}
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">
+                                    👤 ${task.assignee || 'Unassigned'} • 📅 ${dueDate}
+                                    ${isOverdue ? '<span style="color: #e74c3c; font-weight: 600;"> ⚠️ Overdue</span>' : ''}
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; padding: 2px 8px; background: ${priorityColors[task.priority] || '#3498db'}20; color: ${priorityColors[task.priority] || '#3498db'}; border-radius: 4px; text-transform: capitalize;">
+                                ${task.priority || 'medium'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // For edit mode
+        function searchCustomersToLinkEdit(query) {
+            clearTimeout(customerSearchTimeout);
+            const resultsDiv = document.getElementById('customerLinkResultsEdit');
+            
+            if (!query || query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            customerSearchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/crm/people');
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        const allCustomers = (data.people || []).filter(p => p.type === 'customer' && p.id !== currentViewingCustomerId);
+                        const filtered = allCustomers.filter(c => 
+                            c.name.toLowerCase().includes(query.toLowerCase()) ||
+                            (c.company && c.company.toLowerCase().includes(query.toLowerCase()))
+                        ).slice(0, 10);
+                        
+                        if (filtered.length > 0) {
+                            resultsDiv.innerHTML = filtered.map(c => `
+                                <div onclick="selectCustomerToLinkEdit('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${(c.company || '').replace(/'/g, "\\'")}')" 
+                                     style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: background 0.2s;"
+                                     onmouseover="this.style.background='var(--bg-secondary)'" 
+                                     onmouseout="this.style.background='transparent'">
+                                    <div style="font-weight: 500; color: var(--text-primary);">${c.name}</div>
+                                    ${c.company ? `<div style="font-size: 12px; color: var(--text-secondary);">${c.company}</div>` : ''}
+                                </div>
+                            `).join('');
+                            resultsDiv.style.display = 'block';
+                        } else {
+                            resultsDiv.innerHTML = '<div style="padding: 12px; color: var(--text-secondary); text-align: center;">No customers found</div>';
+                            resultsDiv.style.display = 'block';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error searching customers:', e);
+                }
+            }, 300);
+        }
+        
+        function showCustomerLinkResultsEdit() {
+            const query = document.getElementById('customerLinkSearchEdit').value;
+            if (query && query.length >= 2) {
+                searchCustomersToLinkEdit(query);
+            }
+        }
+        
+        function selectCustomerToLinkEdit(customerId, customerName, customerCompany) {
+            linkedParentCustomerId = customerId;
+            document.getElementById('linkedCustomerIdEdit').value = customerId;
+            document.getElementById('customerLinkSearchEdit').value = '';
+            document.getElementById('customerLinkResultsEdit').style.display = 'none';
+            
+            // Show linked customer display
+            document.getElementById('linkedCustomerNameEdit').textContent = customerName + (customerCompany ? ` (${customerCompany})` : '');
+            document.getElementById('linkedCustomerDisplayEdit').style.display = 'block';
+            
+            // Show the linked tab button
+            document.getElementById('customerTabLinked').style.display = 'inline-block';
+            
+            // Mark as unsaved
+            markCustomerUnsaved();
+            
+            // Load linked customer data
+            loadLinkedCustomerData();
+        }
+        
+        function clearCustomerLinkEdit() {
+            linkedParentCustomerId = null;
+            document.getElementById('linkedCustomerIdEdit').value = '';
+            document.getElementById('linkedCustomerDisplayEdit').style.display = 'none';
+            document.getElementById('customerTabLinked').style.display = 'none';
+            markCustomerUnsaved();
+        }
+        
+        async function loadLinkedCustomerData() {
+            const linkedId = linkedParentCustomerId || document.getElementById('linkedCustomerIdEdit').value;
+            const contentDiv = document.getElementById('linkedCustomerDataContent');
+            
+            if (!linkedId) {
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🔗</div>
+                        <div>No linked customer</div>
+                        <div style="font-size: 13px; margin-top: 8px;">Link to an existing customer to see their quotes and jobs here</div>
+                    </div>`;
+                return;
+            }
+            
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading linked customer data...</div>';
+            
+            try {
+                // Fetch linked customer details
+                const customerRes = await fetch(`/api/crm/people/${linkedId}`);
+                const customerData = await customerRes.json();
+                
+                if (!customerData.success) {
+                    throw new Error('Customer not found');
+                }
+                
+                const linkedCustomer = customerData.person;
+                
+                // Fetch quotes for linked customer
+                const quotesRes = await fetch('/api/crm/quotes');
+                const quotesData = await quotesRes.json();
+                const linkedQuotes = (quotesData.quotes || []).filter(q => q.customer_id === linkedId);
+                
+                // Fetch jobs for linked customer
+                const jobsRes = await fetch('/api/crm/jobs');
+                const jobsData = await jobsRes.json();
+                const linkedJobs = (jobsData.jobs || []).filter(j => j.customer_id === linkedId);
+                
+                // Calculate stats
+                const totalQuoteValue = linkedQuotes.reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+                const acceptedQuotes = linkedQuotes.filter(q => q.status === 'accepted');
+                const wonValue = acceptedQuotes.reduce((sum, q) => sum + (q.total_amount || q.quote_amount || 0), 0);
+                
+                contentDiv.innerHTML = `
+                    <!-- Linked Customer Header -->
+                    <div style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 32px;">👤</div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 18px;">${linkedCustomer.name}</div>
+                                ${linkedCustomer.company ? `<div style="font-size: 13px; opacity: 0.9;">${linkedCustomer.company}</div>` : ''}
+                                ${linkedCustomer.title ? `<div style="font-size: 12px; opacity: 0.8;">${linkedCustomer.title}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${linkedQuotes.length}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Quotes</div>
+                        </div>
+                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: #27ae60;">${acceptedQuotes.length}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Accepted</div>
+                        </div>
+                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${linkedJobs.length}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Jobs</div>
+                        </div>
+                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: #27ae60;">$${wonValue.toLocaleString()}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Won</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quotes Section -->
+                    <div style="margin-bottom: 16px;">
+                        <h5 style="color: var(--text-primary); margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">📋 Quotes (${linkedQuotes.length})</h5>
+                        ${linkedQuotes.length > 0 ? `
+                            <div style="max-height: 200px; overflow-y: auto;">
+                                ${linkedQuotes.map(q => `
+                                    <div onclick="viewQuoteDetail('${q.id}')" style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                                        <div>
+                                            <div style="font-weight: 500; color: var(--text-primary);">${q.title || 'Untitled'}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${q.quote_number || ''}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-weight: 600;">$${(q.total_amount || q.quote_amount || 0).toLocaleString()}</div>
+                                            <span style="background: ${q.status === 'accepted' ? '#27ae60' : q.status === 'draft' ? '#95a5a6' : '#3498db'}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">${q.status}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div style="color: var(--text-tertiary); font-size: 13px;">No quotes yet</div>'}
+                    </div>
+                    
+                    <!-- Jobs Section -->
+                    <div>
+                        <h5 style="color: var(--text-primary); margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">🔧 Jobs (${linkedJobs.length})</h5>
+                        ${linkedJobs.length > 0 ? `
+                            <div style="max-height: 200px; overflow-y: auto;">
+                                ${linkedJobs.map(j => `
+                                    <div onclick="viewJobDetail('${j.id}')" style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+                                        <div>
+                                            <div style="font-weight: 500; color: var(--text-primary);">${j.name || j.title || 'Untitled'}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${j.job_number || ''}</div>
+                                        </div>
+                                        <span style="background: ${j.status === 'finished' ? '#27ae60' : j.status === 'in_progress' ? '#3498db' : '#f39c12'}; color: white; padding: 4px 10px; border-radius: 10px; font-size: 11px; text-transform: capitalize;">${j.status?.replace('_', ' ') || 'pending'}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div style="color: var(--text-tertiary); font-size: 13px;">No jobs yet</div>'}
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Error loading linked customer data:', e);
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+                        <div>Error loading linked customer data</div>
+                    </div>`;
             }
         }
         
         function createQuoteForCustomer(customerId) {
+            // Check if customer has floorplans
+            if (customerFloorplans && customerFloorplans.length > 0) {
+                // Ask user if they want to use a floorplan for quote automation
+                const useFloorplan = confirm('This customer has uploaded floorplans. Would you like to use one for AI quote generation?\n\nClick OK to open Quote Automation tool with the floorplan.\nClick Cancel to create a manual quote.');
+                
+                if (useFloorplan) {
+                    // Get the first image floorplan or the selected one
+                    const selectedFloorplan = window.selectedCustomerFloorplan || customerFloorplans.find(fp => fp.type.includes('image')) || customerFloorplans[0];
+                    
+                    if (selectedFloorplan && selectedFloorplan.type.includes('image')) {
+                        // Store for the quote automation tool
+                        sessionStorage.setItem('quoteCustomerId', customerId);
+                        sessionStorage.setItem('quoteFloorplanData', selectedFloorplan.data);
+                        sessionStorage.setItem('quoteFloorplanName', selectedFloorplan.name);
+                        
+                        closeModal('customerDetailModal');
+                        // Navigate to quote automation with the floorplan
+                        window.location.href = '/quotes?customer=' + customerId + '&hasFloorplan=true';
+                        return;
+                    } else {
+                        alert('The floorplan must be an image (PNG/JPG). PDF floorplans can be converted in the Quote Automation tool.');
+                    }
+                }
+            }
+            
+            // Open manual quote modal
             closeModal('customerDetailModal');
             showSection('quotes-open');
             setTimeout(() => {
@@ -6486,6 +7856,12 @@
         }
 
         function openPersonModal(type) {
+            // For customers, use the enhanced customer detail view
+            if (type === 'customer') {
+                openNewCustomerDetailView();
+                return;
+            }
+            
             document.getElementById('personId').value = '';
             document.getElementById('personType').value = type;
             document.getElementById('personName').value = '';
@@ -6504,6 +7880,682 @@
             };
             document.querySelector('#personModal h2').textContent = `Add ${labels[type]}`;
             openModal('personModal');
+        }
+        
+        // ============================================================================
+        // ENHANCED CUSTOMER DETAIL VIEW FUNCTIONS
+        // ============================================================================
+        
+        let customerHasUnsavedChanges = false;
+        let customerFloorplans = [];
+        let customerDocuments = [];
+        
+        function openNewCustomerDetailView() {
+            // Reset all fields for new customer
+            currentViewingCustomerId = null;
+            document.getElementById('customerDetailId').value = '';
+            document.getElementById('customerDetailIsNew').value = 'true';
+            
+            // Show edit mode for name (header preview)
+            document.getElementById('customerNameEditMode').style.display = 'block';
+            document.getElementById('customerNameDisplayMode').style.display = 'none';
+            
+            // Clear hidden inputs
+            const titleInput = document.getElementById('customerDetailTitleInput');
+            const nameInput = document.getElementById('customerDetailNameInput');
+            const companyInput = document.getElementById('customerDetailCompanyInput');
+            if (titleInput) titleInput.value = '';
+            if (nameInput) nameInput.value = '';
+            if (companyInput) companyInput.value = '';
+            
+            // Reset header preview
+            document.getElementById('customerDetailNamePreview').textContent = 'New Customer';
+            document.getElementById('customerDetailTitlePreview').style.display = 'none';
+            document.getElementById('customerDetailCompanyPreview').textContent = '';
+            
+            // Show name field in contact info for new customers
+            const nameFieldGroup = document.getElementById('customerNameFieldGroup');
+            if (nameFieldGroup) nameFieldGroup.style.display = 'block';
+            
+            // Clear contact fields (including name, title, company in edit mode)
+            const nameEdit = document.getElementById('customerDetailNameEdit');
+            const titleEdit = document.getElementById('customerDetailTitleEdit');
+            const companyEdit = document.getElementById('customerDetailCompanyEdit');
+            if (nameEdit) nameEdit.value = '';
+            if (titleEdit) titleEdit.value = '';
+            if (companyEdit) companyEdit.value = '';
+            document.getElementById('customerDetailEmail').value = '';
+            document.getElementById('customerDetailPhone').value = '';
+            document.getElementById('customerDetailAddress').value = '';
+            
+            // Clear linked customer fields
+            linkedParentCustomerId = null;
+            const linkedIdInput = document.getElementById('linkedCustomerId');
+            const linkedIdEdit = document.getElementById('linkedCustomerIdEdit');
+            const linkSearchInput = document.getElementById('customerLinkSearchInput');
+            const linkSearchEdit = document.getElementById('customerLinkSearchEdit');
+            const linkResults = document.getElementById('customerLinkResults');
+            const linkResultsEdit = document.getElementById('customerLinkResultsEdit');
+            
+            if (linkedIdInput) linkedIdInput.value = '';
+            if (linkedIdEdit) linkedIdEdit.value = '';
+            if (linkSearchInput) linkSearchInput.value = '';
+            if (linkSearchEdit) linkSearchEdit.value = '';
+            if (linkResults) linkResults.style.display = 'none';
+            if (linkResultsEdit) linkResultsEdit.style.display = 'none';
+            
+            document.getElementById('linkedCustomerDisplay').style.display = 'none';
+            document.getElementById('linkedCustomerDisplayEdit').style.display = 'none';
+            const clearLinkBtn = document.getElementById('clearLinkBtn');
+            if (clearLinkBtn) clearLinkBtn.style.display = 'none';
+            document.getElementById('customerTabLinked').style.display = 'none';
+            
+            // Hide stats and financial charts for new customer
+            document.getElementById('customerDetailStats').style.display = 'none';
+            document.getElementById('customerFinancialCharts').style.display = 'none';
+            
+            // Clear header contact info
+            updateHeaderContactInfo('', '');
+            
+            // Clear notes
+            document.getElementById('customerDetailNotes').innerHTML = 'No notes yet';
+            
+            // Clear floorplans and documents
+            customerFloorplans = [];
+            customerDocuments = [];
+            renderCustomerFloorplans();
+            
+            // Also update the inline quote floorplan selector
+            updateInlineQuoteFloorplanSelect();
+            renderCustomerDocuments();
+            
+            // Show new customer actions, hide existing customer actions
+            document.getElementById('newCustomerActions').style.display = 'flex';
+            document.getElementById('existingCustomerActions').style.display = 'none';
+            document.getElementById('saveNewCustomerBtn').disabled = true;
+            
+            // Clear and reset inline quote form
+            clearInlineQuoteForm();
+            
+            // Clear quotes/jobs/projects lists
+            document.getElementById('customerQuotesList').innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                    <div>Save the customer first to view quotes</div>
+                </div>`;
+            document.getElementById('customerJobsList').innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔧</div>
+                    <div>Save the customer first to view jobs</div>
+                </div>`;
+            document.getElementById('linkedCustomerDataContent').innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">🔗</div>
+                    <div>No linked customer</div>
+                    <div style="font-size: 13px; margin-top: 8px;">Link to an existing customer to see their quotes and jobs here</div>
+                </div>`;
+            
+            // Clear tasks list
+            document.getElementById('customerTasksList').innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                    <div style="font-size: 14px;">No tasks assigned</div>
+                    <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Assign tasks to team members</div>
+                </div>`;
+            
+            // Hide Quotes, Jobs, Gallery tabs for new customers (only show New Quote)
+            document.getElementById('customerTabQuotes').style.display = 'none';
+            document.getElementById('customerTabJobs').style.display = 'none';
+            document.getElementById('customerTabFloorplans').style.display = 'none';
+            document.getElementById('customerTabLinked').style.display = 'none';
+            
+            // Default to New Quote tab
+            showCustomerTab('newquote');
+            
+            // Hide contact save indicator
+            document.getElementById('contactSaveIndicator').style.display = 'none';
+            customerHasUnsavedChanges = false;
+            
+            openModal('customerDetailModal');
+            
+            // Focus on name input
+            setTimeout(() => document.getElementById('customerDetailNameInput').focus(), 100);
+        }
+        
+        function validateCustomerName() {
+            // Get name from contact info edit field
+            const nameEdit = document.getElementById('customerDetailNameEdit');
+            const name = nameEdit ? nameEdit.value.trim() : '';
+            const saveBtn = document.getElementById('saveNewCustomerBtn');
+            if (saveBtn) {
+                saveBtn.disabled = !name;
+            }
+            // Also update hidden input
+            const nameInput = document.getElementById('customerDetailNameInput');
+            if (nameInput) {
+                nameInput.value = name;
+            }
+        }
+        
+        function syncHeaderFromContact() {
+            // Get values from contact info fields
+            const nameEdit = document.getElementById('customerDetailNameEdit');
+            const titleEdit = document.getElementById('customerDetailTitleEdit');
+            const companyEdit = document.getElementById('customerDetailCompanyEdit');
+            const emailEdit = document.getElementById('customerDetailEmail');
+            const phoneEdit = document.getElementById('customerDetailPhone');
+            
+            const name = nameEdit ? nameEdit.value.trim() : '';
+            const title = titleEdit ? titleEdit.value.trim() : '';
+            const company = companyEdit ? companyEdit.value.trim() : '';
+            const email = emailEdit ? emailEdit.value.trim() : '';
+            const phone = phoneEdit ? phoneEdit.value.trim() : '';
+            
+            // Update header preview
+            const namePreview = document.getElementById('customerDetailNamePreview');
+            const titlePreview = document.getElementById('customerDetailTitlePreview');
+            const companyPreview = document.getElementById('customerDetailCompanyPreview');
+            
+            if (namePreview) {
+                namePreview.textContent = name || 'New Customer';
+            }
+            
+            if (titlePreview) {
+                if (title) {
+                    titlePreview.textContent = title;
+                    titlePreview.style.display = 'inline-block';
+                } else {
+                    titlePreview.style.display = 'none';
+                }
+            }
+            
+            if (companyPreview) {
+                companyPreview.textContent = company;
+            }
+            
+            // Update header contact info (right side)
+            updateHeaderContactInfo(email, phone);
+            
+            // Update hidden inputs for form submission
+            const nameInput = document.getElementById('customerDetailNameInput');
+            const titleInput = document.getElementById('customerDetailTitleInput');
+            const companyInput = document.getElementById('customerDetailCompanyInput');
+            
+            if (nameInput) nameInput.value = name;
+            if (titleInput) titleInput.value = title;
+            if (companyInput) companyInput.value = company;
+            
+            // Mark as unsaved
+            markCustomerUnsaved();
+        }
+        
+        function updateHeaderContactInfo(email, phone) {
+            const emailDisplay = document.getElementById('headerEmailDisplay');
+            const phoneDisplay = document.getElementById('headerPhoneDisplay');
+            const headerEmail = document.getElementById('headerEmail');
+            const headerPhone = document.getElementById('headerPhone');
+            
+            if (email && emailDisplay && headerEmail) {
+                headerEmail.textContent = email;
+                emailDisplay.style.display = 'block';
+            } else if (emailDisplay) {
+                emailDisplay.style.display = 'none';
+            }
+            
+            if (phone && phoneDisplay && headerPhone) {
+                headerPhone.textContent = phone;
+                phoneDisplay.style.display = 'block';
+            } else if (phoneDisplay) {
+                phoneDisplay.style.display = 'none';
+            }
+        }
+        
+        async function saveNewCustomer() {
+            // Get values from contact info edit fields
+            const name = document.getElementById('customerDetailNameEdit')?.value.trim() || 
+                        document.getElementById('customerDetailNameInput')?.value.trim() || '';
+            if (!name) {
+                showToast('Please enter a customer name', 'error');
+                return;
+            }
+            
+            const saveBtn = document.getElementById('saveNewCustomerBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            
+            const title = document.getElementById('customerDetailTitleEdit')?.value.trim() || 
+                         document.getElementById('customerDetailTitleInput')?.value.trim() || '';
+            const linkedTo = document.getElementById('linkedCustomerIdEdit')?.value || 
+                            document.getElementById('linkedCustomerId')?.value || null;
+            
+            const data = {
+                type: 'customer',
+                name: name,
+                title: title,
+                company: document.getElementById('customerDetailCompanyEdit')?.value.trim() || 
+                        document.getElementById('customerDetailCompanyInput')?.value.trim() || '',
+                email: document.getElementById('customerDetailEmail').value.trim(),
+                phone: document.getElementById('customerDetailPhone').value.trim(),
+                address: document.getElementById('customerDetailAddress').value.trim(),
+                notes: '',
+                linked_to: linkedTo,
+                floorplans: customerFloorplans,
+                documents: customerDocuments
+            };
+            
+            try {
+                const res = await fetch('/api/crm/people', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showToast('Customer created successfully!', 'success');
+                    
+                    // Update the view to show existing customer mode
+                    currentViewingCustomerId = result.person.id;
+                    document.getElementById('customerDetailId').value = result.person.id;
+                    document.getElementById('customerDetailIsNew').value = 'false';
+                    
+                    // Switch to display mode
+                    document.getElementById('customerNameEditMode').style.display = 'none';
+                    document.getElementById('customerNameDisplayMode').style.display = 'block';
+                    document.getElementById('customerDetailName').textContent = name;
+                    document.getElementById('customerDetailCompany').textContent = data.company || '';
+                    
+                    // Show title badge
+                    const titleBadge = document.getElementById('customerDetailTitle');
+                    if (title) {
+                        titleBadge.textContent = title;
+                        titleBadge.style.display = 'inline-block';
+                    } else {
+                        titleBadge.style.display = 'none';
+                    }
+                    
+                    // Also update the edit dropdown
+                    document.getElementById('customerDetailTitleEdit').value = title || '';
+                    
+                    // Show stats
+                    document.getElementById('customerDetailStats').style.display = 'grid';
+                    renderCustomerStats({ total_quotes: 0, accepted_quotes: 0, quote_value: 0, won_revenue: 0 });
+                    
+                    // Switch actions
+                    document.getElementById('newCustomerActions').style.display = 'none';
+                    document.getElementById('existingCustomerActions').style.display = 'flex';
+                    
+                    // Reload people list
+                    loadPeople('customer');
+                    
+                    // Save any uploaded floorplans/documents to the customer
+                    if (customerFloorplans.length > 0 || customerDocuments.length > 0) {
+                        await saveCustomerFiles(result.person.id);
+                    }
+                    
+                    // Update quotes/jobs lists
+                    loadCustomerQuotes(result.person.id);
+                    loadCustomerJobs(result.person.id);
+                } else {
+                    showToast('Error: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Create Customer';
+            }
+        }
+        
+        function markCustomerUnsaved() {
+            const isNew = document.getElementById('customerDetailIsNew').value === 'true';
+            if (!isNew) {
+                customerHasUnsavedChanges = true;
+                document.getElementById('contactSaveIndicator').style.display = 'block';
+            }
+        }
+        
+        async function saveCustomerContactInfo() {
+            const customerId = currentViewingCustomerId;
+            if (!customerId) return;
+            
+            const title = document.getElementById('customerDetailTitleEdit').value.trim();
+            const linkedTo = document.getElementById('linkedCustomerIdEdit').value || null;
+            
+            const data = {
+                title: title,
+                email: document.getElementById('customerDetailEmail').value.trim(),
+                phone: document.getElementById('customerDetailPhone').value.trim(),
+                address: document.getElementById('customerDetailAddress').value.trim(),
+                linked_to: linkedTo
+            };
+            
+            try {
+                const res = await fetch(`/api/crm/people/${customerId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showToast('Contact info saved!', 'success');
+                    customerHasUnsavedChanges = false;
+                    document.getElementById('contactSaveIndicator').style.display = 'none';
+                    
+                    // Update title badge in header
+                    const titleBadge = document.getElementById('customerDetailTitle');
+                    if (title) {
+                        titleBadge.textContent = title;
+                        titleBadge.style.display = 'inline-block';
+                    } else {
+                        titleBadge.style.display = 'none';
+                    }
+                    
+                    loadPeople('customer');
+                } else {
+                    showToast('Error: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        }
+        
+        function closeCustomerDetailModal() {
+            if (customerHasUnsavedChanges) {
+                if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+                    return;
+                }
+            }
+            customerHasUnsavedChanges = false;
+            closeModal('customerDetailModal');
+        }
+        
+        // ============================================================================
+        // CUSTOMER FLOORPLAN FUNCTIONS
+        // ============================================================================
+        
+        async function uploadCustomerFloorplan(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64 = e.target.result;
+                    
+                    // For PDFs, try to convert first page to image for preview
+                    let previewData = base64;
+                    if (file.type === 'application/pdf') {
+                        // Store the PDF data but we'll show an icon for preview
+                        previewData = null; // Will use icon fallback
+                    }
+                    
+                    const floorplan = {
+                        id: 'fp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: base64,
+                        preview: previewData,
+                        uploaded_at: new Date().toISOString()
+                    };
+                    customerFloorplans.push(floorplan);
+                    renderCustomerFloorplans();
+                    
+                    // Also update the inline quote floorplan selector immediately
+                    updateInlineQuoteFloorplanSelect();
+                    
+                    // If customer already exists, save immediately
+                    const customerId = currentViewingCustomerId;
+                    if (customerId) {
+                        await saveCustomerFiles(customerId);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        }
+        
+        function renderCustomerFloorplans() {
+            const container = document.getElementById('customerFloorplansList');
+            const gallery = document.getElementById('customerFloorplansGallery');
+            
+            if (customerFloorplans.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; border: 2px dashed var(--border-color); border-radius: 12px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📄</div>
+                        <div style="font-size: 14px;">No floorplans uploaded</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Drag & drop or click Upload</div>
+                    </div>`;
+                gallery.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🗺️</div>
+                        <div>No floorplans uploaded yet</div>
+                        <label for="customerFloorplanUpload" class="btn btn-primary" style="margin-top: 16px; cursor: pointer;">Upload Floorplan</label>
+                    </div>`;
+                return;
+            }
+            
+            // Compact view for sidebar
+            container.innerHTML = customerFloorplans.map(fp => `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                    ${fp.type.includes('image') ? `<img src="${fp.data}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">` : `<div style="width: 50px; height: 50px; background: var(--bg-secondary); border-radius: 6px; display: flex; align-items: center; justify-content: center;">📄</div>`}
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fp.name}</div>
+                        <div style="font-size: 11px; color: var(--text-tertiary);">${(fp.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                    <button onclick="deleteCustomerFloorplan('${fp.id}')" class="btn btn-danger btn-small" style="padding: 4px 8px;">×</button>
+                </div>
+            `).join('');
+            
+            // Gallery view
+            gallery.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+                    ${customerFloorplans.map(fp => `
+                        <div style="background: var(--bg-primary); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                            ${fp.type.includes('image') ? `
+                                <img src="${fp.data}" style="width: 100%; height: 150px; object-fit: cover; cursor: pointer;" onclick="viewFloorplanFull('${fp.id}')">
+                            ` : `
+                                <div style="width: 100%; height: 150px; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary);">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 48px;">📄</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">PDF</div>
+                                    </div>
+                                </div>
+                            `}
+                            <div style="padding: 12px;">
+                                <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fp.name}</div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button onclick="useFloorplanForQuote('${fp.id}')" class="btn btn-primary btn-small" style="flex: 1; font-size: 11px;">Use for Quote</button>
+                                    <button onclick="deleteCustomerFloorplan('${fp.id}')" class="btn btn-danger btn-small" style="padding: 4px 8px;">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        async function deleteCustomerFloorplan(floorplanId) {
+            if (!confirm('Delete this floorplan?')) return;
+            customerFloorplans = customerFloorplans.filter(fp => fp.id !== floorplanId);
+            renderCustomerFloorplans();
+            
+            const customerId = currentViewingCustomerId;
+            if (customerId) {
+                await saveCustomerFiles(customerId);
+            }
+        }
+        
+        function viewFloorplanFull(floorplanId) {
+            const fp = customerFloorplans.find(f => f.id === floorplanId);
+            if (!fp) return;
+            
+            // Open in a new tab or modal
+            const newTab = window.open();
+            newTab.document.write(`
+                <html><head><title>${fp.name}</title></head>
+                <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a1a;">
+                    <img src="${fp.data}" style="max-width: 100%; max-height: 100vh;">
+                </body></html>
+            `);
+        }
+        
+        function useFloorplanForQuote(floorplanId) {
+            const fp = customerFloorplans.find(f => f.id === floorplanId);
+            if (!fp) return;
+            
+            // Store the selected floorplan for quote creation
+            window.selectedCustomerFloorplan = fp;
+            showToast('Floorplan selected! Click "New Quote" to use it.', 'success');
+        }
+        
+        // ============================================================================
+        // CUSTOMER DOCUMENT FUNCTIONS
+        // ============================================================================
+        
+        async function uploadCustomerDocument(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64 = e.target.result;
+                    const doc = {
+                        id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: base64,
+                        uploaded_at: new Date().toISOString()
+                    };
+                    customerDocuments.push(doc);
+                    renderCustomerDocuments();
+                    
+                    const customerId = currentViewingCustomerId;
+                    if (customerId) {
+                        await saveCustomerFiles(customerId);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        }
+        
+        function renderCustomerDocuments() {
+            const container = document.getElementById('customerDocumentsList');
+            
+            if (customerDocuments.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; border: 2px dashed var(--border-color); border-radius: 12px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📎</div>
+                        <div style="font-size: 14px;">No documents uploaded</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">Upload contracts, invoices, etc.</div>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = customerDocuments.map(doc => `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px;">
+                    <div style="width: 40px; height: 40px; background: var(--bg-secondary); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        ${getDocumentIcon(doc.type)}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.name}</div>
+                        <div style="font-size: 11px; color: var(--text-tertiary);">${(doc.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                    <button onclick="downloadCustomerDocument('${doc.id}')" class="btn btn-secondary btn-small" style="padding: 4px 8px;">⬇️</button>
+                    <button onclick="deleteCustomerDocument('${doc.id}')" class="btn btn-danger btn-small" style="padding: 4px 8px;">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function getDocumentIcon(mimeType) {
+            if (mimeType.includes('pdf')) return '📄';
+            if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+            if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📊';
+            if (mimeType.includes('image')) return '🖼️';
+            return '📎';
+        }
+        
+        function downloadCustomerDocument(docId) {
+            const doc = customerDocuments.find(d => d.id === docId);
+            if (!doc) return;
+            
+            const link = document.createElement('a');
+            link.href = doc.data;
+            link.download = doc.name;
+            link.click();
+        }
+        
+        async function deleteCustomerDocument(docId) {
+            if (!confirm('Delete this document?')) return;
+            customerDocuments = customerDocuments.filter(d => d.id !== docId);
+            renderCustomerDocuments();
+            
+            const customerId = currentViewingCustomerId;
+            if (customerId) {
+                await saveCustomerFiles(customerId);
+            }
+        }
+        
+        async function saveCustomerFiles(customerId) {
+            try {
+                await fetch(`/api/crm/people/${customerId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        floorplans: customerFloorplans,
+                        documents: customerDocuments
+                    })
+                });
+            } catch (e) {
+                console.error('Error saving customer files:', e);
+            }
+        }
+        
+        function renderCustomerStats(stats) {
+            const container = document.getElementById('customerDetailStats');
+            container.innerHTML = `
+                <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">${stats.total_quotes || 0}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Total Quotes</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">${stats.accepted_quotes || 0}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Accepted</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">$${(stats.quote_value || 0).toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Quote Value</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700;">$${(stats.won_revenue || 0).toLocaleString()}</div>
+                    <div style="font-size: 12px; opacity: 0.9;">Won Revenue</div>
+                </div>
+            `;
+        }
+        
+        async function deleteCustomerFromDetail() {
+            if (!currentViewingCustomerId) return;
+            if (!confirm('Are you sure you want to delete this customer? This action cannot be undone.')) return;
+            
+            try {
+                const res = await fetch(`/api/crm/people/${currentViewingCustomerId}`, { method: 'DELETE' });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showToast('Customer deleted', 'success');
+                    closeModal('customerDetailModal');
+                    loadPeople('customer');
+                } else {
+                    showToast('Error: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
         }
 
         function openJobModal(status, preSelectedCustomerId = null) {

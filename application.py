@@ -175,6 +175,23 @@ PRICE_CLASSES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'price_classes.
 INTEGRATIONS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'integrations.json')
 QUOTES_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'quotes.json')
 STOCK_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'stock.json')
+JOBS_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'jobs.json')
+PEOPLE_FILE = os.path.join(app.config['CRM_DATA_FOLDER'], 'people.json')
+
+# Add file paths to app config so blueprints can access them
+app.config['CUSTOMERS_FILE'] = CUSTOMERS_FILE
+app.config['PROJECTS_FILE'] = PROJECTS_FILE
+app.config['COMMUNICATIONS_FILE'] = COMMUNICATIONS_FILE
+app.config['CALENDAR_FILE'] = CALENDAR_FILE
+app.config['TECHNICIANS_FILE'] = TECHNICIANS_FILE
+app.config['INVENTORY_FILE'] = INVENTORY_FILE
+app.config['SUPPLIERS_FILE'] = SUPPLIERS_FILE
+app.config['PRICE_CLASSES_FILE'] = PRICE_CLASSES_FILE
+app.config['INTEGRATIONS_FILE'] = INTEGRATIONS_FILE
+app.config['QUOTES_FILE'] = QUOTES_FILE
+app.config['STOCK_FILE'] = STOCK_FILE
+app.config['JOBS_FILE'] = JOBS_FILE
+app.config['PEOPLE_FILE'] = PEOPLE_FILE
 
 # Initialize CRM Data Layer for robust data operations
 if CRM_USE_DATABASE:
